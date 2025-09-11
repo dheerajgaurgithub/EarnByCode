@@ -1,395 +1,380 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import { AxiosResponse } from 'axios';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { apiService } from '../lib/api';
-import { Play, RotateCcw, Clock, Loader2, Check, X, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
+import { toast } from 'react-toastify';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import CodeEditor from '../components/common/CodeEditor';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { toast } from 'react-hot-toast';
+import { Play, Clock, Loader2, CheckCircle, XCircle, RotateCcw, Check } from 'lucide-react';
+import CodeEditor from '../components/common/CodeEditor';
+import apiService, { Contest, Problem, TestCase } from '../services/api';
+import { CodeExecutionResult, TestCaseResult } from '../types/codeExecution';
 
-// Define types for contest and problem
-interface Problem {
-  _id: string;
-  title: string;
-  description: string;
-  difficulty: 'easy' | 'medium' | 'hard';
-  starterCode: Record<string, string>;
-  testCases: Array<{
-    input: any;
-    expected: any;
-    isHidden: boolean;
-  }>;
-  constraints: string[];
-  examples: Array<{
-    input: any;
-    output: any;
-    explanation?: string;
-  }>;
+type ContestPhase = 'guidelines' | 'problem' | 'problems' | 'feedback' | 'completed';
+
+interface ContestWithProblems extends Omit<Contest, 'problems'> {
+  problems: Problem[];  // Override with Problem[] instead of string[]
   guidelines?: string;
+  status?: 'upcoming' | 'ongoing' | 'completed';
+  rules?: string[];
+  prizes?: string[];
+  // duration is already required in Contest
 }
 
-interface Contest {
-  _id: string;
-  title: string;
-  description: string;
-  startTime: string | Date;
-  endTime: string | Date;
-  duration: number; // in minutes
-  isPublished: boolean;
-  participants: Array<{
-    user: string | { _id: string; name: string; email: string };
-    joinedAt: string | Date;
-    submission?: any;
-  }>;
-  problems: string[] | Problem[];
-  guidelines: string;
-  rules: string[];
-  prizes: string[];
-  createdAt: string | Date;
-  updatedAt: string | Date;
-  status: 'upcoming' | 'ongoing' | 'completed';
-  testCases: Array<{
-    input: any;
-    expected: any;
-    isHidden: boolean;
-  }>;
-  constraints: string[];
-  examples: Array<{
-    input: any;
-    output: any;
-    explanation?: string;
-  }>;
+interface ContestState {
+  isLoading: boolean;
+  error: string | null;
+  currentProblemIndex: number;
+  phase: ContestPhase;
+  testResults: TestCaseResult[];
+  hasAgreedToGuidelines: boolean;
+  isRegistered: boolean;
+  contestHasStarted: boolean;
+  contestEnded: boolean;
+  isSubmitting: boolean;
+  timeLeft: number;
+  language: string;
+  userCode: Record<string, string>;
+  feedback: string;
 }
 
-interface ContestResponse {
-  contest: Contest;
-  problems?: Problem[];
+interface ContestSubmission {
+  problemId: string;
+  code: string;
+  language: string;
+  testResults?: TestCaseResult[];
+  passed?: boolean;
+  timestamp: Date;
 }
 
-interface RunTestResponse {
-  data: any; // Replace 'any' with a more specific type if you know the structure
-  status: number;
-  statusText: string;
-  // Add other Axios response properties as needed
-}
-
-type ContestPhase = 'guidelines' | 'problems' | 'feedback' | 'completed';
-
-// Helper function to safely access problem data
-const getProblemData = (problem: Problem) => ({
-  _id: problem._id,
-  title: problem.title,
-  description: problem.description,
-  difficulty: problem.difficulty,
-  testCases: problem.testCases || [],
-  examples: problem.examples || [],
-  starterCode: problem.starterCode || { javascript: '// Your code here' },
-  constraints: problem.constraints || []
-});
-
-const ContestPage = () => {
-  const { contestId = '' } = useParams<{ contestId: string }>();
-  const { user } = useAuth();
+const ContestPage: React.FC = () => {
+  const { id: contestId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
-  // State management
-  const [isLoading, setIsLoading] = useState(true);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [contest, setContest] = useState<Contest | null>(null);
-  const [problems, setProblems] = useState<Problem[]>([]);
-  const [currentProblemIndex, setCurrentProblemIndex] = useState(0);
-  const [phase, setPhase] = useState<ContestPhase>('guidelines');
-  const [hasAgreedToGuidelines, setHasAgreedToGuidelines] = useState(false);
-  const [feedback, setFeedback] = useState('');
-  const [testResults, setTestResults] = useState<Array<{
-    input: any;
-    expected: any;
-    output: any;
-    passed: boolean;
-  }>>([]);
-  const [timeLeft, setTimeLeft] = useState(0);
-  const [language, setLanguage] = useState('javascript');
-  const [userCode, setUserCode] = useState<Record<string, string>>({});
-  const [isRegistered, setIsRegistered] = useState(false);
-
-  // Refs
+  const { user } = useAuth();
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // State management
+  const [contest, setContest] = useState<ContestWithProblems | null>(null);
+  const [state, setState] = useState<ContestState>({
+    isLoading: true,
+    error: null,
+    currentProblemIndex: 0,
+    phase: 'guidelines',
+    testResults: [],
+    hasAgreedToGuidelines: false,
+    isRegistered: false,
+    contestHasStarted: false,
+    contestEnded: false,
+    isSubmitting: false,
+    timeLeft: 0,
+    language: 'javascript',
+    userCode: {},
+    feedback: '',
+  });
 
-  // Memoized values
-  const currentProblem = useMemo(() => {
-    return problems[currentProblemIndex];
-  }, [problems, currentProblemIndex]);
-
-  const currentCode = useMemo(() => {
-    if (!currentProblem) return '';
-    return userCode[currentProblem._id] || currentProblem.starterCode?.[language] || '';
-  }, [currentProblem, userCode, language]);
-
-  const contestHasStarted = useMemo(() => {
-    if (!contest) return false;
-    const now = new Date();
-    const startTime = new Date(contest.startTime);
-    return now >= startTime;
-  }, [contest]);
-
-  const contestEnded = useMemo(() => {
-    if (!contest) return false;
-    return new Date() >= new Date(contest.endTime);
-  }, [contest]);
-
-  // Format time for display
-  const formatTime = useCallback((ms: number) => {
-    const totalSeconds = Math.floor(ms / 1000);
-    const hours = Math.floor(totalSeconds / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const seconds = totalSeconds % 60;
-
-    return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  // Additional state variables for proper state management
+  const [problems, setProblems] = useState<Problem[]>([]);
+  const [currentProblem, setCurrentProblem] = useState<Problem | null>(null);
+  const [currentProblemCode, setCurrentProblemCode] = useState<string>('');
+  const [phase, setPhase] = useState<ContestPhase>('guidelines');
+  const [testResults, setTestResults] = useState<TestCaseResult[]>([]);
+  const [hasAgreedToGuidelines, setHasAgreedToGuidelines] = useState<boolean>(false);
+  const [isRegistered, setIsRegistered] = useState<boolean>(false);
+  const [contestHasStarted, setContestHasStarted] = useState<boolean>(false);
+  const [contestEnded, setContestEnded] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [language, setLanguage] = useState<string>('javascript');
+  const [userCode, setUserCode] = useState<Record<string, string>>({});
+  const [feedback, setFeedback] = useState<string>('');
+  const [currentProblemIndex, setCurrentProblemIndex] = useState<number>(0);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  const updateState = useCallback((updates: Partial<ContestState>) => {
+    setState(prev => ({ ...prev, ...updates }));
   }, []);
 
-  // Handle contest end
-  const handleContestEnd = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-    setPhase('feedback');
-    toast.success('Contest has ended! Please submit your feedback.');
+  const formatTime = useCallback((seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
-  // Start timer function
-  const startTimer = useCallback((duration: number) => {
-    // Clear any existing timer
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-
-    // Set initial time
-    setTimeLeft(duration);
-
-    // Store the end time in a ref to avoid dependency on handleContestEnd
-    const endTime = Date.now() + duration;
-
-    // Start new timer
-    timerRef.current = setInterval(() => {
-      const timeRemaining = endTime - Date.now();
+  // Fetch contest data
+  useEffect(() => {
+    const fetchContestData = async () => {
+      if (!contestId) return;
       
-      if (timeRemaining <= 0) {
-        if (timerRef.current) clearInterval(timerRef.current);
-        handleContestEnd();
-        // Refresh contest data after contest ends
-        if (contestId) {
-          apiService.get<Contest>(`/contests/${contestId}`).then(setContest);
+      try {
+        setIsLoading(true);
+        
+        // Fetch contest data
+        const contestData = await apiService.getContest(contestId);
+        
+        // Fetch problems for the contest
+        const problemsPromises = contestData.problems.map((problemId: string) => 
+          apiService.getProblem(problemId)
+        );
+        
+        const problemsData = await Promise.all(problemsPromises);
+        
+        // Update contest with full problem data
+        const contestWithProblems: ContestWithProblems = {
+          ...contestData,
+          problems: problemsData
+        };
+        
+        setContest(contestWithProblems);
+        setProblems(problemsData);
+        
+        // Calculate time left
+        const now = new Date();
+        const startTime = new Date(contestData.startTime);
+        const endTime = new Date(contestData.endTime);
+        
+        if (now >= endTime) {
+          setContestEnded(true);
+          setPhase('completed');
+          setTimeLeft(0);
+        } else if (now >= startTime) {
+          setContestHasStarted(true);
+          const timeLeftInSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
+          setTimeLeft(timeLeftInSeconds);
+        } else {
+          const timeLeftInSeconds = Math.floor((startTime.getTime() - now.getTime()) / 1000);
+          setTimeLeft(timeLeftInSeconds);
         }
-        setTimeLeft(0);
-      } else {
-        setTimeLeft(timeRemaining);
+        
+      } catch (error) {
+        console.error('Error fetching contest:', error);
+        setError('Failed to load contest data. Please try again later.');
+        toast.error('Failed to load contest data');
+      } finally {
+        setIsLoading(false);
       }
+    };
+    
+    fetchContestData();
+    
+    // Set up timer
+    const timer = setInterval(() => {
+      setTimeLeft(prev => {
+        if (prev <= 0) {
+          setContestEnded(true);
+          setPhase('completed');
+          return 0;
+        }
+        return prev - 1;
+      });
     }, 1000);
-
-    // Cleanup function
+    
+    return () => {
+      if (timer) clearInterval(timer);
+    };
+  }, [contestId]);
+  
+  // Handle timer
+  useEffect(() => {
+    if (!contest) return;
+    
+    const updateTimer = () => {
+      setTimeLeft(prev => {
+        if (prev <= 0) {
+          setContestEnded(true);
+          setPhase('completed');
+          return 0;
+        }
+        return prev - 1;
+      });
+    };
+    
+    timerRef.current = setInterval(updateTimer, 1000);
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [contestId, handleContestEnd]);
-
-  // Check registration status
-  const checkRegistrationStatus = useCallback(async (cid: string) => {
-    if (!user) return false;
-
-    try {
-      const contest = await apiService.get<Contest>(`/contests/${cid}`);
-
-      // Check if current user is in participants
-      return contest.participants?.some(participant => {
-        const participantId = typeof participant.user === 'string'
-          ? participant.user
-          : participant.user?._id;
-        return participantId === user._id;
-      }) || false;
-    } catch (error) {
-      console.error('Error checking registration status:', error);
-      return false;
+  }, [contest]);
+  
+  // Handle contest phase changes
+  const handleStartContest = useCallback(() => {
+    if (!hasAgreedToGuidelines) {
+      toast.error('Please agree to the guidelines first');
+      return;
     }
-  }, [user]);
-
-  // Fetch contest problems
-  const fetchContestProblems = useCallback(async (problemIds: string[] | Problem[]) => {
-    if (!problemIds || problemIds.length === 0) return [];
-
-    try {
-      // Check if the first item is a string (ID) or an object (full problem)
-      if (typeof problemIds[0] === 'string') {
-        const response = await apiService.get<{ data: Problem[] }>(`/problems?ids=${problemIds.join(',')}`);
-        return response.data.map(problem => getProblemData(problem));
-      } else {
-        // If we already have the full problem objects, just return them
-        return (problemIds as Problem[]).map(problem => getProblemData(problem));
-      }
-    } catch (error) {
-      console.error('Error fetching contest problems:', error);
-      toast.error('Failed to load contest problems');
-      return [];
-    }
-  }, []);
-
-  // Handle code changes
-  const handleCodeChange = useCallback((value: string) => {
-    if (!currentProblem) return;
-    setUserCode(prev => ({
-      ...prev,
-      [currentProblem._id]: value
-    }));
-  }, [currentProblem]);
-
-  // Handle running tests
-  const handleRunTests = useCallback(async (problemId?: string) => {
-    const targetProblem = problemId ? problems.find(p => p._id === problemId) : currentProblem;
-    if (!targetProblem) return;
     
-    setIsSubmitting(true);
+    if (contest && contest.problems.length > 0) {
+      setPhase('problems');
+      setCurrentProblemIndex(0);
+    } else {
+      toast.error('No problems available in this contest');
+    }
+  }, [hasAgreedToGuidelines, contest]);
+
+  const handleProblemSelect = useCallback((index: number) => {
+    if (contest && index >= 0 && index < contest.problems.length) {
+      setCurrentProblemIndex(index);
+    }
+  }, [contest]);
+
+  const handleCodeChange = useCallback((value: string) => {
+    if (!contest) return;
+
+    const currentProblemData = contest.problems[currentProblemIndex];
+    if (currentProblemData) {
+      setUserCode((prev) => ({
+        ...prev,
+        [currentProblemData._id]: value,
+      }));
+    }
+    setCurrentProblemCode(value);
+  }, [contest, currentProblemIndex]);
+
+  const handleRunTests = useCallback(async () => {
+    if (!contest || !user || !contest.problems[currentProblemIndex]) return;
+
     try {
-      const response = await apiService.post<RunTestResponse>(`/problems/${targetProblem._id}/run`, {
-        code: userCode[targetProblem._id] || '',
-        language
-      });
-      
-      setTestResults(response.data);
-      toast.success('Tests executed successfully');
+      setIsSubmitting(true);
+      const currentProblemData = contest.problems[currentProblemIndex];
+      const code = userCode[currentProblemData._id] || (currentProblemData.starterCode as any)?.[language] || '';
+
+      const result = await apiService.runCode(currentProblemData._id, code, language);
+      setTestResults(result.testCases || []);
+
+      if (result.status === 'accepted') {
+        toast.success('Tests completed successfully');
+      } else {
+        toast.error('Some tests failed');
+      }
     } catch (error) {
       console.error('Error running tests:', error);
       toast.error('Failed to run tests');
     } finally {
       setIsSubmitting(false);
     }
-  }, [currentProblem, problems, language, userCode]);
+  }, [contest, currentProblemIndex, user, userCode, language]);
 
-  // Handle problem submission
-  const handleSubmitProblem = useCallback(async () => {
-    if (!currentProblem) return;
-    
-    setIsSubmitting(true);
+  const handleSubmitSolution = useCallback(async () => {
+    if (!contest || !user || !contest.problems[currentProblemIndex]) return;
+
     try {
-      await apiService.post(`/contests/${contestId}/submit`, {
-        problemId: currentProblem._id,
-        code: userCode[currentProblem._id] || '',
-        language
-      });
-      
-      toast.success('Solution submitted successfully');
+      setIsSubmitting(true);
+      const currentProblemData = contest.problems[currentProblemIndex];
+      const code = userCode[currentProblemData._id] || (currentProblemData.starterCode as any)?.[language] || '';
+
+      const result = await apiService.submitCode(currentProblemData._id, code, language);
+      setTestResults(result.testCases || []);
+
+      if (result.status === 'accepted') {
+        toast.success('Solution submitted successfully!');
+
+        // Move to next problem or complete contest
+        if (currentProblemIndex < contest.problems.length - 1) {
+          setCurrentProblemIndex(prev => prev + 1);
+        } else {
+          setPhase('completed');
+        }
+      } else {
+        toast.error('Submission failed. Please try again.');
+      }
     } catch (error) {
       console.error('Error submitting solution:', error);
       toast.error('Failed to submit solution');
     } finally {
       setIsSubmitting(false);
     }
-  }, [currentProblem, contestId, userCode, language]);
+  }, [contest, currentProblemIndex, user, userCode, language]);
 
-  // Handle feedback submission
-  const handleSubmitFeedback = useCallback(async () => {
+  // Handle problem submission
+  const handleSubmitProblem = useCallback(async () => {
+    if (!currentProblem || !user || isSubmitting) return;
+    
     try {
-      await apiService.post(`/contests/${contestId}/feedback`, {
-        feedback
+      setIsSubmitting(true);
+      const code = userCode[currentProblem._id] || (currentProblem.starterCode as any)?.[language] || '';
+      
+      await apiService.post(`/problems/${currentProblem._id}/submit`, {
+        code,
+        language,
+        userId: user._id,
       });
       
-      toast.success('Feedback submitted successfully');
-      setPhase('completed');
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
-      toast.error('Failed to submit feedback');
-    }
-  }, [contestId, feedback]);
-
-  // Fetch contest data
-  const fetchContestData = useCallback(async () => {
-    if (!contestId) return;
-
-    try {
-      setIsLoading(true);
-      const data = await apiService.get<ContestResponse>(`/contests/${contestId}`);
-      setContest(data.contest);
-      
-      if (data.problems) {
-        setProblems(data.problems);
-      } else if (Array.isArray(data.contest.problems) && data.contest.problems.length > 0) {
-        // If problems are just IDs, fetch them
-        const problemPromises = (data.contest.problems as string[]).map((id: string) => 
-          apiService.get<Problem>(`/problems/${id}`)
-        );
-        const problemsData = await Promise.all(problemPromises);
-        setProblems(problemsData);
-      }
-
-      // Check registration status
-      const isRegistered = await checkRegistrationStatus(contestId);
-      setIsRegistered(isRegistered);
-      
-      if (!isRegistered) {
-        toast.error('You are not registered for this contest');
-        navigate('/contests');
-        return;
-      }
-
-      // Set initial phase based on contest timing
-      const now = new Date();
-      const startTime = new Date(data.contest.startTime);
-      const endTime = new Date(data.contest.endTime);
-
-      if (now < startTime) {
-        setPhase('guidelines');
-      } else if (now >= startTime && now < endTime) {
+      // Move to next problem or finish contest
+      if (currentProblemIndex < problems.length - 1) {
+        setCurrentProblemIndex(prev => prev + 1);
         setPhase('problems');
-        // Start timer if contest is ongoing
-        startTimer(endTime.getTime() - now.getTime());
       } else {
         setPhase('completed');
       }
     } catch (error) {
-      console.error('Error fetching contest data:', error);
-      toast.error('Failed to load contest data');
+      console.error('Error submitting problem:', error);
+      toast.error('Failed to submit problem');
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
-  }, [contestId, navigate, startTimer, checkRegistrationStatus]);
+  }, [currentProblem, user, isSubmitting, userCode, language, currentProblemIndex, problems.length]);
 
-  // Handle contest start
-  const handleStartContest = useCallback(() => {
-    if (!hasAgreedToGuidelines) {
-      toast.error('Please agree to the contest guidelines before starting');
-      return;
+  // Handle feedback submission
+  const handleSubmitFeedback = useCallback(async () => {
+    if (!user || !feedback.trim() || isSubmitting) return;
+    
+    try {
+      setIsSubmitting(true);
+      await apiService.post(`/contests/${contestId}/feedback`, {
+        userId: user._id,
+        feedback,
+        rating: 5, // You can add a rating component later
+      });
+      
+      toast.success('Thank you for your feedback!');
+      setPhase('completed');
+    } catch (error) {
+      console.error('Error submitting feedback:', error);
+      toast.error('Failed to submit feedback');
+    } finally {
+      setIsSubmitting(false);
     }
+  }, [feedback, contestId, isSubmitting, user]);
 
-    setPhase('problems');
-
-    // Start the contest timer if not already started
-    if (contest?.duration && !timerRef.current) {
-      const durationMs = contest.duration * 60 * 1000; // Convert minutes to ms
-      startTimer(durationMs);
+  // Handle contest end
+  const handleContestEnd = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
     }
-  }, [contest, hasAgreedToGuidelines, startTimer]);
+    setPhase('feedback');
+  }, []);
 
-  // Initialize data on mount
+  // Update current problem code when problem or user code changes
   useEffect(() => {
-    fetchContestData();
+    if (currentProblem) {
+      const code = userCode[currentProblem._id] || (currentProblem.starterCode as any)?.[language] || '';
+      setCurrentProblemCode(code);
+    }
+  }, [currentProblem, userCode, language]);
 
-    // Cleanup timer on unmount
-    return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
+  // Load the current problem when index changes
+  useEffect(() => {
+    if (problems.length > 0 && currentProblemIndex < problems.length) {
+      setCurrentProblem(problems[currentProblemIndex]);
+    }
+  }, [currentProblemIndex, problems]);
+
+  // Check registration status on mount
+  useEffect(() => {
+    const checkRegistrationStatus = async () => {
+      if (!user || !contestId) return;
+      
+      try {
+        await apiService.get(`/contests/${contestId}/register`);
+        setIsRegistered(true);
+      } catch (error) {
+        setIsRegistered(false);
       }
     };
-  }, [fetchContestData]);
-
-  // Get current problem code
-  const currentProblemCode = useMemo(() => {
-    if (!currentProblem) return '';
-    return userCode[currentProblem._id] || currentProblem.starterCode?.[language] || '';
-  }, [currentProblem, userCode, language]);
+    
+    checkRegistrationStatus();
+  }, [user, contestId]);
 
   // Render loading state
   if (isLoading || !contest) {
@@ -417,7 +402,7 @@ const ContestPage = () => {
             </CardHeader>
             <CardContent className="p-4 sm:p-6">
               <div className="prose max-w-none mb-6 text-gray-700">
-                <div dangerouslySetInnerHTML={{ __html: contest.guidelines }} />
+                <div dangerouslySetInnerHTML={{ __html: contest.guidelines || '' }} />
               </div>
               
               {contest.rules && contest.rules.length > 0 && (
@@ -507,8 +492,8 @@ const ContestPage = () => {
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
                           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 sm:mb-0">{problem.title}</h2>
                           <span className={`px-3 py-1 rounded-full text-sm font-medium self-start ${
-                            problem.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
-                            problem.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
+                            problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-red-100 text-red-800'
                           }`}>
                             {problem.difficulty.charAt(0).toUpperCase() + problem.difficulty.slice(1)}
@@ -520,10 +505,10 @@ const ContestPage = () => {
                         </div>
                       </div>
                       
-                      {problem.examples?.length > 0 && (
+                      {problem.examples && problem.examples.length > 0 && (
                         <div className="space-y-4">
                           <h3 className="font-semibold text-lg text-gray-800">Examples:</h3>
-                          {problem.examples.map((example, i) => (
+                          {problem.examples?.map((example: { input: string; output: string; explanation?: string }, i: number) => (
                             <div key={i} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                               <div className="space-y-2">
                                 <div>
@@ -573,8 +558,8 @@ const ContestPage = () => {
                                 </div>
                                 <div className="text-sm space-y-1">
                                   <div>Input: <code className="bg-white px-1 rounded">{JSON.stringify(result.input)}</code></div>
-                                  <div>Expected: <code className="bg-white px-1 rounded">{JSON.stringify(result.expected)}</code></div>
-                                  <div>Got: <code className="bg-white px-1 rounded">{JSON.stringify(result.output)}</code></div>
+                                  <div>Expected: <code className="bg-white px-1 rounded">{JSON.stringify(result.expectedOutput)}</code></div>
+                                  <div>Got: <code className="bg-white px-1 rounded">{JSON.stringify(result.actualOutput)}</code></div>
                                 </div>
                               </div>
                             ))}
@@ -626,7 +611,7 @@ const ContestPage = () => {
                             if (currentProblem) {
                               setUserCode(prev => ({
                                 ...prev,
-                                [currentProblem._id]: currentProblem.starterCode?.[language] || ''
+                                [currentProblem._id]: (currentProblem.starterCode as any)?.[language] || ''
                               }));
                             }
                           }}
@@ -814,7 +799,7 @@ const ContestPage = () => {
                   contest.status === 'upcoming' ? 'bg-yellow-100 text-yellow-800' :
                   'bg-gray-100 text-gray-800'
                 }`}>
-                  {contest.status.charAt(0).toUpperCase() + contest.status.slice(1)}
+                  {contest.status?.charAt(0).toUpperCase()}{contest.status?.slice(1)}
                 </span>
               </div>
               <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">

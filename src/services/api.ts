@@ -21,6 +21,17 @@ export interface Problem {
   isPremium: boolean;
   createdAt: string;
   updatedAt: string;
+  examples?: Array<{
+    input: string;
+    output: string;
+    explanation?: string;
+  }>;
+  constraints?: string[];
+  tags?: string[];
+  hints?: string[];
+  solution?: string;
+  acceptance?: number;
+  submissions?: number;
 }
 
 interface Contest {
