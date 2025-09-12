@@ -51,7 +51,7 @@ const devConfig: Config = {
 // Production configuration
 const prodConfig: Config = {
   api: {
-    baseUrl: 'https://algobucks.onrender.com',
+    baseUrl: 'https://algobucks.vercel.app',
     timeout: 30000, // 30 seconds
   },
   app: {

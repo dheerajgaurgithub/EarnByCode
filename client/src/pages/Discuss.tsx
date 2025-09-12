@@ -4,6 +4,7 @@ import { formatDistanceToNow } from 'date-fns';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
+import config from '@/lib/config';
 
 interface UserInfo {
   _id: string;
@@ -49,33 +50,27 @@ const Discuss: React.FC = () => {
     title: '',
     content: ''
   });
-  const { toast } = useToast();
+  const toast = useToast();
   const { user } = useAuth();
 
   // Helper function for error toasts
-  const showErrorToast = useCallback((title: string, description: string) => {
-    if (!toast) {
-      console.error('Toast is not available:', { title, description });
-      return;
-    }
+  const showErrorToast = (title: string, message: string) => {
+    console.error('Error:', title, message);
     toast.error({
       title,
-      description,
+      message,
       variant: 'destructive',
     });
-  }, [toast]);
+  };
 
   // Helper function for success toasts
-  const showSuccessToast = useCallback((title: string, description: string) => {
-    if (!toast) {
-      console.log('Toast success:', { title, description });
-      return;
-    }
+  const showSuccessToast = (title: string, message: string) => {
+    console.log('Success:', title, message);
     toast.success({
       title,
-      description,
+      message,
     });
-  }, [toast]);
+  };
 
   // Format date helper - shows both relative time and exact date on hover
   const formatDate = (dateString: string) => {
@@ -103,25 +98,44 @@ const Discuss: React.FC = () => {
   // Fetch discussions
   const fetchDiscussions = useCallback(async () => {
     try {
+      console.log('Starting to fetch discussions...');
       setIsLoading(true);
+      
+      // Log the full URL being requested
+      const fullUrl = `${config.api.baseUrl}/discussions`;
+      console.log('Fetching discussions from:', fullUrl);
+      
+      // Log the auth token being used
+      const token = localStorage.getItem('token');
+      console.log('Using auth token:', token ? 'Present' : 'Not found');
+      
       const response = await api.get<{ success: boolean; data: Discussion[] }>('/discussions');
+      console.log('Raw API response:', response);
       
       // Handle response based on axios interceptor structure
       const responseData = response as unknown as { success: boolean; data: Discussion[] };
+      console.log('Processed response data:', responseData);
       
       if (responseData?.success) {
         const discussionsData = Array.isArray(responseData.data) ? responseData.data : [];
-        const processedDiscussions = discussionsData.map((discussion: Discussion) => ({
-          ...discussion,
-          isLiked: user ? discussion.likes?.includes(user._id) : false,
-          showReplies: false,
-          newReply: '',
-          isLoadingReplies: false,
-          replies: discussion.replies || []
-        }));
+        console.log('Fetched discussions count:', discussionsData.length);
         
+        const processedDiscussions = discussionsData.map((discussion: Discussion) => {
+          console.log('Processing discussion:', discussion._id, discussion.title);
+          return {
+            ...discussion,
+            isLiked: user ? discussion.likes?.includes(user._id) : false,
+            showReplies: false,
+            newReply: '',
+            isLoadingReplies: false,
+            replies: discussion.replies || []
+          };
+        });
+        
+        console.log('Setting discussions state with:', processedDiscussions);
         setDiscussions(processedDiscussions);
       } else {
+        console.warn('No success response from server, setting empty discussions');
         setDiscussions([]);
       }
     } catch (error) {
