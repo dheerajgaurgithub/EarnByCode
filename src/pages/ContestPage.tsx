@@ -1,24 +1,23 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { apiService } from '../lib/api';
+import { Contest, Problem, TestCaseResult, RunTestResponse } from '../types/contest';
+import { ContestFeedback } from '../components/Contest/ContestFeedback';
 import { toast } from 'react-toastify';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Play, Clock, Loader2, CheckCircle, XCircle, RotateCcw, Check } from 'lucide-react';
 import CodeEditor from '../components/common/CodeEditor';
-import apiService, { Contest, Problem, TestCase } from '../services/api';
-import { CodeExecutionResult, TestCaseResult } from '../types/codeExecution';
 
 type ContestPhase = 'guidelines' | 'problem' | 'problems' | 'feedback' | 'completed';
 
 interface ContestWithProblems extends Omit<Contest, 'problems'> {
   problems: Problem[];  // Override with Problem[] instead of string[]
+  rules: string[];  
+  prizes: string[]; 
   guidelines?: string;
-  status?: 'upcoming' | 'ongoing' | 'completed';
-  rules?: string[];
-  prizes?: string[];
-  // duration is already required in Contest
 }
 
 interface ContestState {
@@ -47,37 +46,39 @@ interface ContestSubmission {
   timestamp: Date;
 }
 
-const ContestPage: React.FC = () => {
-  const { id: contestId } = useParams<{ id: string }>();
+interface TestResults {
+  results: Array<{
+    passed: boolean;
+    input?: any;
+    expected?: any;
+    output?: any;
+    error?: string;
+  }>;
+  passed: number;
+  total: number;
+  executionTime: number;
+  error?: string;
+}
+
+const ContestPage = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
+  
+  if (!id) {
+    navigate('/contests');
+    return null;
+  }
+  
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   
   // State management
   const [contest, setContest] = useState<ContestWithProblems | null>(null);
-  const [state, setState] = useState<ContestState>({
-    isLoading: true,
-    error: null,
-    currentProblemIndex: 0,
-    phase: 'guidelines',
-    testResults: [],
-    hasAgreedToGuidelines: false,
-    isRegistered: false,
-    contestHasStarted: false,
-    contestEnded: false,
-    isSubmitting: false,
-    timeLeft: 0,
-    language: 'javascript',
-    userCode: {},
-    feedback: '',
-  });
-
-  // Additional state variables for proper state management
   const [problems, setProblems] = useState<Problem[]>([]);
   const [currentProblem, setCurrentProblem] = useState<Problem | null>(null);
   const [currentProblemCode, setCurrentProblemCode] = useState<string>('');
   const [phase, setPhase] = useState<ContestPhase>('guidelines');
-  const [testResults, setTestResults] = useState<TestCaseResult[]>([]);
+  const [testResults, setTestResults] = useState<TestResults | null>(null);
   const [hasAgreedToGuidelines, setHasAgreedToGuidelines] = useState<boolean>(false);
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [contestHasStarted, setContestHasStarted] = useState<boolean>(false);
@@ -90,9 +91,30 @@ const ContestPage: React.FC = () => {
   const [currentProblemIndex, setCurrentProblemIndex] = useState<number>(0);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  
-  const updateState = useCallback((updates: Partial<ContestState>) => {
-    setState(prev => ({ ...prev, ...updates }));
+  const [showFeedback, setShowFeedback] = useState(false);
+
+  // Helper function to get difficulty color class
+  const getDifficultyColor = (difficulty: string) => {
+    const lowerCaseDiff = difficulty.toLowerCase();
+    if (lowerCaseDiff === 'easy') return 'bg-green-100 text-green-800';
+    if (lowerCaseDiff === 'medium') return 'bg-yellow-100 text-yellow-800';
+    return 'bg-red-100 text-red-800';
+  };
+
+  // Handle feedback submission callback
+  const handleFeedbackSubmitted = useCallback(() => {
+    setShowFeedback(false);
+    // Refresh contest data to show updated feedback
+    if (id) {
+      apiService.get<ContestWithProblems>(`/contests/${id}`)
+        .then(contestData => setContest(contestData))
+        .catch(error => console.error('Error refreshing contest data:', error));
+    }
+  }, [id]);
+
+  // Toggle feedback form visibility
+  const toggleFeedback = useCallback(() => {
+    setShowFeedback(prev => !prev);
   }, []);
 
   const formatTime = useCallback((seconds: number): string => {
@@ -104,29 +126,20 @@ const ContestPage: React.FC = () => {
   // Fetch contest data
   useEffect(() => {
     const fetchContestData = async () => {
-      if (!contestId) return;
-      
       try {
         setIsLoading(true);
         
-        // Fetch contest data
-        const contestData = await apiService.getContest(contestId);
+        // Fetch contest data with problems populated
+        const contestData = await apiService.get<ContestWithProblems>(`/contests/${id}?populate=problems`);
         
-        // Fetch problems for the contest
-        const problemsPromises = contestData.problems.map((problemId: string) => 
-          apiService.getProblem(problemId)
-        );
+        // Update contest with problems
+        setContest(contestData);
+        const contestProblems = contestData.problems || [];
+        setProblems(contestProblems);
         
-        const problemsData = await Promise.all(problemsPromises);
-        
-        // Update contest with full problem data
-        const contestWithProblems: ContestWithProblems = {
-          ...contestData,
-          problems: problemsData
-        };
-        
-        setContest(contestWithProblems);
-        setProblems(problemsData);
+        if (contestProblems.length > 0) {
+          setCurrentProblem(contestProblems[0]);
+        }
         
         // Calculate time left
         const now = new Date();
@@ -148,7 +161,7 @@ const ContestPage: React.FC = () => {
         
       } catch (error) {
         console.error('Error fetching contest:', error);
-        setError('Failed to load contest data. Please try again later.');
+        setError('Failed to load contest data');
         toast.error('Failed to load contest data');
       } finally {
         setIsLoading(false);
@@ -156,23 +169,7 @@ const ContestPage: React.FC = () => {
     };
     
     fetchContestData();
-    
-    // Set up timer
-    const timer = setInterval(() => {
-      setTimeLeft(prev => {
-        if (prev <= 0) {
-          setContestEnded(true);
-          setPhase('completed');
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    
-    return () => {
-      if (timer) clearInterval(timer);
-    };
-  }, [contestId]);
+  }, [id]);
   
   // Handle timer
   useEffect(() => {
@@ -215,6 +212,7 @@ const ContestPage: React.FC = () => {
   const handleProblemSelect = useCallback((index: number) => {
     if (contest && index >= 0 && index < contest.problems.length) {
       setCurrentProblemIndex(index);
+      setCurrentProblem(contest.problems[index]);
     }
   }, [contest]);
 
@@ -231,52 +229,73 @@ const ContestPage: React.FC = () => {
     setCurrentProblemCode(value);
   }, [contest, currentProblemIndex]);
 
-  const handleRunTests = useCallback(async () => {
-    if (!contest || !user || !contest.problems[currentProblemIndex]) return;
-
+  const handleRunTests = useCallback(async (problemId?: string) => {
+    const targetProblem = problemId ? problems.find(p => p._id === problemId) : currentProblem;
+    if (!targetProblem) return;
+    
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      const currentProblemData = contest.problems[currentProblemIndex];
-      const code = userCode[currentProblemData._id] || (currentProblemData.starterCode as any)?.[language] || '';
-
-      const result = await apiService.runCode(currentProblemData._id, code, language);
-      setTestResults(result.testCases || []);
-
-      if (result.status === 'accepted') {
-        toast.success('Tests completed successfully');
-      } else {
-        toast.error('Some tests failed');
+      const response = await apiService.post<RunTestResponse>(`/problems/${targetProblem._id}/run`, {
+        code: userCode[targetProblem._id] || '',
+        language
+      });
+      
+      // The response data is nested under the 'data' property
+      const responseData = response.data || response;
+      
+      setTestResults({
+        results: responseData.results || [],
+        passed: responseData.passed || 0,
+        total: responseData.total || 0,
+        executionTime: responseData.executionTime || 0,
+        error: responseData.error
+      });
+      
+      // Refresh contest data
+      if (id) {
+        const contestData = await apiService.get<ContestWithProblems>(`/contests/${id}?populate=problems`);
+        setContest(contestData);
       }
+      
     } catch (error) {
       console.error('Error running tests:', error);
       toast.error('Failed to run tests');
     } finally {
       setIsSubmitting(false);
     }
-  }, [contest, currentProblemIndex, user, userCode, language]);
+  }, [problems, currentProblem, userCode, language, id]);
 
-  const handleSubmitSolution = useCallback(async () => {
-    if (!contest || !user || !contest.problems[currentProblemIndex]) return;
+  const handleSubmitProblem = useCallback(async () => {
+    if (!currentProblem) {
+      toast.error('No problem selected');
+      return;
+    }
 
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      const currentProblemData = contest.problems[currentProblemIndex];
-      const code = userCode[currentProblemData._id] || (currentProblemData.starterCode as any)?.[language] || '';
+      interface SubmitResponse {
+        success: boolean;
+        message?: string;
+        // Add other expected response fields here
+      }
 
-      const result = await apiService.submitCode(currentProblemData._id, code, language);
-      setTestResults(result.testCases || []);
+      const response = await apiService.post<SubmitResponse>(`/problems/${currentProblem._id}/submit`, {
+        code: userCode[currentProblem._id] || '',
+        language,
+        contestId: id
+      });
 
-      if (result.status === 'accepted') {
+      // The response is already typed as SubmitResponse
+      if (response.success) {
         toast.success('Solution submitted successfully!');
-
-        // Move to next problem or complete contest
-        if (currentProblemIndex < contest.problems.length - 1) {
-          setCurrentProblemIndex(prev => prev + 1);
+        // Move to next problem or feedback phase
+        if (currentProblemIndex < problems.length - 1) {
+          const nextIndex = currentProblemIndex + 1;
+          setCurrentProblemIndex(nextIndex);
+          setCurrentProblem(problems[nextIndex]);
         } else {
-          setPhase('completed');
+          setPhase('feedback');
         }
-      } else {
-        toast.error('Submission failed. Please try again.');
       }
     } catch (error) {
       console.error('Error submitting solution:', error);
@@ -284,97 +303,61 @@ const ContestPage: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [contest, currentProblemIndex, user, userCode, language]);
+  }, [currentProblem, userCode, language, id, currentProblemIndex, problems]);
 
-  // Handle problem submission
-  const handleSubmitProblem = useCallback(async () => {
-    if (!currentProblem || !user || isSubmitting) return;
-    
-    try {
-      setIsSubmitting(true);
-      const code = userCode[currentProblem._id] || (currentProblem.starterCode as any)?.[language] || '';
-      
-      await apiService.post(`/problems/${currentProblem._id}/submit`, {
-        code,
-        language,
-        userId: user._id,
-      });
-      
-      // Move to next problem or finish contest
-      if (currentProblemIndex < problems.length - 1) {
-        setCurrentProblemIndex(prev => prev + 1);
-        setPhase('problems');
-      } else {
-        setPhase('completed');
-      }
-    } catch (error) {
-      console.error('Error submitting problem:', error);
-      toast.error('Failed to submit problem');
-    } finally {
-      setIsSubmitting(false);
-    }
-  }, [currentProblem, user, isSubmitting, userCode, language, currentProblemIndex, problems.length]);
-
-  // Handle feedback submission
   const handleSubmitFeedback = useCallback(async () => {
-    if (!user || !feedback.trim() || isSubmitting) return;
-    
+    if (!feedback.trim()) {
+      toast.error('Please provide feedback');
+      return;
+    }
+
     try {
-      setIsSubmitting(true);
-      await apiService.post(`/contests/${contestId}/feedback`, {
-        userId: user._id,
-        feedback,
-        rating: 5, // You can add a rating component later
+      await apiService.post(`/contests/${id}/feedback`, {
+        feedback: feedback.trim()
       });
-      
-      toast.success('Thank you for your feedback!');
+
+      toast.success('Feedback submitted successfully!');
       setPhase('completed');
     } catch (error) {
       console.error('Error submitting feedback:', error);
       toast.error('Failed to submit feedback');
-    } finally {
-      setIsSubmitting(false);
     }
-  }, [feedback, contestId, isSubmitting, user]);
+  }, [feedback, id]);
 
-  // Handle contest end
-  const handleContestEnd = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-    }
-    setPhase('feedback');
-  }, []);
-
-  // Update current problem code when problem or user code changes
+  // Update current problem when index changes
   useEffect(() => {
-    if (currentProblem) {
-      const code = userCode[currentProblem._id] || (currentProblem.starterCode as any)?.[language] || '';
-      setCurrentProblemCode(code);
+    if (problems.length > 0 && currentProblemIndex >= 0 && currentProblemIndex < problems.length) {
+      const problem = problems[currentProblemIndex];
+      setCurrentProblem(problem);
+      setCurrentProblemCode(userCode[problem._id] || '');
     }
-  }, [currentProblem, userCode, language]);
+  }, [currentProblemIndex, problems, userCode]);
 
-  // Load the current problem when index changes
-  useEffect(() => {
-    if (problems.length > 0 && currentProblemIndex < problems.length) {
-      setCurrentProblem(problems[currentProblemIndex]);
-    }
-  }, [currentProblemIndex, problems]);
+  const isContestCompleted = contestEnded || phase === 'completed';
 
-  // Check registration status on mount
-  useEffect(() => {
-    const checkRegistrationStatus = async () => {
-      if (!user || !contestId) return;
-      
-      try {
-        await apiService.get(`/contests/${contestId}/register`);
-        setIsRegistered(true);
-      } catch (error) {
-        setIsRegistered(false);
-      }
-    };
+  // Add feedback section to the contest page
+  const renderFeedbackSection = useCallback(() => {
+    if (!isContestCompleted || !contest) return null;
     
-    checkRegistrationStatus();
-  }, [user, contestId]);
+    return (
+      <div className="mt-8">
+        <button 
+          onClick={toggleFeedback}
+          className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
+        >
+          {showFeedback ? 'Hide Feedback' : 'Submit Feedback'}
+        </button>
+        
+        {showFeedback && (
+          <ContestFeedback
+            contestId={contest._id}
+            isContestCompleted={contest.status === 'completed'}
+            onFeedbackSubmit={handleFeedbackSubmitted}
+          />
+        )}
+      </div>
+    );
+  }, [isContestCompleted, contest, showFeedback, toggleFeedback, handleFeedbackSubmitted]);
 
   // Render loading state
   if (isLoading || !contest) {
@@ -383,6 +366,21 @@ const ContestPage: React.FC = () => {
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
           <p className="text-blue-700 font-medium">Loading contest...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 to-white">
+        <div className="text-center">
+          <XCircle className="h-12 w-12 text-red-600 mx-auto mb-4" />
+          <p className="text-red-700 font-medium">{error}</p>
+          <Button onClick={() => window.location.reload()} className="mt-4">
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -469,7 +467,10 @@ const ContestPage: React.FC = () => {
           <Card className="shadow-lg border-blue-200">
             <Tabs value={currentProblem?._id} onValueChange={(value) => {
               const index = problems.findIndex(p => p._id === value);
-              if (index >= 0) setCurrentProblemIndex(index);
+              if (index >= 0) {
+                setCurrentProblemIndex(index);
+                setCurrentProblem(problems[index]);
+              }
             }}>
               <TabsList className="w-full bg-blue-100 p-1 h-auto flex-wrap gap-1">
                 {problems.map((problem, index) => (
@@ -491,11 +492,7 @@ const ContestPage: React.FC = () => {
                       <div>
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
                           <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 sm:mb-0">{problem.title}</h2>
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium self-start ${
-                            problem.difficulty === 'Easy' ? 'bg-green-100 text-green-800' :
-                            problem.difficulty === 'Medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
+                          <span className={`px-3 py-1 rounded-full text-sm font-medium self-start ${getDifficultyColor(problem.difficulty)}`}>
                             {problem.difficulty.charAt(0).toUpperCase() + problem.difficulty.slice(1)}
                           </span>
                         </div>
@@ -536,31 +533,41 @@ const ContestPage: React.FC = () => {
                       )}
 
                       {/* Test Results */}
-                      {testResults.length > 0 && (
+                      {testResults && testResults.results && testResults.results.length > 0 && (
                         <div className="space-y-4">
                           <h3 className="font-semibold text-lg text-gray-800">Test Results:</h3>
                           <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {testResults.map((result, i) => (
-                              <div key={i} className={`p-3 rounded-lg border-l-4 ${
-                                result.passed 
-                                  ? 'bg-green-50 border-green-500' 
-                                  : 'bg-red-50 border-red-500'
-                              }`}>
-                                <div className="flex items-center mb-2">
+                            {testResults.results.map((result, index) => (
+                              <div key={index} className={`p-3 rounded-md ${result.passed ? 'bg-green-50' : 'bg-red-50'}`}>
+                                <div className="flex items-center">
                                   {result.passed ? (
-                                    <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                                    <CheckCircle className="text-green-500 mr-2 flex-shrink-0" />
                                   ) : (
-                                    <XCircle className="h-5 w-5 text-red-600 mr-2" />
+                                    <XCircle className="text-red-500 mr-2 flex-shrink-0" />
                                   )}
-                                  <span className="font-medium">
-                                    Test Case {i + 1}: {result.passed ? 'Passed' : 'Failed'}
-                                  </span>
+                                  <span className="font-medium">Test Case {index + 1} - {result.passed ? 'Passed' : 'Failed'}</span>
                                 </div>
-                                <div className="text-sm space-y-1">
-                                  <div>Input: <code className="bg-white px-1 rounded">{JSON.stringify(result.input)}</code></div>
-                                  <div>Expected: <code className="bg-white px-1 rounded">{JSON.stringify(result.expectedOutput)}</code></div>
-                                  <div>Got: <code className="bg-white px-1 rounded">{JSON.stringify(result.actualOutput)}</code></div>
-                                </div>
+                                {!result.passed && (
+                                  <div className="mt-2 text-sm space-y-1 pl-6">
+                                    {result.input && (
+                                      <div>
+                                        Input: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                                          {JSON.stringify(result.input)}
+                                        </code>
+                                      </div>
+                                    )}
+                                    <div>
+                                      Expected: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                                        {JSON.stringify(result.expected)}
+                                      </code>
+                                    </div>
+                                    <div>
+                                      Got: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                                        {result.error ? result.error : JSON.stringify(result.output)}
+                                      </code>
+                                    </div>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -613,6 +620,7 @@ const ContestPage: React.FC = () => {
                                 ...prev,
                                 [currentProblem._id]: (currentProblem.starterCode as any)?.[language] || ''
                               }));
+                              setCurrentProblemCode((currentProblem.starterCode as any)?.[language] || '');
                             }
                           }}
                           className="flex-1 border-gray-300 hover:bg-gray-50"
@@ -868,7 +876,7 @@ const ContestPage: React.FC = () => {
                 </Button>
               ) : (
                 <Button
-                  onClick={() => navigate('/login', { state: { from: `/contest/${contestId}` } })}
+                  onClick={() => navigate('/login', { state: { from: `/contest/${id}` } })}
                   className="px-8 py-3 bg-green-600 hover:bg-green-700 text-lg font-semibold"
                 >
                   Register for Contest
@@ -883,6 +891,9 @@ const ContestPage: React.FC = () => {
                 Back to Contests
               </Button>
             </div>
+
+            {/* Render feedback section if contest is completed */}
+            {renderFeedbackSection()}
           </CardContent>
         </Card>
       </div>

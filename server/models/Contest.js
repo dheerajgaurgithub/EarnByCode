@@ -1,5 +1,27 @@
 import mongoose from 'mongoose';
 
+const feedbackSchema = new mongoose.Schema({
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  rating: {
+    type: Number,
+    required: true,
+    min: 1,
+    max: 5
+  },
+  comment: {
+    type: String,
+    maxlength: 1000
+  },
+  createdAt: {
+    type: Date,
+    default: Date.now
+  }
+}, { _id: false });
+
 const participantSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
@@ -82,8 +104,17 @@ const contestSchema = new mongoose.Schema({
   participants: [participantSchema],
   status: {
     type: String,
-    enum: ['upcoming', 'live', 'ended'],
+    enum: ['upcoming', 'ongoing', 'completed'],
     default: 'upcoming'
+  },
+  feedbacks: [feedbackSchema],
+  averageRating: {
+    type: Number,
+    default: 0
+  },
+  feedbackCount: {
+    type: Number,
+    default: 0
   },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
@@ -169,6 +200,41 @@ contestSchema.methods.distributePrizes = function() {
   if (sortedParticipants.length >= 3) {
     sortedParticipants[2].prize = Math.floor(totalPrize * this.prizeDistribution.third / 100);
   }
+};
+
+// Method to add feedback to contest
+contestSchema.methods.addFeedback = async function(userId, rating, comment) {
+  // Check if user has already given feedback
+  const existingFeedbackIndex = this.feedbacks.findIndex(
+    f => f.user.toString() === userId.toString()
+  );
+
+  const feedback = {
+    user: userId,
+    rating,
+    comment
+  };
+
+  if (existingFeedbackIndex >= 0) {
+    // Update existing feedback
+    this.feedbacks[existingFeedbackIndex] = feedback;
+  } else {
+    // Add new feedback
+    this.feedbacks.push(feedback);
+  }
+
+  // Calculate new average rating
+  const totalRatings = this.feedbacks.reduce((sum, f) => sum + f.rating, 0);
+  this.averageRating = totalRatings / this.feedbacks.length;
+  this.feedbackCount = this.feedbacks.length;
+
+  await this.save();
+  return this;
+};
+
+// Get user's feedback for the contest
+contestSchema.methods.getUserFeedback = function(userId) {
+  return this.feedbacks.find(f => f.user.toString() === userId.toString());
 };
 
 const Contest = mongoose.model('Contest', contestSchema);
