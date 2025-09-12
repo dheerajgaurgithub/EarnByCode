@@ -331,7 +331,7 @@ const ContestPage = () => {
     if (problems.length > 0 && currentProblemIndex >= 0 && currentProblemIndex < problems.length) {
       const problem = problems[currentProblemIndex];
       setCurrentProblem(problem);
-      setCurrentProblemCode(userCode[problem._id] || '');
+setCurrentProblemCode(userCode[problem.id.toString()] || '');
     }
   }, [currentProblemIndex, problems, userCode]);
 
@@ -467,8 +467,8 @@ const ContestPage = () => {
           
           {/* Problems Tabs */}
           <Card className="shadow-lg border-blue-200">
-            <Tabs value={currentProblem?._id} onValueChange={(value) => {
-              const index = problems.findIndex(p => p._id === value);
+            <Tabs value={currentProblem?.id.toString()} onValueChange={(value) => {
+              const index = problems.findIndex(p => p.id.toString() === value);
               if (index >= 0) {
                 setCurrentProblemIndex(index);
                 setCurrentProblem(problems[index]);
@@ -477,8 +477,8 @@ const ContestPage = () => {
               <TabsList className="w-full bg-blue-100 p-1 h-auto flex-wrap gap-1">
                 {problems.map((problem, index) => (
                   <TabsTrigger 
-                    key={problem._id} 
-                    value={problem._id}
+                    key={problem.id.toString()} 
+                    value={problem.id.toString()}
                     className="flex-1 min-w-[120px] py-2 px-3 text-sm sm:text-base data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                   >
                     Problem {index + 1}
@@ -487,7 +487,7 @@ const ContestPage = () => {
               </TabsList>
               
               {problems.map((problem) => (
-                <TabsContent key={problem._id} value={problem._id} className="p-0">
+                <TabsContent key={problem.id.toString()} value={problem.id.toString()} className="p-0">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 sm:p-6">
                     {/* Problem Description */}
                     <div className="space-y-4">
