@@ -11,7 +11,7 @@ export const Company: React.FC = () => {
           {/* Logo */}
           <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 lg:w-24 lg:h-24 mb-6 sm:mb-8 bg-blue-50 rounded-2xl border border-blue-200 shadow-sm">
             <img 
-              src="/src/data/logo.png" 
+              src="/logo.png" 
               alt="AlgoBucks Logo" 
               className="w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 object-contain"
             />

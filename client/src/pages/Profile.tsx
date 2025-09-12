@@ -251,8 +251,9 @@ export const Profile: React.FC = () => {
       
       // Upload file
       const result = await uploadFile({
-        endpoint: '/upload/avatar',
+        endpoint: '/users/me/avatar',
         file,
+        fieldName: 'avatar',
         onProgress: (progress) => setUploadProgress(progress),
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`

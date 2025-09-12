@@ -92,7 +92,7 @@ const Blog = () => {
         <div className="text-center mb-8 sm:mb-12 px-2 sm:px-0">
           <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-r from-blue-100 to-indigo-100 mb-6 shadow-lg">
             <img
-              src="/src/data/logo.png"
+              src="/logo.png"
               alt="Logo"
               className="w-20 h-20 sm:w-10 sm:h-20 object-contain"
             />

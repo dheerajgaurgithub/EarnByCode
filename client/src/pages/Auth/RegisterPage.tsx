@@ -95,7 +95,7 @@ export function RegisterPage() {
             {/* Logo */}
             <div className="inline-flex items-center justify-center w-16 h-16 sm:w-18 sm:h-18 md:w-20 md:h-20 lg:w-24 lg:h-24 mb-4 sm:mb-6 md:mb-8 bg-gradient-to-br from-blue-100 to-blue-200/50 rounded-xl sm:rounded-2xl border border-blue-300/30 backdrop-blur-sm shadow-lg">
               <img 
-                src="/src/data/logo.png" 
+                src="/logo.png" 
                 alt="AlgoBucks Logo" 
                 className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-16 lg:h-16 object-contain"
               />

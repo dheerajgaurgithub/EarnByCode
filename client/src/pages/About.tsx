@@ -16,10 +16,10 @@ export const About: React.FC = () => {
           {/* Hero Section */}
           <div className="text-center mb-8 sm:mb-12 md:mb-16 lg:mb-20">
             <img 
-  src="/src/data/logo.png" 
-  alt="Logo" 
-  className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-full mx-auto"
-/>
+            src="/logo.png" 
+            alt="Logo" 
+            className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-full mx-auto"
+          />
             <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-3 sm:mb-4 md:mb-6 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent leading-tight px-4">
               About AlgoBucks
             </h1>
