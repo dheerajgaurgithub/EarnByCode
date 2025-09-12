@@ -160,6 +160,18 @@ app.use('/uploads', express.static(path.join(publicPath, 'uploads'), {
   }
 }));
 
+// Serve avatars from the avatars directory directly
+app.use('/avatars', express.static(path.join(publicPath, 'uploads/avatars'), {
+  ...staticOptions,
+  setHeaders: (res, path) => {
+    if (path.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+  }
+}));
+
 // Ensure uploads directory exists
 const uploadsDir = path.join(publicPath, 'uploads/avatars');
 if (!fs.existsSync(uploadsDir)) {

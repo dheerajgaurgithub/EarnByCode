@@ -32,13 +32,18 @@ const getAvatarUrl = (avatarPath: string | undefined): string => {
     return avatarPath;
   }
   
-  // If it's a relative path without the uploads prefix, add it
-  if (!avatarPath.startsWith('/uploads/') && !avatarPath.startsWith('uploads/')) {
-    return `/uploads/avatars/${avatarPath}`;
+  // Clean up the path
+  let cleanPath = avatarPath.replace(/^\/+|\/+$/g, ''); // Trim slashes
+  
+  // Remove any duplicate path segments
+  if (cleanPath.startsWith('uploads/avatars/')) {
+    cleanPath = cleanPath.replace('uploads/avatars/', '');
+  } else if (cleanPath.startsWith('avatars/')) {
+    cleanPath = cleanPath.replace('avatars/', '');
   }
   
-  // Ensure the path starts with a slash
-  return avatarPath.startsWith('/') ? avatarPath : `/${avatarPath}`;
+  // Return the full URL
+  return `${window.location.origin}/avatars/${cleanPath}`;
 };
 
 interface EditFormData {
@@ -281,16 +286,27 @@ export const Profile: React.FC = () => {
       
       // The server returns the avatar URL in the 'avatar' field of the response
       // or in the user.avatar field
-      const avatarUrl = response.avatar || response.user?.avatar;
+      let avatarUrl = response.avatar || response.user?.avatar;
       
       if (!avatarUrl) {
         throw new Error('No avatar URL returned from server');
       }
       
-      // Construct the full URL if it's a relative path
-      const fullAvatarUrl = avatarUrl.startsWith('http') 
-        ? avatarUrl 
-        : `${window.location.origin}${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
+      // Ensure the avatar URL is absolute
+      if (!avatarUrl.startsWith('http')) {
+        // Remove any duplicate /uploads/avatars from the path
+        avatarUrl = avatarUrl.replace(/^\/+|\/+$/g, ''); // Trim slashes
+        if (avatarUrl.startsWith('uploads/avatars/')) {
+          avatarUrl = avatarUrl.replace('uploads/avatars/', '');
+        } else if (avatarUrl.startsWith('avatars/')) {
+          avatarUrl = avatarUrl.replace('avatars/', '');
+        }
+        
+        // Construct the full URL
+        avatarUrl = `${window.location.origin}/avatars/${avatarUrl}`;
+      }
+      
+      const fullAvatarUrl = avatarUrl;
       
       // Update the user's avatar in the UI and database
       await updateUser({ avatar: fullAvatarUrl });
