@@ -11,15 +11,41 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current directory
   const env = loadEnv(mode, process.cwd(), '');
   
+  // Set base URL to empty string for relative paths
+  const base = '';
+  
   return {
     root: __dirname,
-    base: '/',
+    base: base,
     publicDir: path.resolve(__dirname, 'public'),
     build: {
       outDir: path.resolve(__dirname, '../dist'),
       emptyOutDir: true,
+      // Ensure proper MIME types for JavaScript modules
+      assetsInlineLimit: 0, // Disable inlining of assets
+      // Set proper module type
+      target: 'esnext',
+      // Disable module preload polyfill
+      modulePreload: { polyfill: false },
+      // Generate manifest for better caching
+      manifest: true,
+      chunkSizeWarningLimit: 1000, // Increase chunk size warning limit
       rollupOptions: {
         input: path.resolve(__dirname, 'index.html'),
+        output: {
+          manualChunks: {
+            // Split vendor libraries into separate chunks
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+            // Create a separate chunk for large dependencies
+            ui: ['@headlessui/react', '@heroicons/react'],
+            // Split code by route with dynamic imports
+            // This requires your routes to use React.lazy()
+          },
+          format: 'esm',
+          chunkFileNames: 'assets/[name].[hash].js',
+          entryFileNames: 'assets/[name].[hash].js',
+          assetFileNames: 'assets/[name].[hash].[ext]'
+        },
         external: [
           // Server-side dependencies that should not be bundled
           'bcrypt',
@@ -47,12 +73,6 @@ export default defineConfig(({ mode }) => {
           'express-mongo-sanitize',
           'express-rate-limit'
         ],
-        output: {
-          format: 'esm',
-          entryFileNames: 'assets/[name].[hash].js',
-          chunkFileNames: 'assets/[name].[hash].js',
-          assetFileNames: 'assets/[name].[hash].[ext]'
-        }
       }
     },
     plugins: [react()],
@@ -69,6 +89,20 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 3000,
+      // Set proper MIME types
+      mimeTypes: {
+        'application/javascript': ['js', 'mjs'],
+        'text/javascript': ['js', 'mjs']
+      },
+      // Enable CORS
+      cors: true,
+      headers: {
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+      },
+      fs: {
+        strict: true,
+      },
       open: true,
       proxy: {
         '/api': {
