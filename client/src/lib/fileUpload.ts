@@ -7,6 +7,13 @@ export interface UploadResponse {
   url?: string;
   path?: string;
   avatar?: string;
+  user?: {
+    _id: string;
+    username: string;
+    email: string;
+    avatar?: string;
+    [key: string]: any;
+  };
   [key: string]: any; // Allow for additional properties
 }
 

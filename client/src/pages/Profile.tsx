@@ -272,24 +272,30 @@ export const Profile: React.FC = () => {
         }
       });
       
-          // Type guard to ensure result is a valid UploadResponse
-      const uploadResponse = result as UploadResponse;
+          // The response should match our UploadResponse interface
+      const response = result as UploadResponse;
       
-      // Handle the response from the server
-      if (uploadResponse.success && uploadResponse.avatar) {
-        // Use the avatar URL from the server response
-        const avatarUrl = uploadResponse.avatar;
-        const fullAvatarUrl = avatarUrl.startsWith('http') 
-          ? avatarUrl 
-          : `${window.location.origin}${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
-        
-        // Update the user's avatar in the UI and database
-        await updateUser({ avatar: fullAvatarUrl });
-        showSuccess(uploadResponse.message || 'Profile picture updated successfully!');
-        setUploadProgress(100);
-      } else {
-        throw new Error(uploadResponse.message || 'Failed to update avatar');
+      if (!response.success) {
+        throw new Error(response.message || 'Failed to upload avatar');
       }
+      
+      // The server returns the avatar URL in the 'avatar' field of the response
+      // or in the user.avatar field
+      const avatarUrl = response.avatar || response.user?.avatar;
+      
+      if (!avatarUrl) {
+        throw new Error('No avatar URL returned from server');
+      }
+      
+      // Construct the full URL if it's a relative path
+      const fullAvatarUrl = avatarUrl.startsWith('http') 
+        ? avatarUrl 
+        : `${window.location.origin}${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
+      
+      // Update the user's avatar in the UI and database
+      await updateUser({ avatar: fullAvatarUrl });
+      showSuccess(response.message || 'Profile picture updated successfully!');
+      setUploadProgress(100);
     } catch (error) {
       console.error('Error uploading avatar:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload avatar';
