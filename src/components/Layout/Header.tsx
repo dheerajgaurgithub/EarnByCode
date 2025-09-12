@@ -1,0 +1,579 @@
+import React, { useState, useEffect } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
+import { 
+  User, 
+  LogOut, 
+  Settings, 
+  Award, 
+  Wallet, 
+  Trophy, 
+  Shield, 
+  Menu, 
+  X, 
+  Code2,
+  MessageSquare,
+  Users,
+  ChevronDown,
+  ChevronUp
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { cn } from '@/lib/utils';
+
+type NavItem = {
+  name: string;
+  path: string;
+  icon: React.ComponentType<{ className?: string }>;
+  gradient: string;
+  hoverGradient: string;
+};
+
+// Navigation items with blue theme gradients
+const NAV_ITEMS: NavItem[] = [
+  { 
+    name: 'Problems', 
+    path: '/problems', 
+    icon: Code2,
+    gradient: 'from-blue-500 to-indigo-600',
+    hoverGradient: 'from-blue-500 to-indigo-600'
+  },
+  { 
+    name: 'Contests', 
+    path: '/contests', 
+    icon: Trophy,
+    gradient: 'from-blue-400 to-blue-600',
+    hoverGradient: 'from-blue-400 to-blue-600'
+  },
+  { 
+    name: 'Discuss', 
+    path: '/discuss', 
+    icon: MessageSquare,
+    gradient: 'from-indigo-500 to-blue-600',
+    hoverGradient: 'from-indigo-500 to-blue-600'
+  },
+  { 
+    name: 'Leaderboard', 
+    path: '/leaderboard', 
+    icon: Users,
+    gradient: 'from-sky-500 to-blue-600',
+    hoverGradient: 'from-sky-500 to-blue-600'
+  },
+];
+
+type UserDisplayInfo = {
+  username: string;
+  email?: string;
+  avatar?: string;
+  isAdmin?: boolean;
+  codecoins?: number;
+  walletBalance?: number;
+  points?: number;
+};
+
+export const Header: React.FC = () => {
+  const { user, logout } = useAuth();
+  const location = useLocation();
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
+  
+  const userInfo = user as UserDisplayInfo | null;
+
+  // Handle scroll effect for header
+  useEffect(() => {
+    const handleScroll = () => {
+      const isScrolled = window.scrollY > 10;
+      if (isScrolled !== scrolled) {
+        setScrolled(isScrolled);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [scrolled]);
+
+  // Close mobile menu when route changes
+  useEffect(() => {
+    setShowMobileMenu(false);
+  }, [location.pathname]);
+
+  const isActive = (path: string) => location.pathname === path;
+
+  return (
+    <header 
+      className={cn(
+        'sticky top-0 z-50 w-full transition-all duration-500',
+        'bg-white/95 backdrop-blur-2xl',
+        scrolled 
+          ? 'border-b border-blue-200/60 shadow-2xl shadow-blue-500/10' 
+          : 'border-b border-blue-100/50',
+        'supports-[backdrop-filter]:bg-white/90'
+      )}
+    >
+      {/* Elegant top border gradient */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent" />
+      
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-14 sm:h-16 lg:h-18">
+          {/* Logo Section */}
+          <div className="flex items-center space-x-2 sm:space-x-4 md:space-x-8 min-w-0 flex-shrink-0">
+            <Link 
+              to="/" 
+              className="flex items-center space-x-2 sm:space-x-3 group transition-all duration-300 min-w-0"
+              aria-label="Home"
+            >
+              <div className="relative flex-shrink-0">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 flex items-center justify-center relative">
+                  <img 
+                    src="/src/data/logo.png" 
+                    alt="AlgoBucks Logo" 
+                    className="h-full w-full object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-lg" 
+                  />
+                  {/* Elegant glow effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 via-indigo-500/30 to-blue-600/30 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-all duration-700 -z-10 scale-150" />
+                </div>
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 bg-clip-text text-transparent tracking-tight truncate">
+                  AlgoBucks
+                </span>
+                <span className="text-xs text-slate-600 hidden sm:block font-medium tracking-wide truncate">
+                  Think smart. Code harder. Earn more.
+                </span>
+              </div>
+            </Link>
+
+            {/* Desktop Navigation */}
+            <nav className="hidden lg:flex items-center space-x-1 xl:space-x-2 ml-4 xl:ml-8">
+              {NAV_ITEMS.map((item) => {
+                const isItemActive = isActive(item.path);
+                const Icon = item.icon;
+                
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    className={cn(
+                      'flex items-center px-3 xl:px-4 py-2 xl:py-2.5 rounded-lg xl:rounded-xl text-sm font-medium transition-all duration-300',
+                      'group relative overflow-hidden',
+                      'hover:bg-blue-50 hover:shadow-lg hover:shadow-blue-500/10',
+                      isItemActive 
+                        ? 'text-blue-700 bg-blue-50 shadow-inner shadow-blue-200/50 border border-blue-200/50' 
+                        : 'text-slate-700 hover:text-blue-700'
+                    )}
+                  >
+                    {/* Background gradient on hover */}
+                    <div className={cn(
+                      'absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-5 transition-opacity duration-300',
+                      item.gradient
+                    )} />
+                    
+                    <Icon className={cn(
+                      'h-4 w-4 mr-2 xl:mr-2.5 transition-colors duration-300',
+                      isItemActive ? 'text-blue-600' : 'text-slate-500 group-hover:text-blue-600'
+                    )} />
+                    <span className="relative z-10 whitespace-nowrap">{item.name}</span>
+                    
+                    {/* Active indicator */}
+                    {isItemActive && (
+                      <div className={cn(
+                        'absolute bottom-0 left-1/2 w-6 xl:w-8 h-0.5 bg-gradient-to-r rounded-full',
+                        item.gradient,
+                        'transform -translate-x-1/2 shadow-md'
+                      )} />
+                    )}
+                  </Link>
+                );
+              })}
+
+              {/* Company Dropdown */}
+              <div className="relative group ml-1 xl:ml-2">
+                <button className="flex items-center px-3 xl:px-4 py-2 xl:py-2.5 rounded-lg xl:rounded-xl text-sm font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition-all duration-300 group whitespace-nowrap">
+                  <span>Company</span>
+                  <ChevronDown className="w-4 h-4 ml-1 xl:ml-1.5 transition-transform group-hover:rotate-180 duration-300" />
+                </button>
+                <div className="absolute left-0 mt-2 w-48 bg-white/95 backdrop-blur-2xl border border-blue-200/60 rounded-2xl shadow-2xl shadow-blue-500/10 py-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-2 group-hover:translate-y-0 z-50">
+                  <Link 
+                    to="/about" 
+                    className="flex items-center px-4 py-3 text-sm text-slate-600 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-indigo-500/5 hover:text-blue-700 transition-all duration-200"
+                  >
+                    About Us
+                  </Link>
+                  <Link 
+                    to="/careers" 
+                    className="flex items-center px-4 py-3 text-sm text-slate-600 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-sky-500/5 hover:text-blue-700 transition-all duration-200"
+                  >
+                    Careers
+                  </Link>
+                  <Link 
+                    to="/press" 
+                    className="flex items-center px-4 py-3 text-sm text-slate-600 hover:bg-gradient-to-r hover:from-indigo-500/5 hover:to-blue-500/5 hover:text-blue-700 transition-all duration-200"
+                  >
+                    Press
+                  </Link>
+                </div>
+              </div>
+              
+              {/* Contact Link */}
+              <Link 
+                to="/contact" 
+                className="flex items-center px-3 xl:px-4 py-2 xl:py-2.5 rounded-lg xl:rounded-xl text-sm font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition-all duration-300 group relative ml-1 xl:ml-2 whitespace-nowrap"
+              >
+                <span className="relative z-10">Contact</span>
+                <span className="absolute -bottom-1 left-1/2 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 group-hover:w-[calc(100%-1.5rem)] transition-all duration-300 transform -translate-x-1/2"></span>
+              </Link>
+            </nav>
+          </div>
+
+          {/* Right side actions */}
+          <div className="flex items-center space-x-2 sm:space-x-3 md:space-x-4 flex-shrink-0">
+            {/* Mobile menu button */}
+            <button
+              type="button"
+              className="inline-flex items-center justify-center p-2 sm:p-2.5 rounded-lg xl:rounded-xl text-slate-600 hover:text-blue-700 hover:bg-blue-50 transition-all duration-300 lg:hidden border border-blue-200/50 hover:border-blue-300/50"
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              aria-expanded={showMobileMenu}
+              aria-label={showMobileMenu ? 'Close menu' : 'Open menu'}
+            >
+              {showMobileMenu ? (
+                <X className="h-5 w-5" aria-hidden="true" />
+              ) : (
+                <Menu className="h-5 w-5" aria-hidden="true" />
+              )}
+            </button>
+
+            {/* User menu */}
+            {userInfo ? (
+              <div className="relative ml-1 sm:ml-2">
+                <button
+                  type="button"
+                  className="flex items-center space-x-2 sm:space-x-3 rounded-lg xl:rounded-xl bg-blue-50 border border-blue-200/60 px-2 sm:px-3 py-2 text-sm hover:bg-blue-100 hover:border-blue-300/60 transition-all duration-300 group shadow-lg shadow-blue-500/5"
+                  id="user-menu-button"
+                  onClick={() => setShowDropdown(!showDropdown)}
+                  aria-expanded={showDropdown}
+                  aria-haspopup="true"
+                >
+                  <span className="sr-only">Open user menu</span>
+                  <div className="relative flex-shrink-0">
+                    {userInfo.avatar ? (
+                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5">
+                        <img 
+                          src={userInfo.avatar} 
+                          alt={userInfo.username}
+                          className="h-full w-full rounded-full object-cover bg-white"
+                        />
+                      </div>
+                    ) : (
+                      <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5">
+                        <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
+                          <span className="text-blue-700 font-semibold text-xs sm:text-sm">
+                            {userInfo.username?.[0]?.toUpperCase() || 'U'}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                    {/* Online indicator */}
+                    <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-blue-400 rounded-full border-2 border-white shadow-lg" />
+                  </div>
+                  
+                  <div className="hidden sm:block min-w-0">
+                    <div className="flex flex-col items-start">
+                      <span className="text-slate-800 font-medium text-sm truncate max-w-24 md:max-w-32">{userInfo.username}</span>
+                      {userInfo.isAdmin && (
+                        <span className="text-blue-600 text-xs font-medium flex items-center">
+                          <Shield className="w-3 h-3 mr-1" />
+                          Admin
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <ChevronDown className="h-4 w-4 text-slate-500 group-hover:text-blue-600 transition-colors duration-300 flex-shrink-0" />
+                </button>
+
+                {/* Dropdown menu */}
+                <AnimatePresence>
+                  {showDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                      transition={{ duration: 0.2, ease: "easeOut" }}
+                      className="absolute right-0 mt-3 w-60 sm:w-64 rounded-2xl bg-white/95 backdrop-blur-2xl py-2 shadow-2xl shadow-blue-500/10 border border-blue-200/60 z-50"
+                      role="menu"
+                      aria-orientation="vertical"
+                      aria-labelledby="user-menu-button"
+                      tabIndex={-1}
+                    >
+                      {/* User info header */}
+                      <div className="px-4 py-3 border-b border-blue-200/50">
+                        <div className="flex items-center space-x-3">
+                          {userInfo.avatar ? (
+                            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5 flex-shrink-0">
+                              <img 
+                                src={userInfo.avatar} 
+                                alt={userInfo.username}
+                                className="h-full w-full rounded-xl object-cover bg-white"
+                              />
+                            </div>
+                          ) : (
+                            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5 flex-shrink-0">
+                              <div className="h-full w-full rounded-xl bg-white flex items-center justify-center">
+                                <span className="text-blue-700 font-bold">
+                                  {userInfo.username?.[0]?.toUpperCase() || 'U'}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-slate-800 font-semibold truncate">{userInfo.username}</p>
+                            {userInfo.email && (
+                              <p className="text-slate-600 text-sm truncate">{userInfo.email}</p>
+                            )}
+                            {userInfo.isAdmin && (
+                              <span className="inline-flex items-center text-blue-600 text-xs font-medium mt-1">
+                                <Shield className="w-3 h-3 mr-1" />
+                                Administrator
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Stats section */}
+                      <div className="px-4 py-3 border-b border-blue-200/50">
+                        <div className="grid grid-cols-3 gap-2 text-xs">
+                          <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-lg p-2 border border-blue-500/20">
+                            <Award className="w-4 h-4 text-blue-500 mb-1" />
+                            <div className="text-blue-700 font-semibold">{userInfo.codecoins || 0}</div>
+                            <div className="text-slate-600">Coins</div>
+                          </div>
+                          <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 rounded-lg p-2 border border-sky-500/20">
+                            <Wallet className="w-4 h-4 text-sky-500 mb-1" />
+                            <div className="text-sky-700 font-semibold">${(userInfo.walletBalance || 0).toFixed(0)}</div>
+                            <div className="text-slate-600">Wallet</div>
+                          </div>
+                          <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 rounded-lg p-2 border border-indigo-500/20">
+                            <Trophy className="w-4 h-4 text-indigo-500 mb-1" />
+                            <div className="text-indigo-700 font-semibold">{userInfo.points || 0}</div>
+                            <div className="text-slate-600">Points</div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Menu items */}
+                      <div className="py-2">
+                        <Link
+                          to="/profile"
+                          className="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group"
+                          role="menuitem"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          <User className="mr-3 h-4 w-4 text-slate-500 group-hover:text-blue-500 transition-colors" />
+                          <span>Your Profile</span>
+                        </Link>
+                        
+                        <Link
+                          to="/wallet"
+                          className="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group"
+                          role="menuitem"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          <Wallet className="mr-3 h-4 w-4 text-slate-500 group-hover:text-sky-500 transition-colors" />
+                          <span>Wallet</span>
+                          <span className="ml-auto text-sky-600 text-xs font-semibold">${(userInfo.walletBalance || 0).toFixed(2)}</span>
+                        </Link>
+                        
+                        <Link
+                          to="/settings"
+                          className="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group"
+                          role="menuitem"
+                          onClick={() => setShowDropdown(false)}
+                        >
+                          <Settings className="mr-3 h-4 w-4 text-slate-500 group-hover:text-indigo-500 transition-colors" />
+                          <span>Settings</span>
+                        </Link>
+
+                        {userInfo.isAdmin && (
+                          <Link
+                            to="/admin"
+                            className="flex items-center px-4 py-3 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group"
+                            role="menuitem"
+                            onClick={() => setShowDropdown(false)}
+                          >
+                            <Shield className="mr-3 h-4 w-4 text-slate-500 group-hover:text-purple-500 transition-colors" />
+                            <span>Admin Panel</span>
+                            <span className="ml-auto bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs px-2 py-0.5 rounded-full">Admin</span>
+                          </Link>
+                        )}
+                        
+                        <div className="border-t border-blue-200/50 mt-2 pt-2">
+                          <button
+                            onClick={() => {
+                              logout();
+                              setShowDropdown(false);
+                            }}
+                            className="flex w-full items-center px-4 py-3 text-slate-600 hover:bg-red-500/5 hover:text-red-600 transition-all duration-200 group"
+                            role="menuitem"
+                          >
+                            <LogOut className="mr-3 h-4 w-4 text-slate-500 group-hover:text-red-500 transition-colors" />
+                            <span>Sign out</span>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <div className="hidden lg:flex items-center space-x-3">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 text-slate-700 hover:text-blue-700 transition-all duration-300 font-medium relative group whitespace-nowrap"
+                >
+                  <span className="relative z-10">Log in</span>
+                  <div className="absolute inset-0 bg-blue-50 rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                </Link>
+                <Link
+                  to="/register"
+                  className="px-4 sm:px-5 py-2 sm:py-2.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-lg xl:rounded-xl hover:from-blue-400 hover:to-indigo-500 transition-all duration-300 font-medium shadow-xl shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-105 transform whitespace-nowrap"
+                >
+                  Sign up
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Mobile Navigation */}
+        <AnimatePresence>
+          {showMobileMenu && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.3, ease: "easeInOut" }}
+              className="lg:hidden border-t border-blue-200/50 py-4 overflow-hidden"
+            >
+              <nav className="space-y-2">
+                {NAV_ITEMS.map((item) => {
+                  const Icon = item.icon;
+                  const isItemActive = isActive(item.path);
+                  
+                  return (
+                    <Link
+                      key={item.path}
+                      to={item.path}
+                      className={cn(
+                        'flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-300 group',
+                        isItemActive 
+                          ? 'bg-blue-50 text-blue-700 shadow-inner border border-blue-200/50' 
+                          : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/50'
+                      )}
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      <div className={cn(
+                        'w-8 h-8 rounded-lg flex items-center justify-center mr-3 transition-colors duration-300',
+                        isItemActive ? 'bg-blue-100/70' : 'bg-blue-50/50 group-hover:bg-blue-100/50'
+                      )}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <span>{item.name}</span>
+                      {isItemActive && (
+                        <div className={cn(
+                          'ml-auto w-2 h-2 rounded-full bg-gradient-to-r',
+                          item.gradient
+                        )} />
+                      )}
+                    </Link>
+                  );
+                })}
+
+                {/* Mobile Company Section */}
+                <div className="pt-4 mt-4 border-t border-blue-200/50">
+                  <div className="text-slate-500 text-sm font-medium mb-3 px-4">Company</div>
+                  <Link
+                    to="/about"
+                    className="flex items-center px-4 py-3 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 text-sm rounded-xl mx-2"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    About Us
+                  </Link>
+                  <Link
+                    to="/careers"
+                    className="flex items-center px-4 py-3 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 text-sm rounded-xl mx-2"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Careers
+                  </Link>
+                  <Link
+                    to="/press"
+                    className="flex items-center px-4 py-3 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 text-sm rounded-xl mx-2"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Press
+                  </Link>
+                </div>
+                
+                {/* Mobile Contact */}
+                <Link
+                  to="/contact"
+                  className="flex items-center px-4 py-3 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 font-medium rounded-xl"
+                  onClick={() => setShowMobileMenu(false)}
+                >
+                  Contact
+                </Link>
+                
+                {/* Mobile auth buttons */}
+                {!userInfo && (
+                  <div className="pt-4 mt-4 border-t border-blue-200/50 space-y-3">
+                    <Link
+                      to="/login"
+                      className="flex items-center justify-center w-full px-4 py-3 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-xl transition-all duration-300"
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      to="/register"
+                      className="flex items-center justify-center w-full px-4 py-3 text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl hover:from-blue-400 hover:to-indigo-500 transition-all duration-300 shadow-lg"
+                      onClick={() => setShowMobileMenu(false)}
+                    >
+                      Sign up
+                    </Link>
+                  </div>
+                )}
+                
+                {/* Mobile user stats */}
+                {userInfo && (
+                  <div className="pt-4 mt-4 border-t border-blue-200/50">
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-xl p-3 border border-blue-500/20 text-center">
+                        <Award className="w-5 h-5 text-blue-500 mx-auto mb-1" />
+                        <div className="text-blue-700 font-bold text-sm">{userInfo.codecoins || 0}</div>
+                        <div className="text-slate-600 text-xs">Coins</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 rounded-xl p-3 border border-sky-500/20 text-center">
+                        <Wallet className="w-5 h-5 text-sky-500 mx-auto mb-1" />
+                        <div className="text-sky-700 font-bold text-sm">${(userInfo.walletBalance || 0).toFixed(0)}</div>
+                        <div className="text-slate-600 text-xs">Wallet</div>
+                      </div>
+                      <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 rounded-xl p-3 border border-indigo-500/20 text-center">
+                        <Trophy className="w-5 h-5 text-indigo-500 mx-auto mb-1" />
+                        <div className="text-indigo-700 font-bold text-sm">{userInfo.points || 0}</div>
+                        <div className="text-slate-600 text-xs">Points</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+      
+      {/* Bottom gradient accent */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+    </header>
+  );
+};

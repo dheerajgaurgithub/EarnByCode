@@ -1,0 +1,361 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import api from '@/lib/api';
+
+// Types and Interfaces
+type Language = 'javascript' | 'python' | 'java' | 'cpp';
+type TestStatus = 'idle' | 'loading' | 'success' | 'error' | 'running' | 'accepted' | 'submitted';
+
+interface TestCaseResult {
+  input: unknown;
+  expectedOutput: unknown;
+  actualOutput: unknown;
+  passed: boolean;
+  error?: string;
+  runtime?: number;
+}
+
+interface BaseCodeResponse {
+  status: TestStatus;
+  message?: string;
+  error?: string;
+  testCases?: TestCaseResult[];
+  results?: TestCaseResult[];
+  testsPassed?: number;
+  totalTests?: number;
+  runtimeMs?: number;
+  memoryKb?: number;
+  isSubmission?: boolean;
+  earnedCodecoin?: boolean;
+}
+
+interface RunCodeResponse extends BaseCodeResponse {}
+interface SubmitCodeResponse extends BaseCodeResponse {}
+
+interface TestResults extends Omit<BaseCodeResponse, 'status'> {
+  status: TestStatus;
+  testCases: TestCaseResult[];
+  results: TestCaseResult[];
+  testsPassed: number;
+  totalTests: number;
+  isSubmission: boolean;
+}
+
+interface Problem {
+  _id: string;
+  id?: string;
+  title: string;
+  description: string;
+  difficulty: string;
+  starterCode?: Record<string, string>;
+  testCases: Array<{
+    input: unknown;
+    expectedOutput: unknown;
+  }>;
+}
+
+// Helper function to get default code for a language
+const getDefaultCode = (language: string): string => {
+  const defaultCodes: Record<string, string> = {
+    javascript: '// Write your JavaScript code here\nfunction solve() {\n  // Your solution here\n  return;\n}',
+    python: '# Write your Python code here\ndef solve():\n    # Your solution here\n    pass',
+    java: '// Write your Java code here\npublic class Solution {\n    public static void main(String[] args) {\n        // Your solution here\n    }\n}',
+    cpp: '// Write your C++ code here\n#include <iostream>\nusing namespace std;\n\nint main() {\n    // Your solution here\n    return 0;\n}'
+  };
+  return defaultCodes[language] || '';
+};
+
+const ProblemDetail: React.FC = () => {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user, refreshUser } = useAuth();
+  
+  const [problem, setProblem] = useState<Problem | null>(null);
+  const [code, setCode] = useState<string>('');
+  const [selectedLanguage, setSelectedLanguage] = useState<Language>('javascript');
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
+  const [testResults, setTestResults] = useState<TestResults>({
+    status: 'idle',
+    testCases: [],
+    results: [],
+    testsPassed: 0,
+    totalTests: 0,
+    isSubmission: false
+  });
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch problem details
+  const fetchProblem = useCallback(async () => {
+    try {
+      const { data } = await api.get<Problem>(`/problems/${id}`);
+      setProblem(data);
+      setCode(data.starterCode?.[selectedLanguage] || getDefaultCode(selectedLanguage));
+    } catch (err) {
+      setError('Failed to load problem');
+      console.error('Error fetching problem:', err);
+    }
+  }, [id, selectedLanguage]);
+
+  // Handle code run
+  const handleRunCode = useCallback(async () => {
+    if (!problem || !code.trim()) return;
+
+    setIsRunning(true);
+    setTestResults(prev => ({
+      ...prev,
+      status: 'running',
+      isSubmission: false,
+      error: undefined
+    }));
+
+    try {
+      const { data } = await api.post<RunCodeResponse>(`/problems/${problem._id}/run`, {
+        code,
+        language: selectedLanguage
+      });
+
+      setTestResults({
+        status: data.status,
+        testCases: data.testCases || [],
+        results: data.results || [],
+        testsPassed: data.testsPassed || 0,
+        totalTests: data.totalTests || 0,
+        isSubmission: false,
+        message: data.message,
+        error: data.error,
+        runtimeMs: data.runtimeMs,
+        memoryKb: data.memoryKb
+      });
+    } catch (err) {
+      console.error('Error running code:', err);
+      setTestResults(prev => ({
+        ...prev,
+        status: 'error',
+        error: 'Failed to run code. Please try again.'
+      }));
+    } finally {
+      setIsRunning(false);
+    }
+  }, [code, problem, selectedLanguage]);
+
+  // Handle code submission
+  const handleSubmitCode = useCallback(async () => {
+    if (!problem || !code.trim()) return;
+
+    setIsSubmitting(true);
+    setTestResults(prev => ({
+      ...prev,
+      status: 'running',
+      isSubmission: true,
+      error: undefined
+    }));
+
+    try {
+      const { data } = await api.post<SubmitCodeResponse>(`/problems/${problem._id}/submit`, {
+        code,
+        language: selectedLanguage
+      });
+
+      setTestResults({
+        status: data.status,
+        testCases: data.testCases || [],
+        results: data.results || [],
+        testsPassed: data.testsPassed || 0,
+        totalTests: data.totalTests || 0,
+        isSubmission: true,
+        message: data.message,
+        error: data.error,
+        runtimeMs: data.runtimeMs,
+        memoryKb: data.memoryKb,
+        earnedCodecoin: data.earnedCodecoin
+      });
+
+      // Refresh user data if codecoins were earned
+      if (data.earnedCodecoin && refreshUser) {
+        await refreshUser();
+      }
+    } catch (err) {
+      console.error('Error submitting code:', err);
+      setTestResults(prev => ({
+        ...prev,
+        status: 'error',
+        error: 'Failed to submit code. Please try again.'
+      }));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [code, problem, selectedLanguage, refreshUser]);
+
+  // Handle code reset
+  const handleResetCode = useCallback(() => {
+    setCode(problem?.starterCode?.[selectedLanguage] || getDefaultCode(selectedLanguage));
+    setTestResults({
+      status: 'idle',
+      testCases: [],
+      results: [],
+      testsPassed: 0,
+      totalTests: 0,
+      isSubmission: false
+    });
+  }, [problem, selectedLanguage]);
+
+  // Get color based on difficulty
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty.toLowerCase()) {
+      case 'easy':
+        return 'bg-green-100 text-green-800';
+      case 'medium':
+        return 'bg-yellow-100 text-yellow-800';
+      case 'hard':
+        return 'bg-red-100 text-red-800';
+      default:
+        return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  // Load problem on mount or when id changes
+  useEffect(() => {
+    if (id) {
+      fetchProblem();
+    }
+  }, [id, fetchProblem]);
+
+  // Update code when language changes
+  useEffect(() => {
+    setCode(problem?.starterCode?.[selectedLanguage] || getDefaultCode(selectedLanguage));
+  }, [selectedLanguage, problem]);
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: `/problems/${id}` }} replace />;
+  }
+
+  if (!problem) {
+    return <div>Loading problem...</div>;
+  }
+
+  return (
+    <div className="container mx-auto p-4">
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* Problem Description */}
+        <div className="md:w-1/2">
+          <h1 className="text-2xl font-bold mb-4">{problem.title}</h1>
+          <div className="mb-4">
+            <span className={`inline-block px-2 py-1 rounded text-sm ${getDifficultyColor(problem.difficulty)}`}>
+              {problem.difficulty}
+            </span>
+          </div>
+          <div className="prose max-w-none">
+            <p>{problem.description}</p>
+          </div>
+        </div>
+
+        {/* Code Editor */}
+        <div className="md:w-1/2">
+          <div className="mb-4">
+            <select
+              value={selectedLanguage}
+              onChange={(e) => setSelectedLanguage(e.target.value as Language)}
+              className="border rounded p-2"
+            >
+              <option value="javascript">JavaScript</option>
+              <option value="python">Python</option>
+              <option value="java">Java</option>
+              <option value="cpp">C++</option>
+            </select>
+          </div>
+          
+          <textarea
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className="w-full h-96 font-mono p-4 border rounded mb-4"
+            spellCheck="false"
+          />
+
+          <div className="flex gap-2 mb-4">
+            <button
+              onClick={handleRunCode}
+              disabled={isRunning || isSubmitting}
+              className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+            >
+              {isRunning ? 'Running...' : 'Run Code'}
+            </button>
+            <button
+              onClick={handleSubmitCode}
+              disabled={isRunning || isSubmitting}
+              className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+            >
+              {isSubmitting ? 'Submitting...' : 'Submit'}
+            </button>
+            <button
+              onClick={handleResetCode}
+              className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300"
+            >
+              Reset
+            </button>
+          </div>
+
+          {/* Test Results */}
+          {testResults.status !== 'idle' && (
+            <div className="border rounded p-4">
+              <h3 className="font-bold mb-2">
+                {testResults.isSubmission ? 'Submission Results' : 'Test Results'}
+              </h3>
+              
+              {testResults.status === 'running' && (
+                <div className="text-blue-500">Running tests...</div>
+              )}
+              
+              {testResults.status === 'error' && (
+                <div className="text-red-500">{testResults.error || 'An error occurred'}</div>
+              )}
+              
+              {testResults.status === 'success' && (
+                <div className="space-y-4">
+                  <div className="text-green-600">
+                    {testResults.testsPassed} of {testResults.totalTests} test cases passed
+                  </div>
+                  
+                  {testResults.runtimeMs && (
+                    <div>Runtime: {testResults.runtimeMs} ms</div>
+                  )}
+                  
+                  {testResults.memoryKb && (
+                    <div>Memory: {testResults.memoryKb} KB</div>
+                  )}
+                  
+                  {testResults.earnedCodecoin && (
+                    <div className="text-yellow-600">
+                      🎉 You earned 1 CodeCoin for solving this problem!
+                    </div>
+                  )}
+                  
+                  {testResults.testCases.length > 0 && (
+                    <div>
+                      <h4 className="font-semibold mb-2">Test Cases:</h4>
+                      <div className="space-y-2">
+                        {testResults.testCases.map((testCase, index) => (
+                          <div key={index} className="border p-2 rounded">
+                            <div>Input: {JSON.stringify(testCase.input)}</div>
+                            <div>Expected: {JSON.stringify(testCase.expectedOutput)}</div>
+                            <div>Got: {JSON.stringify(testCase.actualOutput)}</div>
+                            <div className={testCase.passed ? 'text-green-600' : 'text-red-600'}>
+                              {testCase.passed ? '✓ Passed' : '✗ Failed'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default ProblemDetail;
