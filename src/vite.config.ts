@@ -20,6 +20,33 @@ export default defineConfig(({ mode }) => {
       emptyOutDir: true,
       rollupOptions: {
         input: path.resolve(__dirname, 'index.html'),
+        external: [
+          // Server-side dependencies that should not be bundled
+          'bcrypt',
+          'bcryptjs',
+          'mongoose',
+          'jsonwebtoken',
+          'passport',
+          'passport-google-oauth20',
+          'stripe',
+          'express',
+          'express-session',
+          'cors',
+          'helmet',
+          'hpp',
+          'xss-clean',
+          'express-validator',
+          'multer',
+          'node-cron',
+          'nodemailer',
+          'axios',
+          'cheerio',
+          'cloudinary',
+          'connect-mongo',
+          'dotenv',
+          'express-mongo-sanitize',
+          'express-rate-limit'
+        ],
         output: {
           format: 'esm',
           entryFileNames: 'assets/[name].[hash].js',
