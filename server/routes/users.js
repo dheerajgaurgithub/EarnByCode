@@ -192,7 +192,14 @@ router.patch('/me', authenticate, async (req, res) => {
 // Handle avatar upload
 router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res) => {
   try {
+    console.log('Avatar upload request received', {
+      file: req.file,
+      user: req.user,
+      headers: req.headers
+    });
+
     if (!req.file) {
+      console.error('No file in request');
       return res.status(400).json({
         success: false,
         message: 'No file uploaded'

@@ -1,21 +1,44 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { uploadFile, validateFile, createImagePreview } from '@/lib/fileUpload';
+import { uploadFile, createImagePreview, type UploadResponse } from '@/lib/fileUpload';
 import { motion } from 'framer-motion';
-import { Camera, Loader2, Pencil, X, Upload, Save, MapPin, Building, GraduationCap, Calendar, Globe, Github, Linkedin, Twitter, Target, TrendingUp, Trophy } from 'lucide-react';
+import { 
+  Loader2, 
+  Camera, 
+  Pencil, 
+  X, 
+  Save, 
+  MapPin, 
+  Building, 
+  GraduationCap, 
+  Calendar, 
+  Globe, 
+  Github, 
+  Linkedin, 
+  Twitter, 
+  Target, 
+  TrendingUp, 
+  Trophy 
+} from 'lucide-react';
 import { Navigate } from 'react-router-dom';
 
 // Helper function to get the full avatar URL
 const getAvatarUrl = (avatarPath: string | undefined): string => {
-  if (!avatarPath) return '';
-  if (avatarPath.startsWith('http') || avatarPath.startsWith('blob:')) {
+  if (!avatarPath) return '/default-avatar.png';
+  
+  // If it's already a full URL, return as is
+  if (avatarPath.startsWith('http')) {
     return avatarPath;
   }
   
-  // For relative paths, assume they're already full URLs from the server
-  // If not, they should be handled by the server-side routing
-  return avatarPath;
+  // If it's a relative path without the uploads prefix, add it
+  if (!avatarPath.startsWith('/uploads/') && !avatarPath.startsWith('uploads/')) {
+    return `/uploads/avatars/${avatarPath}`;
+  }
+  
+  // Ensure the path starts with a slash
+  return avatarPath.startsWith('/') ? avatarPath : `/${avatarPath}`;
 };
 
 interface EditFormData {
@@ -229,18 +252,6 @@ export const Profile: React.FC = () => {
     if (!file) return;
 
     setError(null);
-
-    // Validate file
-    const validation = validateFile(file, {
-      allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
-      maxSizeMB: 5
-    });
-
-    if (!validation.valid) {
-      showError(validation.error || 'Invalid file');
-      return;
-    }
-
     try {
       setIsUploading(true);
       setUploadProgress(0);
@@ -256,15 +267,28 @@ export const Profile: React.FC = () => {
         fieldName: 'avatar',
         onProgress: (progress) => setUploadProgress(progress),
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'x-application': 'algobucks-web'
         }
       });
       
-      // Update user with new avatar URL
-      if (result && result.url) {
-        await updateUser({ avatar: result.url });
-        showSuccess('Profile picture updated successfully!');
+          // Type guard to ensure result is a valid UploadResponse
+      const uploadResponse = result as UploadResponse;
+      
+      // Handle the response from the server
+      if (uploadResponse.success && uploadResponse.avatar) {
+        // Use the avatar URL from the server response
+        const avatarUrl = uploadResponse.avatar;
+        const fullAvatarUrl = avatarUrl.startsWith('http') 
+          ? avatarUrl 
+          : `${window.location.origin}${avatarUrl.startsWith('/') ? '' : '/'}${avatarUrl}`;
+        
+        // Update the user's avatar in the UI and database
+        await updateUser({ avatar: fullAvatarUrl });
+        showSuccess(uploadResponse.message || 'Profile picture updated successfully!');
         setUploadProgress(100);
+      } else {
+        throw new Error(uploadResponse.message || 'Failed to update avatar');
       }
     } catch (error) {
       console.error('Error uploading avatar:', error);

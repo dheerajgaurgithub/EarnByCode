@@ -1,6 +1,15 @@
 import axios from 'axios';
 import config from './config';
 
+export interface UploadResponse {
+  success: boolean;
+  message?: string;
+  url?: string;
+  path?: string;
+  avatar?: string;
+  [key: string]: any; // Allow for additional properties
+}
+
 interface UploadOptions {
   endpoint: string;
   fieldName?: string;
@@ -20,7 +29,7 @@ export const uploadFile = async ({
   onProgress,
   additionalData = {},
   headers = {}
-}: UploadOptions): Promise<{ url: string; path: string; }> => {
+}: UploadOptions): Promise<UploadResponse> => {
   const formData = new FormData();
   formData.append(fieldName, file);
   
