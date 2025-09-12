@@ -22,3 +22,20 @@ export interface ContestResponse {
   status?: 'upcoming' | 'ongoing' | 'completed';
   rules?: string[];
 }
+
+export interface TestCaseResult {
+  passed: boolean;
+  input?: any;
+  expected?: any;
+  output?: any;
+  error?: string;
+  executionTime?: number;
+}
+
+export interface RunTestResponse {
+  results: TestCaseResult[];
+  passed: number;
+  total: number;
+  executionTime: number;
+  error?: string;
+}
