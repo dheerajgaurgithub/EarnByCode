@@ -1,10 +1,10 @@
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { fileURLToPath } from 'node:url';
-import { dirname, resolve } from 'node:path';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+const __dirname = path.dirname(__filename);
 
 // https://vitejs.dev/config/
 export default defineConfig(({ mode }) => {
@@ -14,12 +14,12 @@ export default defineConfig(({ mode }) => {
   return {
     root: __dirname,
     base: '/',
-    publicDir: resolve(__dirname, 'public'),
+    publicDir: path.resolve(__dirname, 'public'),
     build: {
-      outDir: resolve(__dirname, '../dist'),
+      outDir: path.resolve(__dirname, '../dist'),
       emptyOutDir: true,
       rollupOptions: {
-        input: resolve(__dirname, 'index.html'),
+        input: path.resolve(__dirname, 'index.html'),
         output: {
           format: 'esm',
           entryFileNames: 'assets/[name].[hash].js',
@@ -34,10 +34,10 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        '@': resolve(__dirname, '.'),
-        '@components': resolve(__dirname, 'components'),
-        '@services': resolve(__dirname, 'services'),
-        '@lib': resolve(__dirname, 'lib'),
+        '@': path.resolve(__dirname, '.'),
+        '@components': path.resolve(__dirname, 'components'),
+        '@services': path.resolve(__dirname, 'services'),
+        '@lib': path.resolve(__dirname, 'lib'),
       },
     },
     server: {
