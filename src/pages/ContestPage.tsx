@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../lib/api';
 import { Contest, Problem, TestCaseResult, RunTestResponse } from '../types/contest';
-import { ContestFeedback } from '../components/Contest/ContestFeedback';
+import ContestFeedback from '../components/Contest/ContestFeedback';
 import { toast } from 'react-toastify';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
