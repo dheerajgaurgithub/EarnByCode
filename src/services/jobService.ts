@@ -4,7 +4,7 @@ import type { Job as JobType } from '../types/job';
 const API_URL = '/jobs';
 
 // Helper to extract data from API response
-const getData = <T>(response: any): T => {
+const getData = <T,>(response: any): T => {
   // If response is already the data we need, return it
   if (Array.isArray(response) || (response && typeof response === 'object' && !('data' in response))) {
     return response as T;
