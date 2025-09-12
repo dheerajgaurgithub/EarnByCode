@@ -2,6 +2,18 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Navigate } from 'react-router-dom';
+
+// Helper function to get the full avatar URL
+const getAvatarUrl = (avatarPath: string): string => {
+  if (!avatarPath) return '/default-avatar.png';
+  if (avatarPath.startsWith('http')) return avatarPath;
+  
+  // Remove any leading slashes to prevent double slashes
+  const cleanPath = avatarPath.startsWith('/') ? avatarPath.substring(1) : avatarPath;
+  const baseUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  
+  return `${baseUrl}/${cleanPath}`;
+};
 import { 
   User as UserIcon, Trophy, Calendar, Target, TrendingUp, Edit3, Save, X, 
   Camera, MapPin, Building, GraduationCap, Globe, Github, Linkedin, Twitter, Loader2
@@ -268,9 +280,15 @@ export const Profile: React.FC = () => {
               <div className="relative mx-auto sm:mx-0">
                 {user.avatar ? (
                   <img
-                    src={user.avatar}
+                    src={getAvatarUrl(user.avatar)}
                     alt={user.username}
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-blue-200"
+                    onError={(e) => {
+                      // If image fails to load, show default avatar
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = '/default-avatar.png';
+                    }}
                   />
                 ) : (
                   <div className="w-20 h-20 sm:w-24 sm:h-24 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">

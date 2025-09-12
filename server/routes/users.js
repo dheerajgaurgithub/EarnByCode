@@ -10,8 +10,17 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Configure multer for avatar uploads
+const storage = multer.diskStorage({
+  destination: path.join(__dirname, '../../public/uploads/avatars'),
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, 'avatar-' + uniqueSuffix + ext);
+  }
+});
+
 const upload = multer({
-  dest: path.join(__dirname, '../../public/uploads/avatars'),
+  storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },

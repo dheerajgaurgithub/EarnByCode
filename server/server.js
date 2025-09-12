@@ -11,6 +11,7 @@ import helmet from 'helmet';
 import mongoSanitize from 'express-mongo-sanitize';
 import xss from 'xss-clean';
 import hpp from 'hpp';
+import fs from 'fs';
 
 // Import configurations
 import { googleConfig } from './config/auth.js';
@@ -42,7 +43,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: [config.FRONTEND_URL, 'https://algobucks.onrender.com'],
+  origin: [config.FRONTEND_URL, 'http://localhost:5173'],
   credentials: true
 }));
 app.use(express.json({ limit: '10kb' }));
@@ -89,6 +90,23 @@ app.use(session({
 // Initialize Passport
 app.use(passport.initialize());
 app.use(passport.session());
+
+// Serve static files from public directory
+const publicPath = path.join(__dirname, '../../public');
+app.use('/uploads', express.static(publicPath, {
+  setHeaders: (res, path) => {
+    // Set proper cache control for uploaded files
+    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000');
+    }
+  }
+}));
+
+// Ensure uploads directory exists
+const uploadsDir = path.join(publicPath, 'uploads/avatars');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Routes
 app.use('/api/auth', authRoutes);

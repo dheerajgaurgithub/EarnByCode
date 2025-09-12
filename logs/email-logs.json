@@ -919,5 +919,30 @@
     "timestamp": "2025-09-12T13:41:38.502Z",
     "type": "config_success",
     "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-12T13:43:38.417Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-12T13:47:03.818Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-12T13:49:11.476Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-12T13:50:27.380Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-12T13:52:58.189Z",
+    "type": "config_error",
+    "error": "Client network socket disconnected before secure TLS connection was established"
   }
 ]
