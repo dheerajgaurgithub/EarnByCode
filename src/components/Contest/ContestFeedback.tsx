@@ -1,7 +1,10 @@
 import React from 'react';
 
 interface ContestFeedbackProps {
-  feedback: string;
+  contestId: string;
+  isContestCompleted: boolean;
+  onFeedbackSubmit: () => void;
+  feedback?: string;
   testResults?: {
     passed: number;
     total: number;

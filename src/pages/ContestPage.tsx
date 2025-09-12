@@ -3,7 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../lib/api';
 import { Contest } from '../types/contest';
-import { TestCaseResult,  RunTestResponse } from '@/types/codeExecution';
+import { TestCaseResult } from '@/types/codeExecution';
+import { RunTestResponse } from '@/types/contest';
 import { Problem } from '../types';
 import ContestFeedback from '@/components/Contest/ContestFeedback';
 import { toast } from 'react-toastify';
@@ -225,32 +226,29 @@ const ContestPage = () => {
     if (currentProblemData) {
       setUserCode((prev) => ({
         ...prev,
-        [currentProblemData._id]: value,
+        [currentProblemData.id]: value,
       }));
     }
     setCurrentProblemCode(value);
   }, [contest, currentProblemIndex]);
 
   const handleRunTests = useCallback(async (problemId?: string) => {
-    const targetProblem = problemId ? problems.find(p => p._id === problemId) : currentProblem;
+    const targetProblem = problemId ? problems.find(p => p.id.toString() === problemId) : currentProblem;
     if (!targetProblem) return;
     
     setIsSubmitting(true);
     try {
-      const response = await apiService.post<RunTestResponse>(`/problems/${targetProblem._id}/run`, {
-        code: userCode[targetProblem._id] || '',
+      const response = await apiService.post<RunTestResponse>(`/problems/${targetProblem.id}/run`, {
+        code: userCode[targetProblem.id.toString()] || '',
         language
       });
       
-      // The response data is nested under the 'data' property
-      const responseData = response.data || response;
-      
       setTestResults({
-        results: responseData.results || [],
-        passed: responseData.passed || 0,
-        total: responseData.total || 0,
-        executionTime: responseData.executionTime || 0,
-        error: responseData.error
+        results: response.results || [],
+        passed: response.passed || 0,
+        total: response.total || 0,
+        executionTime: response.executionTime || 0,
+        error: response.error
       });
       
       // Refresh contest data
@@ -281,8 +279,8 @@ const ContestPage = () => {
         // Add other expected response fields here
       }
 
-      const response = await apiService.post<SubmitResponse>(`/problems/${currentProblem._id}/submit`, {
-        code: userCode[currentProblem._id] || '',
+      const response = await apiService.post<SubmitResponse>(`/problems/${currentProblem.id}/submit`, {
+        code: userCode[currentProblem.id.toString()] || '',
         language,
         contestId: id
       });
@@ -620,7 +618,7 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
                             if (currentProblem) {
                               setUserCode(prev => ({
                                 ...prev,
-                                [currentProblem._id]: (currentProblem.starterCode as any)?.[language] || ''
+                                [currentProblem.id.toString()]: (currentProblem.starterCode as any)?.[language] || ''
                               }));
                               setCurrentProblemCode((currentProblem.starterCode as any)?.[language] || '');
                             }
