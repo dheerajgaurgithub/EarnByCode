@@ -1,6 +1,5 @@
 import axios from 'axios';
 import config from './config';
-import { toast } from '@/components/ui/use-toast';
 
 interface UploadOptions {
   endpoint: string;
@@ -56,7 +55,6 @@ export const uploadFile = async ({
     return response.data;
   } catch (error: any) {
     const errorMessage = error.response?.data?.message || 'Failed to upload file';
-    toast.error(errorMessage);
     throw new Error(errorMessage);
   }
 };

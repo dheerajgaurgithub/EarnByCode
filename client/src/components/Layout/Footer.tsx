@@ -44,7 +44,7 @@ export default function Footer() {
                     {/* Logo container */}
                     <div className="relative bg-gradient-to-br from-blue-50/80 via-white/60 to-blue-100/90 p-2 rounded-2xl border border-blue-300/50 group-hover:border-blue-400/40 transition-all duration-500 backdrop-blur-sm">
                       <img
-                        src="/src/data/logo.png"
+                        src="/logo.png"
                         alt="Logo"
                         className="w-16 h-16 sm:w-18 sm:h-18 object-contain"
                       />

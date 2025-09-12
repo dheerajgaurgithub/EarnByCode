@@ -88,17 +88,11 @@ export const Profile: React.FC = () => {
   const [isUploading, setIsUploading] = useState(false);
   
   const showSuccess = (message: string) => {
-    toast.success({
-      message,
-      variant: 'default'
-    });
+    toast.success(message);
   };
   
   const showError = (message: string) => {
-    toast.error({
-      message,
-      variant: 'destructive'
-    });
+    toast.error(message);
   };
 
   const [editForm, setEditForm] = useState<EditFormData>({
@@ -245,20 +239,18 @@ export const Profile: React.FC = () => {
 
     setError(null);
 
-    // Validate the file
+    // Validate file
     const validation = validateFile(file, {
       allowedTypes: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'],
       maxSizeMB: 5
     });
 
     if (!validation.valid) {
-      setError(validation.error || 'Invalid file');
       showError(validation.error || 'Invalid file');
       return;
     }
 
     try {
-      setIsUpdating(true);
       setIsUploading(true);
       setUploadProgress(0);
       
@@ -266,29 +258,19 @@ export const Profile: React.FC = () => {
       const previewUrl = await createImagePreview(file);
       setAvatarFile(previewUrl);
       
-      // Simulate upload progress for preview
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev === null || prev >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return prev + 10;
-        });
-      }, 100);
-      
-      // Upload the file
+      // Upload file
       const result = await uploadFile({
-        endpoint: '/api/users/me/avatar',
+        endpoint: '/upload/avatar',
         file,
-        fieldName: 'avatar',
-        onProgress: (progress: number) => {
-          setUploadProgress(progress);
+        onProgress: (progress) => setUploadProgress(progress),
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
       });
-
-      if (result?.path) {
-        await updateUser({ avatar: result.path });
+      
+      // Update user with new avatar URL
+      if (result && result.url) {
+        await updateUser({ avatar: result.url });
         showSuccess('Profile picture updated successfully!');
         setUploadProgress(100);
       }
