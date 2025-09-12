@@ -12,16 +12,26 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   return {
-    root: resolve(__dirname, '.'),
+    root: __dirname,
+    base: '/',
     publicDir: resolve(__dirname, 'public'),
     build: {
       outDir: resolve(__dirname, '../dist'),
       emptyOutDir: true,
       rollupOptions: {
-        input: resolve(__dirname, 'index.html')
+        input: resolve(__dirname, 'index.html'),
+        output: {
+          format: 'esm',
+          entryFileNames: 'assets/[name].[hash].js',
+          chunkFileNames: 'assets/[name].[hash].js',
+          assetFileNames: 'assets/[name].[hash].[ext]'
+        }
       }
     },
     plugins: [react()],
+    esbuild: {
+      loader: 'tsx',
+    },
     resolve: {
       alias: {
         '@': resolve(__dirname, '.'),
@@ -44,6 +54,12 @@ export default defineConfig(({ mode }) => {
     },
     optimizeDeps: {
       exclude: ['lucide-react'],
+      esbuildOptions: {
+        loader: {
+          '.js': 'jsx',
+          '.ts': 'tsx',
+        },
+      },
     },
   };
 });
