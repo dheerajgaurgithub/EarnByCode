@@ -1,14 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Navigate } from 'react-router-dom';
-import config from '@/lib/config';
 import { uploadFile, validateFile, createImagePreview } from '@/lib/fileUpload';
-import { 
-  Trophy, Calendar, Target, TrendingUp, Edit3, Save, X, 
-  MapPin, Building, GraduationCap, Globe, Github, Linkedin, Twitter, Loader2, Camera
-} from 'lucide-react';
 import { motion } from 'framer-motion';
+import { Camera, Loader2, Pencil, X, Upload, Save, MapPin, Building, GraduationCap, Calendar, Globe, Github, Linkedin, Twitter, Target, TrendingUp, Trophy } from 'lucide-react';
+import { Navigate } from 'react-router-dom';
 
 // Helper function to get the full avatar URL
 const getAvatarUrl = (avatarPath: string | undefined): string => {
@@ -17,14 +13,9 @@ const getAvatarUrl = (avatarPath: string | undefined): string => {
     return avatarPath;
   }
   
-  // Handle relative paths
-  const baseUrl = config.api.baseUrl.endsWith('/api') 
-    ? config.api.baseUrl.replace('/api', '') 
-    : config.api.baseUrl;
-      
-  // Ensure proper URL construction
-  const normalizedPath = avatarPath.startsWith('/') ? avatarPath.substring(1) : avatarPath;
-  return `${baseUrl}/${normalizedPath}`;
+  // For relative paths, assume they're already full URLs from the server
+  // If not, they should be handled by the server-side routing
+  return avatarPath;
 };
 
 interface EditFormData {
@@ -449,7 +440,7 @@ export const Profile: React.FC = () => {
                   onClick={() => setIsEditing(true)}
                   className="flex items-center justify-center space-x-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
-                  <Edit3 className="w-5 h-5" />
+                  <Pencil className="w-5 h-5" />
                   <span>Edit Profile</span>
                 </button>
               )}
