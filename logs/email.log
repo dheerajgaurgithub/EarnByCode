@@ -1,0 +1,9 @@
+[2025-09-05T14:04:40.509Z] SUCCESS: {
+  "to": "admin@example.com",
+  "subject": "New Job Application for developer",
+  "messageId": "<f0840392-2de1-59c6-400d-22d1d47a09b8@gmail.com>",
+  "response": "250 2.0.0 OK  1757081080 98e67ed59e1d1-32b9120cef8sm2299051a91.0 - gsmtp"
+}
+[2025-09-07T11:06:57.538Z] CONFIG_ERROR: {
+  "error": "connect ECONNREFUSED 142.250.4.109:465"
+}
