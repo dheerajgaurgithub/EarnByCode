@@ -1,35 +1,33 @@
-import { defineConfig, loadEnv, type ConfigEnv } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // https://vitejs.dev/config/
-export default defineConfig(({ mode }: ConfigEnv) => {
+export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current directory
   const env = loadEnv(mode, process.cwd(), '');
   
   return {
-    root: resolve(__dirname, 'src'),
+    root: resolve(__dirname, '.'),
     publicDir: resolve(__dirname, 'public'),
     build: {
-      outDir: resolve(__dirname, 'dist'),
+      outDir: resolve(__dirname, '../dist'),
       emptyOutDir: true,
       rollupOptions: {
-        input: {
-          main: resolve(__dirname, 'src/index.html'),
-        },
-      },
+        input: resolve(__dirname, 'index.html')
+      }
     },
     plugins: [react()],
     resolve: {
       alias: {
-        '@': resolve(__dirname, 'src'),
-        '@components': resolve(__dirname, 'src/components'),
-        '@services': resolve(__dirname, 'src/services'),
-        '@lib': resolve(__dirname, 'src/lib'),
+        '@': resolve(__dirname, '.'),
+        '@components': resolve(__dirname, 'components'),
+        '@services': resolve(__dirname, 'services'),
+        '@lib': resolve(__dirname, 'lib'),
       },
     },
     server: {
