@@ -20,6 +20,29 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
+// Helper function to get the full avatar URL
+const getAvatarUrl = (avatarPath: string | undefined): string => {
+  if (!avatarPath) return '/default-avatar.png';
+  
+  // If it's already a full URL, return as is
+  if (avatarPath.startsWith('http')) {
+    return avatarPath;
+  }
+  
+  // Clean up the path
+  let cleanPath = avatarPath.replace(/^\/+|\/+$/g, ''); // Trim slashes
+  
+  // Remove any duplicate path segments
+  if (cleanPath.startsWith('uploads/avatars/')) {
+    cleanPath = cleanPath.replace('uploads/avatars/', '');
+  } else if (cleanPath.startsWith('avatars/')) {
+    cleanPath = cleanPath.replace('avatars/', '');
+  }
+  
+  // Return the full URL
+  return `${window.location.origin}/avatars/${cleanPath}`;
+};
+
 type NavItem = {
   name: string;
   path: string;
@@ -325,9 +348,15 @@ export const Header: React.FC = () => {
                           {userInfo.avatar ? (
                             <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5 flex-shrink-0">
                               <img 
-                                src={userInfo.avatar} 
+                                src={getAvatarUrl(userInfo.avatar)} 
                                 alt={userInfo.username}
                                 className="h-full w-full rounded-xl object-cover bg-white"
+                                onError={(e) => {
+                                  // Fallback to default avatar if image fails to load
+                                  const target = e.target as HTMLImageElement;
+                                  target.onerror = null;
+                                  target.src = '/default-avatar.png';
+                                }}
                               />
                             </div>
                           ) : (

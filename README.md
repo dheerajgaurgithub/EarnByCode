@@ -1,4 +1,4 @@
-# Mahir's CodeArena - Complete Coding Fantasy Platform
+# AlgoBucks - Think smart. Code harder. Earn more.
 
 A full-stack MERN application that gamifies competitive programming with real money rewards.
 
