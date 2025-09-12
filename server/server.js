@@ -42,7 +42,7 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 // Middleware
 app.use(helmet());
 app.use(cors({
-  origin: config.FRONTEND_URL,
+  origin: [config.FRONTEND_URL, 'https://algobucks.onrender.com'],
   credentials: true
 }));
 app.use(express.json({ limit: '10kb' }));
