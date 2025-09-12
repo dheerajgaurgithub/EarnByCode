@@ -42,10 +42,34 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Middleware
 app.use(helmet());
+// Configure CORS
+const allowedOrigins = [
+  'https://algobucks.vercel.app',
+  'http://localhost:5173',
+  config.FRONTEND_URL
+].filter(Boolean);
+
 app.use(cors({
-  origin: [config.FRONTEND_URL, 'http://localhost:5173'],
-  credentials: true
+  origin: function(origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = `The CORS policy for this site does not allow access from the specified Origin: ${origin}`;
+      console.warn(msg);
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept'],
+  exposedHeaders: ['Content-Range', 'X-Content-Range'],
+  maxAge: 600 // 10 minutes
 }));
+
+// Handle preflight requests
+app.options('*', cors());
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
@@ -93,12 +117,48 @@ app.use(passport.session());
 
 // Serve static files from public directory
 const publicPath = path.join(__dirname, '../../public');
-app.use('/uploads', express.static(publicPath, {
+
+// Security headers for static files
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      connectSrc: ["'self'", 'https://algobucks.onrender.com', 'http://localhost:5000'],
+    },
+  },
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+}));
+
+// Serve static files with cache control
+const staticOptions = {
+  maxAge: '1y',
+  etag: true,
+  lastModified: true,
+  setHeaders: (res, path) => {
+    if (path.match(/\.(js|css|json|html|ico|svg|png|jpg|jpeg|gif|webp)$/)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+};
+
+// Serve static files
+app.use(express.static(publicPath, staticOptions));
+
+// Serve uploaded files with proper caching and security
+app.use('/uploads', express.static(path.join(publicPath, 'uploads'), {
+  ...staticOptions,
   setHeaders: (res, path) => {
     // Set proper cache control for uploaded files
-    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif')) {
-      res.setHeader('Cache-Control', 'public, max-age=31536000');
+    if (path.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
+    // Security headers for uploaded content
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
   }
 }));
 

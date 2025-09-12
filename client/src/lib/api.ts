@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 export type ApiResponse<T = any> = {
   data: T;
@@ -8,26 +8,49 @@ export type ApiResponse<T = any> = {
   config: AxiosRequestConfig;
 };
 
+import config from './config';
+
 const api: AxiosInstance = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+  baseURL: config.api.baseUrl,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
+    'Accept': 'application/json',
+    'X-Application': `${config.app.name}/${config.app.version}`,
   },
+  timeout: config.api.timeout,
 });
 
 // Request interceptor to add auth token to requests
 api.interceptors.request.use(
   (config) => {
-    console.log(`Making request to: ${config.baseURL}${config.url}`);
-    console.log('Auth headers:', {
-      'Content-Type': config.headers['Content-Type'],
-      'Authorization': config.headers['Authorization'] ? 'Bearer [token]' : 'None'
-    });
+    // Skip logging for certain endpoints to reduce noise
+    const skipLogging = ['/auth/refresh', '/auth/check'];
+    const shouldLog = !skipLogging.some(endpoint => config.url?.includes(endpoint));
     
+    if (shouldLog) {
+      console.log(`[API] ${config.method?.toUpperCase()} ${config.url}`, {
+        baseURL: config.baseURL,
+        params: config.params,
+        headers: {
+          'Content-Type': config.headers['Content-Type'],
+          'Authorization': config.headers['Authorization'] ? 'Bearer [token]' : 'None'
+        }
+      });
+    }
+    
+    // Get the token from localStorage
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    
+    // Add a timestamp to prevent caching for GET requests
+    if (config.method === 'get') {
+      config.params = {
+        ...config.params,
+        _t: Date.now(),
+      };
     }
     return config;
   },
@@ -37,36 +60,108 @@ api.interceptors.request.use(
   }
 );
 
-// Response interceptor to handle errors
+// Response interceptor to handle errors and token refresh
 api.interceptors.response.use(
-  (response: AxiosResponse) => {
-    console.log('Response status:', response.status);
-    console.log('Response data:', response.data);
-    // Return full response for non-2xx status codes
-    if (response.status < 200 || response.status >= 300) {
-      return Promise.reject(response);
+  (response) => {
+    // Log successful responses in development
+    if (import.meta.env.DEV && !response.config.url?.includes('/auth/')) {
+      console.log(`[API] ${response.status} ${response.config.method?.toUpperCase()} ${response.config.url}`, {
+        data: response.data,
+        headers: response.headers
+      });
     }
-    // For successful responses, return the data directly
-    return response.data;
+    return response;
   },
-  (error: AxiosError) => {
-    console.error('Response error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      config: {
-        url: error.config?.url,
-        method: error.config?.method,
-        headers: error.config?.headers
-      }
-    });
+  async (error) => {
+    const originalRequest = error.config;
     
-    if (error.response?.status === 401) {
-      // Handle unauthorized access
-      localStorage.removeItem('token');
-      window.location.href = '/login';
+    // Log error details in development
+    if (import.meta.env.DEV) {
+      console.error('[API Error]', {
+        url: originalRequest?.url,
+        method: originalRequest?.method,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data,
+        headers: error.response?.headers,
+      });
     }
-    return Promise.reject(error);
+    
+    // Handle network errors
+    if (!error.response) {
+      console.error('Network Error:', error.message);
+      return Promise.reject({
+        message: 'Network error. Please check your internet connection.',
+        isNetworkError: true
+      });
+    }
+    
+    // Handle 401 Unauthorized (token expired or invalid)
+    if (error.response.status === 401 && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      // Skip refresh for login/refresh endpoints to prevent loops
+      if (originalRequest.url?.includes('/auth/')) {
+        return Promise.reject(error);
+      }
+      
+      try {
+        // Try to refresh the token
+        const response = await axios.post(
+          `${config.api.baseUrl}/auth/refresh`,
+          {},
+          { 
+            withCredentials: true,
+            headers: {
+              'Cache-Control': 'no-cache',
+              'Pragma': 'no-cache',
+              'Expires': '0',
+            }
+          }
+        );
+        
+        const { token } = response.data;
+        
+        if (token) {
+          // Store the new token
+          localStorage.setItem('token', token);
+          
+          // Update the Authorization header
+          originalRequest.headers.Authorization = `Bearer ${token}`;
+          
+          // Retry the original request
+          return api(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error('Token refresh failed:', refreshError);
+        // Clear auth data and redirect to login
+        localStorage.removeItem('token');
+        if (window.location.pathname !== '/login') {
+          window.location.href = '/login?session=expired';
+        }
+        const error = new Error('Your session has expired. Please log in again.') as Error & { isAuthError: boolean };
+        error.isAuthError = true;
+        if (refreshError instanceof Error) {
+          error.stack = refreshError.stack;
+          error.name = refreshError.name || 'AuthError';
+        }
+        return Promise.reject(error);
+      }
+    }
+    
+    // Handle other error statuses
+    const errorMessage = error.response?.data?.message || 
+                        error.response?.statusText || 
+                        'An error occurred. Please try again.';
+    
+    // Format error response consistently
+    return Promise.reject({
+      message: errorMessage,
+      status: error.response?.status,
+      data: error.response?.data,
+      isNetworkError: false,
+      isAuthError: error.response?.status === 401 || error.response?.status === 403
+    });
   }
 );
 
@@ -77,7 +172,7 @@ export const apiService = {
   
   post: <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => 
     api.post<T>(url, data, config).then(response => response as unknown as T),
-    
+  
   put: <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => 
     api.put<T>(url, data, config).then(response => response as unknown as T),
     

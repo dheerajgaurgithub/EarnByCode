@@ -125,7 +125,7 @@ export const Header: React.FC = () => {
               <div className="relative flex-shrink-0">
                 <div className="h-8 w-8 sm:h-10 sm:w-10 md:h-12 md:w-12 flex items-center justify-center relative">
                   <img 
-                    src="/src/data/logo.png" 
+                    src="/logo.png" 
                     alt="AlgoBucks Logo" 
                     className="h-full w-full object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-lg" 
                   />
@@ -258,9 +258,23 @@ export const Header: React.FC = () => {
                     {userInfo.avatar ? (
                       <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5">
                         <img 
-                          src={userInfo.avatar} 
+                          src={userInfo.avatar.startsWith('http') || userInfo.avatar.startsWith('blob:') 
+                            ? userInfo.avatar 
+                            : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${userInfo.avatar.startsWith('/') ? '' : '/'}${userInfo.avatar}`} 
                           alt={userInfo.username}
                           className="h-full w-full rounded-full object-cover bg-white"
+                          onError={(e) => {
+                            // If image fails to load, fall back to initials
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                            const parent = target.parentElement;
+                            if (parent) {
+                              const fallback = document.createElement('div');
+                              fallback.className = 'h-full w-full rounded-full bg-white flex items-center justify-center';
+                              fallback.innerHTML = `<span class="text-blue-700 font-semibold text-xs sm:text-sm">${userInfo.username?.[0]?.toUpperCase() || 'U'}</span>`;
+                              parent.appendChild(fallback);
+                            }
+                          }}
                         />
                       </div>
                     ) : (
