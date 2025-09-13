@@ -103,8 +103,8 @@ class ApiService {
     return this.request('POST', '/auth/login', { email, password });
   }
 
-  async register(username: string, email: string, password: string, fullName?: string): Promise<void> {
-    return this.request('POST', '/auth/register', { username, email, password, fullName });
+  async register(username: string, email: string, password: string, fullName?: string): Promise<{ token: string }> {
+    return this.request<{ token: string }>('POST', '/auth/register', { username, email, password, fullName });
   }
 
   async getCurrentUser(): Promise<User> {

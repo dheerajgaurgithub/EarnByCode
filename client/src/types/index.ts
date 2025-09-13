@@ -48,6 +48,7 @@ export interface User {
   bio?: string;
   location?: string;
   website?: string;
+  contestsParticipated?: string[];
   github?: string;
   linkedin?: string;
   twitter?: string;
@@ -68,7 +69,6 @@ export interface User {
   submissions: Submission[];
   ranking: number;
   joinDate: string;
-  contestsParticipated?: string[];
 }
 
 export interface Submission {

@@ -1,18 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { PaymentModal } from '../components/Payment/PaymentModal';
 import apiService from '../services/api';
-import { Wallet as WalletIcon, Plus, Minus, CreditCard, DollarSign, TrendingUp, History } from 'lucide-react';
+import { Wallet as WalletIcon, Plus, Minus, CreditCard, DollarSign, TrendingUp, History, Loader2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-interface Transaction {
-  _id: string;
-  type: 'deposit' | 'withdrawal' | 'contest_entry' | 'contest_prize' | 'contest_refund';
-  amount: number;
-  status: 'pending' | 'completed' | 'failed';
-  description: string;
-  createdAt: string;
-}
+import { WalletTransaction } from '../types';
 
 export const Wallet: React.FC = () => {
   const { user, refreshUser } = useAuth();
@@ -20,9 +13,11 @@ export const Wallet: React.FC = () => {
   const [amount, setAmount] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [transactions, setTransactions] = useState<WalletTransaction[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalEarned, setTotalEarned] = useState(0);
 
   const showMessage = (message: string, isError = false) => {
     if (isError) {
@@ -90,21 +85,40 @@ export const Wallet: React.FC = () => {
     }
   };
 
-  const fetchTransactions = async () => {
+  const calculateTotalEarned = useCallback((transactions: WalletTransaction[]) => {
+    return transactions
+      .filter(tx => tx.amount > 0 && tx.status === 'completed')
+      .reduce((sum, tx) => sum + tx.amount, 0);
+  }, []);
+
+  const fetchTransactions = useCallback(async () => {
     try {
+      setIsLoading(true);
       const response = await apiService.getTransactions();
-      setTransactions(response.data || []);
+      // Ensure we have an array of transactions with required fields
+      const transactions = (Array.isArray(response) ? response : []).map(tx => ({
+        id: tx._id || tx.id || Math.random().toString(36).substr(2, 9),
+        userId: tx.userId || 'unknown',
+        type: tx.type || 'deposit',
+        amount: Number(tx.amount) || 0,
+        description: tx.description || 'Transaction',
+        timestamp: tx.timestamp || new Date().toISOString(),
+        status: tx.status || 'completed'
+      }));
+      
+      setTransactions(transactions);
+      setTotalEarned(calculateTotalEarned(transactions));
     } catch (error: any) {
       console.error('Failed to fetch transactions:', error);
       showMessage('Failed to load transaction history', true);
+    } finally {
+      setIsLoading(false);
     }
-  };
+  }, [calculateTotalEarned]);
 
   React.useEffect(() => {
-    if (activeTab === 'history') {
-      fetchTransactions();
-    }
-  }, [activeTab]);
+    fetchTransactions();
+  }, [fetchTransactions]);
 
   const handlePaymentSuccess = async (paymentIntentId: string) => {
     try {
@@ -113,6 +127,8 @@ export const Wallet: React.FC = () => {
       await refreshUser();
       await fetchTransactions();
       showMessage('Payment successful! Your wallet has been updated.');
+      setShowPaymentModal(false);
+      setAmount('');
     } catch (error: any) {
       console.error('Payment confirmation error:', error);
       showMessage(error.message || 'Failed to confirm payment', true);
@@ -155,7 +171,13 @@ export const Wallet: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-xs sm:text-sm">Total Earned</p>
-                <p className="text-xl sm:text-2xl font-bold text-green-600">$500.00</p>
+                <p className="text-xl sm:text-2xl font-bold text-green-600">
+                  {isLoading ? (
+                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                  ) : (
+                    `$${totalEarned.toFixed(2)}`
+                  )}
+                </p>
               </div>
               <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
             </div>
@@ -170,7 +192,9 @@ export const Wallet: React.FC = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-xs sm:text-sm">Contest Entries</p>
-                <p className="text-xl sm:text-2xl font-bold text-yellow-600">{user.contestsParticipated.length}</p>
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600">
+                  {user.contestsParticipated?.length || 0}
+                </p>
               </div>
               <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600" />
             </div>
@@ -245,10 +269,10 @@ export const Wallet: React.FC = () => {
                   <h4 className="text-base sm:text-lg font-medium text-gray-900">Recent Activity</h4>
                   <div className="space-y-2">
                     {transactions.slice(0, 3).map((transaction) => (
-                      <div key={transaction._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
                         <div className="flex-1 min-w-0">
                           <p className="text-gray-900 text-sm truncate">{transaction.description}</p>
-                          <p className="text-gray-500 text-xs">{new Date(transaction.createdAt).toLocaleDateString()}</p>
+                          <p className="text-gray-500 text-xs">{new Date(transaction.timestamp).toLocaleDateString()}</p>
                         </div>
                         <span className={`font-medium text-sm ml-2 ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
@@ -328,7 +352,7 @@ export const Wallet: React.FC = () => {
               <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Transaction History</h3>
               <div className="space-y-3">
                 {transactions.map((transaction) => (
-                  <div key={transaction._id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
+                  <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
                     <div className="flex items-center space-x-3 flex-1 min-w-0">
                       <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
                         transaction.type === 'deposit' ? 'bg-green-100 text-green-600' :
@@ -343,7 +367,7 @@ export const Wallet: React.FC = () => {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-gray-900 font-medium text-sm sm:text-base truncate">{transaction.description}</p>
-                        <p className="text-gray-500 text-xs sm:text-sm">{new Date(transaction.createdAt).toLocaleDateString()}</p>
+                        <p className="text-gray-500 text-xs sm:text-sm">{new Date(transaction.timestamp).toLocaleDateString()}</p>
                       </div>
                     </div>
                     <div className="text-right flex-shrink-0 ml-4">
