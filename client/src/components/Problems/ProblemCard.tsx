@@ -43,40 +43,40 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, index }) => {
         scale: 1.02,
         transition: { duration: 0.2 }
       }}
-      className="relative bg-gradient-to-br from-white via-blue-50/50 to-white rounded-xl border border-blue-200/60 hover:border-blue-400/80 hover:shadow-lg hover:shadow-blue-100/50 transition-all duration-300 overflow-hidden group cursor-pointer backdrop-blur-sm"
+      className="relative bg-gradient-to-br from-white via-blue-50/50 to-white rounded-lg border border-blue-200/60 hover:border-blue-400/80 hover:shadow-lg hover:shadow-blue-100/50 transition-all duration-300 overflow-hidden group cursor-pointer backdrop-blur-sm"
     >
       {/* Gradient overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
       {/* Animated border glow */}
-      <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-blue-400/20 via-blue-500/20 to-blue-400/20 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300 -z-10" />
+      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-400/20 via-blue-500/20 to-blue-400/20 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300 -z-10" />
 
-      <div className="relative p-4 sm:p-5 lg:p-6">
+      <div className="relative p-3 sm:p-4">
         {/* Header Section */}
-        <div className="flex items-start justify-between mb-3 sm:mb-4">
-          <div className="flex items-center space-x-3 min-w-0 flex-1">
+        <div className="flex items-start justify-between mb-2 sm:mb-3">
+          <div className="flex items-center space-x-2.5 min-w-0 flex-1">
             {isSolved ? (
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500, delay: 0.2 }}
               >
-                <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0 drop-shadow-sm" />
+                <CheckCircle className="h-4 w-4 text-green-500 flex-shrink-0 drop-shadow-sm" />
               </motion.div>
             ) : (
-              <div className="h-5 w-5 rounded-full border-2 border-gray-300 flex-shrink-0 group-hover:border-blue-400 transition-colors duration-200" />
+              <div className="h-4 w-4 rounded-full border-2 border-gray-300 flex-shrink-0 group-hover:border-blue-400 transition-colors duration-200" />
             )}
             
             <div className="min-w-0 flex-1">
               <Link
                 to={`/problems/${problem._id}`}
-                className="block text-gray-800 font-semibold text-sm sm:text-base hover:text-blue-600 transition-colors group-hover:text-blue-600 duration-200 truncate"
+                className="block text-gray-800 font-medium text-sm hover:text-blue-600 transition-colors group-hover:text-blue-600 duration-200 truncate"
               >
                 {problem.title}
               </Link>
               
-              <div className="flex items-center space-x-2 mt-1 flex-wrap gap-y-1">
-                <span className={`px-2 py-1 rounded-md text-xs font-medium border backdrop-blur-sm ${getDifficultyColor(problem.difficulty)} transition-all duration-200`}>
+              <div className="flex items-center space-x-1.5 mt-1 flex-wrap gap-y-1">
+                <span className={`px-1.5 py-0.5 rounded text-xs font-medium border backdrop-blur-sm ${getDifficultyColor(problem.difficulty)} transition-all duration-200`}>
                   {problem.difficulty}
                 </span>
                 <span className="text-gray-500 text-xs hidden sm:inline">
@@ -89,18 +89,18 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, index }) => {
 
         {/* Tags Section */}
         {problem.tags && problem.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 sm:gap-2 mb-3 sm:mb-4">
+          <div className="flex flex-wrap gap-1 sm:gap-1.5 mb-2 sm:mb-3">
             {problem.tags?.slice(0, 3).map((tag: string) => (
               <motion.span
                 key={tag}
                 whileHover={{ scale: 1.05 }}
-                className="px-2 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs rounded-md border border-blue-200 hover:border-blue-300 transition-all duration-200 backdrop-blur-sm"
+                className="px-1.5 py-0.5 bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs rounded border border-blue-200 hover:border-blue-300 transition-all duration-200 backdrop-blur-sm"
               >
                 {tag}
               </motion.span>
             ))}
             {problem.tags?.length > 3 && (
-              <span className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-md border border-gray-200 backdrop-blur-sm">
+              <span className="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded border border-gray-200 backdrop-blur-sm">
                 +{problem.tags.length - 3}
               </span>
             )}
@@ -108,12 +108,12 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, index }) => {
         )}
 
         {/* Description */}
-        <p className="text-gray-600 text-sm leading-relaxed line-clamp-2 mb-3 sm:mb-4">
+        <p className="text-gray-600 text-xs leading-relaxed line-clamp-2 mb-2 sm:mb-3">
           {problem.description?.split('\n')[0]}
         </p>
 
         {/* Footer Stats */}
-        <div className="flex items-center justify-between text-xs text-gray-500 border-t border-blue-200/50 pt-3">
+        <div className="flex items-center justify-between text-xs text-gray-500 border-t border-blue-200/50 pt-2">
           <span className="flex items-center space-x-1">
             <span className="w-1 h-1 bg-blue-400 rounded-full"></span>
             <span>{problem.submissions || 0} submissions</span>
@@ -124,15 +124,15 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, index }) => {
         </div>
 
         {/* Mobile acceptance rate */}
-        <div className="sm:hidden mt-2 text-xs text-gray-500">
+        <div className="sm:hidden mt-1.5 text-xs text-gray-500">
           {problem.acceptance}% Acceptance Rate
         </div>
       </div>
 
       {/* Solved indicator overlay */}
       {isSolved && (
-        <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
+        <div className="absolute top-2 right-2">
+          <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse shadow-sm"></div>
         </div>
       )}
     </motion.div>
