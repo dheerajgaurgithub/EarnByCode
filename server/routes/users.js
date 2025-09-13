@@ -218,11 +218,8 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
     // Construct the URL to the uploaded file
     const fileUrl = `/uploads/avatars/${req.file.filename}`;
     
-    // Update user's avatar with full URL
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://algobucks.vercel.app' 
-      : 'http://localhost:5000';
-    const fullAvatarUrl = `${baseUrl}${fileUrl}`;
+    // Return relative URL - the client will handle the base URL
+    const fullAvatarUrl = fileUrl;
     
     user.avatar = fullAvatarUrl;
     await user.save();
