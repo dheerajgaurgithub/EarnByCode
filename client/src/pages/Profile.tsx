@@ -206,8 +206,27 @@ export const Profile: React.FC = () => {
       
       // Update the user with the new avatar URL
       if (data.avatar) {
-        await updateUser({ avatar: data.avatar });
-        showSuccess('Profile picture updated successfully!');
+        // Force a full user refresh to get the latest data
+        const userResponse = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/users/me`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
+        });
+        
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          if (userData.data) {
+            // Update the user context with the full user data
+            await updateUser(userData.data);
+            showSuccess('Profile picture updated successfully!');
+          } else {
+            throw new Error('Failed to fetch updated user data');
+          }
+        } else {
+          throw new Error('Failed to fetch updated user data');
+        }
       }
       
     } catch (error: any) {
