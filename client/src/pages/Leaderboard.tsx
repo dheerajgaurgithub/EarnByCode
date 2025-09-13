@@ -304,9 +304,14 @@ export const Leaderboard: React.FC = () => {
               <div className="relative mb-3">
                 {users[1]?.avatar ? (
                   <img
-                    src={users[1].avatar}
+                    src={users[1].avatar.startsWith('http') ? users[1].avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${users[1].avatar}`}
                     alt={users[1].username}
                     className="w-10 h-10 rounded-full mx-auto object-cover ring-4 ring-gray-200"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = '/default-avatar.png';
+                    }}
                   />
                 ) : (
                   <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200">
@@ -337,9 +342,14 @@ export const Leaderboard: React.FC = () => {
               <div className="relative mb-3">
                 {users[0]?.avatar ? (
                   <img
-                    src={users[0].avatar}
+                    src={users[0].avatar.startsWith('http') ? users[0].avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${users[0].avatar}`}
                     alt={users[0].username}
                     className="w-12 h-12 rounded-full mx-auto object-cover ring-4 ring-yellow-300"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = '/default-avatar.png';
+                    }}
                   />
                 ) : (
                   <div className="w-12 h-12 bg-gradient-to-br from-yellow-200 to-orange-200 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300">
@@ -371,9 +381,14 @@ export const Leaderboard: React.FC = () => {
               <div className="relative mb-3">
                 {users[2]?.avatar ? (
                   <img
-                    src={users[2].avatar}
+                    src={users[2].avatar.startsWith('http') ? users[2].avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${users[2].avatar}`}
                     alt={users[2].username}
                     className="w-10 h-10 rounded-full mx-auto object-cover ring-4 ring-orange-200"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null;
+                      target.src = '/default-avatar.png';
+                    }}
                   />
                 ) : (
                   <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-red-100 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200">
@@ -445,9 +460,14 @@ export const Leaderboard: React.FC = () => {
                       <div className="relative flex-shrink-0">
                         {user.avatar ? (
                           <img
-                            src={user.avatar}
+                            src={user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${user.avatar}`}
                             alt={user.username}
                             className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-200"
+                            onError={(e) => {
+                              const target = e.target as HTMLImageElement;
+                              target.onerror = null;
+                              target.src = '/default-avatar.png';
+                            }}
                           />
                         ) : (
                           <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center ring-2 ring-gray-200">

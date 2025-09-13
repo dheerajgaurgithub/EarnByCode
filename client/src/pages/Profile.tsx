@@ -268,9 +268,15 @@ export const Profile: React.FC = () => {
               <div className="relative mx-auto sm:mx-0">
                 {user.avatar ? (
                   <img
-                    src={user.avatar}
+                    src={user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${user.avatar}`}
                     alt={user.username}
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-blue-200"
+                    onError={(e) => {
+                      // Fallback to default avatar if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.onerror = null; // Prevent infinite loop
+                      target.src = '/default-avatar.png';
+                    }}
                   />
                 ) : (
                   <div className="w-20 h-20 sm:w-24 sm:h-24 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">
