@@ -143,6 +143,12 @@ const staticOptions = {
   }
 };
 
+// Ensure uploads directory exists
+const uploadsDir = path.join(publicPath, 'uploads/avatars');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Serve static files
 app.use(express.static(publicPath, staticOptions));
 
@@ -160,33 +166,6 @@ app.use('/uploads', express.static(path.join(publicPath, 'uploads'), {
     res.setHeader('X-XSS-Protection', '1; mode=block');
   }
 }));
-
-// Serve avatars from the avatars directory directly
-app.use('/uploads/avatars', express.static(path.join(publicPath, 'uploads/avatars'), {
-  ...staticOptions,
-  setHeaders: (res, path) => {
-    // Cache avatars for 1 year as they have unique filenames
-    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif')) {
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    }
-  }
-}));
-
-// Backward compatibility - keep serving from /avatars for existing uploads
-app.use('/avatars', express.static(path.join(publicPath, 'uploads/avatars'), {
-  ...staticOptions,
-  setHeaders: (res, path) => {
-    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif')) {
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    }
-  }
-}));
-
-// Ensure uploads directory exists
-const uploadsDir = path.join(publicPath, 'uploads/avatars');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-}
 
 // Routes
 app.use('/api/auth', authRoutes);

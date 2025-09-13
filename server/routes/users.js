@@ -5,13 +5,30 @@ import multer from 'multer';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import fs from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-// Configure multer for avatar uploads
+// Configure multer for avatar uploads with disk storage to preserve extensions
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../../public/uploads/avatars');
+    // Ensure directory exists
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, 'avatar-' + uniqueSuffix + ext);
+  }
+});
+
 const upload = multer({
-  dest: path.join(__dirname, '../../public/uploads/avatars'),
+  storage: storage,
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
@@ -186,7 +203,7 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'No file uploaded'
+        message: 'No file uploaded or file is too large'
       });
     }
 
@@ -201,8 +218,13 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
     // Construct the URL to the uploaded file
     const fileUrl = `/uploads/avatars/${req.file.filename}`;
     
-    // Update user's avatar
-    user.avatar = fileUrl;
+    // Update user's avatar with full URL
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://algobucks.vercel.app' 
+      : 'http://localhost:5000';
+    const fullAvatarUrl = `${baseUrl}${fileUrl}`;
+    
+    user.avatar = fullAvatarUrl;
     await user.save();
 
     // Remove sensitive data before sending response
@@ -213,7 +235,7 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
     res.json({
       success: true,
       message: 'Avatar uploaded successfully',
-      avatar: fileUrl,
+      avatar: fullAvatarUrl,
       user: userObj
     });
   } catch (error) {
@@ -222,6 +244,49 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
       success: false,
       message: error.message || 'Failed to upload avatar',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Test endpoint to verify avatar upload and serving
+router.get('/test-avatar', (req, res) => {
+  const testAvatarPath = path.join(__dirname, '../../public/uploads/avatars/test-avatar.jpg');
+  
+  // Check if test avatar exists
+  if (fs.existsSync(testAvatarPath)) {
+    return res.json({
+      success: true,
+      message: 'Test avatar exists',
+      url: '/uploads/avatars/test-avatar.jpg'
+    });
+  }
+  
+  // If test avatar doesn't exist, create one
+  try {
+    const testImage = Buffer.from(
+      '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB' +
+      'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEB' +
+      'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEB' +
+      'AxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF' +
+      '9AkGCEvAhMUFBUWEicYGRobHwMkLh8QYUIzNSYqKyCRUkQ1OC8RZzJjRDY3KCFyU1RFRkdISUpW' +
+      'V1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrC' +
+      'w8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2gAMAwEAAhEDEQA/AP38ooooA//Z',
+      'base64'
+    );
+    
+    fs.writeFileSync(testAvatarPath, testImage);
+    
+    res.json({
+      success: true,
+      message: 'Test avatar created',
+      url: '/uploads/avatars/test-avatar.jpg'
+    });
+  } catch (error) {
+    console.error('Error creating test avatar:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create test avatar',
+      error: error.message
     });
   }
 });
