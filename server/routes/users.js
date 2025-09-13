@@ -9,10 +9,12 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+import { existsSync, mkdirSync } from 'fs';
+
 // Ensure uploads directory exists
 const uploadsDir = path.join(__dirname, '../../public/uploads/avatars');
-if (!require('fs').existsSync(uploadsDir)) {
-  require('fs').mkdirSync(uploadsDir, { recursive: true });
+if (!existsSync(uploadsDir)) {
+  mkdirSync(uploadsDir, { recursive: true });
 }
 
 // Configure multer for avatar uploads
