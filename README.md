@@ -1,16 +1,17 @@
 # AlgoBucks - Think smart. Code harder. Earn more.
 
-A full-stack MERN application that gamifies competitive programming with real money rewards.
+A full-stack MERN application that gamifies competitive programming with real money rewards, built with modern web technologies to provide a seamless coding experience.
 
 ## 🚀 Features
 
 ### Core Platform
-- **Problem Solving**: 1000+ coding challenges with real-time compilation
-- **Contest System**: Live contests with entry fees and cash prizes
-- **Codecoin Economy**: Earn 1 codecoin per solved problem
+- **Problem Solving**: 1000+ coding challenges with real-time compilation and execution
+- **Contest System**: Live programming contests with entry fees and cash prizes
+- **Codecoin Economy**: Earn 1 codecoin per solved problem (redeemable for rewards)
+- **User Profiles**: Customizable profiles with performance analytics and achievements
+- **Discussion Forums**: Community-driven problem discussions and solutions
 - **Payment Integration**: Stripe integration for deposits/withdrawals
 - **Real-time Leaderboard**: Global rankings based on performance
-- **Discussion Forums**: Community discussions for each problem
 
 ### User Features
 - **Profile Customization**: Avatar, bio, social links, professional info
@@ -24,68 +25,80 @@ A full-stack MERN application that gamifies competitive programming with real mo
 - **User Management**: View and manage all platform users
 - **Analytics Dashboard**: Revenue, user stats, platform metrics
 
-## 🛠️ Tech Stack
+## 🛠 Tech Stack
 
 ### Frontend
-- **React 18** with TypeScript
-- **Tailwind CSS** for styling
-- **Framer Motion** for animations
-- **Monaco Editor** for code editing
-- **React Router** for navigation
-- **Stripe React** for payments
+- **Framework**: React 18 with TypeScript
+- **Styling**: Tailwind CSS with Shadcn UI components
+- **State Management**: Redux Toolkit & React Query
+- **Routing**: React Router v6
+- **Build Tool**: Vite
+- **Form Handling**: React Hook Form with Zod validation
+- **Real-time**: Socket.IO client
+- **Testing**: Jest + React Testing Library
+- **Linting/Formatting**: ESLint + Prettier
 
 ### Backend
-- **Node.js** with Express.js
-- **MongoDB** with Mongoose ODM
-- **JWT** authentication
-- **Stripe** payment processing
-- **bcryptjs** for password hashing
-- **Rate limiting** and security middleware
+- **Runtime**: Node.js 18+ with Express
+- **Database**: MongoDB with Mongoose ODM
+- **Authentication**: JWT & OAuth 2.0 (Google, GitHub)
+- **API**: RESTful architecture with OpenAPI documentation
+- **Real-time**: Socket.IO server
+- **Caching**: Redis for session and rate limiting
+- **File Storage**: Local filesystem with Multer
+- **Testing**: Jest + Supertest
+- **Validation**: Joi for request validation
+- **Logging**: Winston + Morgan
+- **Security**: Helmet, CORS, rate limiting
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Node.js 18+
-- MongoDB (local or Atlas)
-- Stripe account for payments
+- Node.js 18+ and npm 9+
+- MongoDB 6.0+ (local or Atlas)
+- Redis (for production)
+- Git
 
 ### Installation
 
-1. **Clone and install dependencies:**
-```bash
-npm install
-cd server && npm install
-```
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/dheerajgaurgithub/AlgoBucks.git
+   cd AlgoBucks
+   ```
 
-2. **Environment Setup:**
+2. Install dependencies:
+   ```bash
+   # Install server dependencies
+   cd server
+   npm install
+   
+   # Install client dependencies
+   cd ../client
+   npm install
+   ```
 
-Create `server/.env`:
-```env
-PORT=5000
-MONGODB_URI=mongodb://localhost:27017/codearena
-JWT_SECRET=your_super_secret_jwt_key_here
-STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
-STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
-NODE_ENV=development
-```
+3. Set up environment variables:
+   - Copy `.env.example` to `.env` in both `client` and `server` directories
+   - Update the environment variables with your configuration
 
-Create `.env`:
-```env
-VITE_API_URL=http://localhost:5000/api
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key_here
-```
+4. Start the development servers:
+   ```bash
+   # Start backend server
+   cd server
+   npm run dev
+   
+   # In a new terminal, start frontend
+   cd client
+   npm run dev
+   ```
 
-3. **Start the application:**
-```bash
-npm run dev:full
-```
-
-This starts both frontend (port 5173) and backend (port 5000) concurrently.
+5. Open [http://localhost:5173](http://localhost:5173) in your browser
 
 ## 🔐 Default Admin Credentials
 
 **Admin Login:**
-- Email: `admin@mahirscodearena.com`
+- Email: `admin@algobucks.com`
 - Password: `admin123`
 
 ## 💳 Payment Integration
@@ -166,40 +179,105 @@ The platform simulates code execution with:
 
 ## 🚀 Deployment
 
-### Frontend (Vercel/Netlify)
-```bash
-npm run build
-```
+### Production Build
 
-### Backend (Railway/Heroku)
+1. Build the frontend:
+   ```bash
+   cd client
+   npm run build
+   ```
+
+2. Copy build files to server:
+   ```bash
+   # From project root
+   cp -r client/dist/* server/public/
+   ```
+
+3. Start the production server:
+   ```bash
+   cd server
+   NODE_ENV=production node server.js
+   ```
+
+### Using PM2 (Recommended)
+
 ```bash
+# Install PM2 globally
+npm install -g pm2
+
+# Start server with PM2
 cd server
-npm start
+NODE_ENV=production pm2 start server.js --name algobucks-api
+
+# Enable load balancer (for multi-core systems)
+pm2 scale algobucks-api 2
+
+# Save PM2 process list
+pm2 save
+
+# Generate startup script
+pm2 startup
+
+# Save the startup command that PM2 provides
 ```
 
-### Environment Variables
-Ensure all environment variables are set in production:
-- MongoDB connection string
-- JWT secret (use strong random string)
-- Stripe keys (live keys for production)
+### Docker Deployment
 
-## 📈 Future Enhancements
+1. Build the Docker image:
+   ```bash
+   docker build -t algobucks .
+   ```
 
-- **Real Code Execution**: Docker containers for secure code running
-- **Video Tutorials**: Problem explanation videos
-- **Team Contests**: Multi-player team competitions
-- **Certification System**: Skill-based certificates
-- **Mobile App**: React Native mobile application
-- **AI Hints**: GPT-powered coding hints
-- **Live Streaming**: Contest live streams
-- **Referral System**: Earn rewards for referrals
+2. Run the container:
+   ```bash
+   docker run -d \
+     -p 5000:5000 \
+     -e NODE_ENV=production \
+     -e MONGODB_URI=your_mongodb_uri \
+     -e JWT_SECRET=your_jwt_secret \
+     algobucks
+   ```
 
 ## 🤝 Contributing
 
+We welcome contributions from the community! Here's how you can help:
+
+### Ways to Contribute
+- Report bugs
+- Suggest new features
+- Submit code improvements
+- Improve documentation
+- Help with testing
+
+### Development Workflow
+
 1. Fork the repository
-2. Create feature branch
-3. Make changes with tests
-4. Submit pull request
+2. Create a feature branch:
+   ```bash
+   git checkout -b feature/your-feature-name
+   ```
+3. Make your changes
+4. Run tests:
+   ```bash
+   # Run server tests
+   cd server && npm test
+   
+   # Run client tests
+   cd ../client && npm test
+   ```
+5. Ensure code quality:
+   ```bash
+   npm run lint
+   npm run format
+   ```
+6. Commit your changes with a descriptive message
+7. Push to your fork and open a Pull Request
+
+### Code Style
+- Follow the existing code style
+- Write meaningful commit messages
+- Add comments for complex logic
+- Update documentation when necessary
 
 ## 📄 License
 
@@ -207,4 +285,4 @@ MIT License - see LICENSE file for details.
 
 ---
 
-**Mahir's CodeArena** - Where coding skills meet real rewards! 🏆
+# AlgoBucks - Think smart. Code harder. Earn more.
