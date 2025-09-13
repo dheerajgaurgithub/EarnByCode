@@ -212,13 +212,25 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler
-app.all('*', (req, res) => {
-  res.status(404).json({
-    status: 'fail',
-    message: `Can't find ${req.originalUrl} on this server!`
+// Serve static files from the client build directory
+const clientBuildPath = path.join(__dirname, '../../client/dist');
+if (fs.existsSync(clientBuildPath)) {
+  // Serve static files from the client build
+  app.use(express.static(clientBuildPath));
+  
+  // Handle client-side routing - return all requests to the app
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientBuildPath, 'index.html'));
   });
-});
+} else {
+  // 404 handler for API routes only if client build doesn't exist
+  app.all('*', (req, res) => {
+    res.status(404).json({
+      status: 'fail',
+      message: `Can't find ${req.originalUrl} on this server!`
+    });
+  });
+}
 
 // MongoDB connection options
 const mongooseOptions = {
