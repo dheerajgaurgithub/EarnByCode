@@ -171,9 +171,8 @@ export const Profile: React.FC = () => {
     if (!file) return;
 
     // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
-    if (!validTypes.includes(file.type)) {
-      setError('Please upload a valid image (JPEG, PNG, or GIF)');
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file (JPEG, PNG, or GIF)');
       return;
     }
 
@@ -206,19 +205,15 @@ export const Profile: React.FC = () => {
       }
       
       // Update the user with the new avatar URL
-      if (data.user) {
-        // Update the user context with the returned user data
-        await updateUser(data.user);
+      if (data.avatar) {
+        await updateUser({ avatar: data.avatar });
         showSuccess('Profile picture updated successfully!');
-      } else {
-        throw new Error('Failed to update user data');
       }
       
     } catch (error: any) {
       console.error('Failed to update avatar:', error);
-      const errorMessage = error.message || 'Failed to update avatar. Please try again.';
-      setError(errorMessage);
-      showError(errorMessage);
+      setError(error.message || 'Failed to update avatar. Please try again.');
+      showError(error.message || 'Failed to update avatar. Please try again.');
     } finally {
       setIsUpdating(false);
       // Reset the file input
@@ -273,15 +268,9 @@ export const Profile: React.FC = () => {
               <div className="relative mx-auto sm:mx-0">
                 {user.avatar ? (
                   <img
-                    src={user.avatar || '/default-avatar.png'}
+                    src={user.avatar}
                     alt={user.username}
                     className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-blue-200"
-                    onError={(e) => {
-                      // Fallback to default avatar if image fails to load
-                      const target = e.target as HTMLImageElement;
-                      target.onerror = null; // Prevent infinite loop
-                      target.src = '/default-avatar.png';
-                    }}
                   />
                 ) : (
                   <div className="w-20 h-20 sm:w-24 sm:h-24 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">

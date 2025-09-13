@@ -9,26 +9,9 @@ import { dirname } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-import { existsSync, mkdirSync } from 'fs';
-
-// Ensure uploads directory exists
-const uploadsDir = path.join(__dirname, '../../public/uploads/avatars');
-if (!existsSync(uploadsDir)) {
-  mkdirSync(uploadsDir, { recursive: true });
-}
-
 // Configure multer for avatar uploads
-const storage = multer.diskStorage({
-  destination: uploadsDir,
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, 'avatar-' + uniqueSuffix + ext);
-  }
-});
-
 const upload = multer({
-  storage: storage,
+  dest: path.join(__dirname, '../../public/uploads/avatars'),
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB limit
   },
@@ -203,7 +186,7 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'No file uploaded or file is too large (max 5MB)'
+        message: 'No file uploaded'
       });
     }
 
@@ -215,16 +198,10 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
       });
     }
 
-    // Construct the full URL to the uploaded file
-    const baseUrl = process.env.NODE_ENV === 'production' 
-      ? 'https://algobucks.vercel.app' 
-      : 'http://localhost:5000';
+    // Construct the URL to the uploaded file
+    const fileUrl = `/uploads/avatars/${req.file.filename}`;
     
-    // Use relative path for storage, full URL for response
-    const relativePath = `/uploads/avatars/${req.file.filename}`;
-    const fileUrl = `${baseUrl}${relativePath}`;
-    
-    // Update user's avatar with full URL
+    // Update user's avatar
     user.avatar = fileUrl;
     await user.save();
 
@@ -243,7 +220,7 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
     console.error('Avatar upload error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to upload avatar. Please try again.',
+      message: error.message || 'Failed to upload avatar',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
