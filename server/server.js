@@ -162,14 +162,23 @@ app.use('/uploads', express.static(path.join(publicPath, 'uploads'), {
 }));
 
 // Serve avatars from the avatars directory directly
+app.use('/uploads/avatars', express.static(path.join(publicPath, 'uploads/avatars'), {
+  ...staticOptions,
+  setHeaders: (res, path) => {
+    // Cache avatars for 1 year as they have unique filenames
+    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif')) {
+      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    }
+  }
+}));
+
+// Backward compatibility - keep serving from /avatars for existing uploads
 app.use('/avatars', express.static(path.join(publicPath, 'uploads/avatars'), {
   ...staticOptions,
   setHeaders: (res, path) => {
-    if (path.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+    if (path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif')) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
     }
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
   }
 }));
 
