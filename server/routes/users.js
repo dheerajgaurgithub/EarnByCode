@@ -214,8 +214,11 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
       });
     }
 
-    // Construct the URL to the uploaded file - use just the filename since the path is already included in the static route
-    const fileUrl = `/avatars/${req.file.filename}`;
+    // Construct the full URL to the uploaded file
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://algobucks.vercel.app' 
+      : 'http://localhost:5000';
+    const fileUrl = `${baseUrl}/uploads/avatars/${req.file.filename}`;
     
     // Update user's avatar
     user.avatar = fileUrl;
