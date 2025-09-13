@@ -1,50 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { uploadFile, createImagePreview, type UploadResponse } from '@/lib/fileUpload';
-import { motion } from 'framer-motion';
-import { 
-  Loader2, 
-  Camera, 
-  Pencil, 
-  X, 
-  Save, 
-  MapPin, 
-  Building, 
-  GraduationCap, 
-  Calendar, 
-  Globe, 
-  Github, 
-  Linkedin, 
-  Twitter, 
-  Target, 
-  TrendingUp, 
-  Trophy 
-} from 'lucide-react';
 import { Navigate } from 'react-router-dom';
-
-// Helper function to get the full avatar URL
-const getAvatarUrl = (avatarPath: string | undefined): string => {
-  if (!avatarPath) return '/default-avatar.png';
-  
-  // If it's already a full URL, return as is
-  if (avatarPath.startsWith('http')) {
-    return avatarPath;
-  }
-  
-  // Clean up the path
-  let cleanPath = avatarPath.replace(/^\/+|\/+$/g, ''); // Trim slashes
-  
-  // Remove any duplicate path segments
-  if (cleanPath.startsWith('uploads/avatars/')) {
-    cleanPath = cleanPath.replace('uploads/avatars/', '');
-  } else if (cleanPath.startsWith('avatars/')) {
-    cleanPath = cleanPath.replace('avatars/', '');
-  }
-  
-  // Return the full URL
-  return `${window.location.origin}/avatars/${cleanPath}`;
-};
+import { 
+  User as UserIcon, Trophy, Calendar, Target, TrendingUp, Edit3, Save, X, 
+  Camera, MapPin, Building, GraduationCap, Globe, Github, Linkedin, Twitter, Loader2
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface EditFormData {
   fullName: string;
@@ -64,47 +26,15 @@ interface Achievement {
   earned: boolean;
 }
 
-interface Submission {
-  id: string;
-  problemId: number;
-  language: string;
-  status: string;
-  timestamp: string;
-}
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  fullName?: string;
-  bio?: string;
-  location?: string;
-  website?: string;
-  github?: string;
-  linkedin?: string;
-  twitter?: string;
-  company?: string;
-  school?: string;
-  avatar?: string;
-  codecoins?: number;
-  points?: number;
-  ranking?: number;
-  isAdmin?: boolean;
-  createdAt?: string;
-  solvedProblems?: any[];
-  contestsParticipated?: any[];
-  submissions?: Submission[];
-}
+// Removed unused Submission interface
 
 export const Profile: React.FC = () => {
   const { user, updateUser, isLoading: isAuthLoading } = useAuth();
-  const [error, setError] = useState<string | null>(null);
-  const [isUpdating, setIsUpdating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [avatarFile, setAvatarFile] = useState<string | null>(null);
-  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const toast = useToast();
-  const [isUploading, setIsUploading] = useState(false);
   
   const showSuccess = (message: string) => {
     toast.success(message);
@@ -113,7 +43,6 @@ export const Profile: React.FC = () => {
   const showError = (message: string) => {
     toast.error(message);
   };
-
   const [editForm, setEditForm] = useState<EditFormData>({
     fullName: '',
     bio: '',
@@ -145,20 +74,10 @@ export const Profile: React.FC = () => {
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-white to-indigo-100">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-white rounded-2xl shadow-2xl p-8 sm:p-12 max-w-sm w-full mx-4"
-        >
-          <div className="text-center">
-            <Loader2 className="w-16 h-16 text-blue-600 animate-spin mx-auto mb-4" />
-            <div className="space-y-2">
-              <p className="text-blue-900 font-semibold text-lg">Loading Profile</p>
-              <p className="text-blue-500 text-sm">Please wait a moment...</p>
-            </div>
-          </div>
-        </motion.div>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-blue-100">
+        <div className="bg-white rounded-xl shadow-lg p-8">
+          <Loader2 className="w-12 h-12 text-blue-600 animate-spin mx-auto" />
+        </div>
       </div>
     );
   }
@@ -184,15 +103,7 @@ export const Profile: React.FC = () => {
       if (avatarFile) {
         try {
           const formData = new FormData();
-          
-          // Convert base64 to blob if needed
-          if (avatarFile.startsWith('data:')) {
-            const response = await fetch(avatarFile);
-            const blob = await response.blob();
-            formData.append('avatar', blob, 'avatar.jpg');
-          } else {
-            formData.append('avatar', avatarFile);
-          }
+          formData.append('avatar', avatarFile);
           
           const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/users/me/avatar`, {
             method: 'POST',
@@ -200,7 +111,7 @@ export const Profile: React.FC = () => {
               'Authorization': `Bearer ${localStorage.getItem('token')}`
             },
             body: formData,
-            credentials: 'include'
+            credentials: 'include' // Important for cookies/auth
           });
           
           const data = await response.json();
@@ -215,11 +126,15 @@ export const Profile: React.FC = () => {
           }
         } catch (error) {
           console.error('Failed to update avatar:', error);
+          // Continue with success but show warning about avatar
           showError('Profile updated, but there was an issue updating your avatar. You can try again later.');
         }
       }
       
+      // Only show success if we got this far without throwing
       showSuccess('Your profile has been updated successfully.');
+      
+      // Reset form state
       setIsEditing(false);
       setAvatarFile(null);
       
@@ -249,82 +164,59 @@ export const Profile: React.FC = () => {
     }
     setIsEditing(false);
     setError(null);
-    setAvatarFile(null);
   };
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    setError(null);
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file (JPEG, PNG, or GIF)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image size should be less than 5MB');
+      return;
+    }
+
     try {
-      setIsUploading(true);
-      setUploadProgress(0);
+      setIsUpdating(true);
+      setError(null);
       
-      // Create preview
-      const previewUrl = await createImagePreview(file);
-      setAvatarFile(previewUrl);
+      const formData = new FormData();
+      formData.append('avatar', file);
       
-      // Upload file
-      const result = await uploadFile({
-        endpoint: '/users/me/avatar',
-        file,
-        fieldName: 'avatar',
-        onProgress: (progress) => setUploadProgress(progress),
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/users/me/avatar`, {
+        method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'x-application': 'algobucks-web'
-        }
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: formData,
+        credentials: 'include'
       });
       
-          // The response should match our UploadResponse interface
-      const response = result as UploadResponse;
+      const data = await response.json();
       
-      if (!response.success) {
-        throw new Error(response.message || 'Failed to upload avatar');
+      if (!response.ok) {
+        throw new Error(data.message || 'Failed to upload avatar');
       }
       
-      // The server returns the avatar URL in the 'avatar' field of the response
-      // or in the user.avatar field
-      let avatarUrl = response.avatar || response.user?.avatar;
-      
-      if (!avatarUrl) {
-        throw new Error('No avatar URL returned from server');
+      // Update the user with the new avatar URL
+      if (data.avatar) {
+        await updateUser({ avatar: data.avatar });
+        showSuccess('Profile picture updated successfully!');
       }
       
-      // Ensure the avatar URL is absolute
-      if (!avatarUrl.startsWith('http')) {
-        // Remove any duplicate /uploads/avatars from the path
-        avatarUrl = avatarUrl.replace(/^\/+|\/+$/g, ''); // Trim slashes
-        if (avatarUrl.startsWith('uploads/avatars/')) {
-          avatarUrl = avatarUrl.replace('uploads/avatars/', '');
-        } else if (avatarUrl.startsWith('avatars/')) {
-          avatarUrl = avatarUrl.replace('avatars/', '');
-        }
-        
-        // Construct the full URL
-        avatarUrl = `${window.location.origin}/avatars/${avatarUrl}`;
-      }
-      
-      const fullAvatarUrl = avatarUrl;
-      
-      // Update the user's avatar in the UI and database
-      await updateUser({ avatar: fullAvatarUrl });
-      showSuccess(response.message || 'Profile picture updated successfully!');
-      setUploadProgress(100);
-    } catch (error) {
-      console.error('Error uploading avatar:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to upload avatar';
-      setError(errorMessage);
-      showError(errorMessage);
+    } catch (error: any) {
+      console.error('Failed to update avatar:', error);
+      setError(error.message || 'Failed to update avatar. Please try again.');
+      showError(error.message || 'Failed to update avatar. Please try again.');
     } finally {
       setIsUpdating(false);
-      setIsUploading(false);
-      
-      setTimeout(() => {
-        setUploadProgress(null);
-      }, 1000);
-      
+      // Reset the file input
       if (e.target) {
         e.target.value = '';
       }
@@ -357,137 +249,101 @@ export const Profile: React.FC = () => {
   const recentSubmissions = (user.submissions || []).slice(-5).reverse();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-indigo-100 py-4 sm:py-6 lg:py-8">
-      <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-8">
-        {/* Error Message */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 py-4 sm:py-8">
+      <div className="max-w-4xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
         {error && (
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-6 p-4 bg-red-50 border-l-4 border-red-400 rounded-r-xl shadow-sm"
-          >
-            <div className="flex">
-              <div className="ml-3">
-                <p className="text-red-700 font-medium">{error}</p>
-              </div>
-            </div>
-          </motion.div>
+          <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm sm:text-base">
+            {error}
+          </div>
         )}
         
         {/* Profile Header */}
         <motion.div
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-2xl shadow-xl border border-blue-100 p-6 sm:p-8 lg:p-10 mb-8 backdrop-blur-sm"
+          className="bg-white rounded-xl shadow-lg border border-blue-200 p-4 sm:p-6 mb-6 sm:mb-8"
         >
-          <div className="flex flex-col lg:flex-row items-center lg:items-start justify-between mb-8 gap-8">
-            {/* Profile Image and Basic Info */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-6 sm:space-y-0 sm:space-x-8">
-              <div className="relative group">
-                <div className="w-28 h-28 sm:w-32 sm:h-32 lg:w-36 lg:h-36 rounded-full overflow-hidden border-4 border-white shadow-2xl ring-4 ring-blue-100">
+          <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
+              <div className="relative mx-auto sm:mx-0">
+                {user.avatar ? (
                   <img
-                    src={avatarFile || getAvatarUrl(user.avatar) || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName || user.username)}&background=3b82f6&color=fff&size=300`}
+                    src={user.avatar}
                     alt={user.username}
-                    className={`w-full h-full object-cover transition-all duration-300 ${isUploading ? 'opacity-70 blur-sm' : 'group-hover:scale-105'}`}
+                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-blue-200"
                   />
-                  {/* Upload Overlay */}
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-full flex items-center justify-center transition-all duration-300">
-                    <label className="cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                      {isUploading ? (
-                        <div className="flex flex-col items-center text-white">
-                          <Loader2 className="w-8 h-8 animate-spin mb-2" />
-                          <span className="text-sm font-medium">{uploadProgress || 0}%</span>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center text-white">
-                          <Camera className="w-8 h-8 mb-1" />
-                          <span className="text-xs font-medium">Change Photo</span>
-                        </div>
-                      )}
-                      <input
-                        type="file"
-                        className="hidden"
-                        accept="image/*"
-                        onChange={handleAvatarChange}
-                        disabled={isUpdating || isUploading}
-                      />
-                    </label>
-                  </div>
-                </div>
-                {/* Upload Progress Ring */}
-                {isUploading && uploadProgress !== null && (
-                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-full">
-                    <div className="bg-blue-100 rounded-full h-2 shadow-inner">
-                      <div 
-                        className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-300 ease-out shadow-sm"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
+                ) : (
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">
+                    <UserIcon className="w-10 h-10 sm:w-12 sm:h-12 text-blue-400" />
                   </div>
                 )}
+                <label className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-blue-600 rounded-full p-1.5 sm:p-2 cursor-pointer hover:bg-blue-700 transition-colors shadow-lg">
+                  <Camera className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAvatarChange}
+                    className="hidden"
+                  />
+                </label>
               </div>
               
-              <div className="text-center sm:text-left space-y-2">
+              <div className="flex-1 text-center sm:text-left w-full sm:w-auto">
                 {isEditing ? (
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     <input
                       type="text"
                       value={editForm.fullName}
                       onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
                       placeholder="Full Name"
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-xl font-semibold transition-all duration-200"
+                      className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm sm:text-base"
                     />
-                    <div className="space-y-1">
-                      <p className="text-blue-600 font-medium">@{user.username}</p>
-                      <p className="text-blue-500 text-sm">{user.email}</p>
-                    </div>
+                    <p className="text-blue-600 text-sm sm:text-base">@{user.username}</p>
+                    <p className="text-blue-500 text-xs sm:text-sm">{user.email}</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-blue-900 leading-tight">
+                  <div>
+                    <h1 className="text-2xl sm:text-3xl font-bold text-blue-900 mb-1">
                       {user.fullName || user.username}
                     </h1>
-                    <p className="text-blue-600 font-medium text-lg">@{user.username}</p>
-                    <p className="text-blue-500">{user.email}</p>
-                    {user.bio && !isEditing && (
-                      <p className="text-blue-700 mt-4 text-lg max-w-md leading-relaxed">{user.bio}</p>
+                    <p className="text-blue-600 mb-1 text-sm sm:text-base">@{user.username}</p>
+                    <p className="text-blue-500 mb-3 text-xs sm:text-sm">{user.email}</p>
+                    {user.bio && (
+                      <p className="text-blue-700 mb-3 text-sm sm:text-base">{user.bio}</p>
                     )}
                   </div>
                 )}
               </div>
             </div>
             
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 w-full sm:w-auto">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-2 w-full sm:w-auto">
               {isEditing ? (
                 <>
                   <button
                     onClick={handleSave}
-                    disabled={isUpdating}
-                    className="flex items-center justify-center space-x-3 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-xl hover:from-green-700 hover:to-green-800 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                    className="flex items-center justify-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
                   >
                     {isUpdating ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <Loader2 className="w-4 h-4 animate-spin" />
                     ) : (
-                      <Save className="w-5 h-5" />
+                      <Save className="w-4 h-4" />
                     )}
-                    <span>{isUpdating ? 'Saving...' : 'Save Changes'}</span>
+                    <span>{isUpdating ? 'Saving...' : 'Save'}</span>
                   </button>
                   <button
                     onClick={handleCancel}
-                    disabled={isUpdating}
-                    className="flex items-center justify-center space-x-3 px-6 py-3 bg-white border-2 border-blue-200 text-blue-700 rounded-xl hover:bg-blue-50 hover:border-blue-300 disabled:opacity-50 transition-all duration-200 font-medium shadow-md hover:shadow-lg"
+                    className="flex items-center justify-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm font-medium"
                   >
-                    <X className="w-5 h-5" />
+                    <X className="w-4 h-4" />
                     <span>Cancel</span>
                   </button>
                 </>
               ) : (
                 <button
                   onClick={() => setIsEditing(true)}
-                  className="flex items-center justify-center space-x-3 px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
+                  className="flex items-center justify-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                 >
-                  <Pencil className="w-5 h-5" />
+                  <Edit3 className="w-4 h-4" />
                   <span>Edit Profile</span>
                 </button>
               )}
@@ -496,376 +352,300 @@ export const Profile: React.FC = () => {
 
           {/* Profile Details */}
           {isEditing ? (
-            <div className="space-y-8">
-              {/* Bio and Basic Info */}
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-800 mb-3">Bio</label>
-                    <textarea
-                      value={editForm.bio}
-                      onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
-                      placeholder="Tell us about yourself..."
-                      rows={4}
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none transition-all duration-200"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-800 mb-3">Location</label>
-                    <input
-                      type="text"
-                      value={editForm.location}
-                      onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
-                      placeholder="City, Country"
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-800 mb-3">Company</label>
-                    <input
-                      type="text"
-                      value={editForm.company}
-                      onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
-                      placeholder="Your company"
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-800 mb-3">School</label>
-                    <input
-                      type="text"
-                      value={editForm.school}
-                      onChange={(e) => setEditForm({ ...editForm, school: e.target.value })}
-                      placeholder="Your school/university"
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Social Links */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
               <div>
-                <h3 className="text-xl font-semibold text-blue-900 mb-6">Social Links</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-800 mb-3">Website</label>
-                    <input
-                      type="url"
-                      value={editForm.website}
-                      onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
-                      placeholder="https://yourwebsite.com"
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-800 mb-3">GitHub</label>
-                    <input
-                      type="text"
-                      value={editForm.github}
-                      onChange={(e) => setEditForm({ ...editForm, github: e.target.value })}
-                      placeholder="github.com/username"
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-800 mb-3">LinkedIn</label>
-                    <input
-                      type="text"
-                      value={editForm.linkedin}
-                      onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })}
-                      placeholder="linkedin.com/in/username"
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-blue-800 mb-3">Twitter</label>
-                    <input
-                      type="text"
-                      value={editForm.twitter}
-                      onChange={(e) => setEditForm({ ...editForm, twitter: e.target.value })}
-                      placeholder="twitter.com/username"
-                      className="w-full px-4 py-3 bg-blue-50 border-2 border-blue-200 rounded-xl text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                    />
-                  </div>
+                <label className="block text-sm font-medium text-blue-700 mb-1">Bio</label>
+                <textarea
+                  value={editForm.bio}
+                  onChange={(e) => setEditForm({ ...editForm, bio: e.target.value })}
+                  placeholder="Tell us about yourself..."
+                  rows={3}
+                  className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent resize-none text-sm"
+                />
+              </div>
+              <div className="space-y-3">
+                <div>
+                  <label className="block text-sm font-medium text-blue-700 mb-1">Location</label>
+                  <input
+                    type="text"
+                    value={editForm.location}
+                    onChange={(e) => setEditForm({ ...editForm, location: e.target.value })}
+                    placeholder="City, Country"
+                    className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-blue-700 mb-1">Company</label>
+                  <input
+                    type="text"
+                    value={editForm.company}
+                    onChange={(e) => setEditForm({ ...editForm, company: e.target.value })}
+                    placeholder="Your company"
+                    className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-blue-700 mb-1">School</label>
+                  <input
+                    type="text"
+                    value={editForm.school}
+                    onChange={(e) => setEditForm({ ...editForm, school: e.target.value })}
+                    placeholder="Your school/university"
+                    className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
+                  />
                 </div>
               </div>
             </div>
           ) : (
-            <div className="space-y-8">
-              {/* Info Tags */}
-              <div className="flex flex-wrap items-center gap-3 text-sm">
-                {user.location && (
-                  <div className="flex items-center bg-gradient-to-r from-blue-100 to-blue-50 px-4 py-2 rounded-full border border-blue-200 shadow-sm">
-                    <MapPin className="w-4 h-4 mr-2 text-blue-600" />
-                    <span className="text-blue-800 font-medium">{user.location}</span>
-                  </div>
-                )}
-                {user.company && (
-                  <div className="flex items-center bg-gradient-to-r from-blue-100 to-blue-50 px-4 py-2 rounded-full border border-blue-200 shadow-sm">
-                    <Building className="w-4 h-4 mr-2 text-blue-600" />
-                    <span className="text-blue-800 font-medium">{user.company}</span>
-                  </div>
-                )}
-                {user.school && (
-                  <div className="flex items-center bg-gradient-to-r from-blue-100 to-blue-50 px-4 py-2 rounded-full border border-blue-200 shadow-sm">
-                    <GraduationCap className="w-4 h-4 mr-2 text-blue-600" />
-                    <span className="text-blue-800 font-medium">{user.school}</span>
-                  </div>
-                )}
-                <div className="flex items-center bg-gradient-to-r from-blue-100 to-blue-50 px-4 py-2 rounded-full border border-blue-200 shadow-sm">
-                  <Calendar className="w-4 h-4 mr-2 text-blue-600" />
-                  <span className="text-blue-800 font-medium">Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long'
-                  }) : 'N/A'}</span>
+            <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-6 text-xs sm:text-sm text-blue-600">
+              {user.location && (
+                <div className="flex items-center">
+                  <MapPin className="w-4 h-4 mr-1" />
+                  <span>{user.location}</span>
+                </div>
+              )}
+              {user.company && (
+                <div className="flex items-center">
+                  <Building className="w-4 h-4 mr-1" />
+                  <span>{user.company}</span>
+                </div>
+              )}
+              {user.school && (
+                <div className="flex items-center">
+                  <GraduationCap className="w-4 h-4 mr-1" />
+                  <span>{user.school}</span>
+                </div>
+              )}
+              <div className="flex items-center">
+                <Calendar className="w-4 h-4 mr-1" />
+                <span>Joined {user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', {
+                  year: 'numeric',
+                  month: 'long',
+                  day: 'numeric'
+                }) : 'N/A'}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Social Links */}
+          {isEditing ? (
+            <div className="space-y-3 mb-6">
+              <h3 className="text-base sm:text-lg font-semibold text-blue-900">Social Links</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-blue-700 mb-1">Website</label>
+                  <input
+                    type="url"
+                    value={editForm.website}
+                    onChange={(e) => setEditForm({ ...editForm, website: e.target.value })}
+                    placeholder="https://yourwebsite.com"
+                    className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-blue-700 mb-1">GitHub</label>
+                  <input
+                    type="text"
+                    value={editForm.github}
+                    onChange={(e) => setEditForm({ ...editForm, github: e.target.value })}
+                    placeholder="github.com/username"
+                    className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-blue-700 mb-1">LinkedIn</label>
+                  <input
+                    type="text"
+                    value={editForm.linkedin}
+                    onChange={(e) => setEditForm({ ...editForm, linkedin: e.target.value })}
+                    placeholder="linkedin.com/in/username"
+                    className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-blue-700 mb-1">Twitter</label>
+                  <input
+                    type="text"
+                    value={editForm.twitter}
+                    onChange={(e) => setEditForm({ ...editForm, twitter: e.target.value })}
+                    placeholder="twitter.com/username"
+                    className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm"
+                  />
                 </div>
               </div>
-
-              {/* Social Links */}
-              {(user.website || user.github || user.linkedin || user.twitter) && (
-                <div className="flex flex-wrap gap-3">
-                  {user.website && (
-                    <a
-                      href={user.website.startsWith('http') ? user.website : `https://${user.website}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                    >
-                      <Globe className="w-4 h-4" />
-                      <span className="font-medium">Website</span>
-                    </a>
-                  )}
-                  {user.github && (
-                    <a
-                      href={user.github.startsWith('http') ? user.github : `https://${user.github}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-4 py-2 bg-gray-800 text-white rounded-xl hover:bg-gray-900 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                    >
-                      <Github className="w-4 h-4" />
-                      <span className="font-medium">GitHub</span>
-                    </a>
-                  )}
-                  {user.linkedin && (
-                    <a
-                      href={user.linkedin.startsWith('http') ? user.linkedin : `https://${user.linkedin}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                    >
-                      <Linkedin className="w-4 h-4" />
-                      <span className="font-medium">LinkedIn</span>
-                    </a>
-                  )}
-                  {user.twitter && (
-                    <a
-                      href={user.twitter.startsWith('http') ? user.twitter : `https://${user.twitter}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-2 px-4 py-2 bg-gradient-to-r from-sky-400 to-sky-500 text-white rounded-xl hover:from-sky-500 hover:to-sky-600 transition-all duration-200 shadow-md hover:shadow-lg transform hover:-translate-y-0.5"
-                    >
-                      <Twitter className="w-4 h-4" />
-                      <span className="font-medium">Twitter</span>
-                    </a>
-                  )}
-                </div>
-              )}
-
-              {/* Admin Welcome Message */}
-              {user.isAdmin ? (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-gradient-to-r from-indigo-50 to-blue-50 border-l-4 border-indigo-500 p-6 rounded-r-2xl shadow-lg"
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
+              {user.website && (
+                <a
+                  href={user.website.startsWith('http') ? user.website : `https://${user.website}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
                 >
-                  <h3 className="text-xl font-bold text-indigo-900 mb-2">Administrator Dashboard</h3>
-                  <p className="text-indigo-700 leading-relaxed">Welcome to AlgoBucks! You have full administrative access to the platform.</p>
-                </motion.div>
-              ) : (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                    className="text-center bg-gradient-to-br from-blue-50 to-blue-100 p-6 lg:p-8 rounded-2xl border-2 border-blue-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                  >
-                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-white font-bold text-lg">C</span>
-                    </div>
-                    <p className="text-3xl lg:text-4xl font-bold text-blue-700 mb-2">{user.codecoins || 0}</p>
-                    <p className="text-blue-600 font-semibold">Codecoins</p>
-                  </motion.div>
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.2 }}
-                    className="text-center bg-gradient-to-br from-green-50 to-green-100 p-6 lg:p-8 rounded-2xl border-2 border-green-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                  >
-                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Target className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="text-3xl lg:text-4xl font-bold text-green-700 mb-2">{user.solvedProblems?.length || 0}</p>
-                    <p className="text-green-600 font-semibold">Problems Solved</p>
-                  </motion.div>
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-center bg-gradient-to-br from-yellow-50 to-yellow-100 p-6 lg:p-8 rounded-2xl border-2 border-yellow-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                  >
-                    <div className="w-12 h-12 bg-yellow-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <TrendingUp className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="text-3xl lg:text-4xl font-bold text-yellow-700 mb-2">{user.points || 0}</p>
-                    <p className="text-yellow-600 font-semibold">Points</p>
-                  </motion.div>
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4 }}
-                    className="text-center bg-gradient-to-br from-purple-50 to-purple-100 p-6 lg:p-8 rounded-2xl border-2 border-purple-200 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1"
-                  >
-                    <div className="w-12 h-12 bg-purple-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <Trophy className="w-6 h-6 text-white" />
-                    </div>
-                    <p className="text-3xl lg:text-4xl font-bold text-purple-700 mb-2">
-                      {user.ranking ? `#${user.ranking - 1}` : 'N/A'}
-                    </p>
-                    <p className="text-purple-600 font-semibold">Global Rank</p>
-                  </motion.div>
-                </div>
+                  <Globe className="w-4 h-4" />
+                  <span>Website</span>
+                </a>
               )}
+              {user.github && (
+                <a
+                  href={user.github.startsWith('http') ? user.github : `https://${user.github}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+                >
+                  <Github className="w-4 h-4" />
+                  <span>GitHub</span>
+                </a>
+              )}
+              {user.linkedin && (
+                <a
+                  href={user.linkedin.startsWith('http') ? user.linkedin : `https://${user.linkedin}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+                >
+                  <Linkedin className="w-4 h-4" />
+                  <span>LinkedIn</span>
+                </a>
+              )}
+              {user.twitter && (
+                <a
+                  href={user.twitter.startsWith('http') ? user.twitter : `https://${user.twitter}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-2 px-3 py-2 bg-blue-100 text-blue-700 rounded-lg hover:bg-blue-200 transition-colors text-sm"
+                >
+                  <Twitter className="w-4 h-4" />
+                  <span>Twitter</span>
+                </a>
+              )}
+            </div>
+          )}
+
+          {/* Admin Welcome Message */}
+          {user.isAdmin ? (
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+              <h3 className="text-lg font-medium text-blue-800">Welcome to the profile of Administrator of AlgoBucks</h3>
+              <p className="text-blue-600 text-sm mt-1">You have full administrative access to the platform.</p>
+              
+              {/* Admin Stats - No rank */}
+              {/* <div className="grid grid-cols-3 gap-3 sm:gap-4 mt-4">
+                <div className="text-center bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                  <p className="text-xl sm:text-2xl font-bold text-blue-600">{user.codecoins || 0}</p>
+                  <p className="text-blue-500 text-xs sm:text-sm">Codecoins</p>
+                </div>
+                <div className="text-center bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
+                  <p className="text-xl sm:text-2xl font-bold text-green-600">{user.solvedProblems?.length || 0}</p>
+                  <p className="text-green-500 text-xs sm:text-sm">Problems</p>
+                </div>
+                <div className="text-center bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-200">
+                  <p className="text-xl sm:text-2xl font-bold text-yellow-600">{user.points || 0}</p>
+                  <p className="text-yellow-500 text-xs sm:text-sm">Points</p>
+                </div>
+              </div> */}
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+              <div className="text-center bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+                <p className="text-xl sm:text-2xl font-bold text-blue-600">{user.codecoins || 0}</p>
+                <p className="text-blue-500 text-xs sm:text-sm">Codecoins</p>
+              </div>
+              <div className="text-center bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
+                <p className="text-xl sm:text-2xl font-bold text-green-600">{user.solvedProblems?.length || 0}</p>
+                <p className="text-green-500 text-xs sm:text-sm">Problems Solved</p>
+              </div>
+              <div className="text-center bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-200">
+                <p className="text-xl sm:text-2xl font-bold text-yellow-600">{user.points || 0}</p>
+                <p className="text-yellow-500 text-xs sm:text-sm">Points</p>
+              </div>
+              <div className="text-center bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200">
+                <p className="text-xl sm:text-2xl font-bold text-purple-600">
+                  {user.ranking ? `#${user.ranking-1}` : 'N/A'}
+                </p>
+                <p className="text-purple-500 text-xs sm:text-sm">Global Rank</p>
+              </div>
             </div>
           )}
         </motion.div>
 
-        {/* Achievements and Recent Activity */}
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
           {/* Achievements */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
+            initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white rounded-2xl shadow-xl border border-blue-100 p-6 sm:p-8 backdrop-blur-sm"
+            transition={{ delay: 0.1 }}
+            className="bg-white rounded-xl shadow-lg border border-blue-200 p-4 sm:p-6"
           >
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold text-blue-900 flex items-center">
-                <div className="w-10 h-10 bg-gradient-to-br from-yellow-400 to-yellow-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
-                  <Trophy className="w-6 h-6 text-white" />
-                </div>
-                Achievements
-              </h2>
-            </div>
+            <h2 className="text-lg sm:text-xl font-semibold text-blue-900 mb-4 flex items-center">
+              <Trophy className="w-5 h-5 mr-2 text-yellow-500" />
+              Achievements
+            </h2>
             
-            <div className="space-y-4">
+            <div className="space-y-3">
               {achievements.map((achievement, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 * (index + 1) }}
-                  className={`flex items-center space-x-4 p-4 rounded-2xl transition-all duration-300 hover:shadow-lg ${
-                    achievement.earned 
-                      ? 'bg-gradient-to-r from-yellow-50 via-amber-50 to-orange-50 border-2 border-yellow-200 shadow-md' 
-                      : 'bg-gradient-to-r from-blue-50 via-slate-50 to-blue-50 border-2 border-blue-200 hover:border-blue-300'
-                  }`}
-                >
-                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 transition-all duration-300 ${
-                    achievement.earned 
-                      ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 shadow-lg' 
-                      : 'bg-gradient-to-br from-blue-300 to-blue-400'
-                  }`}>
-                    <Trophy className={`w-7 h-7 ${achievement.earned ? 'text-white' : 'text-blue-600'}`} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className={`font-bold text-lg ${
-                      achievement.earned ? 'text-yellow-800' : 'text-blue-800'
+                  <div
+                    key={index}
+                    className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                      achievement.earned ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'
+                    }`}
+                  >
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      achievement.earned ? 'bg-yellow-500' : 'bg-blue-300'
                     }`}>
-                      {achievement.title}
-                    </p>
-                    <p className="text-blue-600 mt-1 leading-relaxed">{achievement.description}</p>
-                  </div>
-                  {achievement.earned && (
-                    <div className="shrink-0">
-                      <div className="w-8 h-8 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-lg">
-                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                        </svg>
-                      </div>
+                      <Trophy className={`w-4 h-4 sm:w-5 sm:h-5 ${achievement.earned ? 'text-white' : 'text-blue-600'}`} />
                     </div>
-                  )}
-                </motion.div>
-              ))}
-            </div>
+                    <div className="min-w-0 flex-1">
+                      <p className={`font-medium text-sm sm:text-base ${achievement.earned ? 'text-yellow-700' : 'text-blue-600'}`}>
+                        {achievement.title}
+                      </p>
+                      <p className="text-blue-500 text-xs sm:text-sm">{achievement.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
           </motion.div>
 
           {/* Recent Activity - Only show for non-admin users */}
           {!user.isAdmin && (
             <motion.div
-              initial={{ opacity: 0, x: 30 }}
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.4 }}
-              className="bg-white rounded-2xl shadow-xl border border-blue-100 p-6 sm:p-8 backdrop-blur-sm"
+              transition={{ delay: 0.2 }}
+              className="bg-white rounded-xl shadow-lg border border-blue-200 p-4 sm:p-6"
             >
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-2xl font-bold text-blue-900 flex items-center">
-                  <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-green-600 rounded-xl flex items-center justify-center mr-4 shadow-lg">
-                    <TrendingUp className="w-6 h-6 text-white" />
-                  </div>
-                  Recent Submissions
-                </h2>
-              </div>
+              <h2 className="text-lg sm:text-xl font-semibold text-blue-900 mb-4 flex items-center">
+                <TrendingUp className="w-5 h-5 mr-2 text-green-500" />
+                Recent Submissions
+              </h2>
               
               {recentSubmissions.length > 0 ? (
-                <div className="space-y-4">
-                  {recentSubmissions.map((submission, index) => (
-                    <motion.div 
-                      key={submission.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: 0.1 * (index + 1) }}
-                      className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 via-slate-50 to-blue-50 rounded-2xl border-2 border-blue-200 hover:border-blue-300 hover:shadow-lg transition-all duration-300"
-                    >
+                <div className="space-y-3">
+                  {recentSubmissions.map((submission) => (
+                    <div key={submission.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="min-w-0 flex-1">
-                        <p className="text-blue-900 font-bold text-lg truncate">
-                          Problem #{submission.problemId}
-                        </p>
-                        <p className="text-blue-600 mt-1 capitalize font-medium">
-                          {submission.language}
-                        </p>
+                        <p className="text-blue-900 font-medium text-sm sm:text-base truncate">Problem #{submission.problemId}</p>
+                        <p className="text-blue-600 text-xs sm:text-sm">{submission.language}</p>
                       </div>
-                      <div className="text-right shrink-0 ml-4">
-                        <span className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm ${
-                          submission.status.toLowerCase() === 'accepted' 
-                            ? 'text-green-800 bg-gradient-to-r from-green-100 to-green-200 border border-green-300' 
-                            : 'text-red-800 bg-gradient-to-r from-red-100 to-red-200 border border-red-300'
+                      <div className="text-right shrink-0 ml-3">
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${
+                          submission.status.toLowerCase() === 'accepted' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
                         }`}>
                           {submission.status}
                         </span>
-                        <p className="text-blue-500 text-sm mt-2 font-medium">
-                          {new Date(submission.timestamp).toLocaleDateString('en-US', {
-                            month: 'short',
-                            day: 'numeric'
-                          })}
+                        <p className="text-blue-500 text-xs mt-1">
+                          {new Date(submission.timestamp).toLocaleDateString()}
                         </p>
                       </div>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               ) : (
-                <motion.div 
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="text-center py-12"
-                >
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-                    <Target className="h-10 w-10 text-blue-500" />
-                  </div>
-                  <p className="text-blue-900 text-xl font-bold mb-2">No submissions yet</p>
-                  <p className="text-blue-600 text-lg leading-relaxed">Start solving problems to see your progress here</p>
-                </motion.div>
+                <div className="text-center py-8">
+                  <Target className="h-10 w-10 sm:h-12 sm:w-12 text-blue-300 mx-auto mb-3" />
+                  <p className="text-blue-600 text-sm sm:text-base">No submissions yet</p>
+                  <p className="text-blue-500 text-xs sm:text-sm">Start solving problems to see your progress here</p>
+                </div>
               )}
             </motion.div>
           )}

@@ -31,7 +31,7 @@ export const Wallet: React.FC = () => {
 
   if (!user) {
     return <div className="min-h-screen bg-white flex items-center justify-center">
-      <p className="text-gray-600">Please login to access your wallet</p>
+      <p className="text-gray-600 text-sm">Please login to access your wallet</p>
     </div>;
   }
 
@@ -138,48 +138,48 @@ export const Wallet: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-4 sm:py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Wallet</h1>
-          <p className="text-gray-600 text-sm sm:text-base">Manage your funds and track transactions</p>
+    <div className="min-h-screen bg-gray-50 py-3 sm:py-4">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4">
+        <div className="mb-4">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mb-1">Wallet</h1>
+          <p className="text-gray-600 text-xs sm:text-sm">Manage your funds and track transactions</p>
         </div>
 
         {/* Balance Card */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg sm:rounded-xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-lg"
+          className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg p-4 mb-4 shadow-lg"
         >
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-blue-100 text-xs sm:text-sm">Available Balance</p>
-              <p className="text-2xl sm:text-3xl font-bold text-white">${user.walletBalance.toFixed(2)}</p>
+              <p className="text-blue-100 text-xs">Available Balance</p>
+              <p className="text-xl sm:text-2xl font-bold text-white">${user.walletBalance.toFixed(2)}</p>
             </div>
-            <WalletIcon className="h-8 w-8 sm:h-12 sm:w-12 text-blue-200" />
+            <WalletIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-200" />
           </div>
         </motion.div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-lg sm:rounded-xl border border-gray-200 p-4 sm:p-6 shadow-sm"
+            className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-xs sm:text-sm">Total Earned</p>
-                <p className="text-xl sm:text-2xl font-bold text-green-600">
+                <p className="text-gray-600 text-xs">Total Earned</p>
+                <p className="text-lg font-bold text-green-600">
                   {isLoading ? (
-                    <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
                   ) : (
                     `$${totalEarned.toFixed(2)}`
                   )}
                 </p>
               </div>
-              <TrendingUp className="h-6 w-6 sm:h-8 sm:w-8 text-green-600" />
+              <TrendingUp className="h-5 w-5 text-green-600" />
             </div>
           </motion.div>
 
@@ -187,16 +187,16 @@ export const Wallet: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.2 }}
-            className="bg-white rounded-lg sm:rounded-xl border border-gray-200 p-4 sm:p-6 shadow-sm"
+            className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-xs sm:text-sm">Contest Entries</p>
-                <p className="text-xl sm:text-2xl font-bold text-yellow-600">
+                <p className="text-gray-600 text-xs">Contest Entries</p>
+                <p className="text-lg font-bold text-yellow-600">
                   {user.contestsParticipated?.length || 0}
                 </p>
               </div>
-              <DollarSign className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-600" />
+              <DollarSign className="h-5 w-5 text-yellow-600" />
             </div>
           </motion.div>
 
@@ -204,20 +204,20 @@ export const Wallet: React.FC = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.3 }}
-            className="bg-white rounded-lg sm:rounded-xl border border-gray-200 p-4 sm:p-6 shadow-sm"
+            className="bg-white rounded-lg border border-gray-200 p-3 shadow-sm"
           >
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-gray-600 text-xs sm:text-sm">Codecoins</p>
-                <p className="text-xl sm:text-2xl font-bold text-blue-600">{user.codecoins}</p>
+                <p className="text-gray-600 text-xs">Codecoins</p>
+                <p className="text-lg font-bold text-blue-600">{user.codecoins}</p>
               </div>
-              <WalletIcon className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600" />
+              <WalletIcon className="h-5 w-5 text-blue-600" />
             </div>
           </motion.div>
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap sm:flex-nowrap gap-1 mb-6 sm:mb-8 bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
+        <div className="flex flex-wrap sm:flex-nowrap gap-1 mb-4 bg-white rounded-lg p-1 border border-gray-200 shadow-sm">
           {[
             { key: 'overview', label: 'Overview', icon: WalletIcon },
             { key: 'deposit', label: 'Deposit', icon: Plus },
@@ -227,13 +227,13 @@ export const Wallet: React.FC = () => {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key as any)}
-              className={`flex items-center justify-center space-x-1 sm:space-x-2 px-2 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors flex-1 ${
+              className={`flex items-center justify-center space-x-1 px-2 sm:px-3 py-2 text-xs font-medium rounded-lg transition-colors flex-1 ${
                 activeTab === tab.key
                   ? 'bg-blue-600 text-white shadow-sm'
                   : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
               }`}
             >
-              <tab.icon className="h-3 w-3 sm:h-4 sm:w-4" />
+              <tab.icon className="h-3 w-3" />
               <span className="hidden sm:inline">{tab.label}</span>
               <span className="sm:hidden">{tab.label.charAt(0)}</span>
             </button>
@@ -241,47 +241,47 @@ export const Wallet: React.FC = () => {
         </div>
 
         {/* Tab Content */}
-        <div className="bg-white rounded-lg sm:rounded-xl border border-gray-200 p-4 sm:p-6 shadow-sm">
+        <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
           {activeTab === 'overview' && (
-            <div className="space-y-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Wallet Overview</h3>
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h4 className="text-base sm:text-lg font-medium text-gray-900">Quick Actions</h4>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Wallet Overview</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-gray-900">Quick Actions</h4>
                   <div className="space-y-2">
                     <button
                       onClick={() => setActiveTab('deposit')}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm sm:text-base"
+                      className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm"
                     >
-                      <Plus className="h-4 w-4" />
+                      <Plus className="h-3 w-3" />
                       <span>Add Funds</span>
                     </button>
                     <button
                       onClick={() => setActiveTab('withdraw')}
-                      className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                      className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm"
                     >
-                      <Minus className="h-4 w-4" />
+                      <Minus className="h-3 w-3" />
                       <span>Withdraw Funds</span>
                     </button>
                   </div>
                 </div>
-                <div className="space-y-4">
-                  <h4 className="text-base sm:text-lg font-medium text-gray-900">Recent Activity</h4>
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-gray-900">Recent Activity</h4>
                   <div className="space-y-2">
                     {transactions.slice(0, 3).map((transaction) => (
-                      <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <div key={transaction.id} className="flex items-center justify-between p-2 bg-gray-50 rounded-lg border border-gray-100">
                         <div className="flex-1 min-w-0">
-                          <p className="text-gray-900 text-sm truncate">{transaction.description}</p>
+                          <p className="text-gray-900 text-xs truncate">{transaction.description}</p>
                           <p className="text-gray-500 text-xs">{new Date(transaction.timestamp).toLocaleDateString()}</p>
                         </div>
-                        <span className={`font-medium text-sm ml-2 ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                        <span className={`font-medium text-xs ml-2 ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                           {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
                         </span>
                       </div>
                     ))}
                     {transactions.length === 0 && (
-                      <div className="text-center py-4">
-                        <p className="text-gray-500 text-sm">No recent transactions</p>
+                      <div className="text-center py-3">
+                        <p className="text-gray-500 text-xs">No recent transactions</p>
                       </div>
                     )}
                   </div>
@@ -291,17 +291,17 @@ export const Wallet: React.FC = () => {
           )}
 
           {activeTab === 'deposit' && (
-            <div className="space-y-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Deposit Funds</h3>
-              <div className="text-center py-6 sm:py-8">
-                <CreditCard className="h-12 w-12 sm:h-16 sm:w-16 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-900 text-base sm:text-lg mb-4 font-medium">Add money to your wallet</p>
-                <p className="text-gray-600 mb-6 text-sm sm:text-base px-4">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Deposit Funds</h3>
+              <div className="text-center py-4">
+                <CreditCard className="h-10 w-10 text-gray-400 mx-auto mb-3" />
+                <p className="text-gray-900 text-sm mb-3 font-medium">Add money to your wallet</p>
+                <p className="text-gray-600 mb-4 text-xs px-4">
                   Use UPI, Credit/Debit Cards, or Net Banking to add funds securely
                 </p>
                 <button
                   onClick={handleDeposit}
-                  className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm sm:text-base"
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors font-medium text-sm"
                 >
                   Add Money
                 </button>
@@ -310,26 +310,26 @@ export const Wallet: React.FC = () => {
           )}
 
           {activeTab === 'withdraw' && (
-            <div className="space-y-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Withdraw Funds</h3>
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Withdraw Funds</h3>
               <div className="max-w-md mx-auto sm:mx-0">
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">
                       Amount (USD)
                     </label>
                     <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                      <DollarSign className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <input
                         type="number"
                         value={amount}
                         onChange={(e) => setAmount(e.target.value)}
                         placeholder="0.00"
                         max={user.walletBalance}
-                        className="pl-10 w-full px-3 py-3 border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        className="pl-8 w-full px-3 py-2 border border-gray-300 bg-white text-gray-900 placeholder-gray-400 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
                       />
                     </div>
-                    <p className="text-gray-600 text-sm mt-1">
+                    <p className="text-gray-600 text-xs mt-1">
                       Available: ${user.walletBalance.toFixed(2)}
                     </p>
                   </div>
@@ -337,9 +337,9 @@ export const Wallet: React.FC = () => {
                   <button
                     onClick={handleWithdraw}
                     disabled={isProcessing || !amount || parseFloat(amount) > user.walletBalance}
-                    className="w-full flex items-center justify-center space-x-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+                    className="w-full flex items-center justify-center space-x-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                   >
-                    <Minus className="h-4 w-4" />
+                    <Minus className="h-3 w-3" />
                     <span>{isProcessing ? 'Processing...' : 'Withdraw Funds'}</span>
                   </button>
                 </div>
@@ -348,40 +348,40 @@ export const Wallet: React.FC = () => {
           )}
 
           {activeTab === 'history' && (
-            <div className="space-y-6">
-              <h3 className="text-lg sm:text-xl font-semibold text-gray-900">Transaction History</h3>
-              <div className="space-y-3">
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900">Transaction History</h3>
+              <div className="space-y-2">
                 {transactions.map((transaction) => (
-                  <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-100">
-                    <div className="flex items-center space-x-3 flex-1 min-w-0">
-                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                  <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-100">
+                    <div className="flex items-center space-x-2 flex-1 min-w-0">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0 ${
                         transaction.type === 'deposit' ? 'bg-green-100 text-green-600' :
                         transaction.type === 'withdrawal' ? 'bg-blue-100 text-blue-600' :
                         transaction.type === 'contest_prize' ? 'bg-yellow-100 text-yellow-600' :
                         'bg-red-100 text-red-600'
                       }`}>
-                        {transaction.type === 'deposit' && <Plus className="h-3 w-3 sm:h-4 sm:w-4" />}
-                        {transaction.type === 'withdrawal' && <Minus className="h-3 w-3 sm:h-4 sm:w-4" />}
-                        {transaction.type === 'contest_prize' && <DollarSign className="h-3 w-3 sm:h-4 sm:w-4" />}
-                        {transaction.type === 'contest_entry' && <Minus className="h-3 w-3 sm:h-4 sm:w-4" />}
+                        {transaction.type === 'deposit' && <Plus className="h-3 w-3" />}
+                        {transaction.type === 'withdrawal' && <Minus className="h-3 w-3" />}
+                        {transaction.type === 'contest_prize' && <DollarSign className="h-3 w-3" />}
+                        {transaction.type === 'contest_entry' && <Minus className="h-3 w-3" />}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-gray-900 font-medium text-sm sm:text-base truncate">{transaction.description}</p>
-                        <p className="text-gray-500 text-xs sm:text-sm">{new Date(transaction.timestamp).toLocaleDateString()}</p>
+                        <p className="text-gray-900 font-medium text-xs truncate">{transaction.description}</p>
+                        <p className="text-gray-500 text-xs">{new Date(transaction.timestamp).toLocaleDateString()}</p>
                       </div>
                     </div>
-                    <div className="text-right flex-shrink-0 ml-4">
-                      <span className={`font-medium text-sm sm:text-base ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                    <div className="text-right flex-shrink-0 ml-3">
+                      <span className={`font-medium text-xs ${transaction.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>
                         {transaction.amount > 0 ? '+' : ''}${Math.abs(transaction.amount).toFixed(2)}
                       </span>
-                      <p className="text-gray-500 text-xs sm:text-sm capitalize">{transaction.status}</p>
+                      <p className="text-gray-500 text-xs capitalize">{transaction.status}</p>
                     </div>
                   </div>
                 ))}
                 {transactions.length === 0 && (
-                  <div className="text-center py-8">
-                    <History className="h-10 w-10 sm:h-12 sm:w-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-500">No transactions yet</p>
+                  <div className="text-center py-6">
+                    <History className="h-8 w-8 text-gray-400 mx-auto mb-2" />
+                    <p className="text-gray-500 text-sm">No transactions yet</p>
                   </div>
                 )}
               </div>
@@ -391,12 +391,12 @@ export const Wallet: React.FC = () => {
 
         {/* Status Messages */}
         {error && (
-          <div className="fixed top-4 right-4 bg-red-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 max-w-xs text-sm">
+          <div className="fixed top-4 right-4 bg-red-600 text-white px-3 py-2 rounded-lg shadow-lg z-50 max-w-xs text-xs">
             {error}
           </div>
         )}
         {success && (
-          <div className="fixed top-4 right-4 bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg z-50 max-w-xs text-sm">
+          <div className="fixed top-4 right-4 bg-green-600 text-white px-3 py-2 rounded-lg shadow-lg z-50 max-w-xs text-xs">
             {success}
           </div>
         )}
