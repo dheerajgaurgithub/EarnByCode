@@ -86,26 +86,53 @@ const handleOAuthSuccess = (req, res, user, redirectPath = '/') => {
 
 router.get('/google/callback', 
   (req, res, next) => {
-    passport.authenticate('google', { 
-      session: false, 
-      failureRedirect: '/login',
-      failureMessage: true 
-    }, (err, user, info) => {
-      if (err) return handleOAuthError(req, res, err);
-      if (!user) {
-        const error = new Error(info?.message || 'Authentication failed');
-        return handleOAuthError(req, res, error);
+    try {
+      console.log('Google OAuth callback received. Query:', req.query);
+      
+      // Parse the state parameter
+      let redirectTo = '/';
+      if (req.query.state) {
+        try {
+          const state = JSON.parse(Buffer.from(req.query.state, 'base64').toString());
+          if (state.redirectTo) {
+            redirectTo = state.redirectTo;
+            console.log('Extracted redirectTo from state:', redirectTo);
+          }
+        } catch (e) {
+          console.error('Error parsing state:', e);
+        }
       }
-      req.user = user;
-      next();
-    })(req, res, next);
+      
+      passport.authenticate('google', { 
+        session: false,
+        failureRedirect: '/login',
+        failureMessage: true,
+        state: req.query.state // Pass through the state
+      }, (err, user, info) => {
+        if (err) {
+          console.error('Passport auth error:', err);
+          return handleOAuthError(req, res, err);
+        }
+        if (!user) {
+          const error = new Error(info?.message || 'Authentication failed');
+          console.error('Authentication failed:', info);
+          return handleOAuthError(req, res, error);
+        }
+        req.user = user;
+        req.redirectTo = redirectTo;
+        next();
+      })(req, res, next);
+    } catch (error) {
+      console.error('Error in Google OAuth callback:', error);
+      return handleOAuthError(req, res, error);
+    }
   },
   async (req, res) => {
     try {
-      const redirectPath = req.query.state || '/';
-      return handleOAuthSuccess(req, res, req.user, redirectPath);
+      console.log('OAuth successful for user:', req.user.email);
+      return handleOAuthSuccess(req, res, req.user, req.redirectTo || '/');
     } catch (error) {
-      console.error('Google OAuth callback error:', error);
+      console.error('Error in OAuth success handler:', error);
       return handleOAuthError(req, res, error);
     }
   }
