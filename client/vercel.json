@@ -1,83 +1,100 @@
 {
-    "routes": [
-      { "src": "/api/(.*)", "dest": "https://algobucks.onrender.com/api/$1" },
-      { "src": "/_next/static/(.*)", "dest": "/_next/static/$1" },
-      { "src": "/static/(.*)", "dest": "/static/$1" },
-      { "src": "/favicon.ico", "dest": "/favicon.ico" },
-      { "src": "/manifest.json", "dest": "/manifest.json" },
-      { "src": "/about", "dest": "/index.html" },
-      { "src": "/company", "dest": "/index.html" },
-      { "src": "/careers", "dest": "/index.html" },
-      { "src": "/press", "dest": "/index.html" },
-      { "src": "/contact", "dest": "/index.html" },
-      { "src": "/blog", "dest": "/index.html" },
-      { "src": "/community", "dest": "/index.html" },
-      { "src": "/help", "dest": "/index.html" },
-      { "src": "/privacy", "dest": "/index.html" },
-      { "src": "/terms", "dest": "/index.html" },
-      { "src": "/cookies", "dest": "/index.html" },
-      { "src": "/auth/callback", "dest": "/index.html" },
-      { "src": "/test-connection", "dest": "/index.html" },
-      { "src": "/login", "dest": "/index.html" },
-      { "src": "/register", "dest": "/index.html" },
-      { "src": "/verify-email", "dest": "/index.html" },
-      { "src": "/problems", "dest": "/index.html" },
-      { "src": "/problems/(.*)", "dest": "/index.html" },
-      { "src": "/contests", "dest": "/index.html" },
-      { "src": "/contests/(.*)", "dest": "/index.html" },
-      { "src": "/wallet", "dest": "/index.html" },
-      { "src": "/profile", "dest": "/index.html" },
-      { "src": "/admin", "dest": "/index.html" },
-      { "src": "/leaderboard", "dest": "/index.html" },
-      { "src": "/discuss", "dest": "/index.html" },
-      { "src": "/submissions", "dest": "/index.html" },
-      { "src": "/settings", "dest": "/index.html" },
-      { "src": "/(.*)", "dest": "/index.html" }
-    ],
-    "headers": [
-      {
-        "source": "/.*",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=0, must-revalidate"
-          },
-          {
-            "key": "X-Frame-Options",
-            "value": "SAMEORIGIN"
-          },
-          {
-            "key": "X-Content-Type-Options",
-            "value": "nosniff"
-          },
-          {
-            "key": "Referrer-Policy",
-            "value": "strict-origin-when-cross-origin"
-          },
-          {
-            "key": "Permissions-Policy",
-            "value": "camera=(), microphone=(), geolocation=()"
-          }
-        ]
-      },
-      {
-        "source": "/_next/static/(.*)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
-      },
-      {
-        "source": "/static/(.*)",
-        "headers": [
-          {
-            "key": "Cache-Control",
-            "value": "public, max-age=31536000, immutable"
-          }
-        ]
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
       }
-    ]
+    }
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "https://algobucks.onrender.com/api/$1" },
+    { "src": "/_next/static/(.*)", "dest": "/_next/static/$1" },
+    { "src": "/static/(.*)", "dest": "/static/$1" },
+    { "src": "/favicon.ico", "dest": "/favicon.ico" },
+    { "src": "/manifest.json", "dest": "/manifest.json" },
+    { "src": "/about", "dest": "/index.html" },
+    { "src": "/company", "dest": "/index.html" },
+    { "src": "/careers", "dest": "/index.html" },
+    { "src": "/press", "dest": "/index.html" },
+    { "src": "/contact", "dest": "/index.html" },
+    { "src": "/blog", "dest": "/index.html" },
+    { "src": "/community", "dest": "/index.html" },
+    { "src": "/help", "dest": "/index.html" },
+    { "src": "/privacy", "dest": "/index.html" },
+    { "src": "/terms", "dest": "/index.html" },
+    { "src": "/cookies", "dest": "/index.html" },
+    { "src": "/auth/callback", "dest": "/index.html" },
+    { "src": "/test-connection", "dest": "/index.html" },
+    { "src": "/login", "dest": "/index.html" },
+    { "src": "/register", "dest": "/index.html" },
+    { "src": "/verify-email", "dest": "/index.html" },
+    { "src": "/problems", "dest": "/index.html" },
+    { "src": "/problems/(.*)", "dest": "/index.html" },
+    { "src": "/contests", "dest": "/index.html" },
+    { "src": "/contests/(.*)", "dest": "/index.html" },
+    { "src": "/wallet", "dest": "/index.html" },
+    { "src": "/profile", "dest": "/index.html" },
+    { "src": "/admin", "dest": "/index.html" },
+    { "src": "/leaderboard", "dest": "/index.html" },
+    { "src": "/discuss", "dest": "/index.html" },
+    { "src": "/submissions", "dest": "/index.html" },
+    { "src": "/settings", "dest": "/index.html" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ],
+  "headers": [
+    {
+      "source": "/.*",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "camera=(), microphone=(), geolocation=()"
+        }
+      ]
+    },
+    {
+      "source": "/_next/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    },
+    {
+      "source": "/static/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ],
+  "env": {
+    "VITE_API_URL": "https://algobucks.onrender.com/api"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
   }
-  
+}

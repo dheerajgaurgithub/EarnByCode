@@ -9,6 +9,20 @@ export default defineConfig(({ mode }) => {
   const isProduction = mode === 'production';
   
   return {
+    base: isProduction ? '/' : '/',
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      sourcemap: !isProduction,
+      minify: isProduction ? 'esbuild' : false,
+      rollupOptions: {
+        output: {
+          manualChunks: {
+            vendor: ['react', 'react-dom', 'react-router-dom'],
+          },
+        },
+      },
+    },
     plugins: [react()],
     resolve: {
       alias: {
@@ -27,6 +41,7 @@ export default defineConfig(({ mode }) => {
     server: !isProduction ? {
       port: 5173,
       open: true,
+      host: true,
       proxy: {
         '/api': {
           target: env.VITE_API_URL || 'http://localhost:5000',
