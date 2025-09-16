@@ -48,6 +48,7 @@ const allowedOrigins = [
   'https://algobucks.vercel.app/',
   'http://localhost:5173',
   'http://localhost:5174',
+  'https://algobucksin.vercel.app/',
   'https://www.algobucks.vercel.app',
   config.FRONTEND_URL
 ].filter(Boolean);
