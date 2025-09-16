@@ -222,12 +222,76 @@ app.use((err, req, res, next) => {
 // Serve static files from the client build directory
 const clientBuildPath = path.join(__dirname, '../../client/dist');
 if (fs.existsSync(clientBuildPath)) {
+  // List of all client-side routes from App.tsx
+  const clientRoutes = [
+    '/',
+    '/about',
+    '/company',
+    '/careers',
+    '/press',
+    '/contact',
+    '/blog',
+    '/community',
+    '/help',
+    '/privacy',
+    '/terms',
+    '/cookies',
+    '/auth/callback',
+    '/test-connection',
+    '/login',
+    '/register',
+    '/verify-email',
+    '/problems',
+    '/problems/:id',
+    '/contests',
+    '/contests/:contestId',
+    '/wallet',
+    '/profile',
+    '/admin',
+    '/leaderboard',
+    '/discuss',
+    '/submissions',
+    '/settings'
+  ];
+
   // Serve static files from the client build
-  app.use(express.static(clientBuildPath));
+  app.use(express.static(clientBuildPath, {
+    // Don't redirect to index.html for API routes
+    index: false,
+    // Enable etag for better caching
+    etag: true,
+    // Enable last-modified header
+    lastModified: true,
+    // Set max age for static assets
+    maxAge: '1y'
+  }));
   
-  // Handle client-side routing - return all requests to the app
+  // Handle all client-side routes
+  clientRoutes.forEach(route => {
+    app.get(route, (req, res) => {
+      res.sendFile(path.join(clientBuildPath, 'index.html'), (err) => {
+        if (err) {
+          console.error(`Error serving route ${route}:`, err);
+          res.status(500).send('Error loading the application');
+        }
+      });
+    });
+  });
+  
+  // Fallback for any other GET request that hasn't been handled
   app.get('*', (req, res) => {
-    res.sendFile(path.join(clientBuildPath, 'index.html'));
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ message: 'API endpoint not found' });
+    }
+    
+    // For all other routes, serve the index.html
+    res.sendFile(path.join(clientBuildPath, 'index.html'), (err) => {
+      if (err) {
+        console.error('Error sending file:', err);
+        res.status(500).send('Error loading the application');
+      }
+    });
   });
 } else {
   // 404 handler for API routes only if client build doesn't exist
