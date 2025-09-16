@@ -45,19 +45,26 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 app.use(helmet());
 // Configure CORS
 const allowedOrigins = [
-  'https://algobucks.vercel.app/',
+  'https://algobucks.vercel.app',
   'http://localhost:5173',
   'http://localhost:5174',
-  'https://algobucksin.vercel.app/',
+  'https://algobucksin.vercel.app',
   'https://www.algobucks.vercel.app',
   config.FRONTEND_URL
 ].filter(Boolean);
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    
+    // Remove trailing slash for comparison
+    const originWithoutSlash = origin.endsWith('/') ? origin.slice(0, -1) : origin;
+    
+    if (allowedOrigins.includes(origin) || allowedOrigins.includes(originWithoutSlash)) {
       callback(null, true);
     } else {
+      console.error('CORS Error - Blocked Origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
