@@ -47,7 +47,8 @@ app.use(helmet());
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
-  'https://algobucks-tau.vercel.app/',
+  'https://algobucks-tau.vercel.app',
+  'https://www.algobucks-tau.vercel.app',
   config.FRONTEND_URL
 ].filter(Boolean);
 
