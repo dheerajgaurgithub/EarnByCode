@@ -39,49 +39,54 @@ const handleOAuthError = (req, res, error) => {
 
 // Handle OAuth success with token and redirect
 const handleOAuthSuccess = (req, res, user, redirectPath = '/') => {
-  // Generate JWT token
-  const token = jwt.sign(
-    { 
-      userId: user._id,
-      email: user.email,
-      username: user.username
-    },
-    process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRE || '7d' }
-  );
-
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-  const redirectUrl = `${frontendUrl}${redirectPath}`;
-
-  // Set HTTP-only cookie
-  res.cookie('token', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    path: '/',
-    domain: process.env.NODE_ENV === 'production' ? '.yourdomain.com' : undefined
-  });
-
-  // For API clients, return JSON with token
-  if (req.accepts('json')) {
-    return res.json({ 
-      success: true, 
-      token,
-      user: {
-        id: user._id,
+  try {
+    console.log('Handling OAuth success for user:', user.email);
+    
+    // Generate JWT token
+    const token = jwt.sign(
+      { 
+        userId: user._id,
         email: user.email,
-        username: user.username,
-        fullName: user.fullName,
-        avatar: user.avatar,
-        isEmailVerified: user.isEmailVerified
+        username: user.username
       },
-      redirectUrl
-    });
-  }
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    );
 
-  // For browser redirects
-  return res.redirect(redirectUrl);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    
+    // Create URL with token and redirect path
+    const redirectUrl = new URL(redirectPath, frontendUrl);
+    
+    // Add token to URL hash for client-side retrieval
+    const urlWithToken = new URL(redirectUrl);
+    urlWithToken.hash = `#token=${token}&user=${encodeURIComponent(JSON.stringify({
+      id: user._id,
+      email: user.email,
+      username: user.username,
+      fullName: user.fullName,
+      avatar: user.avatar,
+      isEmailVerified: user.isEmailVerified
+    }))}`;
+
+    // Set HTTP-only cookie for API requests
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      path: '/',
+      domain: process.env.NODE_ENV === 'production' ? new URL(frontendUrl).hostname : undefined
+    });
+
+    console.log('Redirecting to:', urlWithToken.toString());
+    
+    // Redirect to frontend with token in URL
+    return res.redirect(urlWithToken.toString());
+  } catch (error) {
+    console.error('Error in handleOAuthSuccess:', error);
+    throw error;
+  }
 };
 
 router.get('/google/callback', 
