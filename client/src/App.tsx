@@ -3,14 +3,14 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { WalletProvider } from './context/WalletContext';
 // Import types
 import { Header } from './components/Layout/Header';
-import Footer from './components/Layout/Footer';
 import Home from './pages/Home';
 import { Problems } from './pages/Problems';
 import ProblemDetail from './pages/ProblemDetail';
 import { Contests } from './pages/Contests';
-import { Wallet } from './pages/Wallet';
+import Wallet from './app/wallet/page';
 import { Profile } from './pages/Profile';
 import AdminPanel from './pages/Admin/AdminPanel';
 import { Leaderboard } from './pages/Leaderboard';
@@ -101,29 +101,30 @@ function App() {
   return (
     <AuthProvider>
       <ThemeProvider>
-        <div className="min-h-screen flex flex-col bg-gray-900 text-white">
-          <Toaster
-            position="bottom-right"
-            toastOptions={{
-              duration: 4000,
-              style: {
-                background: '#1F2937',
-                color: '#fff',
-                padding: '12px 16px',
-                borderRadius: '8px',
-                boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
-                maxWidth: '400px',
-                margin: '8px',
-              },
-              success: { style: { background: '#10B981' } },
-              error: { style: { background: '#EF4444' } },
-              loading: { style: { background: '#3B82F6' } },
-            }}
-          />
-          <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark transition-colors duration-200">
-            <Header />
-            <main className="flex-grow">
-              <Routes>
+        <WalletProvider>
+          <div className="min-h-screen flex flex-col bg-gray-900 text-white">
+            <Toaster
+              position="bottom-right"
+              toastOptions={{
+                duration: 4000,
+                style: {
+                  background: '#1F2937',
+                  color: '#fff',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+                  maxWidth: '400px',
+                  margin: '8px',
+                },
+                success: { style: { background: '#10B981' } },
+                error: { style: { background: '#EF4444' } },
+                loading: { style: { background: '#3B82F6' } },
+              }}
+            />
+            <div className="flex flex-col min-h-screen bg-background-light dark:bg-background-dark text-text-primary-light dark:text-text-primary-dark transition-colors duration-200">
+              <Header />
+              <div className="flex-grow">
+                <Routes>
                 {/* Auth routes */}
                 <Route
                   path="/login"
@@ -243,11 +244,11 @@ function App() {
 
                 {/* Catch-all */}
                 <Route path="*" element={<Navigate to="/" replace />} />
-              </Routes>
-            </main>
-            <Footer />
+                </Routes>
+              </div>
+            </div>
           </div>
-        </div>
+        </WalletProvider>
       </ThemeProvider>
     </AuthProvider>
   );

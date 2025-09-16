@@ -6,7 +6,7 @@ import {
   LogOut, 
   Settings, 
   Award, 
-  Wallet, 
+  Wallet as WalletIcon, 
   Trophy, 
   Shield, 
   Menu, 
@@ -14,8 +14,7 @@ import {
   Code2,
   MessageSquare,
   Users,
-  ChevronDown,
-  ChevronUp
+  ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
@@ -53,6 +52,13 @@ type NavItem = {
 
 // Navigation items with blue theme gradients
 const NAV_ITEMS: NavItem[] = [
+  { 
+    name: 'Wallet', 
+    path: '/wallet', 
+    icon: WalletIcon, 
+    gradient: 'from-blue-400 to-blue-600',
+    hoverGradient: 'from-blue-400 to-blue-600'
+  },
   { 
     name: 'Problems', 
     path: '/problems', 
@@ -392,7 +398,7 @@ export const Header: React.FC = () => {
                             <div className="text-slate-600 text-xs">Coins</div>
                           </div>
                           <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 rounded-md p-1.5 border border-sky-500/20">
-                            <Wallet className="w-3 h-3 text-sky-500 mb-0.5" />
+                            <WalletIcon className="w-3 h-3 text-sky-500 mb-0.5" />
                             <div className="text-sky-700 font-semibold text-xs">${(userInfo.walletBalance || 0).toFixed(0)}</div>
                             <div className="text-slate-600 text-xs">Wallet</div>
                           </div>
@@ -422,7 +428,7 @@ export const Header: React.FC = () => {
                           role="menuitem"
                           onClick={() => setShowDropdown(false)}
                         >
-                          <Wallet className="mr-2 h-3 w-3 text-slate-500 group-hover:text-sky-500 transition-colors" />
+                          <WalletIcon className="mr-2 h-3 w-3 text-slate-500 group-hover:text-sky-500 transition-colors" />
                           <span>Wallet</span>
                           <span className="ml-auto text-sky-600 text-xs font-semibold">${(userInfo.walletBalance || 0).toFixed(2)}</span>
                         </Link>
@@ -597,7 +603,7 @@ export const Header: React.FC = () => {
                         <div className="text-slate-600 text-xs">Coins</div>
                       </div>
                       <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 rounded-lg p-2 border border-sky-500/20 text-center">
-                        <Wallet className="w-4 h-4 text-sky-500 mx-auto mb-1" />
+                        <WalletIcon className="w-4 h-4 text-sky-500 mx-auto mb-1" />
                         <div className="text-sky-700 font-bold text-xs">${(userInfo.walletBalance || 0).toFixed(0)}</div>
                         <div className="text-slate-600 text-xs">Wallet</div>
                       </div>

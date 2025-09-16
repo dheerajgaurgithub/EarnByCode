@@ -31,6 +31,7 @@ import paymentRoutes from './routes/payments.js';
 import discussionRoutes from './routes/discussions.js';
 import contestProblemRoutes from './routes/contestProblems.js';
 import oauthRoutes from './routes/oauth.js';
+import walletRoutes from './routes/wallet.js';
 
 // Initialize express app
 const app = express();
@@ -44,8 +45,9 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 app.use(helmet());
 // Configure CORS
 const allowedOrigins = [
-  'https://algobucks.vercel.app',
+  'https://algobucks.vercel.app/',
   'http://localhost:5173',
+  'http://localhost:5174',
   'https://www.algobucks.vercel.app',
   config.FRONTEND_URL
 ].filter(Boolean);
@@ -173,6 +175,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/contests', contestRoutes);
 app.use('/api/submissions', submissionRoutes);
+app.use('/api/wallet', walletRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/jobs', jobRoutes);

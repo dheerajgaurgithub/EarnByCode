@@ -106,7 +106,27 @@ const userSchema = new mongoose.Schema({
   },
   walletBalance: {
     type: Number,
-    default: 0
+    default: 0,
+    min: 0,
+    set: v => parseFloat(v.toFixed(2))
+  },
+  walletCurrency: {
+    type: String,
+    default: 'USD',
+    enum: ['USD', 'EUR', 'GBP', 'INR']
+  },
+  walletStatus: {
+    type: String,
+    enum: ['active', 'suspended', 'restricted'],
+    default: 'active'
+  },
+  walletTransactions: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Transaction'
+  }],
+  walletLastActive: {
+    type: Date,
+    default: Date.now
   },
   solvedProblems: [{
     type: mongoose.Schema.Types.ObjectId,
@@ -164,11 +184,238 @@ userSchema.methods.comparePassword = async function(candidatePassword) {
   return bcrypt.compare(candidatePassword, this.password);
 };
 
-// Remove password from JSON output
+// Remove sensitive data from JSON output
 userSchema.methods.toJSON = function() {
   const user = this.toObject();
   delete user.password;
+  delete user.resetPasswordToken;
+  delete user.resetPasswordExpire;
+  delete user.verificationToken;
+  delete user.verificationTokenExpires;
+  delete user.googleId;
+  delete user.googleProfile;
   return user;
+};
+
+// Check if wallet is active
+userSchema.methods.isWalletActive = function() {
+  return this.walletStatus === 'active';
+};
+
+// Check if user has sufficient balance
+userSchema.methods.hasSufficientBalance = function(amount) {
+  return this.walletBalance >= amount;
+};
+
+// Add funds to wallet
+userSchema.methods.addFunds = async function(amount, description, metadata = {}) {
+  if (amount <= 0) {
+    throw new Error('Amount must be greater than zero');
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    // Update user balance
+    this.walletBalance = parseFloat((this.walletBalance + amount).toFixed(2));
+    this.walletLastActive = new Date();
+    await this.save({ session });
+
+    // Create transaction record
+    const Transaction = mongoose.model('Transaction');
+    const transaction = new Transaction({
+      user: this._id,
+      type: 'deposit',
+      amount: amount,
+      currency: this.walletCurrency,
+      description: description || `Wallet deposit of ${this.walletCurrency} ${amount.toFixed(2)}`,
+      status: 'completed',
+      metadata: {
+        ...metadata,
+        previousBalance: this.walletBalance - amount,
+        newBalance: this.walletBalance
+      }
+    });
+
+    await transaction.save({ session });
+    
+    // Add transaction reference to user
+    this.walletTransactions.push(transaction._id);
+    await this.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      success: true,
+      newBalance: this.walletBalance,
+      transactionId: transaction._id
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
+// Deduct funds from wallet
+userSchema.methods.deductFunds = async function(amount, description, metadata = {}) {
+  if (amount <= 0) {
+    throw new Error('Amount must be greater than zero');
+  }
+
+  if (!this.hasSufficientBalance(amount)) {
+    throw new Error('Insufficient funds');
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    // Update user balance
+    this.walletBalance = parseFloat((this.walletBalance - amount).toFixed(2));
+    this.walletLastActive = new Date();
+    await this.save({ session });
+
+    // Create transaction record
+    const Transaction = mongoose.model('Transaction');
+    const transaction = new Transaction({
+      user: this._id,
+      type: 'withdrawal',
+      amount: -amount, // Store as negative for withdrawals
+      currency: this.walletCurrency,
+      description: description || `Wallet withdrawal of ${this.walletCurrency} ${amount.toFixed(2)}`,
+      status: 'completed',
+      metadata: {
+        ...metadata,
+        previousBalance: this.walletBalance + amount,
+        newBalance: this.walletBalance
+      }
+    });
+
+    await transaction.save({ session });
+    
+    // Add transaction reference to user
+    this.walletTransactions.push(transaction._id);
+    await this.save({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      success: true,
+      newBalance: this.walletBalance,
+      transactionId: transaction._id
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
+};
+
+// Transfer funds to another user
+userSchema.methods.transferFunds = async function(toUserId, amount, description, metadata = {}) {
+  if (amount <= 0) {
+    throw new Error('Amount must be greater than zero');
+  }
+
+  if (!this.hasSufficientBalance(amount)) {
+    throw new Error('Insufficient funds');
+  }
+
+  if (this._id.equals(toUserId)) {
+    throw new Error('Cannot transfer to yourself');
+  }
+
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  
+  try {
+    // Find recipient user
+    const recipient = await User.findById(toUserId).session(session);
+    if (!recipient) {
+      throw new Error('Recipient not found');
+    }
+
+    // Deduct from sender
+    this.walletBalance = parseFloat((this.walletBalance - amount).toFixed(2));
+    this.walletLastActive = new Date();
+    await this.save({ session });
+
+    // Add to recipient
+    recipient.walletBalance = parseFloat((recipient.walletBalance + amount).toFixed(2));
+    recipient.walletLastActive = new Date();
+    await recipient.save({ session });
+
+    // Create transactions for both users
+    const Transaction = mongoose.model('Transaction');
+    
+    // Sender's transaction
+    const senderTransaction = new Transaction({
+      user: this._id,
+      type: 'transfer',
+      amount: -amount,
+      currency: this.walletCurrency,
+      description: description || `Transfer to ${recipient.username}`,
+      status: 'completed',
+      referenceId: `TFR-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+      metadata: {
+        ...metadata,
+        toUserId: recipient._id,
+        toUsername: recipient.username,
+        previousBalance: this.walletBalance + amount,
+        newBalance: this.walletBalance
+      }
+    });
+
+    // Recipient's transaction
+    const recipientTransaction = new Transaction({
+      user: recipient._id,
+      type: 'transfer',
+      amount: amount,
+      currency: recipient.walletCurrency,
+      description: description || `Transfer from ${this.username}`,
+      status: 'completed',
+      referenceId: senderTransaction.referenceId, // Same reference ID for both transactions
+      metadata: {
+        ...metadata,
+        fromUserId: this._id,
+        fromUsername: this.username,
+        previousBalance: recipient.walletBalance - amount,
+        newBalance: recipient.walletBalance
+      }
+    });
+
+    await Promise.all([
+      senderTransaction.save({ session }),
+      recipientTransaction.save({ session })
+    ]);
+    
+    // Update transaction references
+    this.walletTransactions.push(senderTransaction._id);
+    recipient.walletTransactions.push(recipientTransaction._id);
+    
+    await Promise.all([
+      this.save({ session }),
+      recipient.save({ session })
+    ]);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    return {
+      success: true,
+      newBalance: this.walletBalance,
+      transactionId: senderTransaction._id,
+      referenceId: senderTransaction.referenceId
+    };
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
+  }
 };
 
 const User = mongoose.model('User', userSchema);
