@@ -52,34 +52,29 @@ const allowedOrigins = [
   config.FRONTEND_URL
 ].filter(Boolean);
 
+// Temporarily allow all origins for debugging
 const corsOptions = {
   origin: function (origin, callback) {
     console.log('CORS Request Origin:', origin);
-    console.log('Allowed Origins:', allowedOrigins);
+    // Temporarily allow all origins
+    callback(null, true);
     
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      console.log('No origin - allowing request');
-      return callback(null, true);
-    }
-    
-    // Remove trailing slash for comparison
-    const originWithoutSlash = origin.endsWith('/') ? origin.slice(0, -1) : origin;
-    
-    if (allowedOrigins.includes(origin) || allowedOrigins.includes(originWithoutSlash)) {
-      console.log('Origin allowed:', origin);
+    // For production, use this instead:
+    /*
+    if (!origin || allowedOrigins.includes(origin) || 
+        allowedOrigins.some(allowed => origin.startsWith(allowed.replace('https://', 'https?://').replace('http://', 'https?://').replace('*', '.*')))) {
       callback(null, true);
     } else {
       console.error('CORS Error - Blocked Origin:', origin);
       console.error('Allowed Origins:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
+    */
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'x-application'],
-  exposedHeaders: ['Content-Range', 'X-Content-Range'],
-  maxAge: 600 // 10 minutes
+  allowedHeaders: ['*'],
+  exposedHeaders: ['*']
 };
 
 app.use(cors(corsOptions));
