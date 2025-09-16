@@ -55,16 +55,24 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: function (origin, callback) {
+    console.log('CORS Request Origin:', origin);
+    console.log('Allowed Origins:', allowedOrigins);
+    
     // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
+    if (!origin) {
+      console.log('No origin - allowing request');
+      return callback(null, true);
+    }
     
     // Remove trailing slash for comparison
     const originWithoutSlash = origin.endsWith('/') ? origin.slice(0, -1) : origin;
     
     if (allowedOrigins.includes(origin) || allowedOrigins.includes(originWithoutSlash)) {
+      console.log('Origin allowed:', origin);
       callback(null, true);
     } else {
       console.error('CORS Error - Blocked Origin:', origin);
+      console.error('Allowed Origins:', allowedOrigins);
       callback(new Error('Not allowed by CORS'));
     }
   },
