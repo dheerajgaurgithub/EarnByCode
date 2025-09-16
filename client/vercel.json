@@ -9,6 +9,8 @@
       }
     }
   ],
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
   "routes": [
     { "src": "/api/(.*)", "dest": "https://algobucks.onrender.com/api/$1" },
     { "src": "/_next/static/(.*)", "dest": "/_next/static/$1" },
@@ -91,10 +93,5 @@
   ],
   "env": {
     "VITE_API_URL": "https://algobucks.onrender.com/api"
-  },
-  "build": {
-    "env": {
-      "NODE_ENV": "production"
-    }
   }
 }
