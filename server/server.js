@@ -45,11 +45,9 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 app.use(helmet());
 // Configure CORS
 const allowedOrigins = [
-  'https://algobucks.vercel.app',
   'http://localhost:5173',
   'http://localhost:5174',
-  'https://algobucksin.vercel.app',
-  'https://www.algobucks.vercel.app',
+  'https://algobucks-tau.vercel.app/',
   config.FRONTEND_URL
 ].filter(Boolean);
 
