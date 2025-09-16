@@ -8,12 +8,25 @@ const router = express.Router();
 
 // Google OAuth routes
 router.get('/google', (req, res, next) => {
-  const state = req.query.redirectTo || '/';
-  const authenticator = passport.authenticate('google', {
-    scope: ['profile', 'email'],
-    state: state // Pass the redirect path as state
-  });
-  authenticator(req, res, next);
+  try {
+    const { redirectTo = '/' } = req.query;
+    console.log('Initiating Google OAuth flow, redirectTo:', redirectTo);
+    
+    // Encode the redirectTo in state
+    const state = Buffer.from(JSON.stringify({ redirectTo })).toString('base64');
+    
+    const authenticator = passport.authenticate('google', {
+      scope: ['profile', 'email'],
+      state,
+      prompt: 'select_account',
+      accessType: 'offline'
+    });
+    
+    authenticator(req, res, next);
+  } catch (error) {
+    console.error('Error in Google OAuth init:', error);
+    next(error);
+  }
 });
 
 // Custom error handler for OAuth failures

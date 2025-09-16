@@ -52,29 +52,54 @@ const allowedOrigins = [
   config.FRONTEND_URL
 ].filter(Boolean);
 
-// Temporarily allow all origins for debugging
+// CORS configuration
 const corsOptions = {
   origin: function (origin, callback) {
-    console.log('CORS Request Origin:', origin);
-    // Temporarily allow all origins
-    callback(null, true);
-    
-    // For production, use this instead:
-    /*
-    if (!origin || allowedOrigins.includes(origin) || 
-        allowedOrigins.some(allowed => origin.startsWith(allowed.replace('https://', 'https?://').replace('http://', 'https?://').replace('*', '.*')))) {
-      callback(null, true);
-    } else {
-      console.error('CORS Error - Blocked Origin:', origin);
-      console.error('Allowed Origins:', allowedOrigins);
-      callback(new Error('Not allowed by CORS'));
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) {
+      console.log('No origin header - allowing request');
+      return callback(null, true);
     }
-    */
+    
+    // For development, allow all origins
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('Development mode - allowing origin:', origin);
+      return callback(null, true);
+    }
+    
+    // Check if origin is in allowed origins
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    
+    // Check for subdomains
+    try {
+      const originHostname = new URL(origin).hostname;
+      const isSubdomain = allowedOrigins.some(allowed => {
+        try {
+          const allowedHostname = new URL(allowed).hostname;
+          return originHostname === allowedHostname || 
+                 originHostname.endsWith('.' + allowedHostname);
+        } catch (e) {
+          return false;
+        }
+      });
+      
+      if (isSubdomain) {
+        return callback(null, true);
+      }
+    } catch (e) {
+      console.error('Error checking origin:', e);
+    }
+    
+    console.warn('CORS Blocked:', origin, 'not in allowed origins:', allowedOrigins);
+    callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['*'],
-  exposedHeaders: ['*']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  exposedHeaders: ['Content-Range', 'X-Total-Count'],
+  maxAge: 600 // 10 minutes
 };
 
 app.use(cors(corsOptions));

@@ -199,70 +199,8 @@ router.post('/verify-email', async (req, res) => {
   }
 });
 
-// Google OAuth Routes
-router.get('/google', (req, res, next) => {
-  const { redirectTo } = req.query;
-  const state = redirectTo ? Buffer.from(JSON.stringify({ redirectTo })).toString('base64') : undefined;
-  
-  const authenticator = passport.authenticate('google', {
-    scope: ['profile', 'email'],
-    state,
-    prompt: 'select_account',
-    session: false
-  });
-  
-  authenticator(req, res, next);
-});
-
-router.get('/google/callback', 
-  passport.authenticate('google', { 
-    failureRedirect: '/login', 
-    session: false,
-    failureMessage: true
-  }),
-  async (req, res) => {
-    try {
-      // Generate JWT token
-      const token = jwt.sign(
-        { userId: req.user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: '7d' }
-      );
-
-      // Get redirect URL from state
-      let redirectUrl = '/';
-      if (req.query.state) {
-        try {
-          const state = JSON.parse(Buffer.from(req.query.state, 'base64').toString());
-          if (state.redirectTo) {
-            redirectUrl = state.redirectTo;
-          }
-        } catch (e) {
-          console.error('Error parsing state:', e);
-        }
-      }
-
-      // Redirect with token in the URL fragment
-      const frontendUrl = new URL(redirectUrl, config.FRONTEND_URL || 'http://localhost:5173');
       
-      // Create a URL with the token in the fragment to avoid it being sent to the server
-      const redirectWithToken = new URL('/auth/callback', config.FRONTEND_URL || 'http://localhost:5173');
-      redirectWithToken.searchParams.set('token', token);
-      redirectWithToken.hash = `#${new URLSearchParams({
-        access_token: token,
-        token_type: 'bearer',
-        expires_in: 60 * 60 * 24 * 7, // 7 days
-        state: req.query.state || ''
-      }).toString()}`;
-      
-      // Redirect to the frontend with the token in the URL fragment
-      res.redirect(redirectWithToken.toString());
-    } catch (error) {
-      console.error('Google OAuth callback error:', error);
-      res.redirect(`${config.FRONTEND_URL || 'http://localhost:5173'}/login?error=oauth_failed`);
-    }
-  }
-);
+// Google OAuth routes are handled in oauth.js
 
 // Resend Verification Email
 router.post('/resend-verification', async (req, res) => {
