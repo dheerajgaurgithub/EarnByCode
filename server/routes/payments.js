@@ -1,11 +1,14 @@
 import express from 'express';
 import Stripe from 'stripe';
+import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const paymentsMode = (process.env.PAYMENTS_MODE || '').toLowerCase(); // 'mock' to bypass Stripe
+const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
 
 // Helper function to create or retrieve Stripe customer
 async function getOrCreateStripeCustomer(user) {
@@ -59,7 +62,51 @@ router.post('/deposit', authenticate, async (req, res) => {
       });
     }
 
-    // Get or create Stripe customer
+    // Mock mode: bypass Stripe, directly credit wallet and create transaction
+    if (!stripe || paymentsMode === 'mock') {
+      try {
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+          const updatedUser = await User.findByIdAndUpdate(
+            req.user._id,
+            { $inc: { walletBalance: amount } },
+            { new: true, session }
+          );
+
+          const transaction = await Transaction.create([
+            {
+              user: req.user._id,
+              type: 'deposit',
+              amount: amount,
+              currency: 'USD',
+              description: `Wallet deposit of $${Number(amount).toFixed(2)} (mock)`,
+              status: 'completed',
+              metadata: { mode: 'mock' }
+            }
+          ], { session });
+
+          await session.commitTransaction();
+          session.endSession();
+
+          return res.json({
+            success: true,
+            message: 'Funds added successfully (mock)',
+            balance: updatedUser.walletBalance,
+            transactionId: transaction[0]._id
+          });
+        } catch (e) {
+          await session.abortTransaction();
+          session.endSession();
+          throw e;
+        }
+      } catch (e) {
+        console.error('Mock deposit failed:', e);
+        return res.status(500).json({ success: false, message: 'Failed to process deposit' });
+      }
+    }
+
+    // Get or create Stripe customer (live mode)
     const customer = await getOrCreateStripeCustomer(req.user);
     
     try {
