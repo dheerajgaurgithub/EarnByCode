@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { CheckCircle, Trophy, Award, BookOpen, MessageCircle, Play, AlertCircle } from 'lucide-react';
 import api from '@/lib/api';
 
-type Language = 'javascript' | 'python' | 'java' | 'cpp';
+type Language = 'javascript' | 'typescript' | 'python' | 'java' | 'cpp';
 type TestStatus = 'idle' | 'loading' | 'success' | 'error' | 'running' | 'accepted' | 'submitted';
 
 interface TestCaseResult {
@@ -16,11 +16,14 @@ interface TestCaseResult {
   runtime?: number;
 }
 
+// Raw testcase shape from problems/testCases (input + expected only)
+type RawTestCase = { input: unknown; expectedOutput: unknown };
+
 interface BaseCodeResponse {
   status: TestStatus;
   message?: string;
   error?: string;
-  testCases?: TestCaseResult[];
+  testCases?: RawTestCase[];
   results?: TestCaseResult[];
   testsPassed?: number;
   totalTests?: number;
@@ -35,7 +38,7 @@ interface SubmitCodeResponse extends BaseCodeResponse {}
 
 interface TestResults extends Omit<BaseCodeResponse, 'status'> {
   status: TestStatus;
-  testCases: TestCaseResult[];
+  testCases: RawTestCase[];
   results: TestCaseResult[];
   testsPassed: number;
   totalTests: number;
@@ -72,41 +75,52 @@ const getDefaultCode = (language: Language): string => {
   const templates: Record<Language, string> = {
     javascript: `// Write your solution here
 function solve() {
-    // Your code here
-    return result;
+  // Read input via readLine() per line if needed
+  // Example: const s = readLine();
+  return 'Hello AlgoBucks';
+}
+
+console.log(solve());`,
+    typescript: `// Write your solution here
+function solve(): string {
+  // Read input via readLine() per line if needed
+  // Example: const s = readLine();
+  return 'Hello AlgoBucks';
 }
 
 console.log(solve());`,
     python: `# Write your solution here
 def solve():
-    # Your code here
-    return result
+    # Read input lines via input() if needed
+    # Example: s = input().strip()
+    return 'Hello AlgoBucks'
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     print(solve())`,
-    java: `public class Solution {
-    public static void main(String[] args) {
-        // Your code here
+    java: `import java.io.*;
+import java.util.*;
+
+public class Solution {
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        // String s = br.readLine(); // read one line
         System.out.println(solve());
     }
-    
-    public static String solve() {
-        // Your solution here
-        return "";
+
+    static String solve() {
+        // TODO: implement your solution
+        return "Hello AlgoBucks";
     }
 }`,
-    cpp: `#include <iostream>
+    cpp: `#include <bits/stdc++.h>
 using namespace std;
 
-int main() {
-    // Your code here
-    cout << solve() << endl;
+int main(){
+    ios::sync_with_stdio(false);
+    cin.tie(nullptr);
+    // string s; getline(cin, s); // read one line
+    cout << "Hello AlgoBucks" << "\n";
     return 0;
-}
-
-string solve() {
-    // Your solution here
-    return "";
 }`
   };
   return templates[language] || '';
@@ -158,7 +172,7 @@ const ProblemDetail: React.FC = () => {
     }
   }, [id, selectedLanguage]);
 
-  // Handle code run
+  // Handle code run (single example)
   const handleRunCode = useCallback(async () => {
     if (!problem || !code.trim()) {
       setTestResults({
@@ -173,66 +187,135 @@ const ProblemDetail: React.FC = () => {
       return;
     }
     
-    // For unauthenticated users, only allow running sample tests
-    if (!user) {
-      setShowLoginPrompt(true);
-      return;
-    }
-
     setIsRunning(true);
-    setTestResults(prev => ({
-      ...prev,
-      status: 'running',
-      isSubmission: false,
-      error: undefined
-    }));
+    setTestResults(prev => ({ ...prev, status: 'running', isSubmission: false, error: undefined }));
 
     try {
-      const { data } = await api.post<RunCodeResponse>('/code/run', {
-        problemId: problem._id,
-        code,
-        language: selectedLanguage
-      });
+      // Build optional stdin from first example if present
+      const exampleInput = problem.examples?.[0]?.input ?? '';
+      const exampleOutput = problem.examples?.[0]?.output ?? '';
+      const payload = {
+        language: selectedLanguage,
+        version: selectedLanguage === 'javascript' ? '18.15.0' : selectedLanguage === 'typescript' ? '5.0.3' : '3.11',
+        files: [{ content: code }],
+        ...(typeof exampleInput === 'string' ? { stdin: exampleInput } : {})
+      };
 
-      // Ensure status is one of the allowed TestStatus values
-      let status: TestStatus = 'error';
-      const statusStr = data.status.toLowerCase();
-      if (['idle', 'loading', 'success', 'error', 'running', 'accepted', 'submitted'].includes(statusStr)) {
-        status = statusStr as TestStatus;
-      }
+      const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json();
+      const out = (data?.run?.output ?? '').toString();
+      const err = (data?.run?.stderr ?? '').toString();
+
+      const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
+      const hasExpected = typeof exampleOutput === 'string' && exampleOutput.trim().length > 0;
+      const passed = hasExpected ? normalize(out) === normalize(exampleOutput) : err.length === 0;
 
       setTestResults({
-        status,
-        testCases: data.testCases || [],
-        results: data.results || [],
-        testsPassed: data.testsPassed || 0,
-        totalTests: data.totalTests || problem.testCases?.length || 0,
+        status: err ? 'error' : passed ? 'accepted' : 'error',
+        testCases: hasExpected ? [{ input: exampleInput, expectedOutput: exampleOutput }] : [],
+        results: hasExpected ? [{ input: exampleInput, expectedOutput: exampleOutput, actualOutput: out, passed, error: err || undefined }] : [],
+        testsPassed: passed ? 1 : 0,
+        totalTests: hasExpected ? 1 : 0,
         isSubmission: false,
-        message: data.message,
-        error: data.error,
-        runtimeMs: data.runtimeMs,
-        memoryKb: data.memoryKb
+        message: err ? 'Execution error' : undefined,
+        error: err || undefined,
+        runtimeMs: undefined,
+        memoryKb: undefined
       });
     } catch (error: unknown) {
       console.error('Error running code:', error);
-      const errorMessage = 
-        (error as { response?: { data?: { message?: string } } })?.response?.data?.message || 
-        (error as Error)?.message || 
-        'Failed to run code';
-      
+      const errorMessage = (error as Error)?.message || 'Failed to run code';
       setTestResults({
         status: 'error',
         error: errorMessage,
         testCases: [],
         results: [],
         testsPassed: 0,
-        totalTests: problem.testCases?.length || 0,
+        totalTests: 0,
         isSubmission: false
       });
     } finally {
       setIsRunning(false);
     }
   }, [code, problem, selectedLanguage]);
+
+  // Run all testcases for supported languages
+  const handleRunAll = useCallback(async () => {
+    if (!problem || !code.trim()) return;
+    if (!Array.isArray(problem.testCases) || problem.testCases.length === 0) {
+      setTestResults({
+        status: 'error',
+        error: 'No testcases found for this problem',
+        testCases: [],
+        results: [],
+        testsPassed: 0,
+        totalTests: 0,
+        isSubmission: false
+      });
+      return;
+    }
+
+    setIsRunning(true);
+    setTestResults(prev => ({ ...prev, status: 'running', isSubmission: false, error: undefined }));
+
+    try {
+      const results: TestCaseResult[] = [];
+      let passedCount = 0;
+
+      const runOne = async (stdin: string | undefined, expected: string | undefined) => {
+        const payload = {
+          language: selectedLanguage,
+          version: selectedLanguage === 'javascript' ? '18.15.0' : selectedLanguage === 'typescript' ? '5.0.3' : '3.11',
+          files: [{ content: code }],
+          ...(stdin ? { stdin } : {})
+        };
+        const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/execute`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await resp.json();
+        const out = (data?.run?.output ?? '').toString();
+        const err = (data?.run?.stderr ?? '').toString();
+        const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
+        const hasExpected = typeof expected === 'string' && expected.trim().length > 0;
+        const passed = hasExpected ? normalize(out) === normalize(expected!) : err.length === 0;
+        if (passed) passedCount++;
+        results.push({ input: stdin, expectedOutput: expected, actualOutput: out, passed, error: err || undefined });
+      };
+
+      for (const tc of problem.testCases) {
+        const stdin = typeof tc.input === 'string' ? tc.input : undefined;
+        const expected = typeof tc.expectedOutput === 'string' ? tc.expectedOutput : undefined;
+        await runOne(stdin, expected);
+      }
+
+      setTestResults({
+        status: passedCount === problem.testCases.length ? 'accepted' : 'error',
+        testCases: problem.testCases as any,
+        results,
+        testsPassed: passedCount,
+        totalTests: problem.testCases.length,
+        isSubmission: false
+      });
+    } catch (e: any) {
+      setTestResults({
+        status: 'error',
+        error: e?.message || 'Failed to run all testcases',
+        testCases: [],
+        results: [],
+        testsPassed: 0,
+        totalTests: 0,
+        isSubmission: false
+      });
+    } finally {
+      setIsRunning(false);
+    }
+  }, [problem, code, selectedLanguage]);
 
   // Handle code submission
   const handleSubmitCode = useCallback(async () => {
@@ -581,7 +664,7 @@ const ProblemDetail: React.FC = () => {
                 {/* Language Tabs */}
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 py-2 bg-blue-50 space-y-2 sm:space-y-0">
                   <div className="flex flex-wrap gap-1 w-full sm:w-auto">
-                    {(['javascript', 'python', 'java', 'cpp'] as Language[]).map((lang) => (
+                    {(['javascript', 'typescript', 'python', 'java', 'cpp'] as Language[]).map((lang) => (
                       <button
                         key={lang}
                         onClick={() => setSelectedLanguage(lang)}
@@ -614,6 +697,13 @@ const ProblemDetail: React.FC = () => {
                     >
                       <Play className="h-3 w-3" />
                       <span>{isRunning ? 'Running...' : 'Run'}</span>
+                    </button>
+                    <button
+                      onClick={handleRunAll}
+                      disabled={isRunning || !problem?.testCases?.length}
+                      className="flex items-center space-x-1 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span>{isRunning ? 'Running...' : 'Run All Testcases'}</span>
                     </button>
                     
                     <button
