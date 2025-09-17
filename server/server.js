@@ -43,6 +43,87 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+// Compatibility endpoint for legacy clients expecting /api/code/run
+app.post('/api/code/run', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    // Accept multiple shapes: { language, code }, { language, sourceCode }, { language, files: [{content}] }
+    const language = (payload.language || '').toString().toLowerCase();
+    let source = '';
+    if (typeof payload.code === 'string') source = payload.code;
+    else if (typeof payload.sourceCode === 'string') source = payload.sourceCode;
+    else if (Array.isArray(payload.files) && payload.files[0]?.content) source = payload.files[0].content;
+
+    if (!source || !['javascript', 'typescript'].includes(language)) {
+      return res.status(400).json({ message: 'Only JavaScript and TypeScript are supported', language, received: Object.keys(payload || {}) });
+    }
+
+    // Transpile TS to JS if needed
+    let code = source;
+    if (language === 'typescript') {
+      const result = ts.transpileModule(source, {
+        compilerOptions: {
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2019,
+          strict: false,
+          esModuleInterop: true,
+        },
+      });
+      code = result.outputText;
+    }
+
+    const stdout = [];
+    const stderr = [];
+    const stdin = typeof payload.stdin === 'string' ? payload.stdin : '';
+    const inputLines = stdin.split(/\r?\n/);
+    let inputIndex = 0;
+    const sandbox = {
+      console: {
+        log: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
+        error: (...args) => stderr.push(args.map(a => String(a)).join(' ')),
+        warn: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
+      },
+      readLine: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      gets: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      prompt: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      require: (name) => {
+        if (name === 'fs') {
+          return {
+            readFileSync: () => stdin,
+          };
+        }
+        throw new Error('Module not allowed');
+      },
+      setTimeout,
+      setInterval,
+      clearTimeout,
+      clearInterval,
+    };
+    const context = createContext(sandbox);
+
+    try {
+      const script = new Script(code, { filename: 'user_code.js' });
+      script.runInContext(context, { timeout: 3000 });
+    } catch (e) {
+      stderr.push(String(e && e.message ? e.message : e));
+    }
+
+    // Provide a broad response structure for compatibility
+    const output = stdout.join('\n');
+    const err = stderr.join('\n');
+    return res.status(200).json({
+      success: true,
+      stdout: output,
+      stderr: err,
+      output,
+      run: { output, stderr: err },
+    });
+  } catch (err) {
+    console.error('Error executing code (/api/code/run):', err);
+    return res.status(500).json({ message: 'Execution service error' });
+  }
+});
+
 // Middleware
 app.use(helmet());
 // Configure CORS
@@ -177,7 +258,7 @@ app.use(helmet({
       scriptSrc: ["'self'", "'unsafe-inline'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'", 'https://algobucks.onrender.com', 'http://localhost:5000'],
+      connectSrc: ["'self'", 'https://algobucks.onrender.com', 'http://localhost:5000', 'https://algobucks-tau.vercel.app'],
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
@@ -251,6 +332,70 @@ app.post('/api/execute', async (req, res) => {
     const language = (payload.language || '').toString().toLowerCase();
     const files = Array.isArray(payload.files) ? payload.files : [];
     const source = files[0]?.content ?? '';
+
+    if (!source || !['javascript', 'typescript'].includes(language)) {
+      return res.status(400).json({
+        message: 'Only JavaScript and TypeScript are supported',
+      });
+    }
+
+    // Transpile TS to JS if needed
+    let code = source;
+    if (language === 'typescript') {
+      const result = ts.transpileModule(source, {
+        compilerOptions: {
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2019,
+          strict: false,
+          esModuleInterop: true,
+        },
+      });
+      code = result.outputText;
+    }
+
+    const stdout = [];
+    const stderr = [];
+
+    // Create a sandboxed context with limited globals and captured console
+    const sandbox = {
+      console: {
+        log: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
+        error: (...args) => stderr.push(args.map(a => String(a)).join(' ')),
+        warn: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
+      },
+      setTimeout,
+      setInterval,
+      clearTimeout,
+      clearInterval,
+    };
+    const context = createContext(sandbox);
+
+    try {
+      const script = new Script(code, { filename: 'user_code.js' });
+      script.runInContext(context, { timeout: 3000 });
+    } catch (e) {
+      stderr.push(String(e && e.message ? e.message : e));
+    }
+
+    return res.status(200).json({
+      run: {
+        output: stdout.join('\n'),
+        stderr: stderr.join('\n'),
+      },
+    });
+  } catch (err) {
+    console.error('Error executing code:', err);
+    return res.status(500).json({ message: 'Execution service error' });
+  }
+});
+
+// Compatibility endpoint for code execution
+app.post('/api/code/run', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const language = (payload.language || '').toString().toLowerCase();
+    const files = Array.isArray(payload.files) ? payload.files : [];
+    const source = files[0]?.content ?? payload.code ?? '';
 
     if (!source || !['javascript', 'typescript'].includes(language)) {
       return res.status(400).json({

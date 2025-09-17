@@ -10,7 +10,7 @@ const API = axios.create({
   baseURL: EXEC_BASE,
 });
 
-export async function executeCode(language: string, sourceCode: string): Promise<any> {
+export async function executeCode(language: string, sourceCode: string, stdin?: string): Promise<any> {
   const response = await API.post(EXEC_PATH, {
     language,
     version: LANGUAGE_VERSIONS[language],
@@ -19,6 +19,7 @@ export async function executeCode(language: string, sourceCode: string): Promise
         content: sourceCode,
       },
     ],
+    ...(stdin ? { stdin } : {}),
   });
   return response.data;
 }

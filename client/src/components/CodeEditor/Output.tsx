@@ -1,5 +1,4 @@
 import { useEffect, useState, useCallback } from "react";
-import { Box, Text, Flex } from "@chakra-ui/react";
 import { executeCode } from "./api";
 import type * as monaco from "monaco-editor";
 
@@ -10,10 +9,13 @@ interface OutputProps {
 }
 
 const Output: React.FC<OutputProps> = ({ editorRef, language }) => {
+  const [stdin, setStdin] = useState<string>("");
+  const [expected, setExpected] = useState<string>("");
   const [stdout, setStdout] = useState<string[] | null>(null);
   const [stderr, setStderr] = useState<string[] | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isError, setIsError] = useState<boolean>(false);
+  const [didMatch, setDidMatch] = useState<boolean | null>(null);
 
   const runCode = useCallback(async () => {
     const sourceCode = editorRef.current?.getValue() ?? "";
@@ -26,12 +28,18 @@ const Output: React.FC<OutputProps> = ({ editorRef, language }) => {
       setIsLoading(true);
       setStdout(null);
       setStderr(null);
-      const { run: result } = await executeCode(language, sourceCode);
+      const { run: result } = await executeCode(language, sourceCode, stdin);
       const out = (result?.output ?? "").toString();
       const err = (result?.stderr ?? "").toString();
       setStdout(out ? out.split("\n") : null);
       setStderr(err ? err.split("\n") : null);
       setIsError(!!err);
+      if (expected.trim().length > 0) {
+        const normalize = (s: string) => s.replace(/\r\n/g, "\n").trim();
+        setDidMatch(normalize(out) === normalize(expected));
+      } else {
+        setDidMatch(null);
+      }
     } catch (error: any) {
       console.error(error);
       window.alert(`Execution error: ${error?.message || "Unable to run code"}`);
@@ -55,9 +63,8 @@ const Output: React.FC<OutputProps> = ({ editorRef, language }) => {
   };
 
   return (
-    <Box w="50%">
-      <Text mb={2} fontSize="lg">Output</Text>
-      <Flex gap={2} mb={4}>
+    <div style={{ width: '50%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
         <button
           onClick={runCode}
           disabled={isLoading}
@@ -86,31 +93,65 @@ const Output: React.FC<OutputProps> = ({ editorRef, language }) => {
         >
           Clear
         </button>
-      </Flex>
-      <Box
-        height="75vh"
-        p={2}
-        color={isError ? "red.400" : undefined}
-        border="1px solid"
-        borderRadius={4}
-        borderColor={isError ? "red.500" : "#333"}
-        overflowY="auto"
+        {didMatch !== null && (
+          <span style={{
+            padding: '2px 8px',
+            borderRadius: 12,
+            background: didMatch ? '#064e3b' : '#7f1d1d',
+            color: '#ecfdf5'
+          }}>
+            {didMatch ? 'Passed' : 'Failed'}
+          </span>
+        )}
+      </div>
+
+      <div style={{ display: 'flex', gap: 12, marginBottom: 8 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ marginBottom: 4, color: '#94a3b8' }}>Custom Input (stdin)</div>
+          <textarea
+            value={stdin}
+            onChange={(e) => setStdin(e.target.value)}
+            placeholder="Enter input lines for your program"
+            style={{ width: '100%', height: 120, background: '#0b1020', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 6, padding: 8 }}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ marginBottom: 4, color: '#94a3b8' }}>Expected Output (optional)</div>
+          <textarea
+            value={expected}
+            onChange={(e) => setExpected(e.target.value)}
+            placeholder="Paste expected output here to compare"
+            style={{ width: '100%', height: 120, background: '#0b1020', color: '#e2e8f0', border: '1px solid #334155', borderRadius: 6, padding: 8 }}
+          />
+        </div>
+      </div>
+
+      <div
+        style={{
+          height: '75vh',
+          padding: 8,
+          color: isError ? '#fca5a5' : undefined,
+          border: '1px solid',
+          borderRadius: 4,
+          borderColor: isError ? '#ef4444' : '#333',
+          overflowY: 'auto'
+        }}
       >
         {stdout?.map((line, i) => (
-          <Text key={`out-${i}`}>{line}</Text>
+          <div key={`out-${i}`}>{line}</div>
         ))}
         {stderr && stderr.length > 0 && (
-          <Box mt={stdout ? 3 : 0}>
-            <Text fontWeight="bold" color="red.400" mb={1}>Errors</Text>
+          <div style={{ marginTop: stdout ? 12 : 0 }}>
+            <div style={{ fontWeight: 700, color: '#fca5a5', marginBottom: 4 }}>Errors</div>
             {stderr.map((line, i) => (
-              <Text key={`err-${i}`} color="red.400">{line}</Text>
+              <div key={`err-${i}`} style={{ color: '#fca5a5' }}>{line}</div>
             ))}
-          </Box>
+          </div>
         )}
         {!stdout && !stderr && 'Click "Run Code" (or press Ctrl/Cmd+Enter) to see the output here'}
-      </Box>
-    </Box>
+      </div>
+    </div>
   );
-};
+}
 
 export default Output;
