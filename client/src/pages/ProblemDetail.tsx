@@ -1,21 +1,40 @@
-  // Build a safe execute URL without duplicating /api
-  const getExecuteUrl = () => {
-    const raw = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000';
-    // remove trailing slashes
-    let base = raw.replace(/\/+$/, '');
-    // if base ends with /api, strip it to avoid /api/api
-    base = base.replace(/\/?api$/, '');
-    const execPath = (import.meta.env.VITE_EXECUTE_PATH as string) || '/api/execute';
-    const path = execPath.startsWith('/') ? execPath : `/${execPath}`;
-    return `${base}${path}`;
-  };
-
 import React, { useState, useEffect, useCallback } from 'react';
 import { Editor } from '@monaco-editor/react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle, Trophy, Award, BookOpen, MessageCircle, Play, AlertCircle } from 'lucide-react';
 import api from '@/lib/api';
+
+// Build normalized API bases
+const getApiBase = () => {
+  const raw = (import.meta.env.VITE_API_URL as string) || 'https://algobucks.onrender.com/api';
+  // 'http://localhost:5000';
+  let base = raw.replace(/\/+$/, '');
+  if (!/\/api$/.test(base)) base = `${base}/api`;
+  return base;
+};
+
+// Try to infer language from source to warn on mismatch
+const detectCodeLanguage = (src: string): Language | null => {
+  const s = src.trim();
+  if (/#include\s*<.+>/m.test(s) || /\busing\s+namespace\s+std\b/.test(s) || /\bint\s+main\s*\(/.test(s)) return 'cpp';
+  if (/\bclass\s+\w+\b/.test(s) && /\bpublic\s+static\s+void\s+main\s*\(/.test(s)) return 'java';
+  if (/\bdef\s+\w+\s*\(/.test(s) || /\bprint\s*\(/.test(s)) return 'python';
+  if (/\bfunction\b/.test(s) || /=>/.test(s) || /console\.log\(/.test(s)) return 'javascript';
+  return null;
+};
+
+const validateJavaSolution = (src: string) => /\bclass\s+Solution\b/.test(src);
+
+// Build a safe execute URL without duplicating /api
+const getExecuteUrl = () => {
+  const raw = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000';
+  let base = raw.replace(/\/+$/, '');
+  base = base.replace(/\/?api$/, '');
+  const execPath = (import.meta.env.VITE_EXECUTE_PATH as string) || '/api/execute';
+  const path = execPath.startsWith('/') ? execPath : `/${execPath}`;
+  return `${base}${path}`;
+};
 
 type Language = 'javascript' | 'typescript' | 'python' | 'java' | 'cpp';
 type TestStatus = 'idle' | 'loading' | 'success' | 'error' | 'running' | 'accepted' | 'submitted';
@@ -169,7 +188,7 @@ const ProblemDetail: React.FC = () => {
     try {
       setLoading(true);
       // Use fetch directly to avoid authentication requirements
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/problems/${id}`);
+      const response = await fetch(`${getApiBase()}/problems/${id}`);
       
       if (!response.ok) {
         throw new Error(`Failed to fetch problem: ${response.statusText}`);
@@ -200,6 +219,35 @@ const ProblemDetail: React.FC = () => {
       return;
     }
     
+    // Guardrails: language mismatch detection
+    const inferred = detectCodeLanguage(code) as Language | null;
+    if (inferred && inferred !== selectedLanguage) {
+      setTestResults({
+        status: 'error',
+        error: `Language mismatch: your code looks like ${inferred.toUpperCase()}, but '${selectedLanguage.toUpperCase()}' is selected. Please switch the tab.`,
+        testCases: [],
+        results: [],
+        testsPassed: 0,
+        totalTests: 0,
+        isSubmission: false
+      });
+      return;
+    }
+
+    // Guardrails: Java must use class Solution
+    if (selectedLanguage === 'java' && !validateJavaSolution(code)) {
+      setTestResults({
+        status: 'error',
+        error: "For Java, please define 'class Solution' (we compile Solution.java and run class Solution).",
+        testCases: [],
+        results: [],
+        testsPassed: 0,
+        totalTests: 0,
+        isSubmission: false
+      });
+      return;
+    }
+
     setIsRunning(true);
     setTestResults(prev => ({ ...prev, status: 'running', isSubmission: false, error: undefined }));
 
