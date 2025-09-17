@@ -1,7 +1,7 @@
 import express from 'express';
 import { Script, createContext } from 'node:vm';
 import os from 'os';
-import { spawn } from 'child_process';
+import { spawn, spawnSync } from 'child_process';
 import ts from 'typescript';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -48,7 +48,6 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 // Environment check endpoint
 app.get('/api/env/check', (req, res) => {
   try {
-    const { spawnSync } = require('child_process');
     const check = (cmd, args) => {
       try {
         const r = spawnSync(cmd, args, { encoding: 'utf8' });
