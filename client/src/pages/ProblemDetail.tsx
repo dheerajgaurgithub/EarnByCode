@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { Editor } from '@monaco-editor/react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle, Trophy, Award, BookOpen, MessageCircle, Play, AlertCircle } from 'lucide-react';
@@ -720,14 +721,30 @@ const ProblemDetail: React.FC = () => {
                 </div>
               </div>
               
-              {/* Code Editor */}
+              {/* Code Editor (Monaco) */}
               <div className="relative">
-                <textarea
+                <Editor
+                  height="60vh"
+                  theme="vs-dark"
+                  language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage}
                   value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  className="w-full h-48 sm:h-64 font-mono text-xs p-3 border-0 resize-none focus:outline-none bg-gray-900 text-gray-100"
-                  spellCheck="false"
-                  placeholder={`Write your ${selectedLanguage} code here...`}
+                  onChange={(val) => setCode(val ?? '')}
+                  options={{
+                    automaticLayout: true,
+                    fontSize: 13,
+                    fontLigatures: true,
+                    minimap: { enabled: false },
+                    wordWrap: 'on',
+                    tabSize: 2,
+                    insertSpaces: true,
+                    detectIndentation: true,
+                    autoIndent: 'advanced',
+                    formatOnType: true,
+                    formatOnPaste: true,
+                    bracketPairColorization: { enabled: true },
+                    renderWhitespace: 'selection',
+                    renderControlCharacters: false,
+                  }}
                 />
               </div>
               
