@@ -6,6 +6,7 @@ import { ThemeProvider } from './context/ThemeContext';
 import { WalletProvider } from './context/WalletContext';
 // Import types
 import { Header } from './components/Layout/Header';
+import Footer from './components/Layout/Footer';
 import Home from './pages/Home';
 import { Problems } from './pages/Problems';
 import ProblemDetail from './pages/ProblemDetail';
@@ -246,6 +247,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>
+              <Footer />
             </div>
           </div>
         </WalletProvider>

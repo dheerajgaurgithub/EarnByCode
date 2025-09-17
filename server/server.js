@@ -91,8 +91,9 @@ app.post('/api/code/run', async (req, res) => {
     else if (typeof payload.sourceCode === 'string') source = payload.sourceCode;
     else if (Array.isArray(payload.files) && payload.files[0]?.content) source = payload.files[0].content;
 
-    if (!source || !['javascript', 'typescript'].includes(language)) {
-      return res.status(400).json({ message: 'Only JavaScript and TypeScript are supported', language, received: Object.keys(payload || {}) });
+    // Allow Java and C++ here as well so their handlers below are reachable
+    if (!source || !['javascript', 'typescript', 'java', 'cpp'].includes(language)) {
+      return res.status(400).json({ message: 'Only JavaScript, TypeScript, Java and C++ are supported', language, received: Object.keys(payload || {}) });
     }
 
     // Java execution path
@@ -107,6 +108,11 @@ app.post('/api/code/run', async (req, res) => {
       const compile = spawn(javac, ['-d', tmpDir, srcFile]);
       const compileErr = [];
       compile.stderr.on('data', d => compileErr.push(d));
+      compile.on('error', (e) => {
+        const errMsg = `Failed to start Java compiler (${javac}). ${e?.code === 'ENOENT' ? 'javac not found in PATH. Install JDK or set JAVAC_BIN.' : String(e?.message || e)}`;
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+        return res.status(200).json({ run: { output: '', stderr: errMsg } });
+      });
 
       compile.on('close', (code) => {
         if (code !== 0) {
@@ -127,6 +133,12 @@ app.post('/api/code/run', async (req, res) => {
 
         child.stdout.on('data', d => stdoutChunks.push(d));
         child.stderr.on('data', d => stderrChunks.push(d));
+        child.on('error', (e) => {
+          clearTimeout(killTimer);
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          const errMsg = `Failed to start Java runtime (${java}). ${e?.code === 'ENOENT' ? 'java not found in PATH. Install JRE/JDK or set JAVA_BIN.' : String(e?.message || e)}`;
+          return res.status(200).json({ run: { output: '', stderr: errMsg } });
+        });
         child.on('close', () => {
           clearTimeout(killTimer);
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
@@ -149,6 +161,11 @@ app.post('/api/code/run', async (req, res) => {
       const compile = spawn(gxx, ['-std=c++17', '-O2', srcFile, '-o', exeFile]);
       const compileErr = [];
       compile.stderr.on('data', d => compileErr.push(d));
+      compile.on('error', (e) => {
+        const errMsg = `Failed to start C++ compiler (${gxx}). ${e?.code === 'ENOENT' ? 'g++ not found in PATH. Install MinGW-w64/LLVM or set GXX_BIN.' : String(e?.message || e)}`;
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+        return res.status(200).json({ run: { output: '', stderr: errMsg } });
+      });
       compile.on('close', (code) => {
         if (code !== 0) {
           const err = Buffer.concat(compileErr).toString('utf8');
@@ -471,6 +488,38 @@ app.post('/api/execute', async (req, res) => {
       });
     }
 
+    // Optional: remote execution via Piston for production or when toolchains are unavailable
+    const EXECUTOR_MODE = process.env.EXECUTOR_MODE || 'auto'; // 'auto' | 'piston'
+    const PISTON_URL = (process.env.PISTON_URL || 'https://emkc.org/api/v2/piston/execute').trim();
+    if (EXECUTOR_MODE === 'piston') {
+      try {
+        // Map our language ids to Piston languages if needed
+        const pistonLang = language === 'cpp' ? 'cpp' : language;
+        const pistonReq = {
+          language: pistonLang,
+          // Let Piston choose latest; advanced: allow version via payload.version
+          files: [{ content: source, name: files[0]?.name || 'Main.' + (language === 'cpp' ? 'cpp' : language) }],
+          stdin: typeof payload.stdin === 'string' ? payload.stdin : ''
+        };
+        const r = await fetch(PISTON_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(pistonReq),
+        });
+        if (!r.ok) {
+          const text = await r.text().catch(() => '');
+          return res.status(200).json({ run: { output: '', stderr: `Remote executor error (${r.status}): ${text}` } });
+        }
+        const data = await r.json();
+        // Piston v2 returns { run: { stdout, stderr } } OR top-level outputs (depending on instance)
+        const out = data?.run?.stdout ?? data?.stdout ?? '';
+        const err = data?.run?.stderr ?? data?.stderr ?? '';
+        return res.status(200).json({ run: { output: String(out), stderr: String(err) } });
+      } catch (e) {
+        return res.status(200).json({ run: { output: '', stderr: `Remote executor failed: ${String(e?.message || e)}` } });
+      }
+    }
+
     // Python execution path
     if (language === 'python') {
       const tmpFile = path.join(os.tmpdir(), `algobucks-${Date.now()}-${Math.random().toString(36).slice(2)}.py`);
@@ -492,6 +541,12 @@ app.post('/api/execute', async (req, res) => {
 
       child.stdout.on('data', (d) => stdoutChunks.push(d));
       child.stderr.on('data', (d) => stderrChunks.push(d));
+      child.on('error', (e) => {
+        clearTimeout(killTimer);
+        try { fs.unlinkSync(tmpFile); } catch {}
+        const errMsg = `Failed to start Python interpreter (${pythonBin}). ${e?.code === 'ENOENT' ? 'Interpreter not found in PATH. Set PYTHON_BIN in .env.' : String(e?.message || e)}`;
+        return res.status(200).json({ run: { output: '', stderr: errMsg } });
+      });
 
       child.on('close', (code) => {
         clearTimeout(killTimer);
