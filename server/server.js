@@ -506,6 +506,90 @@ app.post('/api/execute', async (req, res) => {
       return; // ensure not to continue to JS path
     }
 
+    // Java execution path
+    if (language === 'java') {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-java-'));
+      const srcFile = path.join(tmpDir, 'Solution.java');
+      fs.writeFileSync(srcFile, source, 'utf8');
+
+      const javac = process.env.JAVAC_BIN || 'javac';
+      const java = process.env.JAVA_BIN || 'java';
+
+      const compile = spawn(javac, ['-d', tmpDir, srcFile]);
+      const compileErr = [];
+      compile.stderr.on('data', d => compileErr.push(d));
+
+      compile.on('close', (code) => {
+        if (code !== 0) {
+          const err = Buffer.concat(compileErr).toString('utf8');
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          return res.status(200).json({ run: { output: '', stderr: err } });
+        }
+
+        const child = spawn(java, ['-cp', tmpDir, 'Solution'], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const stdoutChunks = [];
+        const stderrChunks = [];
+        const stdinStr = typeof payload.stdin === 'string' ? payload.stdin : '';
+        if (stdinStr) child.stdin.write(stdinStr);
+        child.stdin.end();
+
+        let killed = false;
+        const killTimer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 3000);
+
+        child.stdout.on('data', d => stdoutChunks.push(d));
+        child.stderr.on('data', d => stderrChunks.push(d));
+        child.on('close', () => {
+          clearTimeout(killTimer);
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          const out = Buffer.concat(stdoutChunks).toString('utf8');
+          const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
+          return res.status(200).json({ run: { output: out, stderr: err } });
+        });
+      });
+      return;
+    }
+
+    // C++ execution path
+    if (language === 'cpp') {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-cpp-'));
+      const srcFile = path.join(tmpDir, 'main.cpp');
+      fs.writeFileSync(srcFile, source, 'utf8');
+      const exeFile = path.join(tmpDir, process.platform === 'win32' ? 'a.exe' : 'a.out');
+
+      const gxx = process.env.GXX_BIN || 'g++';
+      const compile = spawn(gxx, ['-std=c++17', '-O2', srcFile, '-o', exeFile]);
+      const compileErr = [];
+      compile.stderr.on('data', d => compileErr.push(d));
+      compile.on('close', (code) => {
+        if (code !== 0) {
+          const err = Buffer.concat(compileErr).toString('utf8');
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          return res.status(200).json({ run: { output: '', stderr: err } });
+        }
+
+        const child = spawn(exeFile, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const stdoutChunks = [];
+        const stderrChunks = [];
+        const stdinStr = typeof payload.stdin === 'string' ? payload.stdin : '';
+        if (stdinStr) child.stdin.write(stdinStr);
+        child.stdin.end();
+
+        let killed = false;
+        const killTimer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 3000);
+
+        child.stdout.on('data', d => stdoutChunks.push(d));
+        child.stderr.on('data', d => stderrChunks.push(d));
+        child.on('close', () => {
+          clearTimeout(killTimer);
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          const out = Buffer.concat(stdoutChunks).toString('utf8');
+          const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
+          return res.status(200).json({ run: { output: out, stderr: err } });
+        });
+      });
+      return;
+    }
+
     // Transpile TS to JS if needed
     let code = source;
     if (language === 'typescript') {
