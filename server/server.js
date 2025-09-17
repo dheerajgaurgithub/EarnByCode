@@ -181,7 +181,7 @@ app.post('/api/code/run', async (req, res) => {
       return;
     }
 
-    // Transpile TS to JS if needed
+    // Transpile TS to JS if needed, and convert JS ESM import/export to CJS
     let code = source;
     if (language === 'typescript') {
       const result = ts.transpileModule(source, {
@@ -191,6 +191,17 @@ app.post('/api/code/run', async (req, res) => {
           strict: false,
           esModuleInterop: true,
         },
+      });
+      code = result.outputText;
+    } else if (language === 'javascript' && /(^|\s)(import\s|export\s)/.test(source)) {
+      const result = ts.transpileModule(source, {
+        compilerOptions: {
+          allowJs: true,
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2019,
+          esModuleInterop: true,
+        },
+        fileName: 'user_code.js'
       });
       code = result.outputText;
     }
