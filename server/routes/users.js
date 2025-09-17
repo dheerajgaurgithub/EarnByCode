@@ -197,16 +197,110 @@ router.patch('/me', authenticate, async (req, res) => {
   }
 });
 
+// Get user's current avatar
+router.get('/me/avatar', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('avatar');
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      avatar: user.avatar || null
+    });
+  } catch (error) {
+    console.error('Get avatar error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get avatar',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
 // Handle avatar upload
 router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({
         success: false,
-        message: 'No file uploaded or file is too large'
+        message: 'No file uploaded or invalid file type. Only JPG, PNG, and GIF are allowed.'
       });
     }
 
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      // Clean up the uploaded file if user not found
+      if (req.file) {
+        fs.unlink(req.file.path, () => {});
+      }
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // If user had a previous avatar, delete it
+    if (user.avatar) {
+      const oldAvatarPath = path.join(__dirname, '../../public', user.avatar);
+      if (fs.existsSync(oldAvatarPath)) {
+        fs.unlink(oldAvatarPath, (err) => {
+          if (err) console.error('Error deleting old avatar:', err);
+        });
+      }
+    }
+
+    // Construct the relative and absolute URLs to the uploaded file
+    const relativeUrl = `/uploads/avatars/${req.file.filename}`;
+    const baseUrl = process.env.NODE_ENV === 'production' 
+      ? 'https://algobucks.onrender.com' 
+      : 'http://localhost:5000';
+    const absoluteUrl = `${baseUrl}${relativeUrl}`;
+    
+    // Update user's avatar with the relative URL
+    user.avatar = relativeUrl;
+    await user.save();
+
+    // Prepare user object for response
+    const userObj = user.toObject();
+    delete userObj.password;
+    delete userObj.__v;
+    delete userObj.resetPasswordToken;
+    delete userObj.resetPasswordExpire;
+
+    // Include both relative and absolute URLs in the response
+    res.json({
+      success: true,
+      message: 'Avatar uploaded successfully',
+      avatar: relativeUrl, // Relative URL for storage
+      avatarUrl: absoluteUrl, // Full URL for immediate use
+      user: {
+        ...userObj,
+        avatar: absoluteUrl // Update user object with full URL
+      }
+    });
+  } catch (error) {
+    // Clean up the uploaded file if error occurs
+    if (req.file) {
+      fs.unlink(req.file.path, () => {});
+    }
+    
+    console.error('Avatar upload error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to upload avatar',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// Delete avatar
+router.delete('/me/avatar', authenticate, async (req, res) => {
+  try {
     const user = await User.findById(req.user.id);
     if (!user) {
       return res.status(404).json({
@@ -215,31 +309,35 @@ router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res
       });
     }
 
-    // Construct the URL to the uploaded file
-    const fileUrl = `/uploads/avatars/${req.file.filename}`;
-    
-    // Return relative URL - the client will handle the base URL
-    const fullAvatarUrl = fileUrl;
-    
-    user.avatar = fullAvatarUrl;
-    await user.save();
+    // If user has an avatar, delete the file
+    if (user.avatar) {
+      const avatarPath = path.join(__dirname, '../../public', user.avatar);
+      if (fs.existsSync(avatarPath)) {
+        fs.unlink(avatarPath, (err) => {
+          if (err) console.error('Error deleting avatar file:', err);
+        });
+      }
+      
+      // Clear the avatar field
+      user.avatar = undefined;
+      await user.save();
+    }
 
-    // Remove sensitive data before sending response
+    // Prepare user object for response
     const userObj = user.toObject();
     delete userObj.password;
     delete userObj.__v;
 
     res.json({
       success: true,
-      message: 'Avatar uploaded successfully',
-      avatar: fullAvatarUrl,
+      message: 'Avatar removed successfully',
       user: userObj
     });
   } catch (error) {
-    console.error('Avatar upload error:', error);
+    console.error('Delete avatar error:', error);
     res.status(500).json({
       success: false,
-      message: error.message || 'Failed to upload avatar',
+      message: 'Failed to remove avatar',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
@@ -261,29 +359,74 @@ router.get('/test-avatar', (req, res) => {
   // If test avatar doesn't exist, create one
   try {
     const testImage = Buffer.from(
-      '/9j/4AAQSkZJRgABAQEASABIAAD/2wBDAAEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEB' +
-      'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/2wBDAQEBAQEBAQEBAQEBAQEBAQEBAQEB' +
-      'AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQH/wAARCAABAAEDASIAAhEB' +
-      'AxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF' +
-      '9AkGCEvAhMUFBUWEicYGRobHwMkLh8QYUIzNSYqKyCRUkQ1OC8RZzJjRDY3KCFyU1RFRkdISUpW' +
-      'V1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrC' +
-      'w8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2gAMAwEAAhEDEQA/AP38ooooA//Z',
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=',
       'base64'
     );
     
     fs.writeFileSync(testAvatarPath, testImage);
     
+    // Verify file was created
+    const fileExists = fs.existsSync(testAvatarPath);
+    const stats = fileExists ? fs.statSync(testAvatarPath) : null;
+    
     res.json({
       success: true,
       message: 'Test avatar created',
-      url: '/uploads/avatars/test-avatar.jpg'
+      path: testAvatarPath,
+      url: '/uploads/avatars/test-avatar.jpg',
+      fileExists,
+      fileSize: stats?.size,
+      isFile: stats?.isFile(),
+      isDirectory: stats?.isDirectory(),
+      permissions: {
+        read: fs.constants.R_OK ? 'OK' : 'Failed',
+        write: fs.constants.W_OK ? 'OK' : 'Failed',
+        execute: fs.constants.X_OK ? 'OK' : 'Failed'
+      },
+      directories: {
+        uploads: {
+          exists: uploadsDirExists,
+          path: uploadsDir,
+          writable: (() => {
+            try {
+              fs.accessSync(uploadsDir, fs.constants.W_OK);
+              return true;
+            } catch (e) {
+              return false;
+            }
+          })()
+        },
+        avatars: {
+          exists: avatarsDirExists,
+          path: avatarsDir,
+          writable: (() => {
+            try {
+              fs.accessSync(avatarsDir, fs.constants.W_OK);
+              return true;
+            } catch (e) {
+              return false;
+            }
+          })()
+        }
+      }
     });
   } catch (error) {
     console.error('Error creating test avatar:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to create test avatar',
-      error: error.message
+      error: error.message,
+      path: testAvatarPath,
+      directories: {
+        uploads: {
+          exists: uploadsDirExists,
+          path: uploadsDir
+        },
+        avatars: {
+          exists: avatarsDirExists,
+          path: avatarsDir
+        }
+      }
     });
   }
 });

@@ -48,6 +48,7 @@ export interface User {
   bio?: string;
   location?: string;
   website?: string;
+  avatarUrl?: string; // Full URL to the avatar image
   contestsParticipated?: string[];
   github?: string;
   linkedin?: string;

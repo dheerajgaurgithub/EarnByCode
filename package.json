@@ -1,11 +1,15 @@
 {
-    "private":  true,
-    "name":  "algobucks-client",
-    "version":  "1.0.0",
-    "scripts":  {
-                    "preview":  "cd client \u0026\u0026 npm run preview",
-                    "build":  "cd client \u0026\u0026 npm run build",
-                    "dev":  "cd client \u0026\u0026 npm run dev",
-                    "lint":  "cd client \u0026\u0026 npm run lint"
-                }
+    "private": true,
+    "name": "algobucks-client",
+    "version": "1.0.0",
+    "scripts": {
+        "preview": "cd client && npm run preview",
+        "build": "cd client && npm run build",
+        "dev": "cd client && npm run dev",
+        "lint": "cd client && npm run lint"
+    },
+    "dependencies": {
+        "axios": "^1.12.2",
+        "form-data": "^4.0.4"
+    }
 }

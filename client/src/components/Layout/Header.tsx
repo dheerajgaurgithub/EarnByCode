@@ -19,27 +19,34 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
-// Helper function to get the full avatar URL
+// Helper function to get the full avatar URL (absolute)
 const getAvatarUrl = (avatarPath: string | undefined): string => {
-  if (!avatarPath) return '/default-avatar.png';
-  
-  // If it's already a full URL, return as is
-  if (avatarPath.startsWith('http')) {
+  const rawBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+  const baseUrl = rawBase.replace(/\/$/, '').replace(/\/api$/, '');
+  if (!avatarPath) {
+    return `https://api.dicebear.com/8.x/initials/svg?seed=User`;
+  }
+
+  // If already absolute or blob, return as is
+  if (avatarPath.startsWith('http') || avatarPath.startsWith('blob:')) {
     return avatarPath;
   }
-  
-  // Clean up the path
-  let cleanPath = avatarPath.replace(/^\/+|\/+$/g, ''); // Trim slashes
-  
-  // Remove any duplicate path segments
-  if (cleanPath.startsWith('uploads/avatars/')) {
-    cleanPath = cleanPath.replace('uploads/avatars/', '');
-  } else if (cleanPath.startsWith('avatars/')) {
-    cleanPath = cleanPath.replace('avatars/', '');
+
+  // Normalize
+  const cleanPath = avatarPath.replace(/^\/+|\/+$/g, '');
+  const ensureAbsolute = (p: string) => {
+    const cleaned = p.replace(/^\/?api\//, '/');
+    return `${baseUrl}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
+  };
+
+  if (cleanPath.startsWith('uploads/')) {
+    return ensureAbsolute(`/${cleanPath}`);
   }
-  
-  // Return the full URL
-  return `${window.location.origin}/avatars/${cleanPath}`;
+  if (cleanPath.startsWith('avatars/')) {
+    return ensureAbsolute(`/uploads/${cleanPath}`);
+  }
+  // Assume bare filename
+  return ensureAbsolute(`/uploads/avatars/${cleanPath}`);
 };
 
 type NavItem = {
@@ -284,37 +291,38 @@ export const Header: React.FC = () => {
                 >
                   <span className="sr-only">Open user menu</span>
                   <div className="relative flex-shrink-0">
-                    {userInfo.avatar ? (
-                      <div className="h-5 w-5 rounded-full bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5">
-                        <img 
-                          src={userInfo.avatar.startsWith('http') || userInfo.avatar.startsWith('blob:') 
-                            ? userInfo.avatar 
-                            : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${userInfo.avatar.startsWith('/') ? '' : '/'}${userInfo.avatar}`} 
-                          alt={userInfo.username}
-                          className="h-full w-full rounded-full object-cover bg-white"
-                          onError={(e) => {
-                            // If image fails to load, fall back to initials
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = 'none';
-                            const parent = target.parentElement;
-                            if (parent) {
-                              const fallback = document.createElement('div');
-                              fallback.className = 'h-full w-full rounded-full bg-white flex items-center justify-center';
-                              fallback.innerHTML = `<span class="text-blue-700 font-semibold text-xs">${userInfo.username?.[0]?.toUpperCase() || 'U'}</span>`;
-                              parent.appendChild(fallback);
+                    <div className="h-5 w-5 rounded-full bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5">
+                      <img 
+                        src={getAvatarUrl(userInfo.avatar)}
+                        alt={userInfo.username}
+                        className="h-full w-full rounded-full object-cover bg-white"
+                        onError={(e) => {
+                          // If image fails to load, fall back to initials
+                          const target = e.target as HTMLImageElement;
+                          target.style.display = 'none';
+                          const parent = target.parentElement;
+                          if (parent) {
+                            const fallback = document.createElement('div');
+                            fallback.className = 'h-full w-full rounded-full bg-white flex items-center justify-center';
+                            fallback.innerHTML = `<span class="text-blue-700 font-semibold text-xs">${userInfo.username?.[0]?.toUpperCase() || 'U'}</span>`;
+                            // Clear any existing fallback
+                            const existingFallback = parent.querySelector('.avatar-fallback');
+                            if (existingFallback) {
+                              parent.removeChild(existingFallback);
                             }
-                          }}
-                        />
-                      </div>
-                    ) : (
-                      <div className="h-5 w-5 rounded-full bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5">
+                            fallback.className += ' avatar-fallback';
+                            parent.appendChild(fallback);
+                          }
+                        }}
+                      />
+                      {!userInfo.avatar && (
                         <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
                           <span className="text-blue-700 font-semibold text-xs">
                             {userInfo.username?.[0]?.toUpperCase() || 'U'}
                           </span>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                     {/* Online indicator */}
                     <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-blue-400 rounded-full border border-white shadow-sm" />
                   </div>
@@ -351,29 +359,38 @@ export const Header: React.FC = () => {
                       {/* User info header */}
                       <div className="px-3 py-2 border-b border-blue-200/50">
                         <div className="flex items-center space-x-2">
-                          {userInfo.avatar ? (
-                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5 flex-shrink-0">
-                              <img 
-                                src={getAvatarUrl(userInfo.avatar)} 
-                                alt={userInfo.username}
-                                className="h-full w-full rounded-lg object-cover bg-white"
-                                onError={(e) => {
-                                  // Fallback to default avatar if image fails to load
-                                  const target = e.target as HTMLImageElement;
-                                  target.onerror = null;
-                                  target.src = '/default-avatar.png';
-                                }}
-                              />
-                            </div>
-                          ) : (
-                            <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5 flex-shrink-0">
+                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5 flex-shrink-0">
+                            <img 
+                              src={getAvatarUrl(userInfo.avatar)} 
+                              alt={userInfo.username}
+                              className="h-full w-full rounded-lg object-cover bg-white"
+                              onError={(e) => {
+                                // Fallback to default avatar if image fails to load
+                                const target = e.target as HTMLImageElement;
+                                target.style.display = 'none';
+                                const parent = target.parentElement;
+                                if (parent) {
+                                  const existingFallback = parent.querySelector('.dropdown-avatar-fallback');
+                                  if (existingFallback) return;
+                                  
+                                  const fallback = document.createElement('div');
+                                  fallback.className = 'dropdown-avatar-fallback h-full w-full rounded-lg bg-white flex items-center justify-center';
+                                  fallback.innerHTML = `
+                                    <span class="text-blue-700 font-bold text-sm">
+                                      ${userInfo.username?.[0]?.toUpperCase() || 'U'}
+                                    </span>`;
+                                  parent.appendChild(fallback);
+                                }
+                              }}
+                            />
+                            {!userInfo.avatar && (
                               <div className="h-full w-full rounded-lg bg-white flex items-center justify-center">
-                                <span className="text-blue-700 font-bold text-xs">
+                                <span className="text-blue-700 font-bold text-sm">
                                   {userInfo.username?.[0]?.toUpperCase() || 'U'}
                                 </span>
                               </div>
-                            </div>
-                          )}
+                            )}
+                          </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-slate-800 font-semibold truncate text-xs">{userInfo.username}</p>
                             {userInfo.email && (

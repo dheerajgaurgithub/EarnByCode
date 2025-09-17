@@ -1,4 +1,6 @@
 import express from 'express';
+import { Script, createContext } from 'node:vm';
+import ts from 'typescript';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import session from 'express-session';
@@ -194,21 +196,31 @@ const staticOptions = {
 };
 
 // Ensure uploads directory exists
-const uploadsDir = path.join(publicPath, 'uploads/avatars');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+const uploadsRootDir = path.join(publicPath, 'uploads');
+const uploadsAvatarsDir = path.join(uploadsRootDir, 'avatars');
+if (!fs.existsSync(uploadsRootDir)) {
+  fs.mkdirSync(uploadsRootDir, { recursive: true });
+}
+if (!fs.existsSync(uploadsAvatarsDir)) {
+  fs.mkdirSync(uploadsAvatarsDir, { recursive: true });
 }
 
-// Serve static files
+// Serve static files from the public directory
 app.use(express.static(publicPath, staticOptions));
 
-// Serve uploaded files with proper caching and security
-app.use('/uploads', express.static(path.join(publicPath, 'uploads'), {
-  ...staticOptions,
-  setHeaders: (res, path) => {
+// Serve uploaded files with proper caching and security headers
+// Map '/uploads/*' to 'public/uploads/*'
+app.use('/uploads', express.static(uploadsRootDir, {
+  maxAge: '1y',
+  immutable: true,
+  lastModified: true,
+  etag: true,
+  setHeaders: (res, filePath) => {
     // Set proper cache control for uploaded files
-    if (path.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+    if (filePath.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
       res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+    } else {
+      res.setHeader('Cache-Control', 'public, max-age=300');
     }
     // Security headers for uploaded content
     res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -231,6 +243,70 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/discussions', discussionRoutes);
 app.use('/api/contest-problems', contestProblemRoutes);
 app.use('/api/oauth', oauthRoutes);
+
+// In-house code execution for JavaScript/TypeScript using Node's vm (no external runner)
+app.post('/api/execute', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const language = (payload.language || '').toString().toLowerCase();
+    const files = Array.isArray(payload.files) ? payload.files : [];
+    const source = files[0]?.content ?? '';
+
+    if (!source || !['javascript', 'typescript'].includes(language)) {
+      return res.status(400).json({
+        message: 'Only JavaScript and TypeScript are supported',
+      });
+    }
+
+    // Transpile TS to JS if needed
+    let code = source;
+    if (language === 'typescript') {
+      const result = ts.transpileModule(source, {
+        compilerOptions: {
+          module: ts.ModuleKind.CommonJS,
+          target: ts.ScriptTarget.ES2019,
+          strict: false,
+          esModuleInterop: true,
+        },
+      });
+      code = result.outputText;
+    }
+
+    const stdout = [];
+    const stderr = [];
+
+    // Create a sandboxed context with limited globals and captured console
+    const sandbox = {
+      console: {
+        log: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
+        error: (...args) => stderr.push(args.map(a => String(a)).join(' ')),
+        warn: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
+      },
+      setTimeout,
+      setInterval,
+      clearTimeout,
+      clearInterval,
+    };
+    const context = createContext(sandbox);
+
+    try {
+      const script = new Script(code, { filename: 'user_code.js' });
+      script.runInContext(context, { timeout: 3000 });
+    } catch (e) {
+      stderr.push(String(e && e.message ? e.message : e));
+    }
+
+    return res.status(200).json({
+      run: {
+        output: stdout.join('\n'),
+        stderr: stderr.join('\n'),
+      },
+    });
+  } catch (err) {
+    console.error('Error executing code:', err);
+    return res.status(500).json({ message: 'Execution service error' });
+  }
+});
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
