@@ -99,6 +99,14 @@ const AdminRoute = ({ children }: { children: JSX.Element }) => {
 };
 
 function App() {
+  const location = useLocation();
+  const pathname = location.pathname;
+  const footerHiddenPrefixes = ['/problems', '/contests'];
+  const footerHiddenExact = ['/leaderboard', '/discuss', '/wallet', '/profile', '/submissions', '/settings', '/admin'];
+  const hideFooter =
+    footerHiddenPrefixes.some((p) => pathname.startsWith(p)) ||
+    footerHiddenExact.includes(pathname);
+
   return (
     <AuthProvider>
       <ThemeProvider>
@@ -247,7 +255,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
               </div>
-              <Footer />
+              {!hideFooter && <Footer />}
             </div>
           </div>
         </WalletProvider>

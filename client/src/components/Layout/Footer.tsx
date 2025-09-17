@@ -1,5 +1,5 @@
 import React from 'react';
-import { Heart, Github, Twitter, Mail, ExternalLink, MessageCircle } from 'lucide-react';
+import { Github, Twitter, Mail, ExternalLink, MessageCircle } from 'lucide-react';
 
 export default function Footer() {
   const handleNavigation = (path: string) => {
