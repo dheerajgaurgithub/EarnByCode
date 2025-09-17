@@ -1,3 +1,15 @@
+  // Build a safe execute URL without duplicating /api
+  const getExecuteUrl = () => {
+    const raw = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000';
+    // remove trailing slashes
+    let base = raw.replace(/\/+$/, '');
+    // if base ends with /api, strip it to avoid /api/api
+    base = base.replace(/\/?api$/, '');
+    const execPath = (import.meta.env.VITE_EXECUTE_PATH as string) || '/api/execute';
+    const path = execPath.startsWith('/') ? execPath : `/${execPath}`;
+    return `${base}${path}`;
+  };
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Editor } from '@monaco-editor/react';
 import { useParams, Navigate, Link } from 'react-router-dom';
@@ -202,7 +214,7 @@ const ProblemDetail: React.FC = () => {
         ...(typeof exampleInput === 'string' ? { stdin: exampleInput } : {})
       };
 
-      const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/execute`, {
+      const resp = await fetch(getExecuteUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -274,7 +286,7 @@ const ProblemDetail: React.FC = () => {
           files: [{ content: code }],
           ...(stdin ? { stdin } : {})
         };
-        const resp = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000'}/api/execute`, {
+        const resp = await fetch(getExecuteUrl(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)

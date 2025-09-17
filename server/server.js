@@ -511,6 +511,9 @@ app.post('/api/execute', async (req, res) => {
 
     const stdout = [];
     const stderr = [];
+    const stdin = typeof payload.stdin === 'string' ? payload.stdin : '';
+    const inputLines = stdin.split(/\r?\n/);
+    let inputIndex = 0;
 
     // Create a sandboxed context with limited globals and captured console
     const sandbox = {
@@ -518,6 +521,17 @@ app.post('/api/execute', async (req, res) => {
         log: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
         error: (...args) => stderr.push(args.map(a => String(a)).join(' ')),
         warn: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
+      },
+      readLine: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      gets: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      prompt: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      require: (name) => {
+        if (name === 'fs') {
+          return {
+            readFileSync: () => stdin,
+          };
+        }
+        throw new Error('Module not allowed');
       },
       setTimeout,
       setInterval,
