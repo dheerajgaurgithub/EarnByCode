@@ -193,11 +193,12 @@ export const Profile: React.FC = () => {
         >
           <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
-              <AvatarUploader currentUrl={user.avatarUrl || user.avatar} size={96} />
+              <AvatarUploader key={(user.avatarUrl || user.avatar || 'no-avatar')} currentUrl={user.avatarUrl || user.avatar} size={96} />
               
               <div className="flex-1 text-center sm:text-left w-full sm:w-auto">
                 {isEditing ? (
                   <div className="space-y-3">
+                    <p className="text-xs text-blue-600">Tip: Use the Upload/Remove above to change your profile picture. It saves to the database and updates after refresh.</p>
                     <input
                       type="text"
                       value={editForm.fullName}

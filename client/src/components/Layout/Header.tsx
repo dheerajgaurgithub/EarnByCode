@@ -115,7 +115,7 @@ export const Header: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   
-  const userInfo = user as UserDisplayInfo | null;
+  const userInfo = user as (UserDisplayInfo & { avatarUrl?: string }) | null;
 
   // Handle scroll effect for header
   useEffect(() => {
@@ -295,7 +295,7 @@ export const Header: React.FC = () => {
                   <div className="relative flex-shrink-0">
                     <div className="h-5 w-5 rounded-full bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5">
                       <img 
-                        src={getAvatarUrl(userInfo.avatar)}
+                        src={getAvatarUrl(userInfo.avatarUrl || userInfo.avatar)}
                         alt={userInfo.username}
                         className="h-full w-full rounded-full object-cover bg-white"
                         onError={(e) => {
@@ -363,7 +363,7 @@ export const Header: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5 flex-shrink-0">
                             <img 
-                              src={getAvatarUrl(userInfo.avatar)} 
+                              src={getAvatarUrl(userInfo.avatarUrl || userInfo.avatar)} 
                               alt={userInfo.username}
                               className="h-full w-full rounded-lg object-cover bg-white"
                               onError={(e) => {
