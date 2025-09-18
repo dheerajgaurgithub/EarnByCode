@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
+import config from '@/lib/config';
 
 interface AuthContextType {
   user: User | null;
@@ -43,7 +44,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/me`, {
+      const response = await fetch(`${config.api.baseUrl}/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`,
           'Content-Type': 'application/json'
@@ -64,6 +65,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const data = await response.json();
+      // If backend reports blocked, sign out locally
+      if (data?.user?.blocked) {
+        localStorage.removeItem('token');
+        setUser(null);
+        return;
+      }
       setUser(data.user);
     } catch (error) {
       console.error('Failed to refresh user:', error);
@@ -78,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/login`, {
+      const response = await fetch(`${config.api.baseUrl}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -88,8 +95,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Login failed');
+        let errorBody: any = {};
+        try { errorBody = await response.json(); } catch {}
+        if (response.status === 403 && (errorBody?.blocked || errorBody?.message)) {
+          const reason = errorBody?.reason ? ` Reason: ${errorBody.reason}.` : '';
+          const until = errorBody?.blockedUntil ? ` Until: ${new Date(errorBody.blockedUntil).toLocaleString()}.` : '';
+          throw new Error(`Your account is blocked by admin.${reason}${until}`.trim());
+        }
+        throw new Error(errorBody?.message || 'Login failed');
       }
 
       const data = await response.json();
@@ -103,7 +116,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return false;
     } catch (error) {
       console.error('Login error:', error);
-      return false;
+      // Re-throw to allow UI to show specific error message (e.g., blocked)
+      throw error instanceof Error ? error : new Error('Login failed');
     } finally {
       setIsLoading(false);
     }
@@ -113,7 +127,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setIsLoading(true);
     
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/auth/register`, {
+      const response = await fetch(`${config.api.baseUrl}/auth/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -150,7 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/users/me`, {
+      const response = await fetch(`${config.api.baseUrl}/users/me`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

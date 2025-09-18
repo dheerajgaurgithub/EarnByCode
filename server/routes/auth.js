@@ -7,6 +7,27 @@ import { authenticate } from '../middleware/auth.js';
 import { sendVerificationEmail } from '../config/auth.js';
 import config from '../config/config.js';
 
+// Helper: build absolute avatar URL from stored relative path
+const buildAvatarUrl = (req, user) => {
+  try {
+    const rel = user?.avatar;
+    if (!rel) return null;
+    if (/^https?:\/\//i.test(rel)) return rel;
+    const origin = `${req.protocol}://${req.get('host')}`;
+    const cleaned = String(rel).replace(/^\/?api\//, '/');
+    return `${origin}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
+  } catch {
+    return null;
+  }
+};
+
+// Helper: is user currently blocked
+const isCurrentlyBlocked = (user) => {
+  if (!user?.isBlocked) return false;
+  if (!user.blockedUntil) return true; // blocked indefinitely until admin clears
+  return new Date(user.blockedUntil).getTime() > Date.now();
+};
+
 // Helper function to generate OTP
 const generateOTP = () => {
   return crypto.randomInt(100000, 999999).toString();
@@ -91,6 +112,18 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
+    // Blocked check
+    if (isCurrentlyBlocked(user)) {
+      return res.status(403).json({
+        message: 'Your account is blocked by admin',
+        blocked: true,
+        reason: user.blockReason || 'Policy violation',
+        blockedUntil: user.blockedUntil,
+        duration: user.blockDuration || null,
+        durationUnit: user.blockDurationUnit || null,
+      });
+    }
+
     // Generate JWT token
     const token = jwt.sign(
       { userId: user._id },
@@ -101,7 +134,10 @@ router.post('/login', async (req, res) => {
     res.json({
       message: 'Login successful',
       token,
-      user
+      user: {
+        ...user.toJSON(),
+        avatarUrl: buildAvatarUrl(req, user) || undefined,
+      }
     });
   } catch (error) {
     console.error('Login error:', error);
@@ -115,8 +151,18 @@ router.get('/me', authenticate, async (req, res) => {
     const user = await User.findById(req.user._id)
       .populate('solvedProblems', 'title difficulty')
       .populate('contestsParticipated', 'title status');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // If user became unblocked (time passed), we could auto-clear; for now, just report.
+    const blocked = isCurrentlyBlocked(user);
     
-    res.json({ user });
+    res.json({ 
+      user: {
+        ...user.toJSON(),
+        avatarUrl: buildAvatarUrl(req, user) || undefined,
+        blocked,
+      }
+    });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ message: 'Server error' });
