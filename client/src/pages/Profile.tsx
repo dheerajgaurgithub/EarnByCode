@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Navigate } from 'react-router-dom';
 import { 
@@ -229,6 +229,18 @@ export const Profile: React.FC = () => {
                         className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm sm:text-base"
                       />
                       <p className="text-blue-500 text-xs mt-1">Paste a direct image URL (PNG, JPG, GIF). The image URL will be saved to your profile.</p>
+                      {/* Live preview */}
+                      {!!editForm.avatar && (
+                        <div className="mt-2 inline-flex items-center gap-3 p-2 border border-blue-200 rounded-lg bg-white">
+                          <img
+                            src={editForm.avatar}
+                            alt="Preview"
+                            className="w-12 h-12 rounded-full object-cover"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          <span className="text-xs text-blue-700 break-all max-w-[260px] truncate" title={editForm.avatar}>{editForm.avatar}</span>
+                        </div>
+                      )}
                     </div>
                     <input
                       type="text"
