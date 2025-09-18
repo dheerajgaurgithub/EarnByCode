@@ -10,7 +10,7 @@ interface AvatarUploaderProps {
 }
 
 const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, size = 96, onUpdated }) => {
-  const { updateUser } = useAuth();
+  const { refreshUser } = useAuth();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -63,8 +63,9 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, size = 96, 
       const avatarAbs = data.user?.avatar || data.avatarUrl || data.avatar;
       const avatarRel = data.avatar;
 
-      await updateUser({ avatar: avatarAbs, avatarUrl: avatarAbs });
+      // Update local preview immediately; then refresh from server so context has persisted values
       onUpdated?.({ avatar: avatarAbs, avatarUrl: avatarAbs || ensureAbsolute(avatarRel) || undefined });
+      await refreshUser();
     } catch (err) {
       console.error('Avatar upload failed:', err);
       alert((err as any)?.message || 'Failed to upload avatar');
@@ -89,9 +90,9 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, size = 96, 
         const data = await r.json().catch(() => ({}));
         throw new Error(data?.message || 'Failed to remove avatar');
       }
-      await updateUser({ avatar: undefined as any, avatarUrl: undefined as any });
       setPreview(null);
       onUpdated?.({});
+      await refreshUser();
     } catch (err) {
       console.error('Remove avatar failed:', err);
       alert((err as any)?.message || 'Failed to remove avatar');

@@ -13,7 +13,12 @@ const buildAvatarUrl = (req, user) => {
     const rel = user?.avatar;
     if (!rel) return null;
     if (/^https?:\/\//i.test(rel)) return rel;
-    const origin = `${req.protocol}://${req.get('host')}`;
+    // Respect reverse proxy headers (e.g., Render/Heroku/NGINX)
+    const xfProto = (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim();
+    const xfHost = (req.headers['x-forwarded-host'] || '').toString().split(',')[0].trim();
+    const scheme = xfProto || req.protocol || 'http';
+    const host = xfHost || req.get('host');
+    const origin = `${scheme}://${host}`;
     const cleaned = String(rel).replace(/^\/?api\//, '/');
     return `${origin}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
   } catch {

@@ -45,6 +45,10 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
+// Trust reverse proxy (Render/Heroku/NGINX) so req.protocol and req.hostname respect X-Forwarded-* headers
+// This is important for constructing absolute URLs (e.g., avatarUrl) behind HTTPS proxies
+app.set('trust proxy', true);
+
 // Environment check endpoint
 app.get('/api/env/check', (req, res) => {
   try {
