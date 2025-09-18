@@ -4,6 +4,8 @@ import { format } from 'date-fns';
 import { walletService, type Transaction } from '@/services/walletService';
 import { Icons } from '../icons';
 import StripeDepositForm from './StripeDepositForm';
+import { useAuth } from '@/context/AuthContext';
+import config from '@/lib/config';
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -36,19 +38,13 @@ interface WalletStats {
   recentTransactions: Transaction[];
 }
 
-// Type for the API response
-interface WalletStatistics {
-  totalDeposits: number;
-  depositCount: number;
-  totalWithdrawals: number;
-  withdrawalCount: number;
-  recentTransactions: Transaction[];
-}
+// (Removed unused WalletStatistics interface)
 
 type TimeRange = '7d' | '30d' | '90d' | 'all';
 
 export const WalletDashboard = () => {
   const toast = useToast();
+  const { user } = useAuth();
   const [balance, setBalance] = useState<number>(0);
   const [currency, setCurrency] = useState<string>('USD');
   const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]);
@@ -73,6 +69,8 @@ export const WalletDashboard = () => {
   const [bankAccountId, setBankAccountId] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<{ deposit: boolean; withdraw: boolean }>({ deposit: false, withdraw: false });
   const isStripeConfigured = Boolean(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+  // Admin-only: contest pool stats
+  const [contestPool, setContestPool] = useState<{ totalAmount: number; totalParticipants: number } | null>(null);
 
   const fetchWalletData = async () => {
     try {
@@ -129,6 +127,11 @@ export const WalletDashboard = () => {
     fetchWalletData();
     fetchTransactions();
     fetchWalletStats();
+    if (user?.isAdmin) {
+      fetchContestPool();
+    } else {
+      setContestPool(null);
+    }
   }, [timeRange]);
 
   const formatCurrency = (amount: number) => {
@@ -155,6 +158,31 @@ export const WalletDashboard = () => {
   // Helpers to refresh and perform actions
   const refreshAll = async () => {
     await Promise.all([fetchWalletData(), fetchTransactions(), fetchWalletStats()]);
+    if (user?.isAdmin) await fetchContestPool();
+  };
+
+  const fetchContestPool = async () => {
+    try {
+      // Fetch contests and compute total = sum(entryFee * participants.length)
+      const r = await fetch(`${config.api.baseUrl}/contests?status=all`);
+      if (!r.ok) throw new Error('Failed to fetch contests');
+      const data = await r.json();
+      const contests: Array<{ entryFee?: number; participants?: any[]; status?: string }> = data?.contests || [];
+      let totalAmount = 0;
+      let totalParticipants = 0;
+      for (const c of contests) {
+        // Include only upcoming/ongoing contests in pool computation
+        if (c.status && !['upcoming', 'ongoing'].includes(c.status)) continue;
+        const fee = Number(c.entryFee || 0);
+        const count = Array.isArray(c.participants) ? c.participants.length : 0;
+        totalAmount += fee * count;
+        totalParticipants += count;
+      }
+      setContestPool({ totalAmount, totalParticipants });
+    } catch (e) {
+      console.error('Failed to fetch contest pool:', e);
+      setContestPool(null);
+    }
   };
 
   const onDeposit = async () => {
@@ -206,9 +234,11 @@ export const WalletDashboard = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">My Wallet</h2>
         <div className="flex space-x-2">
-          <Button variant="outline" onClick={() => setActiveTab('deposit')}>
-            Deposit
-          </Button>
+          {!user?.isAdmin && (
+            <Button variant="outline" onClick={() => setActiveTab('deposit')}>
+              Deposit
+            </Button>
+          )}
           <Button variant="outline" onClick={() => setActiveTab('withdraw')}>
             Withdraw
           </Button>
@@ -219,7 +249,7 @@ export const WalletDashboard = () => {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="transactions">Transactions</TabsTrigger>
-          <TabsTrigger value="deposit">Deposit</TabsTrigger>
+          {!user?.isAdmin && <TabsTrigger value="deposit">Deposit</TabsTrigger>}
           <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
         </TabsList>
 
@@ -240,20 +270,22 @@ export const WalletDashboard = () => {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Deposits</CardTitle>
-                <Icons.arrowDown className="h-4 w-4 text-green-500" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-500">
-                  {loading.stats ? '...' : formatCurrency(stats.totalDeposits)}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {loading.stats ? 'Loading...' : `${stats.depositCount} transactions`}
-                </p>
-              </CardContent>
-            </Card>
+            {!user?.isAdmin && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Deposits</CardTitle>
+                  <Icons.arrowDown className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-green-500">
+                    {loading.stats ? '...' : formatCurrency(stats.totalDeposits)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {loading.stats ? 'Loading...' : `${stats.depositCount} transactions`}
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -272,16 +304,31 @@ export const WalletDashboard = () => {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Recent Activity</CardTitle>
+                <CardTitle className="text-sm font-medium">{user?.isAdmin ? 'Contest Pool' : 'Recent Activity'}</CardTitle>
                 <Icons.clock className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
-                  {loading.transactions ? '...' : transactions.length}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {loading.transactions ? 'Loading...' : 'transactions this month'}
-                </p>
+                {user?.isAdmin ? (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {contestPool
+                        ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(contestPool.totalAmount)
+                        : '...'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {contestPool ? `${contestPool.totalParticipants} total contestants × entry fee` : 'Loading contest stats...'}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">
+                      {loading.transactions ? '...' : transactions.length}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {loading.transactions ? 'Loading...' : 'transactions this month'}
+                    </p>
+                  </>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -323,16 +370,14 @@ export const WalletDashboard = () => {
                         </TableCell>
                         <TableCell>{formatTransactionType(tx.type)}</TableCell>
                         <TableCell>{tx.description}</TableCell>
-                        <TableCell 
-                          className={`text-right font-medium ${getTransactionVariant(tx.type)}`}
-                        >
+                        <TableCell className={`text-right font-medium ${getTransactionVariant(tx.type)}`}>
                           {tx.amount > 0 ? '+' : ''}{formatCurrency(tx.amount)}
                         </TableCell>
                         <TableCell>
                           <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            tx.status === 'completed' 
-                              ? 'bg-green-100 text-green-800' 
-                              : tx.status === 'failed' 
+                            tx.status === 'completed'
+                              ? 'bg-green-100 text-green-800'
+                              : tx.status === 'failed'
                                 ? 'bg-red-100 text-red-800'
                                 : 'bg-yellow-100 text-yellow-800'
                           }`}>
@@ -346,10 +391,7 @@ export const WalletDashboard = () => {
               </Table>
               {!loading.transactions && transactions.length > 0 && (
                 <div className="mt-4 text-center">
-                  <Button 
-                    variant="ghost" 
-                    onClick={() => setActiveTab('transactions')}
-                  >
+                  <Button variant="ghost" onClick={() => setActiveTab('transactions')}>
                     View all transactions
                   </Button>
                 </div>
@@ -433,49 +475,51 @@ export const WalletDashboard = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="deposit">
-          <Card>
-            <CardHeader>
-              <CardTitle>Deposit Funds</CardTitle>
-              <CardDescription>Add money to your wallet balance</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {isStripeConfigured ? (
-                <StripeDepositForm />
-              ) : (
-                <>
-              <div className="space-y-2">
-                <label className="text-sm font-medium leading-none">
-                  Amount ({currency})
-                </label>
-                <Input
-                  type="number"
-                  placeholder="Enter amount"
-                  min="1"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium leading-none">
-                  Payment Method
-                </label>
-                <Input
-                  type="text"
-                  placeholder="Payment method ID (leave empty for mock)"
-                  value={paymentMethodId}
-                  onChange={(e) => setPaymentMethodId(e.target.value)}
-                />
-              </div>
-              <Button className="w-full" onClick={onDeposit} disabled={actionLoading.deposit}>
-                {actionLoading.deposit ? 'Processing…' : 'Deposit Funds'}
-              </Button>
-                <p className="text-xs text-slate-500">Tip: For production card payments, set VITE_STRIPE_PUBLISHABLE_KEY and Stripe keys on the server to enable card form.</p>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+        {!user?.isAdmin && (
+          <TabsContent value="deposit">
+            <Card>
+              <CardHeader>
+                <CardTitle>Deposit Funds</CardTitle>
+                <CardDescription>Add money to your wallet balance</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {isStripeConfigured ? (
+                  <StripeDepositForm />
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">
+                        Amount ({currency})
+                      </label>
+                      <Input
+                        type="number"
+                        placeholder="Enter amount"
+                        min="1"
+                        value={depositAmount}
+                        onChange={(e) => setDepositAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-sm font-medium leading-none">
+                        Payment Method
+                      </label>
+                      <Input
+                        type="text"
+                        placeholder="Payment method ID (leave empty for mock)"
+                        value={paymentMethodId}
+                        onChange={(e) => setPaymentMethodId(e.target.value)}
+                      />
+                    </div>
+                    <Button className="w-full" onClick={onDeposit} disabled={actionLoading.deposit}>
+                      {actionLoading.deposit ? 'Processing…' : 'Deposit Funds'}
+                    </Button>
+                    <p className="text-xs text-slate-500">Tip: For production card payments, set VITE_STRIPE_PUBLISHABLE_KEY and Stripe keys on the server to enable card form.</p>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
 
         <TabsContent value="withdraw">
           <Card>

@@ -3,9 +3,10 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Navigate } from 'react-router-dom';
 import { 
-  User as UserIcon, Trophy, Calendar, Target, TrendingUp, Edit3, Save, X, 
-  Camera, MapPin, Building, GraduationCap, Globe, Github, Linkedin, Twitter, Loader2
+  Trophy, Calendar, Target, TrendingUp, Edit3, Save, X, 
+  MapPin, Building, GraduationCap, Globe, Github, Linkedin, Twitter, Loader2
 } from 'lucide-react';
+import AvatarUploader from '@/components/Profile/AvatarUploader';
 import { motion } from 'framer-motion';
 
 interface EditFormData {
@@ -33,7 +34,7 @@ export const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  // Avatar is handled by AvatarUploader component
   const toast = useToast();
   
   const showSuccess = (message: string) => {
@@ -96,61 +97,14 @@ export const Profile: React.FC = () => {
         throw new Error('Full name is required');
       }
       
-      // Update profile information
+      // Update profile information (avatar handled separately by AvatarUploader)
       await updateUser(editForm);
-      
-      // If there's a new avatar, update it
-      if (avatarFile) {
-        try {
-          const formData = new FormData();
-          formData.append('avatar', avatarFile);
-          // Normalize backend base URL
-          const rawBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-          const baseUrl = rawBase
-            .replace(/\/$/, '')            // remove trailing '/'
-            .replace(/\/api$/, '');        // strip trailing '/api' if present
-          const token = localStorage.getItem('token');
-          const response = await fetch(`${baseUrl}/api/users/me/avatar`, {
-            method: 'POST',
-            headers: {
-              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-            },
-            body: formData,
-          });
-          
-          let data: any = {};
-          try { data = await response.json(); } catch {}
-          
-          if (!response.ok) {
-            const detail = data?.message || `${response.status} ${response.statusText}`;
-            throw new Error(`Failed to update avatar: ${detail}`);
-          }
-          
-          // Update the user with the new avatar URL
-          if (data.user) {
-            await updateUser({
-              avatar: data.user.avatar || data.avatar,
-              avatarUrl: data.user.avatarUrl || data.avatarUrl || data.avatar
-            });
-          } else if (data.avatar) {
-            await updateUser({
-              avatar: data.avatar,
-              avatarUrl: data.avatarUrl || data.avatar
-            });
-          }
-        } catch (error) {
-          console.error('Failed to update avatar:', error);
-          // Continue with success but show warning about avatar
-          showError('Profile updated, but there was an issue updating your avatar. You can try again later.');
-        }
-      }
       
       // Only show success if we got this far without throwing
       showSuccess('Your profile has been updated successfully.');
       
       // Reset form state
       setIsEditing(false);
-      setAvatarFile(null);
       
     } catch (error) {
       console.error('Failed to update profile:', error);
@@ -178,85 +132,6 @@ export const Profile: React.FC = () => {
     }
     setIsEditing(false);
     setError(null);
-  };
-
-  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      setError('Please upload an image file (JPEG, PNG, or GIF)');
-      return;
-    }
-
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image size should be less than 5MB');
-      return;
-    }
-
-    try {
-      setIsUpdating(true);
-      setError(null);
-      
-      const formData = new FormData();
-      formData.append('avatar', file);
-
-      // Normalize backend base URL
-      const rawBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-      const baseUrl = rawBase
-        .replace(/\/$/, '')            // remove trailing '/'
-        .replace(/\/api$/, '');        // strip trailing '/api' if present
-      // Get the auth token from localStorage
-      const token = localStorage.getItem('token');
-
-      const response = await fetch(`${baseUrl}/api/users/me/avatar`, {
-        method: 'POST',
-        headers: {
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
-        },
-        body: formData,
-      });
-      
-      const data = await response.json();
-      
-      if (!response.ok) {
-        const detail = data?.message || `${response.status} ${response.statusText}`;
-        throw new Error(`Failed to upload avatar: ${detail}`);
-      }
-      
-      // Update the user with the new avatar URL from the response
-      if (data.user) {
-        // If we have the full user object, use that
-        await updateUser({ 
-          avatar: data.user.avatar || data.avatar,
-          avatarUrl: data.user.avatarUrl || data.avatarUrl || data.avatar
-        });
-        showSuccess('Profile picture updated successfully!');
-      } else if (data.avatar) {
-        // Fallback to just the avatar path if that's all we have
-        await updateUser({ 
-          avatar: data.avatar,
-          avatarUrl: data.avatarUrl || data.avatar
-        });
-        showSuccess('Profile picture updated successfully!');
-      }
-      
-      // Update the avatar preview with the new file
-      setAvatarFile(file);
-    } catch (error) {
-      console.error('Failed to update avatar:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to update avatar. Please try again.';
-      setError(errorMessage);
-      showError(errorMessage);
-    } finally {
-      setIsUpdating(false);
-      // Reset the file input
-      if (e.target) {
-        e.target.value = '';
-      }
-    }
   };
 
   const achievements: Achievement[] = [
@@ -301,92 +176,7 @@ export const Profile: React.FC = () => {
         >
           <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
-              <div className="relative mx-auto sm:mx-0">
-                {user.avatar || user.avatarUrl ? (
-                  <img
-                    src={(() => {
-                      const rawBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-                      const baseUrl = rawBase.replace(/\/$/, '').replace(/\/api$/, '');
-                      const defaultUrl = `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(user.username || user.email || user.fullName || 'User')}`;
-                      let finalUrl = '';
-
-                      const ensureAbsolute = (pathOrUrl: string): string => {
-                        if (!pathOrUrl) return '';
-                        if (pathOrUrl.startsWith('http')) return pathOrUrl;
-                        // Strip any leading '/api' segment and normalize leading slash
-                        const cleaned = pathOrUrl.replace(/^\/?api\//, '/');
-                        return `${baseUrl}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
-                      };
-
-                      // Prefer avatarUrl when present
-                      if (user.avatarUrl) {
-                        finalUrl = ensureAbsolute(user.avatarUrl);
-                      } else if (user.avatar) {
-                        const a = user.avatar;
-                        if (a.startsWith('http')) {
-                          finalUrl = a;
-                        } else if (a.startsWith('/uploads/')) {
-                          finalUrl = ensureAbsolute(a);
-                        } else if (a.startsWith('uploads/')) {
-                          finalUrl = ensureAbsolute(`/${a}`);
-                        } else if (a.startsWith('avatars/')) {
-                          // Sometimes only 'avatars/filename' is stored
-                          finalUrl = ensureAbsolute(`/uploads/${a}`);
-                        } else if (a.startsWith('/avatars/')) {
-                          // Normalize '/avatars/filename' to '/uploads/avatars/filename'
-                          finalUrl = ensureAbsolute(`/uploads${a}`);
-                        } else {
-                          // Assume it's a bare filename
-                          finalUrl = ensureAbsolute(`/uploads/avatars/${a}`);
-                        }
-                      }
-
-                      // Safety: never return a relative URL
-                      if (finalUrl && !finalUrl.startsWith('http')) {
-                        finalUrl = ensureAbsolute(finalUrl);
-                      }
-
-                      console.log('Avatar URL Debug:', {
-                        baseUrl,
-                        userAvatar: user.avatar,
-                        userAvatarUrl: user.avatarUrl,
-                        finalUrl,
-                        env: import.meta.env.VITE_API_URL
-                      });
-
-                      return finalUrl || defaultUrl;
-                    })()}
-                    alt={user.username}
-                    className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-blue-200"
-                    onError={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-                      console.error('Failed to load avatar image:', {
-                        src: e.currentTarget.src,
-                        error: 'Image load error'
-                      });
-                      // If image fails to load, use a default avatar
-                      const target = e.target as HTMLImageElement;
-                      const fallback = `https://api.dicebear.com/8.x/initials/svg?seed=${encodeURIComponent(user.username || user.email || user.fullName || 'User')}`;
-                      target.src = fallback;
-                    }}
-                    onLoad={(e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-                      console.log('Avatar image loaded successfully:', e.currentTarget.src);
-                    }}
-                  />
-                ) : (
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 bg-blue-100 rounded-full flex items-center justify-center border-2 border-blue-200">
-                    <UserIcon className="w-10 h-10 sm:w-12 sm:h-12 text-blue-400" />
-                  </div>
-                )}
-                <label className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 bg-blue-600 rounded-full p-1.5 sm:p-2 cursor-pointer hover:bg-blue-700 transition-colors shadow-lg">
-                  <Camera className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarChange}
-                    className="hidden"
-                  />
-                </label>
-              </div>
+              <AvatarUploader currentUrl={user.avatarUrl || user.avatar} size={96} />
               
               <div className="flex-1 text-center sm:text-left w-full sm:w-auto">
                 {isEditing ? (

@@ -71,6 +71,8 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, size = 96, 
       setPreview(null);
     } finally {
       setLoading(false);
+      // reset input so same file can be selected again
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -95,6 +97,7 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, size = 96, 
       alert((err as any)?.message || 'Failed to remove avatar');
     } finally {
       setLoading(false);
+      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
