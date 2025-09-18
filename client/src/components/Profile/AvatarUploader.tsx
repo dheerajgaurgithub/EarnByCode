@@ -65,7 +65,7 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, size = 96, 
 
       // Update local preview immediately; then refresh from server so context has persisted values
       onUpdated?.({ avatar: avatarAbs, avatarUrl: avatarAbs || ensureAbsolute(avatarRel) || undefined });
-      await refreshUser();
+      await refreshUser(true);
     } catch (err) {
       console.error('Avatar upload failed:', err);
       alert((err as any)?.message || 'Failed to upload avatar');
@@ -92,7 +92,7 @@ const AvatarUploader: React.FC<AvatarUploaderProps> = ({ currentUrl, size = 96, 
       }
       setPreview(null);
       onUpdated?.({});
-      await refreshUser();
+      await refreshUser(true);
     } catch (err) {
       console.error('Remove avatar failed:', err);
       alert((err as any)?.message || 'Failed to remove avatar');

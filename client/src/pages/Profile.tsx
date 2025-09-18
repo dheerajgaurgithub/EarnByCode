@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import AvatarUploader from '@/components/Profile/AvatarUploader';
 import { motion } from 'framer-motion';
+import config from '@/lib/config';
 
 interface EditFormData {
   fullName: string;
@@ -36,6 +37,9 @@ export const Profile: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   // Avatar is handled by AvatarUploader component
   const toast = useToast();
+  // Backend health indicator
+  const [backendStatus, setBackendStatus] = useState<'loading' | 'ok' | 'error'>('loading');
+  const [backendOrigin, setBackendOrigin] = useState<string>('');
   
   const showSuccess = (message: string) => {
     toast.success(message);
@@ -72,6 +76,19 @@ export const Profile: React.FC = () => {
       });
     }
   }, [user]);
+
+  // Detect backend origin and ping health endpoint
+  useEffect(() => {
+    const api = (config.api.baseUrl || '').replace(/\/$/, '');
+    const origin = api.replace(/\/api$/, '');
+    setBackendOrigin(origin);
+    const controller = new AbortController();
+    setBackendStatus('loading');
+    fetch(`${api}/health`, { signal: controller.signal })
+      .then(r => setBackendStatus(r.ok ? 'ok' : 'error'))
+      .catch(() => setBackendStatus('error'));
+    return () => controller.abort();
+  }, []);
 
   if (isAuthLoading) {
     return (
@@ -229,13 +246,20 @@ export const Profile: React.FC = () => {
                   </button>
                 </>
               ) : (
-                <button
-                  onClick={() => setIsEditing(true)}
-                  className="flex items-center justify-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                >
-                  <Edit3 className="w-4 h-4" />
-                  <span>Edit Profile</span>
-                </button>
+                <div className="flex items-center gap-3">
+                  <div className="hidden sm:block text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded px-2 py-1">
+                    Backend: {backendStatus === 'loading' ? 'Checking…' : backendStatus === 'ok' ? 'Online' : 'Offline'}
+                    <span className="mx-1">•</span>
+                    <span className="truncate max-w-[180px] inline-block align-bottom" title={backendOrigin}>{backendOrigin}</span>
+                  </div>
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="flex items-center justify-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    <span>Edit Profile</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>

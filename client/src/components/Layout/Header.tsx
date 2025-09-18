@@ -18,11 +18,13 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import config from '@/lib/config';
 
-// Helper function to get the full avatar URL (absolute)
+// Helper function to get the full avatar URL (absolute), compatible with local and deployed
 const getAvatarUrl = (avatarPath: string | undefined): string => {
-  const rawBase = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-  const baseUrl = rawBase.replace(/\/$/, '').replace(/\/api$/, '');
+  // Derive origin from config.api.baseUrl (preferred) or window.location
+  const apiBase = (config.api.baseUrl || '').replace(/\/$/, '');
+  const baseUrl = apiBase ? apiBase.replace(/\/api$/, '') : (typeof window !== 'undefined' ? window.location.origin : '');
   if (!avatarPath) {
     return `https://api.dicebear.com/8.x/initials/svg?seed=User`;
   }

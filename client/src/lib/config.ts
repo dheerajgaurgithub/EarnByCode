@@ -31,11 +31,33 @@ export const getEnv = (): Environment => {
     : 'development';
 };
 
+// Resolve API Base URL smartly for both local and deployed without hardcoding
+const resolveApiBaseUrl = (): string => {
+  // Highest priority: explicit override
+  if (import.meta.env.VITE_API_URL) {
+    return String(import.meta.env.VITE_API_URL).replace(/\/$/, '');
+  }
+  // If running in a browser, choose based on current origin
+  if (typeof window !== 'undefined' && window.location) {
+    const { origin, hostname } = window.location;
+    // Local development
+    if (/^(localhost|127\.0\.0\.1)$/i.test(hostname)) {
+      return 'http://localhost:5000/api';
+    }
+    // Deployed: assume same-origin backend with /api
+    return `${origin.replace(/\/$/, '')}/api`;
+  }
+  // Fallbacks for SSR/build tools
+  if (getEnv() === 'production') {
+    return 'https://algobucks.onrender.com/api';
+  }
+  return 'http://localhost:5000/api';
+};
+
 // Development configuration
 const devConfig: Config = {
   api: {
-    // Ensure dev points to local backend with /api by default
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+    baseUrl: resolveApiBaseUrl(),
     timeout: 30000, // 30 seconds
   },
   app: {
@@ -52,8 +74,8 @@ const devConfig: Config = {
 // Production configuration
 const prodConfig: Config = {
   api: {
-    // Prefer env override; otherwise point to Render backend /api
-    baseUrl: import.meta.env.VITE_API_URL || 'https://algobucks.onrender.com/api',
+    // Prefer env override; otherwise auto-detect (same-origin) and fallback to Render
+    baseUrl: resolveApiBaseUrl(),
     timeout: 30000, // 30 seconds
   },
   app: {

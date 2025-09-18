@@ -1,7 +1,7 @@
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
-import { AuthProvider, useAuth } from './context/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { WalletProvider } from './context/WalletContext';
 // Import types
@@ -108,9 +108,8 @@ function App() {
     footerHiddenExact.includes(pathname);
 
   return (
-    <AuthProvider>
-      <ThemeProvider>
-        <WalletProvider>
+    <ThemeProvider>
+      <WalletProvider>
           <div className="min-h-screen flex flex-col bg-gray-900 text-white">
             <Toaster
               position="bottom-right"
@@ -258,9 +257,8 @@ function App() {
               {!hideFooter && <Footer />}
             </div>
           </div>
-        </WalletProvider>
-      </ThemeProvider>
-    </AuthProvider>
+      </WalletProvider>
+    </ThemeProvider>
   );
 }
 

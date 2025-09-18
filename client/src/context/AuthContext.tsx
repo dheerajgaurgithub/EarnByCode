@@ -9,7 +9,7 @@ interface AuthContextType {
   logout: () => void;
   updateUser: (updates: Partial<User>) => void;
   isLoading: boolean;
-  refreshUser: () => Promise<void>;
+  refreshUser: (silent?: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -35,8 +35,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const refreshUser = async () => {
-    setIsLoading(true);
+  const refreshUser = async (silent: boolean = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const token = localStorage.getItem('token');
       if (!token) {
@@ -77,7 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       localStorage.removeItem('token');
       setUser(null);
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   };
 
