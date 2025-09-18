@@ -49,10 +49,67 @@ router.get('/balance', authenticate, async (req, res) => {
   }
 });
 
+// Confirm 3D Secure (SCA) for a PaymentIntent and finalize the deposit
+router.post('/confirm-3d-secure', authenticate, async (req, res) => {
+  try {
+    if (!stripe) {
+      return res.status(400).json({ success: false, message: 'Stripe is not configured on the server' });
+    }
+
+    const { paymentIntentId } = req.body;
+    if (!paymentIntentId) {
+      return res.status(400).json({ success: false, message: 'paymentIntentId is required' });
+    }
+
+    // Retrieve latest status
+    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (pi.status === 'requires_action' || pi.status === 'requires_confirmation') {
+      // Try to confirm again, just in case
+      await stripe.paymentIntents.confirm(paymentIntentId);
+    }
+
+    const updated = await stripe.paymentIntents.retrieve(paymentIntentId);
+
+    if (updated.status === 'succeeded') {
+      const amount = (updated.amount_received ?? updated.amount ?? 0) / 100;
+      if (amount > 0) {
+        // Update wallet balance and record transaction if not already recorded
+        const existing = await Transaction.findOne({ stripePaymentIntentId: paymentIntentId, user: req.user._id });
+        if (!existing) {
+          // Credit wallet
+          const user = await User.findByIdAndUpdate(
+            req.user._id,
+            { $inc: { walletBalance: amount } },
+            { new: true }
+          );
+          const txn = new Transaction({
+            user: req.user._id,
+            type: 'deposit',
+            amount,
+            currency: 'USD',
+            description: `Wallet deposit of $${amount.toFixed(2)} (3DS confirm)`,
+            status: 'completed',
+            stripePaymentIntentId: paymentIntentId,
+          });
+          await txn.save();
+        }
+      }
+
+      return res.json({ success: true, status: 'succeeded' });
+    }
+
+    return res.status(202).json({ success: true, status: updated.status });
+  } catch (error) {
+    console.error('Confirm 3D Secure error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to confirm payment' });
+  }
+});
+
 // Add funds to wallet
 router.post('/deposit', authenticate, async (req, res) => {
   try {
-    const { amount, paymentMethodId } = req.body;
+    const { amount, paymentMethodId, method = 'card', details } = req.body;
     
     // Validation
     if (!amount || isNaN(amount) || amount < 1) {
@@ -80,9 +137,9 @@ router.post('/deposit', authenticate, async (req, res) => {
               type: 'deposit',
               amount: amount,
               currency: 'USD',
-              description: `Wallet deposit of $${Number(amount).toFixed(2)} (mock)`,
+              description: `Wallet deposit of $${Number(amount).toFixed(2)} via ${method.toUpperCase()} (mock)`,
               status: 'completed',
-              metadata: { mode: 'mock' }
+              metadata: { mode: 'mock', method, details: details || {} }
             }
           ], { session });
 
@@ -104,6 +161,11 @@ router.post('/deposit', authenticate, async (req, res) => {
         console.error('Mock deposit failed:', e);
         return res.status(500).json({ success: false, message: 'Failed to process deposit' });
       }
+    }
+
+    // If live mode and not card, currently unsupported
+    if (method !== 'card') {
+      return res.status(400).json({ success: false, message: `Payment method '${method}' is not supported in live mode` });
     }
 
     // Get or create Stripe customer (live mode)

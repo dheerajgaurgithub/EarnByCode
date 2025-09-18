@@ -3,6 +3,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { walletService, type Transaction } from '@/services/walletService';
 import { Icons } from '../icons';
+import StripeDepositForm from './StripeDepositForm';
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -65,6 +66,13 @@ export const WalletDashboard = () => {
   });
   const [timeRange, setTimeRange] = useState<TimeRange>('30d');
   const [activeTab, setActiveTab] = useState('overview');
+  // Action state
+  const [depositAmount, setDepositAmount] = useState<string>('');
+  const [paymentMethodId, setPaymentMethodId] = useState<string>('');
+  const [withdrawAmount, setWithdrawAmount] = useState<string>('');
+  const [bankAccountId, setBankAccountId] = useState<string>('');
+  const [actionLoading, setActionLoading] = useState<{ deposit: boolean; withdraw: boolean }>({ deposit: false, withdraw: false });
+  const isStripeConfigured = Boolean(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
 
   const fetchWalletData = async () => {
     try {
@@ -142,6 +150,55 @@ export const WalletDashboard = () => {
       return 'text-green-600';
     }
     return 'text-red-600';
+  };
+
+  // Helpers to refresh and perform actions
+  const refreshAll = async () => {
+    await Promise.all([fetchWalletData(), fetchTransactions(), fetchWalletStats()]);
+  };
+
+  const onDeposit = async () => {
+    const amt = parseFloat(depositAmount);
+    if (!amt || amt < 1) {
+      toast.error('Minimum deposit amount is $1');
+      return;
+    }
+    try {
+      setActionLoading((s) => ({ ...s, deposit: true }));
+      await walletService.deposit(amt, paymentMethodId || 'mock');
+      toast.success('Deposit successful');
+      setDepositAmount('');
+      await refreshAll();
+      setActiveTab('overview');
+    } catch (e: any) {
+      toast.error(e?.message || 'Deposit failed');
+    } finally {
+      setActionLoading((s) => ({ ...s, deposit: false }));
+    }
+  };
+
+  const onWithdraw = async () => {
+    const amt = parseFloat(withdrawAmount);
+    if (!amt || amt < 10) {
+      toast.error('Minimum withdrawal amount is $10');
+      return;
+    }
+    if (amt > balance) {
+      toast.error('Insufficient balance');
+      return;
+    }
+    try {
+      setActionLoading((s) => ({ ...s, withdraw: true }));
+      await walletService.withdraw(amt, bankAccountId || 'mock');
+      toast.success('Withdrawal requested');
+      setWithdrawAmount('');
+      await refreshAll();
+      setActiveTab('overview');
+    } catch (e: any) {
+      toast.error(e?.message || 'Withdrawal failed');
+    } finally {
+      setActionLoading((s) => ({ ...s, withdraw: false }));
+    }
   };
 
   return (
@@ -383,24 +440,39 @@ export const WalletDashboard = () => {
               <CardDescription>Add money to your wallet balance</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {isStripeConfigured ? (
+                <StripeDepositForm />
+              ) : (
+                <>
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">
                   Amount ({currency})
                 </label>
-                <Input type="number" placeholder="Enter amount" min="1" />
+                <Input
+                  type="number"
+                  placeholder="Enter amount"
+                  min="1"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">
                   Payment Method
                 </label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                  <option value="">Select payment method</option>
-                  <option value="card">Credit/Debit Card</option>
-                  <option value="bank">Bank Transfer</option>
-                  <option value="paypal">PayPal</option>
-                </select>
+                <Input
+                  type="text"
+                  placeholder="Payment method ID (leave empty for mock)"
+                  value={paymentMethodId}
+                  onChange={(e) => setPaymentMethodId(e.target.value)}
+                />
               </div>
-              <Button className="w-full">Deposit Funds</Button>
+              <Button className="w-full" onClick={onDeposit} disabled={actionLoading.deposit}>
+                {actionLoading.deposit ? 'Processing…' : 'Deposit Funds'}
+              </Button>
+                <p className="text-xs text-slate-500">Tip: For production card payments, set VITE_STRIPE_PUBLISHABLE_KEY and Stripe keys on the server to enable card form.</p>
+                </>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -416,24 +488,28 @@ export const WalletDashboard = () => {
                 <label className="text-sm font-medium leading-none">
                   Amount ({currency})
                 </label>
-                <Input 
-                  type="number" 
-                  placeholder={`Available: ${formatCurrency(balance)}`} 
-                  min="1" 
+                <Input
+                  type="number"
+                  placeholder={`Available: ${formatCurrency(balance)}`}
+                  min="1"
                   max={balance}
+                  value={withdrawAmount}
+                  onChange={(e) => setWithdrawAmount(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium leading-none">
                   Bank Account
                 </label>
-                <select className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
-                  <option value="">Select bank account</option>
-                  {/* Bank accounts would be mapped here */}
-                </select>
+                <Input
+                  type="text"
+                  placeholder="Bank account ID (or 'mock')"
+                  value={bankAccountId}
+                  onChange={(e) => setBankAccountId(e.target.value)}
+                />
               </div>
-              <Button className="w-full" disabled={balance <= 0}>
-                Withdraw Funds
+              <Button className="w-full" disabled={balance <= 0 || actionLoading.withdraw} onClick={onWithdraw}>
+                {actionLoading.withdraw ? 'Submitting…' : 'Withdraw Funds'}
               </Button>
             </CardContent>
           </Card>

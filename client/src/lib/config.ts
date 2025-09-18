@@ -34,7 +34,8 @@ export const getEnv = (): Environment => {
 // Development configuration
 const devConfig: Config = {
   api: {
-    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:5000',
+    // Ensure dev points to local backend with /api by default
+    baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
     timeout: 30000, // 30 seconds
   },
   app: {
@@ -51,7 +52,8 @@ const devConfig: Config = {
 // Production configuration
 const prodConfig: Config = {
   api: {
-    baseUrl: 'https://algobucks.vercel.app',
+    // Prefer env override; otherwise point to Render backend /api
+    baseUrl: import.meta.env.VITE_API_URL || 'https://algobucks.onrender.com/api',
     timeout: 30000, // 30 seconds
   },
   app: {

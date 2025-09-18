@@ -210,15 +210,19 @@ export const walletService = {
    * Deposit funds into wallet
    */
   async deposit(
-    amount: number, 
-    paymentMethodId: string
-  ): Promise<DepositResponse> {
+    amount: number,
+    paymentMethodId?: string,
+    method?: 'card' | 'upi' | 'bank',
+    details?: Record<string, unknown>
+  ): Promise<any> {
     try {
-      const response = await api.post<DepositResponse>('/payments/deposit', { 
-        amount, 
-        paymentMethodId 
+      const response = await api.post('/payments/deposit', {
+        amount,
+        paymentMethodId,
+        method,
+        details,
       });
-      return response.data;
+      return response.data as any;
     } catch (error) {
       return handleApiError(error);
     }
