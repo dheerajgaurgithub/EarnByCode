@@ -6,7 +6,7 @@ import {
   Trophy, Calendar, Target, TrendingUp, Edit3, Save, X, 
   MapPin, Building, GraduationCap, Globe, Github, Linkedin, Twitter, Loader2
 } from 'lucide-react';
-import AvatarUploader from '@/components/Profile/AvatarUploader';
+// Removed AvatarUploader - using URL-based avatar editing
 import { motion } from 'framer-motion';
 import config from '@/lib/config';
 
@@ -20,6 +20,7 @@ interface EditFormData {
   twitter: string;
   company: string;
   school: string;
+  avatar: string;
 }
 
 interface Achievement {
@@ -31,11 +32,19 @@ interface Achievement {
 // Removed unused Submission interface
 
 export const Profile: React.FC = () => {
-  const { user, updateUser, isLoading: isAuthLoading } = useAuth();
+  const { user, updateUser, isLoading: isAuthLoading, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Avatar is handled by AvatarUploader component
+  // Helper to ensure absolute URL for relative avatar paths
+  const ensureAbsolute = (pathOrUrl?: string | null): string | null => {
+    if (!pathOrUrl) return null;
+    if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+    const api = (config.api.baseUrl || '').replace(/\/$/, '');
+    const origin = api.replace(/\/api$/, '');
+    const cleaned = String(pathOrUrl).replace(/^\/?api\//, '/');
+    return `${origin}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
+  };
   const toast = useToast();
   // Backend health indicator
   const [backendStatus, setBackendStatus] = useState<'loading' | 'ok' | 'error'>('loading');
@@ -57,7 +66,8 @@ export const Profile: React.FC = () => {
     linkedin: '',
     twitter: '',
     company: '',
-    school: ''
+    school: '',
+    avatar: ''
   });
 
   // Initialize form with user data when user is loaded
@@ -72,7 +82,8 @@ export const Profile: React.FC = () => {
         linkedin: user.linkedin || '',
         twitter: user.twitter || '',
         company: user.company || '',
-        school: user.school || ''
+        school: user.school || '',
+        avatar: (user.avatarUrl || user.avatar || '') as string
       });
     }
   }, [user]);
@@ -114,8 +125,9 @@ export const Profile: React.FC = () => {
         throw new Error('Full name is required');
       }
       
-      // Update profile information (avatar handled separately by AvatarUploader)
+      // Update profile information including avatar URL
       await updateUser(editForm);
+      await refreshUser(true);
       
       // Only show success if we got this far without throwing
       showSuccess('Your profile has been updated successfully.');
@@ -144,7 +156,8 @@ export const Profile: React.FC = () => {
         linkedin: user.linkedin || '',
         twitter: user.twitter || '',
         company: user.company || '',
-        school: user.school || ''
+        school: user.school || '',
+        avatar: (user.avatarUrl || user.avatar || '') as string
       });
     }
     setIsEditing(false);
@@ -193,12 +206,30 @@ export const Profile: React.FC = () => {
         >
           <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
-              <AvatarUploader key={(user.avatarUrl || user.avatar || 'no-avatar')} currentUrl={user.avatarUrl || user.avatar} size={96} />
-              
+              <div className="relative rounded-full overflow-hidden border border-blue-200 bg-blue-50 flex items-center justify-center" style={{ width: 96, height: 96 }}>
+                {ensureAbsolute(user.avatarUrl || user.avatar) ? (
+                  <img src={ensureAbsolute(user.avatarUrl || user.avatar) || ''} alt="Avatar" className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-blue-400 text-2xl font-bold">
+                    {(user.username || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
+              </div>
+
               <div className="flex-1 text-center sm:text-left w-full sm:w-auto">
                 {isEditing ? (
                   <div className="space-y-3">
-                    <p className="text-xs text-blue-600">Tip: Use the Upload/Remove above to change your profile picture. It saves to the database and updates after refresh.</p>
+                    <div>
+                      <label className="block text-sm font-medium text-blue-700 mb-1">Profile picture URL</label>
+                      <input
+                        type="url"
+                        value={editForm.avatar}
+                        onChange={(e) => setEditForm({ ...editForm, avatar: e.target.value })}
+                        placeholder="https://example.com/image.png"
+                        className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm sm:text-base"
+                      />
+                      <p className="text-blue-500 text-xs mt-1">Paste a direct image URL (PNG, JPG, GIF). The image URL will be saved to your profile.</p>
+                    </div>
                     <input
                       type="text"
                       value={editForm.fullName}
