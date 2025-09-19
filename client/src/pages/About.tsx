@@ -11,31 +11,31 @@ export const About: React.FC = () => {
         <div className="absolute top-1/2 left-1/3 w-24 h-24 sm:w-48 sm:h-48 lg:w-64 lg:h-64 bg-blue-500/10 rounded-full blur-3xl animate-pulse delay-500"></div>
       </div>
 
-      <div className="relative z-10 py-6 sm:py-8 md:py-12 px-3 sm:px-4 md:px-6 lg:px-8">
+      <div className="relative z-10 py-4 sm:py-6 md:py-8 lg:py-10 px-3 sm:px-4 md:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
           {/* Hero Section */}
-          <div className="text-center mb-8 sm:mb-12 md:mb-16 lg:mb-20">
+          <div className="text-center mb-6 sm:mb-8 md:mb-10 lg:mb-12">
             <img 
             src="/logo.png" 
             alt="Logo" 
-            className="w-8 h-8 sm:w-10 sm:h-10 object-contain rounded-full mx-auto"
+            className="w-6 h-6 sm:w-8 sm:h-8 object-contain rounded-full mx-auto mb-2"
           />
-            <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-3 sm:mb-4 md:mb-6 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent leading-tight px-4">
+            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold mb-2 sm:mb-3 md:mb-4 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent leading-tight px-4">
               About AlgoBucks
             </h1>
-            <p className="text-sm sm:text-base md:text-lg lg:text-xl xl:text-2xl text-gray-600 max-w-3xl mx-auto px-4">
+            <p className="text-xs sm:text-sm md:text-base lg:text-lg text-gray-600 max-w-3xl mx-auto px-4">
               Empowering developers to reach their full potential through practice and competition.
             </p>
           </div>
 
           {/* Our Story */}
-          <section className="mb-8 sm:mb-12 md:mb-16 lg:mb-20">
-            <div className="flex items-center mb-4 sm:mb-6 md:mb-8 px-4 sm:px-0">
-              <div className="h-1 w-6 sm:w-8 md:w-12 bg-gradient-to-r from-blue-500 to-blue-600 mr-2 sm:mr-3 md:mr-4 rounded-full"></div>
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">Our Story</h2>
+          <section className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+            <div className="flex items-center mb-3 sm:mb-4 md:mb-5 lg:mb-6 px-4 sm:px-0">
+              <div className="h-1 w-4 sm:w-6 md:w-8 bg-gradient-to-r from-blue-500 to-blue-600 mr-2 sm:mr-3 rounded-full"></div>
+              <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-800">Our Story</h2>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm border border-blue-200/50 rounded-xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-10 shadow-xl shadow-blue-500/10 hover:shadow-blue-500/15 transition-all duration-500 mx-4 sm:mx-0">
-              <div className="space-y-3 sm:space-y-4 md:space-y-6 text-gray-600 text-sm sm:text-base md:text-lg leading-relaxed">
+            <div className="bg-white/80 backdrop-blur-sm border border-blue-200/50 rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 shadow-xl shadow-blue-500/10 hover:shadow-blue-500/15 transition-all duration-500 mx-4 sm:mx-0">
+              <div className="space-y-2 sm:space-y-3 md:space-y-4 text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed">
                 <p className="hover:text-gray-800 transition-colors duration-300">
                   Founded in 2025, AlgoBucks was born out of a simple idea: to create a platform where developers of all skill levels could come together to learn, practice, and compete in a supportive environment.
                 </p>
@@ -50,16 +50,16 @@ export const About: React.FC = () => {
           </section>
 
           {/* What We Offer */}
-          <section className="mb-8 sm:mb-12 md:mb-16 lg:mb-20">
-            <div className="flex items-center mb-4 sm:mb-6 md:mb-8 px-4 sm:px-0">
-              <div className="h-1 w-6 sm:w-8 md:w-12 bg-gradient-to-r from-blue-600 to-blue-700 mr-2 sm:mr-3 md:mr-4 rounded-full"></div>
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">What We Offer</h2>
+          <section className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+            <div className="flex items-center mb-3 sm:mb-4 md:mb-5 lg:mb-6 px-4 sm:px-0">
+              <div className="h-1 w-4 sm:w-6 md:w-8 bg-gradient-to-r from-blue-600 to-blue-700 mr-2 sm:mr-3 rounded-full"></div>
+              <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-800">What We Offer</h2>
             </div>
             
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6 lg:gap-8 px-4 sm:px-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-5 lg:gap-6 px-4 sm:px-0">
               {[
                 {
-                  icon: <Code className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-blue-600" />,
+                  icon: <Code className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-600" />,
                   title: 'Coding Challenges',
                   description: 'Hundreds of challenges across multiple difficulty levels and categories.',
                   gradient: 'from-blue-50/80 to-white/60',
@@ -67,7 +67,7 @@ export const About: React.FC = () => {
                   shadow: 'hover:shadow-blue-500/15'
                 },
                 {
-                  icon: <Users className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-blue-500" />,
+                  icon: <Users className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-500" />,
                   title: 'Community',
                   description: 'Connect with developers worldwide and learn from each other.',
                   gradient: 'from-blue-100/80 to-white/60',
@@ -75,7 +75,7 @@ export const About: React.FC = () => {
                   shadow: 'hover:shadow-blue-500/15'
                 },
                 {
-                  icon: <Zap className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-blue-700" />,
+                  icon: <Zap className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-700" />,
                   title: 'Real-time Contests',
                   description: 'Test your skills against others in timed competitions.',
                   gradient: 'from-blue-200/80 to-white/60',
@@ -83,7 +83,7 @@ export const About: React.FC = () => {
                   shadow: 'hover:shadow-blue-500/15'
                 },
                 {
-                  icon: <Award className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-blue-800" />,
+                  icon: <Award className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-blue-800" />,
                   title: 'Achievements',
                   description: 'Earn badges and recognition for your progress.',
                   gradient: 'from-blue-300/80 to-white/60',
@@ -93,15 +93,15 @@ export const About: React.FC = () => {
               ].map((feature, index) => (
                 <div 
                   key={index} 
-                  className={`bg-gradient-to-br ${feature.gradient} backdrop-blur-sm border ${feature.border} rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 hover:scale-105 transition-all duration-500 ${feature.shadow} shadow-lg group cursor-pointer`}
+                  className={`bg-gradient-to-br ${feature.gradient} backdrop-blur-sm border ${feature.border} rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-5 lg:p-6 hover:scale-105 transition-all duration-500 ${feature.shadow} shadow-lg group cursor-pointer`}
                 >
-                  <div className="mb-2 sm:mb-3 md:mb-4 group-hover:scale-110 transition-transform duration-300">
+                  <div className="mb-2 sm:mb-3 group-hover:scale-110 transition-transform duration-300">
                     {feature.icon}
                   </div>
-                  <h3 className="text-base sm:text-lg md:text-xl lg:text-2xl font-semibold mb-2 sm:mb-3 text-gray-800 group-hover:text-blue-700 transition-all duration-300">
+                  <h3 className="text-sm sm:text-base md:text-lg font-semibold mb-1 sm:mb-2 text-gray-800 group-hover:text-blue-700 transition-all duration-300">
                     {feature.title}
                   </h3>
-                  <p className="text-gray-600 group-hover:text-gray-700 transition-colors duration-300 text-xs sm:text-sm md:text-base">
+                  <p className="text-gray-600 group-hover:text-gray-700 transition-colors duration-300 text-xs sm:text-sm">
                     {feature.description}
                   </p>
                 </div>
@@ -110,14 +110,14 @@ export const About: React.FC = () => {
           </section>
 
           {/* Our Impact */}
-          <section className="mb-8 sm:mb-12 md:mb-16 lg:mb-20">
-            <div className="bg-gradient-to-r from-white/90 via-blue-50/80 to-white/90 backdrop-blur-sm border border-blue-200/50 rounded-xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-12 shadow-xl shadow-blue-500/10 hover:shadow-blue-500/15 transition-all duration-500 mx-4 sm:mx-0">
-              <div className="flex items-center mb-4 sm:mb-6 md:mb-8">
-                <div className="h-1 w-6 sm:w-8 md:w-12 bg-gradient-to-r from-blue-700 to-blue-800 mr-2 sm:mr-3 md:mr-4 rounded-full"></div>
-                <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-gray-800">Our Impact</h2>
+          <section className="mb-6 sm:mb-8 md:mb-10 lg:mb-12">
+            <div className="bg-gradient-to-r from-white/90 via-blue-50/80 to-white/90 backdrop-blur-sm border border-blue-200/50 rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 shadow-xl shadow-blue-500/10 hover:shadow-blue-500/15 transition-all duration-500 mx-4 sm:mx-0">
+              <div className="flex items-center mb-3 sm:mb-4 md:mb-5 lg:mb-6">
+                <div className="h-1 w-4 sm:w-6 md:w-8 bg-gradient-to-r from-blue-700 to-blue-800 mr-2 sm:mr-3 rounded-full"></div>
+                <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold text-gray-800">Our Impact</h2>
               </div>
               
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 lg:gap-8 text-center">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3 md:gap-4 lg:gap-6 text-center">
                 {[
                   { value: '10,000+', label: 'Active Users', color: 'text-blue-600' },
                   { value: '500+', label: 'Coding Problems', color: 'text-blue-700' },
@@ -125,10 +125,10 @@ export const About: React.FC = () => {
                   { value: '95%', label: 'Satisfaction Rate', color: 'text-blue-500' }
                 ].map((stat, index) => (
                   <div key={index} className="group hover:scale-110 transition-transform duration-300 cursor-pointer">
-                    <div className={`text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold ${stat.color} mb-1 sm:mb-2 group-hover:drop-shadow-lg`}>
+                    <div className={`text-base sm:text-lg md:text-xl lg:text-2xl font-bold ${stat.color} mb-1 group-hover:drop-shadow-lg`}>
                       {stat.value}
                     </div>
-                    <div className="text-gray-600 group-hover:text-gray-700 transition-colors duration-300 text-xs sm:text-sm md:text-base">
+                    <div className="text-gray-600 group-hover:text-gray-700 transition-colors duration-300 text-xs sm:text-sm">
                       {stat.label}
                     </div>
                   </div>
@@ -139,23 +139,23 @@ export const About: React.FC = () => {
 
           {/* Join Us */}
           <section className="text-center px-4 sm:px-0">
-            <div className="bg-gradient-to-r from-blue-50/90 via-white/80 to-blue-50/90 backdrop-blur-sm border border-blue-200/50 rounded-xl sm:rounded-2xl md:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-12 shadow-xl shadow-blue-500/10">
-              <h2 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 sm:mb-3 md:mb-4 lg:mb-6 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent">
+            <div className="bg-gradient-to-r from-blue-50/90 via-white/80 to-blue-50/90 backdrop-blur-sm border border-blue-200/50 rounded-lg sm:rounded-xl md:rounded-2xl p-3 sm:p-4 md:p-6 lg:p-8 shadow-xl shadow-blue-500/10">
+              <h2 className="text-base sm:text-lg md:text-xl lg:text-2xl font-bold mb-2 sm:mb-3 md:mb-4 bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent">
                 Ready to Start Your Coding Journey?
               </h2>
-              <p className="text-gray-600 mb-4 sm:mb-6 md:mb-8 lg:mb-10 max-w-3xl mx-auto text-sm sm:text-base md:text-lg lg:text-xl leading-relaxed">
+              <p className="text-gray-600 mb-3 sm:mb-4 md:mb-6 max-w-3xl mx-auto text-xs sm:text-sm md:text-base leading-relaxed">
                 Join thousands of developers who are already improving their skills on AlgoBucks.
               </p>
-              <div className="flex flex-col sm:flex-row justify-center gap-3 sm:gap-4 md:gap-6 max-w-md sm:max-w-none mx-auto">
+              <div className="flex flex-col sm:flex-row justify-center gap-2 sm:gap-3 md:gap-4 max-w-md sm:max-w-none mx-auto">
                 <a 
                   href="/register" 
-                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 sm:py-3 md:py-4 px-4 sm:px-6 md:px-8 rounded-lg sm:rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105 transform text-xs sm:text-sm md:text-base"
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 md:px-6 rounded-lg shadow-lg shadow-blue-500/25 hover:shadow-blue-500/30 transition-all duration-300 hover:scale-105 transform text-xs sm:text-sm"
                 >
                   Sign Up Free
                 </a>
                 <a 
                   href="/problems" 
-                  className="bg-transparent hover:bg-blue-50 text-blue-600 hover:text-blue-700 font-semibold py-2 sm:py-3 md:py-4 px-4 sm:px-6 md:px-8 border-2 border-blue-500/30 hover:border-blue-600/50 rounded-lg sm:rounded-xl transition-all duration-300 hover:scale-105 transform backdrop-blur-sm text-xs sm:text-sm md:text-base"
+                  className="bg-transparent hover:bg-blue-50 text-blue-600 hover:text-blue-700 font-semibold py-2 sm:py-2.5 md:py-3 px-3 sm:px-4 md:px-6 border-2 border-blue-500/30 hover:border-blue-600/50 rounded-lg transition-all duration-300 hover:scale-105 transform backdrop-blur-sm text-xs sm:text-sm"
                 >
                   View Challenges
                 </a>

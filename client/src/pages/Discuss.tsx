@@ -89,11 +89,9 @@ const Discuss: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await api.get<{ success: boolean; data: Discussion[] }>('/discussions');
-      
-      // Handle response based on axios interceptor structure
-      const responseData = response as unknown as { success: boolean; data: Discussion[] };
-      
-      if (responseData?.success) {
+      const responseData = (response as any)?.data as { success: boolean; data: Discussion[] };
+
+      if (responseData && responseData.success) {
         const discussionsData = Array.isArray(responseData.data) ? responseData.data : [];
         const processedDiscussions = discussionsData.map((discussion: Discussion) => ({
           ...discussion,
@@ -238,14 +236,17 @@ const Discuss: React.FC = () => {
     const discussion = discussions.find(d => d._id === discussionId);
     if (discussion && (!discussion.replies || discussion.replies.length === 0)) {
       try {
-        const response = await api.get<Reply[]>(`/discussions/${discussionId}/replies`);
-        setDiscussions(prevDiscussions => 
-          prevDiscussions.map(d => 
-            d._id === discussionId 
-              ? { 
-                  ...d, 
-                  replies: Array.isArray(response) ? response : [], 
-                  isLoadingReplies: false 
+        // Server provides GET /discussions/:id with populated replies
+        const resp = await api.get<{ success: boolean; data: { replies?: Reply[] } }>(`/discussions/${discussionId}`);
+        const payload = (resp as any)?.data as { success: boolean; data?: { replies?: Reply[] } };
+        const replies = payload?.data?.replies || [];
+        setDiscussions(prevDiscussions =>
+          prevDiscussions.map(d =>
+            d._id === discussionId
+              ? {
+                  ...d,
+                  replies: Array.isArray(replies) ? replies : [],
+                  isLoadingReplies: false,
                 }
               : d
           )

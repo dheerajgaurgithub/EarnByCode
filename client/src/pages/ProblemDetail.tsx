@@ -270,6 +270,25 @@ const ProblemDetail: React.FC = () => {
       const data = await resp.json();
       const out = (data?.run?.output ?? '').toString();
       const err = (data?.run?.stderr ?? '').toString();
+      // Normalize runtime and memory from sandbox responses
+      const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time) as number | string | undefined;
+      const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory) as number | string | undefined;
+      const parseMs = (v: any): number | undefined => {
+        if (v == null) return undefined;
+        const n = typeof v === 'string' ? parseFloat(v) : Number(v);
+        if (Number.isNaN(n)) return undefined;
+        // Some APIs provide seconds; assume seconds if < 100 (heuristic)
+        return n < 100 ? Math.round(n * 1000) : Math.round(n);
+      };
+      const parseKb = (v: any): number | undefined => {
+        if (v == null) return undefined;
+        const n = typeof v === 'string' ? parseFloat(v) : Number(v);
+        if (Number.isNaN(n)) return undefined;
+        // If appears to be bytes (very large), convert to KB
+        return n > 4096 ? Math.round(n / 1024) : Math.round(n);
+      };
+      const runtimeMs = parseMs(rawTime);
+      const memoryKb = parseKb(rawMem);
 
       const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
       const hasExpected = typeof exampleOutput === 'string' && exampleOutput.trim().length > 0;
@@ -284,8 +303,8 @@ const ProblemDetail: React.FC = () => {
         isSubmission: false,
         message: err ? 'Execution error' : undefined,
         error: err || undefined,
-        runtimeMs: undefined,
-        memoryKb: undefined
+        runtimeMs,
+        memoryKb
       });
     } catch (error: unknown) {
       console.error('Error running code:', error);
@@ -342,11 +361,27 @@ const ProblemDetail: React.FC = () => {
         const data = await resp.json();
         const out = (data?.run?.output ?? '').toString();
         const err = (data?.run?.stderr ?? '').toString();
+        const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time) as number | string | undefined;
+        const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory) as number | string | undefined;
+        const parseMs = (v: any): number | undefined => {
+          if (v == null) return undefined;
+          const n = typeof v === 'string' ? parseFloat(v) : Number(v);
+          if (Number.isNaN(n)) return undefined;
+          return n < 100 ? Math.round(n * 1000) : Math.round(n);
+        };
+        const parseKb = (v: any): number | undefined => {
+          if (v == null) return undefined;
+          const n = typeof v === 'string' ? parseFloat(v) : Number(v);
+          if (Number.isNaN(n)) return undefined;
+          return n > 4096 ? Math.round(n / 1024) : Math.round(n);
+        };
+        const runtimeMs = parseMs(rawTime);
+        const memoryKb = parseKb(rawMem);
         const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
         const hasExpected = typeof expected === 'string' && expected.trim().length > 0;
         const passed = hasExpected ? normalize(out) === normalize(expected!) : err.length === 0;
         if (passed) passedCount++;
-        results.push({ input: stdin, expectedOutput: expected, actualOutput: out, passed, error: err || undefined });
+        results.push({ input: stdin, expectedOutput: expected, actualOutput: out, passed, error: err || undefined, runtime: runtimeMs });
       };
 
       for (const tc of problem.testCases) {
@@ -510,7 +545,20 @@ const ProblemDetail: React.FC = () => {
   };
 
   const getCurrentTime = () => {
-    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    // Show actual time without seconds (HH:MM with locale)
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  // Format helpers for runtime and memory
+  const formatRuntime = (ms?: number) => {
+    if (ms == null || Number.isNaN(ms)) return '--';
+    return `${Math.round(ms)} ms`;
+  };
+  const formatMemory = (kb?: number) => {
+    if (kb == null || Number.isNaN(kb)) return '--';
+    // Show in KB with no decimals if >= 1KB, else show in bytes
+    if (kb < 1) return `${Math.round(kb * 1024)} B`;
+    return `${Math.round(kb)} KB`;
   };
 
   // Auth check
@@ -826,17 +874,10 @@ const ProblemDetail: React.FC = () => {
                     <h3 className="font-medium text-blue-900 text-sm">
                       {testResults.isSubmission ? 'Submission Results' : 'Test Results'}
                     </h3>
-                    {testResults.status && testResults.status !== 'idle' && (
-                      <span className={`px-2 py-0.5 rounded-lg text-xs font-medium border ${
-                        testResults.status === 'accepted' 
-                          ? 'bg-green-100 text-green-800 border-green-300' 
-                          : testResults.status === 'error'
-                          ? 'bg-red-100 text-red-800 border-red-300'
-                          : 'bg-blue-100 text-blue-800 border-blue-300'
-                      }`}>
-                        {testResults.status.toUpperCase()}
-                      </span>
-                    )}
+                    <div className="flex items-center gap-3 text-xs text-blue-700">
+                      <span><span className="font-medium">Runtime:</span> {formatRuntime(testResults.runtimeMs)}</span>
+                      <span><span className="font-medium">Memory:</span> {formatMemory(testResults.memoryKb)}</span>
+                    </div>
                   </div>
                 </div>
                 
