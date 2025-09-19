@@ -90,7 +90,7 @@ export const Company: React.FC = () => {
                { 
                 name: 'Dheeraj Gaur', 
                 role: 'CEO & Founder', 
-                image: 'https://drive.google.com/file/d/1fnErXeiPMxgtFMIXkr3zSPU8EOF8M9my/view?usp=drive_link',
+                image: 'https://drive.google.com/file/d/1I7OP7SNsu86ogvjTGzcP5y7meJ6SPNHU/view?usp=sharing',
                 link: 'https://dheerajgaur-portfolio.com' // replace with your portfolio link
               },
               { 
