@@ -90,26 +90,32 @@ export const Company: React.FC = () => {
                { 
                 name: 'Dheeraj Gaur', 
                 role: 'CEO & Founder', 
-                image: 'https://drive.google.com/file/d/1I7OP7SNsu86ogvjTGzcP5y7meJ6SPNHU/view?usp=sharing',
-                link: 'https://dheerajgaur-portfolio.com' // replace with your portfolio link
+                image: '/Honors/dheeraj.jpg',
+                link: 'https://dheerajgaurofficial.netlify.app/' 
               },
               { 
                 name: 'Manish Kumar', 
-                role: 'CTO', 
-                image: 'https://drive.google.com/file/d/1I7OP7SNsu86ogvjTGzcP5y7meJ6SPNHU/view?usp=drive_link',
-                link: 'https://manishkumar.dev' // replace with real link
+                role: 'Chief Technology Officer (CTO)', 
+                image: '/Honors/manish.jpg',
+                link: 'https://www.manishdev.tech/' 
               },
               { 
                 name: 'Mukul Kumar', 
-                role: 'Lead Algorithm Developer', 
-                image: 'https://drive.google.com/file/d/1bAg18e9-Kwdp3k0Ikdpf2rw5ji9w5JUh/view?usp=drive_link',
-                link: 'https://mukul-portfolio.com'
+                role: 'VP / Director of Engineering', 
+                image: '/Honors/mukul.jpg',
+                link: 'https://dheerajgaurofficial.netlify.app/'
               },
               { 
-                name: 'Priya Patel', 
-                role: 'Trading Community Manager', 
-                image: 'https://randomuser.me/api/portraits/women/63.jpg',
-                link: 'https://priyapatel.dev'
+                name: 'Divesh Singh', 
+                role: 'Product Manager / Head of Product', 
+                image: '/Honors/divesh.jpg',
+                link: 'https://dheerajgaurofficial.netlify.app/'
+              },
+              { 
+                name: 'Neelesh Shakya', 
+                role: 'Technical Architect / Principal Engineer', 
+                image: '/Honors/neelesh.jpg',
+                link: 'https://dheerajgaurofficial.netlify.app/'
               },
             ].map((member, index) => (
               <div key={index} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-300 group">
