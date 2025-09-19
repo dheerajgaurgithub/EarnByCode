@@ -1,5 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+// Import team images from src so Vite includes them in the build
+import imgDheeraj from './Honors/dheeraj.png';
+import imgManish from './Honors/manish.png';
+import imgMukul from './Honors/mukul.png';
+import imgDivesh from './Honors/divesh.png';
+import imgNeelesh from './Honors/neelesh.png';
 import { Building, Users, Award, Clock, BarChart2, CheckCircle } from 'lucide-react';
 
 export const Company: React.FC = () => {
@@ -87,35 +93,35 @@ export const Company: React.FC = () => {
           <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-center mb-6 sm:mb-8 lg:mb-12 text-gray-900">Meet Our Team</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {[
-               { 
-                name: 'Dheeraj Gaur', 
-                role: 'CEO & Founder', 
-                image: '/Honors/dheeraj.jpg',
-                link: 'https://dheerajgaurofficial.netlify.app/' 
+              {
+                name: 'Dheeraj Gaur',
+                role: 'CEO & Founder',
+                image: imgDheeraj,
+                link: 'https://dheerajgaurofficial.netlify.app/',
               },
-              { 
-                name: 'Manish Kumar', 
-                role: 'Chief Technology Officer (CTO)', 
-                image: '/Honors/manish.jpg',
-                link: 'https://www.manishdev.tech/' 
+              {
+                name: 'Manish Kumar',
+                role: 'Chief Technology Officer (CTO)',
+                image: imgManish,
+                link: 'https://www.manishdev.tech/',
               },
-              { 
-                name: 'Mukul Kumar', 
-                role: 'VP / Director of Engineering', 
-                image: '/Honors/mukul.jpg',
-                link: 'https://dheerajgaurofficial.netlify.app/'
+              {
+                name: 'Mukul Kumar',
+                role: 'VP / Director of Engineering',
+                image: imgMukul,
+                link: 'https://dheerajgaurofficial.netlify.app/',
               },
-              { 
-                name: 'Divesh Singh', 
-                role: 'Product Manager / Head of Product', 
-                image: '/Honors/divesh.jpg',
-                link: 'https://dheerajgaurofficial.netlify.app/'
+              {
+                name: 'Divesh Singh',
+                role: 'Product Manager / Head of Product',
+                image: imgDivesh,
+                link: 'https://dheerajgaurofficial.netlify.app/',
               },
-              { 
-                name: 'Neelesh Shakya', 
-                role: 'Technical Architect / Principal Engineer', 
-                image: '/Honors/neelesh.jpg',
-                link: 'https://dheerajgaurofficial.netlify.app/'
+              {
+                name: 'Neelesh Shakya',
+                role: 'Technical Architect / Principal Engineer',
+                image: imgNeelesh,
+                link: 'https://dheerajgaurofficial.netlify.app/',
               },
             ].map((member, index) => (
               <div key={index} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-300 group">
