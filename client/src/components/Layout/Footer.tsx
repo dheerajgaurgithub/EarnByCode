@@ -116,14 +116,14 @@ export default function Footer() {
                 </p>
 
                 <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-xs">
-                  {['Terms', 'Privacy', 'Cookies'].map((link) => (
-                    <button
-                      key={link}
-                      onClick={() => handleNavigation(`/${link.toLowerCase()}`)}
+                  {['Terms', 'Privacy', 'Cookies'].map((name) => (
+                    <Link
+                      key={name}
+                      to={`/${name.toLowerCase()}`}
                       className="text-slate-500 hover:text-slate-700 transition-colors duration-300 font-medium tracking-wide py-1"
                     >
-                      {link}
-                    </button>
+                      {name}
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -155,15 +155,15 @@ export default function Footer() {
                   { name: "Help Center", link: "/help" },
                 ].map((item) => (
                   <li key={item.name}>
-                    <button
-                      onClick={() => handleNavigation(item.link)}
+                    <Link
+                      to={item.link}
                       className="group flex items-center gap-1 text-slate-600 hover:text-slate-800 transition-all duration-300 py-1 px-1 rounded-md hover:bg-blue-50/30"
                     >
                       <span className="font-medium tracking-wide group-hover:translate-x-1 transition-transform duration-300 text-xs">
                         {item.name}
                       </span>
                       <ExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-all duration-300 text-slate-500 group-hover:text-blue-600" />
-                    </button>
+                    </Link>
                   </li>
                 ))}
               </ul>
