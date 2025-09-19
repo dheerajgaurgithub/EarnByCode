@@ -43,11 +43,29 @@ interface Contest {
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
+// Transient error detection (network resets, timeouts, 5xx)
+const isTransientError = (error: unknown, response?: Response) => {
+  if (response) {
+    return response.status >= 500 && response.status < 600; // 5xx
+  }
+  const msg = String((error as any)?.message || error || '').toLowerCase();
+  return (
+    msg.includes('networkerror') ||
+    msg.includes('failed to fetch') ||
+    msg.includes('connection') ||
+    msg.includes('timeout') ||
+    msg.includes('wsarecv') ||
+    msg.includes('forcibly closed') ||
+    msg.includes('aborted')
+  );
+};
+
 class ApiService {
   private async request<T>(
     method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     endpoint: string,
-    data?: unknown
+    data?: unknown,
+    options?: { timeoutMs?: number; retries?: number; retryDelayMs?: number }
   ): Promise<T> {
     const url = `${API_BASE_URL}${endpoint}`;
     const headers: HeadersInit = {
@@ -69,19 +87,47 @@ class ApiService {
       config.body = JSON.stringify(data);
     }
 
-    try {
-      const response = await fetch(url, config);
-      const responseData = await response.json().catch(() => ({}));
+    // Retry + timeout wrapper
+    const timeoutMs = options?.timeoutMs ?? 12000;
+    const maxRetries = options?.retries ?? 2;
+    const retryDelayMs = options?.retryDelayMs ?? 600;
 
-      if (!response.ok) {
-        throw new Error(responseData.message || 'Request failed');
+    let attempt = 0;
+    let lastError: unknown;
+    while (attempt <= maxRetries) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        const response = await fetch(url, { ...config, signal: controller.signal });
+        const responseData = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          // Retry only transient server errors
+          if (isTransientError(null, response) && attempt < maxRetries) {
+            attempt++;
+            await new Promise(r => setTimeout(r, retryDelayMs * attempt));
+            continue;
+          }
+          throw new Error(responseData.message || `Request failed (${response.status})`);
+        }
+
+        return responseData as T;
+      } catch (error) {
+        lastError = error;
+        // Retry on network/transient errors
+        if (isTransientError(error) && attempt < maxRetries) {
+          attempt++;
+          await new Promise(r => setTimeout(r, retryDelayMs * attempt));
+          continue;
+        }
+        console.error(`API Request Error [${method} ${endpoint}] (attempt ${attempt + 1}/${maxRetries + 1}):`, error);
+        throw error;
+      } finally {
+        clearTimeout(timer);
       }
-
-      return responseData;
-    } catch (error) {
-      console.error(`API Request Error [${method} ${endpoint}]:`, error);
-      throw error;
     }
+    // Should not reach here
+    throw lastError ?? new Error('Request failed');
   }
 
   // Admin methods

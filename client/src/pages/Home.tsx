@@ -33,7 +33,7 @@ const features = [
 ];
 
 export default function Home() {
-  const user = null; // Mock user state
+  const { user } = useAuth();
 
   const handleNavigation = (path: string) => {
     console.log(`Navigate to: ${path}`);
