@@ -90,19 +90,19 @@ export const Company: React.FC = () => {
                { 
                 name: 'Dheeraj Gaur', 
                 role: 'CEO & Founder', 
-                image: 'https://drive.google.com/uc?export=view&id=1fnErXeiPMxgtFMIXkr3zSPU8EOF8M9my',
+                image: 'https://drive.google.com/file/d/1fnErXeiPMxgtFMIXkr3zSPU8EOF8M9my/view?usp=drive_link',
                 link: 'https://dheerajgaur-portfolio.com' // replace with your portfolio link
               },
               { 
                 name: 'Manish Kumar', 
                 role: 'CTO', 
-                image: 'https://drive.google.com/uc?export=view&id=1I7OP7SNsu86ogvjTGzcP5y7meJ6SPNHU',
+                image: 'https://drive.google.com/file/d/1I7OP7SNsu86ogvjTGzcP5y7meJ6SPNHU/view?usp=drive_link',
                 link: 'https://manishkumar.dev' // replace with real link
               },
               { 
                 name: 'Mukul Kumar', 
                 role: 'Lead Algorithm Developer', 
-                image: 'https://drive.google.com/file/d/1bAg18e9-Kwdp3k0Ikdpf2rw5ji9w5JUh/view?usp=sharing',
+                image: 'https://drive.google.com/file/d/1bAg18e9-Kwdp3k0Ikdpf2rw5ji9w5JUh/view?usp=drive_link',
                 link: 'https://mukul-portfolio.com'
               },
               { 
