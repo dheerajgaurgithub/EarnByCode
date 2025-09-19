@@ -26,14 +26,18 @@ const detectCodeLanguage = (src: string): Language | null => {
 
 const validateJavaSolution = (src: string) => /\bclass\s+Solution\b/.test(src);
 
-// Build a safe execute URL without duplicating /api
+// Build a safe execute URL without duplicating /api.
+// Supports absolute VITE_EXECUTE_PATH (e.g., https://emkc.org/api/v2/piston/execute)
 const getExecuteUrl = () => {
+  const execPath = (import.meta.env.VITE_EXECUTE_PATH as string) || '';
+  if (/^https?:\/\//i.test(execPath)) return execPath; // absolute override
+
   const raw = (import.meta.env.VITE_API_URL as string) || 'http://localhost:5000';
   let base = raw.replace(/\/+$/, '');
   base = base.replace(/\/?api$/, '');
-  const execPath = (import.meta.env.VITE_EXECUTE_PATH as string) || '/api/execute';
-  const path = execPath.startsWith('/') ? execPath : `/${execPath}`;
-  return `${base}${path}`;
+  const path = execPath || '/api/execute';
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${base}${normalized}`;
 };
 
 type Language = 'javascript' | 'typescript' | 'python' | 'java' | 'cpp';
@@ -221,7 +225,9 @@ const ProblemDetail: React.FC = () => {
     
     // Guardrails: language mismatch detection
     const inferred = detectCodeLanguage(code) as Language | null;
-    if (inferred && inferred !== selectedLanguage) {
+    // Allow JS/TS cross-usage without blocking
+    const jsTsPair = (a: any, b: any) => (a === 'javascript' && b === 'typescript') || (a === 'typescript' && b === 'javascript');
+    if (inferred && inferred !== selectedLanguage && !jsTsPair(inferred, selectedLanguage)) {
       setTestResults({
         status: 'error',
         error: `Language mismatch: your code looks like ${inferred.toUpperCase()}, but '${selectedLanguage.toUpperCase()}' is selected. Please switch the tab.`,
@@ -255,9 +261,16 @@ const ProblemDetail: React.FC = () => {
       // Build optional stdin from first example if present
       const exampleInput = problem.examples?.[0]?.input ?? '';
       const exampleOutput = problem.examples?.[0]?.output ?? '';
+      const versionMap: Record<Language, string> = {
+        javascript: '18.15.0',
+        typescript: '5.0.3',
+        python: '3.11.2',
+        java: '17.0.1',
+        cpp: '10.2.0',
+      };
       const payload = {
         language: selectedLanguage,
-        version: selectedLanguage === 'javascript' ? '18.15.0' : selectedLanguage === 'typescript' ? '5.0.3' : '3.11',
+        version: versionMap[selectedLanguage],
         files: [{ content: code }],
         ...(typeof exampleInput === 'string' ? { stdin: exampleInput } : {})
       };
@@ -347,9 +360,16 @@ const ProblemDetail: React.FC = () => {
       let passedCount = 0;
 
       const runOne = async (stdin: string | undefined, expected: string | undefined) => {
+        const versionMap: Record<Language, string> = {
+          javascript: '18.15.0',
+          typescript: '5.0.3',
+          python: '3.11.2',
+          java: '17.0.1',
+          cpp: '10.2.0',
+        };
         const payload = {
           language: selectedLanguage,
-          version: selectedLanguage === 'javascript' ? '18.15.0' : selectedLanguage === 'typescript' ? '5.0.3' : '3.11',
+          version: versionMap[selectedLanguage],
           files: [{ content: code }],
           ...(stdin ? { stdin } : {})
         };

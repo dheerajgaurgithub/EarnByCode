@@ -17,6 +17,13 @@ import xss from 'xss-clean';
 import hpp from 'hpp';
 import fs from 'fs';
 
+// Safe fetch helper for Node < 18 compatibility
+const getFetch = async () => {
+  if (typeof fetch !== 'undefined') return fetch;
+  const mod = await import('node-fetch');
+  return mod.default;
+};
+
 // Import configurations
 import { googleConfig } from './config/auth.js';
 import './config/passport.js';
@@ -77,7 +84,10 @@ app.get('/api/env/check', (req, res) => {
       gxx: check(gxxBin, ['--version'])
     };
 
-    res.status(200).json({ ok: true, tools: result });
+    const execMode = (process.env.EXECUTOR_MODE || 'auto').toLowerCase();
+    const pistonUrl = process.env.PISTON_URL || 'https://emkc.org/api/v2/piston/execute';
+
+    res.status(200).json({ ok: true, tools: result, executor: { mode: execMode, pistonUrl } });
   } catch (err) {
     console.error('env/check error', err);
     res.status(500).json({ ok: false, error: String(err?.message || err) });
@@ -476,7 +486,8 @@ app.post('/api/execute', async (req, res) => {
           files: [{ content: source, name: files[0]?.name || 'Main.' + (language === 'cpp' ? 'cpp' : language) }],
           stdin: typeof payload.stdin === 'string' ? payload.stdin : ''
         };
-        const r = await fetch(PISTON_URL, {
+        const httpFetch = await getFetch();
+        const r = await httpFetch(PISTON_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(pistonReq),
