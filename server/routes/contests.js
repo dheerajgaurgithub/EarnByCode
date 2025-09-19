@@ -35,7 +35,7 @@ router.get('/:id/feedback', async (req, res) => {
   try {
     const contest = await Contest.findById(req.params.id)
       .select('feedbacks averageRating feedbackCount')
-      .populate('feedbacks.user', 'username avatar');
+      .populate('feedbacks.user', 'username');
 
     if (!contest) {
       return res.status(404).json({ message: 'Contest not found' });
@@ -114,8 +114,8 @@ router.get('/:id', async (req, res) => {
     const contest = await Contest.findById(req.params.id)
       .populate('createdBy', 'username')
       .populate('problems')
-      .populate('participants.user', 'username avatar')
-      .populate('feedbacks.user', 'username avatar');
+      .populate('participants.user', 'username')
+      .populate('feedbacks.user', 'username');
 
     if (!contest) {
       return res.status(404).json({ message: 'Contest not found' });
@@ -203,7 +203,7 @@ router.post('/:id/join', authenticate, async (req, res) => {
 router.get('/:id/leaderboard', async (req, res) => {
   try {
     const contest = await Contest.findById(req.params.id)
-      .populate('participants.user', 'username avatar')
+      .populate('participants.user', 'username')
       .select('participants title status');
 
     if (!contest) {

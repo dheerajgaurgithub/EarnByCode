@@ -235,7 +235,6 @@ class ApiService {
     _id: string;
     username: string;
     fullName?: string;
-    avatar?: string;
     points: number;
     codecoins: number;
     solvedProblems: string[];

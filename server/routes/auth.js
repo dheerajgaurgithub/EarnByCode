@@ -7,25 +7,6 @@ import { authenticate } from '../middleware/auth.js';
 import { sendVerificationEmail } from '../config/auth.js';
 import config from '../config/config.js';
 
-// Helper: build absolute avatar URL from stored relative path
-const buildAvatarUrl = (req, user) => {
-  try {
-    const rel = user?.avatar;
-    if (!rel) return null;
-    if (/^https?:\/\//i.test(rel)) return rel;
-    // Respect reverse proxy headers (e.g., Render/Heroku/NGINX)
-    const xfProto = (req.headers['x-forwarded-proto'] || '').toString().split(',')[0].trim();
-    const xfHost = (req.headers['x-forwarded-host'] || '').toString().split(',')[0].trim();
-    const scheme = xfProto || req.protocol || 'http';
-    const host = xfHost || req.get('host');
-    const origin = `${scheme}://${host}`;
-    const cleaned = String(rel).replace(/^\/?api\//, '/');
-    return `${origin}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
-  } catch {
-    return null;
-  }
-};
-
 // Helper: is user currently blocked
 const isCurrentlyBlocked = (user) => {
   if (!user?.isBlocked) return false;
@@ -141,7 +122,6 @@ router.post('/login', async (req, res) => {
       token,
       user: {
         ...user.toJSON(),
-        avatarUrl: buildAvatarUrl(req, user) || undefined,
       }
     });
   } catch (error) {
@@ -164,7 +144,6 @@ router.get('/me', authenticate, async (req, res) => {
     res.json({ 
       user: {
         ...user.toJSON(),
-        avatarUrl: buildAvatarUrl(req, user) || undefined,
         blocked,
       }
     });

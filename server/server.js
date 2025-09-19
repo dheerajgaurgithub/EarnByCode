@@ -429,39 +429,10 @@ const staticOptions = {
   }
 };
 
-// Ensure uploads directory exists
-const uploadsRootDir = path.join(publicPath, 'uploads');
-const uploadsAvatarsDir = path.join(uploadsRootDir, 'avatars');
-if (!fs.existsSync(uploadsRootDir)) {
-  fs.mkdirSync(uploadsRootDir, { recursive: true });
-}
-if (!fs.existsSync(uploadsAvatarsDir)) {
-  fs.mkdirSync(uploadsAvatarsDir, { recursive: true });
-}
-
 // Serve static files from the public directory
 app.use(express.static(publicPath, staticOptions));
 
-// Serve uploaded files with proper caching and security headers
-// Map '/uploads/*' to 'public/uploads/*'
-app.use('/uploads', express.static(uploadsRootDir, {
-  maxAge: '1y',
-  immutable: true,
-  lastModified: true,
-  etag: true,
-  setHeaders: (res, filePath) => {
-    // Set proper cache control for uploaded files
-    if (filePath.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i)) {
-      res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
-    } else {
-      res.setHeader('Cache-Control', 'public, max-age=300');
-    }
-    // Security headers for uploaded content
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('X-Frame-Options', 'DENY');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
-  }
-}));
+// Note: Avatar uploads and /uploads static serving have been removed.
 
 // Routes
 app.use('/api/auth', authRoutes);

@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
 
     // First get the discussions with basic author info
     let discussions = await Discussion.find(query)
-      .populate('author', 'username avatar')
+      .populate('author', 'username')
       .populate('problem', 'title')
       .sort(sortOptions)
       .limit(limit * 1)
@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
       if (discussion.replies && discussion.replies.length > 0) {
         const populatedReplies = await Discussion.populate(discussion.replies, {
           path: 'author',
-          select: 'username avatar'
+          select: 'username'
         });
         return { ...discussion, replies: populatedReplies };
       }
@@ -111,7 +111,7 @@ router.post('/', authenticate, async (req, res) => {
     await discussion.save();
 
     // Populate author and problem info for response
-    await discussion.populate('author', 'username avatar');
+    await discussion.populate('author', 'username');
     if (problemId) {
       await discussion.populate('problem', 'title');
     }
@@ -134,8 +134,8 @@ router.post('/', authenticate, async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const discussion = await Discussion.findById(req.params.id)
-      .populate('author', 'username avatar')
-      .populate('replies.author', 'username avatar')
+      .populate('author', 'username')
+      .populate('replies.author', 'username')
       .lean();
 
     if (!discussion) {
@@ -192,7 +192,7 @@ router.post('/:id/replies', authenticate, async (req, res) => {
     // Populate the author info
     const populatedReply = await Discussion.populate(newReply, { 
       path: 'author', 
-      select: 'username avatar' 
+      select: 'username' 
     });
 
     res.status(201).json({
@@ -201,8 +201,7 @@ router.post('/:id/replies', authenticate, async (req, res) => {
         ...populatedReply.toObject(),
         author: {
           _id: req.user._id,
-          username: req.user.username,
-          avatar: req.user.avatar
+          username: req.user.username
         }
       }
     });

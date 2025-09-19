@@ -29,9 +29,6 @@ const configurePassport = (passport) => {
         user.googleId = profile.id;
         user.googleProfile = profile._json;
         if (!user.isEmailVerified) user.isEmailVerified = true;
-        if (!user.avatar && profile.photos?.[0]?.value) {
-          user.avatar = profile.photos[0].value;
-        }
         await user.save();
         return done(null, user);
       }
@@ -47,8 +44,7 @@ const configurePassport = (passport) => {
         fullName: profile.displayName || profile.emails[0].value.split('@')[0],
         googleId: profile.id,
         googleProfile: profile._json,
-        isEmailVerified: true,
-        avatar: profile.photos?.[0]?.value
+        isEmailVerified: true
       });
 
       await user.save();

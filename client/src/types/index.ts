@@ -43,12 +43,10 @@ export interface User {
   walletBalance: number;
   name?: string;
   phone?: string;
-  avatar?: string;
   fullName?: string;
   bio?: string;
   location?: string;
   website?: string;
-  avatarUrl?: string; // Full URL to the avatar image
   contestsParticipated?: string[];
   github?: string;
   linkedin?: string;

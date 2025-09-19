@@ -24,7 +24,6 @@ interface LeaderboardUser {
   _id: string;
   username: string;
   fullName?: string;
-  avatar?: string;
   points: number;
   codecoins: number;
   ranking: number;
@@ -135,7 +134,6 @@ export const Leaderboard: React.FC = () => {
         _id: user._id,
         username: user.username,
         fullName: user.fullName,
-        avatar: user.avatar,
         points: user.points || 0,
         codecoins: user.codecoins || 0,
         ranking: user.ranking || 0,
@@ -302,22 +300,9 @@ export const Leaderboard: React.FC = () => {
               className="bg-white border-2 border-gray-200 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
             >
               <div className="relative mb-3">
-                {users[1]?.avatar ? (
-                  <img
-                    src={users[1].avatar.startsWith('http') ? users[1].avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${users[1].avatar}`}
-                    alt={users[1].username}
-                    className="w-10 h-10 rounded-full mx-auto object-cover ring-4 ring-gray-200"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.onerror = null;
-                      target.src = '/default-avatar.png';
-                    }}
-                  />
-                ) : (
-                  <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200">
-                    <Users className="w-5 h-5 text-gray-600" />
-                  </div>
-                )}
+                <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200">
+                  <span className="text-gray-700 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                </div>
                 <div className="absolute -top-1 -right-1 bg-gray-500 rounded-full p-1 shadow-lg">
                   <span className="text-white font-bold text-xs">2</span>
                 </div>
@@ -340,22 +325,9 @@ export const Leaderboard: React.FC = () => {
               className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl p-4 text-center shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
             >
               <div className="relative mb-3">
-                {users[0]?.avatar ? (
-                  <img
-                    src={users[0].avatar.startsWith('http') ? users[0].avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${users[0].avatar}`}
-                    alt={users[0].username}
-                    className="w-12 h-12 rounded-full mx-auto object-cover ring-4 ring-yellow-300"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.onerror = null;
-                      target.src = '/default-avatar.png';
-                    }}
-                  />
-                ) : (
-                  <div className="w-12 h-12 bg-gradient-to-br from-yellow-200 to-orange-200 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300">
-                    <Users className="w-6 h-6 text-yellow-700" />
-                  </div>
-                )}
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-200 to-orange-200 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300">
+                  <span className="text-yellow-800 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                </div>
                 <div className="absolute -top-2 -right-2 bg-yellow-500 rounded-full p-1.5 shadow-xl">
                   <Crown className="w-3 h-3 text-white" />
                 </div>
@@ -379,22 +351,9 @@ export const Leaderboard: React.FC = () => {
               className="bg-white border-2 border-orange-200 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
             >
               <div className="relative mb-3">
-                {users[2]?.avatar ? (
-                  <img
-                    src={users[2].avatar.startsWith('http') ? users[2].avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${users[2].avatar}`}
-                    alt={users[2].username}
-                    className="w-10 h-10 rounded-full mx-auto object-cover ring-4 ring-orange-200"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.onerror = null;
-                      target.src = '/default-avatar.png';
-                    }}
-                  />
-                ) : (
-                  <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-red-100 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200">
-                    <Users className="w-5 h-5 text-orange-700" />
-                  </div>
-                )}
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-red-100 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200">
+                  <span className="text-orange-800 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                </div>
                 <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full p-1 shadow-lg">
                   <span className="text-white font-bold text-xs">3</span>
                 </div>
@@ -458,22 +417,9 @@ export const Leaderboard: React.FC = () => {
                     
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
                       <div className="relative flex-shrink-0">
-                        {user.avatar ? (
-                          <img
-                            src={user.avatar.startsWith('http') ? user.avatar : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${user.avatar}`}
-                            alt={user.username}
-                            className="w-8 h-8 rounded-full object-cover ring-2 ring-gray-200"
-                            onError={(e) => {
-                              const target = e.target as HTMLImageElement;
-                              target.onerror = null;
-                              target.src = '/default-avatar.png';
-                            }}
-                          />
-                        ) : (
-                          <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center ring-2 ring-gray-200">
-                            <Users className="w-4 h-4 text-blue-600" />
-                          </div>
-                        )}
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center ring-2 ring-gray-200">
+                          <span className="text-blue-700 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
+                        </div>
                         {index < 10 && (
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center">
                             <Star className="w-1.5 h-1.5 text-white" />

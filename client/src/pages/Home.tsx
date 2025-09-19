@@ -1,6 +1,6 @@
 import React from 'react';
 import { Code, ArrowRight, Trophy, Zap, Target, Users, DollarSign, Brain, Star, TrendingUp, Award, Rocket } from 'lucide-react';
-
+import { useAuth } from '@/context/AuthContext';
 // Mock data for the component
 const stats = [
   { label: "Active Coders", value: "50K+" },
@@ -51,7 +51,7 @@ export default function Home() {
         <section className="relative px-3 py-8 sm:px-4 sm:py-12 overflow-hidden">
           {/* Glowing orbs */}
           <div className="absolute top-1/4 left-1/4 w-32 h-32 sm:w-48 sm:h-48 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-32 h-32 sm:w-48 sm:h-48 bg-blue-600/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1000ms'}}></div>
+          <div className="absolute bottom-1/4 right-1/4 w-32 h-32 sm:w-48 sm:h-48 bg-blue-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1000ms' }}></div>
 
           <div className="max-w-6xl mx-auto relative">
             <div className="text-center">
@@ -78,28 +78,30 @@ export default function Home() {
               </div>
 
               <div className="flex flex-col xs:flex-row gap-2 sm:gap-3 justify-center px-3 max-w-sm sm:max-w-md mx-auto">
-                <button 
+                <button
                   onClick={() => handleNavigation('/problems')}
                   className="group relative inline-flex items-center justify-center w-full xs:w-auto px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg overflow-hidden shadow-xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-blue-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12"></div>
-                  <span className="relative flex items-center whitespace-nowrap">
+                  <a href="/problems" className="relative flex items-center whitespace-nowrap">
                     Start Coding
                     <ArrowRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
-                  </span>
+                  </a>
+
                 </button>
 
-                <button 
+                <button
                   onClick={() => handleNavigation('/contests')}
                   className="group relative inline-flex items-center justify-center w-full xs:w-auto px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-700 to-blue-800 rounded-lg overflow-hidden shadow-xl hover:shadow-blue-600/50 transition-all duration-300 hover:scale-105"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-800 to-blue-900 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12"></div>
-                  <span className="relative flex items-center whitespace-nowrap">
+                  <a href="/contests" className="relative flex items-center whitespace-nowrap">
                     <Trophy className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
                     Join Contest
-                  </span>
+                  </a>
+
                 </button>
 
                 {!user && (
@@ -248,7 +250,7 @@ export default function Home() {
           {/* Animated background */}
           <div className="absolute inset-0 bg-gradient-to-r from-blue-100/60 via-white/40 to-blue-50/60"></div>
           <div className="absolute top-0 left-1/4 w-32 h-32 sm:w-48 sm:h-48 bg-blue-400/20 rounded-full blur-3xl animate-pulse"></div>
-          <div className="absolute bottom-0 right-1/4 w-32 h-32 sm:w-48 sm:h-48 bg-blue-600/20 rounded-full blur-3xl animate-pulse" style={{animationDelay: '1000ms'}}></div>
+          <div className="absolute bottom-0 right-1/4 w-32 h-32 sm:w-48 sm:h-48 bg-blue-600/20 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1000ms' }}></div>
 
           <div className="max-w-4xl mx-auto text-center relative">
             <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto">
@@ -260,7 +262,7 @@ export default function Home() {
               </p>
 
               <div className="flex flex-col xs:flex-row gap-3 sm:gap-4 justify-center max-w-sm sm:max-w-md mx-auto">
-                <button 
+                <button
                   onClick={() => handleNavigation('/register')}
                   className="group relative inline-flex items-center justify-center w-full xs:w-auto px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg overflow-hidden shadow-xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105"
                 >
@@ -272,7 +274,7 @@ export default function Home() {
                   </span>
                 </button>
 
-                <button 
+                <button
                   onClick={() => handleNavigation('/contests')}
                   className="group relative inline-flex items-center justify-center w-full xs:w-auto px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold text-blue-700 border border-blue-300 bg-blue-50 rounded-lg backdrop-blur-sm hover:border-blue-500 hover:bg-blue-100 transition-all duration-300 hover:scale-105"
                 >

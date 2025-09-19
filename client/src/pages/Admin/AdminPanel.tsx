@@ -134,27 +134,14 @@ interface Problem {
   constraints?: string[];
 }
 
-// UserAvatar component
-const UserAvatar = ({ avatarUrl, username }: { avatarUrl: string | null; username: string }) => {
-  const [imageError, setImageError] = useState(false);
-  
-  if (imageError || !avatarUrl) {
-    return (
-      <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-        <span className="text-blue-600 font-medium text-sm">
-          {username.charAt(0).toUpperCase()}
-        </span>
-      </div>
-    );
-  }
-  
+// UserAvatar component (initials-only, no images)
+const UserAvatar = ({ username }: { username: string }) => {
   return (
-    <img 
-      src={avatarUrl} 
-      alt={username}
-      className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover"
-      onError={() => setImageError(true)}
-    />
+    <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+      <span className="text-blue-600 font-medium text-sm">
+        {username.charAt(0).toUpperCase()}
+      </span>
+    </div>
   );
 };
 
@@ -1678,14 +1665,11 @@ const AdminPanel: React.FC = () => {
                         if (user.isAdmin) return null;
                         
                         const isBlocked = user.isBlocked && (user.blockedUntil ? new Date(user.blockedUntil) > new Date() : true);
-                        const avatarUrl = user.avatar ? `/uploads/avatars/${user.avatar}` : null;
-
                         return (
                           <tr key={user._id} className="hover:bg-blue-25">
                             <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
                                 <UserAvatar 
-                                  avatarUrl={avatarUrl} 
                                   username={user.username} 
                                 />
                                 <div className="ml-3 min-w-0 flex-1">

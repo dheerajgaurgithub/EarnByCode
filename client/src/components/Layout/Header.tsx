@@ -18,38 +18,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import config from '@/lib/config';
-
-// Helper function to get the full avatar URL (absolute), compatible with local and deployed
-const getAvatarUrl = (avatarPath: string | undefined): string => {
-  // Derive origin from config.api.baseUrl (preferred) or window.location
-  const apiBase = (config.api.baseUrl || '').replace(/\/$/, '');
-  const baseUrl = apiBase ? apiBase.replace(/\/api$/, '') : (typeof window !== 'undefined' ? window.location.origin : '');
-  if (!avatarPath) {
-    return `https://api.dicebear.com/8.x/initials/svg?seed=User`;
-  }
-
-  // If already absolute or blob, return as is
-  if (avatarPath.startsWith('http') || avatarPath.startsWith('blob:')) {
-    return avatarPath;
-  }
-
-  // Normalize
-  const cleanPath = avatarPath.replace(/^\/+|\/+$/g, '');
-  const ensureAbsolute = (p: string) => {
-    const cleaned = p.replace(/^\/?api\//, '/');
-    return `${baseUrl}${cleaned.startsWith('/') ? '' : '/'}${cleaned}`;
-  };
-
-  if (cleanPath.startsWith('uploads/')) {
-    return ensureAbsolute(`/${cleanPath}`);
-  }
-  if (cleanPath.startsWith('avatars/')) {
-    return ensureAbsolute(`/uploads/${cleanPath}`);
-  }
-  // Assume bare filename
-  return ensureAbsolute(`/uploads/avatars/${cleanPath}`);
-};
 
 type NavItem = {
   name: string;
@@ -101,7 +69,6 @@ const NAV_ITEMS: NavItem[] = [
 type UserDisplayInfo = {
   username: string;
   email?: string;
-  avatar?: string;
   isAdmin?: boolean;
   codecoins?: number;
   walletBalance?: number;
@@ -115,7 +82,7 @@ export const Header: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   
-  const userInfo = user as (UserDisplayInfo & { avatarUrl?: string }) | null;
+  const userInfo = user as UserDisplayInfo | null;
 
   // Handle scroll effect for header
   useEffect(() => {
@@ -293,40 +260,11 @@ export const Header: React.FC = () => {
                 >
                   <span className="sr-only">Open user menu</span>
                   <div className="relative flex-shrink-0">
-                    <div className="h-5 w-5 rounded-full bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5">
-                      <img 
-                        src={getAvatarUrl(userInfo.avatarUrl || userInfo.avatar)}
-                        alt={userInfo.username}
-                        className="h-full w-full rounded-full object-cover bg-white"
-                        onError={(e) => {
-                          // If image fails to load, fall back to initials
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                          const parent = target.parentElement;
-                          if (parent) {
-                            const fallback = document.createElement('div');
-                            fallback.className = 'h-full w-full rounded-full bg-white flex items-center justify-center';
-                            fallback.innerHTML = `<span class="text-blue-700 font-semibold text-xs">${userInfo.username?.[0]?.toUpperCase() || 'U'}</span>`;
-                            // Clear any existing fallback
-                            const existingFallback = parent.querySelector('.avatar-fallback');
-                            if (existingFallback) {
-                              parent.removeChild(existingFallback);
-                            }
-                            fallback.className += ' avatar-fallback';
-                            parent.appendChild(fallback);
-                          }
-                        }}
-                      />
-                      {!userInfo.avatar && (
-                        <div className="h-full w-full rounded-full bg-white flex items-center justify-center">
-                          <span className="text-blue-700 font-semibold text-xs">
-                            {userInfo.username?.[0]?.toUpperCase() || 'U'}
-                          </span>
-                        </div>
-                      )}
+                    <div className="h-5 w-5 rounded-full bg-white flex items-center justify-center border border-blue-200">
+                      <span className="text-blue-700 font-semibold text-xs">
+                        {userInfo.username?.[0]?.toUpperCase() || 'U'}
+                      </span>
                     </div>
-                    {/* Online indicator */}
-                    <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-blue-400 rounded-full border border-white shadow-sm" />
                   </div>
                   
                   <div className="hidden sm:block min-w-0">
@@ -361,37 +299,10 @@ export const Header: React.FC = () => {
                       {/* User info header */}
                       <div className="px-3 py-2 border-b border-blue-200/50">
                         <div className="flex items-center space-x-2">
-                          <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-400 via-indigo-500 to-blue-600 p-0.5 flex-shrink-0">
-                            <img 
-                              src={getAvatarUrl(userInfo.avatarUrl || userInfo.avatar)} 
-                              alt={userInfo.username}
-                              className="h-full w-full rounded-lg object-cover bg-white"
-                              onError={(e) => {
-                                // Fallback to default avatar if image fails to load
-                                const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
-                                const parent = target.parentElement;
-                                if (parent) {
-                                  const existingFallback = parent.querySelector('.dropdown-avatar-fallback');
-                                  if (existingFallback) return;
-                                  
-                                  const fallback = document.createElement('div');
-                                  fallback.className = 'dropdown-avatar-fallback h-full w-full rounded-lg bg-white flex items-center justify-center';
-                                  fallback.innerHTML = `
-                                    <span class="text-blue-700 font-bold text-sm">
-                                      ${userInfo.username?.[0]?.toUpperCase() || 'U'}
-                                    </span>`;
-                                  parent.appendChild(fallback);
-                                }
-                              }}
-                            />
-                            {!userInfo.avatar && (
-                              <div className="h-full w-full rounded-lg bg-white flex items-center justify-center">
-                                <span className="text-blue-700 font-bold text-sm">
-                                  {userInfo.username?.[0]?.toUpperCase() || 'U'}
-                                </span>
-                              </div>
-                            )}
+                          <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-blue-200 flex-shrink-0">
+                            <span className="text-blue-700 font-bold text-sm">
+                              {userInfo.username?.[0]?.toUpperCase() || 'U'}
+                            </span>
                           </div>
                           <div className="min-w-0 flex-1">
                             <p className="text-slate-800 font-semibold truncate text-xs">{userInfo.username}</p>
@@ -506,7 +417,7 @@ export const Header: React.FC = () => {
                   to="/register"
                   className="px-3 py-1.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-md hover:from-blue-400 hover:to-indigo-500 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-105 transform whitespace-nowrap text-xs"
                 >
-                  Sign up
+                  Create Free Account
                 </Link>
               </div>
             )}
@@ -607,7 +518,7 @@ export const Header: React.FC = () => {
                       className="flex items-center justify-center w-full px-3 py-2 text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-md hover:from-blue-400 hover:to-indigo-500 transition-all duration-300 shadow-md text-xs"
                       onClick={() => setShowMobileMenu(false)}
                     >
-                      Sign up
+                      Create Free Account
                     </Link>
                   </div>
                 )}

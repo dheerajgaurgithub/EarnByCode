@@ -65,7 +65,6 @@ const handleOAuthSuccess = (req, res, user, redirectPath = '/') => {
       email: user.email,
       username: user.username,
       fullName: user.fullName,
-      avatar: user.avatar,
       isEmailVerified: user.isEmailVerified
     }))}`;
 

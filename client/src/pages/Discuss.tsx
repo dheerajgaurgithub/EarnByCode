@@ -8,7 +8,6 @@ import { useToast } from '@/components/ui/use-toast';
 interface UserInfo {
   _id: string;
   username: string;
-  avatar?: string;
 }
 
 interface Reply {
@@ -53,12 +52,12 @@ const Discuss: React.FC = () => {
   const { user } = useAuth();
 
   // Helper function for error toasts
-  const showErrorToast = useCallback((title: string, description: string) => {
+  const showErrorToast = useCallback((_title: string, description: string) => {
     toast.error(description);
   }, [toast]);
 
   // Helper function for success toasts
-  const showSuccessToast = useCallback((title: string, description: string) => {
+  const showSuccessToast = useCallback((_title: string, description: string) => {
     toast.success(description);
   }, [toast]);
 
@@ -154,8 +153,7 @@ const Discuss: React.FC = () => {
           replies: response.data.data.replies || [],
           author: response.data.data.author || { 
             _id: user?._id || '', 
-            username: user?.username || 'Anonymous', 
-            avatar: user?.avatar 
+            username: user?.username || 'Anonymous'
           },
           isLiked: false,
           showReplies: false,
@@ -294,8 +292,7 @@ const Discuss: React.FC = () => {
     // Prepare author data
     const authorData: UserInfo = {
       _id: user._id,
-      username: user.username || 'User',
-      avatar: user.avatar
+      username: user.username || 'User'
     };
 
     // Optimistic update
@@ -485,17 +482,9 @@ const Discuss: React.FC = () => {
                   <div key={discussion._id} className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
                     <div className="flex items-start space-x-4">
                       <div className="flex-shrink-0">
-                        {discussion.author?.avatar ? (
-                          <img 
-                            src={discussion.author.avatar} 
-                            alt={discussion.author.username || 'User'}
-                            className="h-10 w-10 rounded-full object-cover"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
-                            {discussion.author?.username?.charAt(0).toUpperCase() || 'U'}
-                          </div>
-                        )}
+                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                          {discussion.author?.username?.charAt(0).toUpperCase() || 'U'}
+                        </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
@@ -571,44 +560,18 @@ const Discuss: React.FC = () => {
                                       // Ensure we have valid author data
                                       const author = reply.author || { _id: 'unknown', username: 'User' };
                                       const username = author?.username || 'User';
-                                      const avatar = author?.avatar;
                                       const userInitial = username.charAt(0).toUpperCase();
                                       
                                       console.log('Processed author data:', {
                                         username,
-                                        avatar: !!avatar,
                                         userInitial
                                       });
                                       
                                       return (
                                         <div key={reply._id} className="bg-gray-50 p-3 rounded">
                                           <div className="flex items-start space-x-3">
-                                            {/* Avatar with fallback */}
-                                            <div className="relative">
-                                              {avatar ? (
-                                                <>
-                                                  <img 
-                                                    src={avatar} 
-                                                    alt={username}
-                                                    className="h-8 w-8 rounded-full object-cover flex-shrink-0"
-                                                    onError={(e) => {
-                                                      const target = e.target as HTMLImageElement;
-                                                      target.style.display = 'none';
-                                                      const fallback = target.nextElementSibling;
-                                                      if (fallback) {
-                                                        fallback.classList.remove('hidden');
-                                                      }
-                                                    }}
-                                                  />
-                                                  <div className="hidden h-8 w-8 rounded-full bg-blue-100 items-center justify-center text-blue-600 text-xs font-medium flex-shrink-0">
-                                                    {userInitial}
-                                                  </div>
-                                                </>
-                                              ) : (
-                                                <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-medium flex-shrink-0">
-                                                  {userInitial}
-                                                </div>
-                                              )}
+                                            <div className="h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-xs font-medium flex-shrink-0">
+                                              {userInitial}
                                             </div>
                                             
                                             <div className="flex-1 min-w-0">
