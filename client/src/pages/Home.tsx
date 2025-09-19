@@ -1,5 +1,5 @@
-import React from 'react';
-import { Code, ArrowRight, Trophy, Zap, Target, Users, DollarSign, Brain, Star, TrendingUp, Award, Rocket } from 'lucide-react';
+// React import not required with automatic JSX runtime
+import { Code, ArrowRight, Trophy, Zap, Target, DollarSign, Brain } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 // Mock data for the component
 const stats = [
@@ -33,7 +33,7 @@ const features = [
 ];
 
 export default function Home() {
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   const handleNavigation = (path: string) => {
     console.log(`Navigate to: ${path}`);
@@ -104,7 +104,7 @@ export default function Home() {
 
                 </button>
 
-                {!user && (
+                {!isLoading && !user && (
                   <button
                     onClick={() => handleNavigation('/register')}
                     className="group relative inline-flex items-center justify-center w-full xs:w-auto px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-bold text-blue-700 border border-blue-300 bg-blue-50 rounded-lg backdrop-blur-sm hover:border-blue-500 hover:bg-blue-100 transition-all duration-300 hover:scale-105"
@@ -123,7 +123,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-r from-white/80 to-blue-50/80 backdrop-blur-sm"></div>
           <div className="max-w-5xl mx-auto relative">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-              {stats.map((stat, index) => (
+              {stats.map((stat) => (
                 <div
                   key={stat.label}
                   className="group text-center bg-gradient-to-br from-white/90 to-blue-50/90 backdrop-blur-sm border border-blue-200/50 rounded-lg p-2 sm:p-3 hover:border-blue-400/50 hover:shadow-lg transition-all duration-300"
@@ -152,7 +152,7 @@ export default function Home() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {features.map((feature, index) => (
+              {features.map((feature) => (
                 <div
                   key={feature.title}
                   className="group relative bg-gradient-to-br from-white/95 to-blue-50/95 backdrop-blur-sm p-3 sm:p-4 rounded-lg sm:rounded-xl border border-blue-200/50 hover:border-blue-400/50 hover:shadow-xl transition-all duration-500 overflow-hidden"
@@ -262,17 +262,19 @@ export default function Home() {
               </p>
 
               <div className="flex flex-col xs:flex-row gap-3 sm:gap-4 justify-center max-w-sm sm:max-w-md mx-auto">
-                <button
-                  onClick={() => handleNavigation('/register')}
-                  className="group relative inline-flex items-center justify-center w-full xs:w-auto px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg overflow-hidden shadow-xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-blue-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12"></div>
-                  <span className="relative flex items-center whitespace-nowrap">
-                    <Trophy className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    Get Started Now
-                  </span>
-                </button>
+                {!isLoading && !user && (
+                  <button
+                    onClick={() => handleNavigation('/register')}
+                    className="group relative inline-flex items-center justify-center w-full xs:w-auto px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-700 rounded-lg overflow-hidden shadow-xl hover:shadow-blue-500/50 transition-all duration-300 hover:scale-105"
+                  >
+                    <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-blue-800 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12"></div>
+                    <span className="relative flex items-center whitespace-nowrap">
+                      <Trophy className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      Get Started Now
+                    </span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => handleNavigation('/contests')}

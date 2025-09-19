@@ -7,11 +7,47 @@ import { authenticate } from '../middleware/auth.js';
 import { sendVerificationEmail } from '../config/auth.js';
 import config from '../config/config.js';
 
-// Helper: is user currently blocked
+// Helper: is user currently blocked (without modifying DB)
 const isCurrentlyBlocked = (user) => {
   if (!user?.isBlocked) return false;
   if (!user.blockedUntil) return true; // blocked indefinitely until admin clears
   return new Date(user.blockedUntil).getTime() > Date.now();
+};
+
+// Helper: auto-unblock user if block has expired
+const autoUnblockIfExpired = async (user) => {
+  try {
+    if (!user?.isBlocked) return user;
+    if (!user.blockedUntil) return user; // indefinite block
+    const now = Date.now();
+    const until = new Date(user.blockedUntil).getTime();
+    if (until <= now) {
+      // Clear block fields
+      await User.findByIdAndUpdate(user._id, {
+        $set: {
+          isBlocked: false,
+          blockReason: '',
+          blockedUntil: null,
+          blockDuration: undefined,
+          blockDurationUnit: undefined,
+        },
+        $push: {
+          blockHistory: {
+            unblockedAt: new Date(),
+            action: 'auto_unblock',
+            reason: 'Block expired'
+          }
+        }
+      });
+      // Reload the user to reflect updates
+      const refreshed = await User.findById(user._id);
+      return refreshed || user;
+    }
+    return user;
+  } catch (e) {
+    console.error('Auto-unblock check failed:', e);
+    return user; // fail-safe: do not modify block state on error
+  }
 };
 
 // Helper function to generate OTP
@@ -98,21 +134,22 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ message: 'Invalid credentials' });
     }
 
-    // Blocked check
-    if (isCurrentlyBlocked(user)) {
+    // Blocked check with auto-unblock if expired
+    const maybeUnblockedUser = await autoUnblockIfExpired(user);
+    if (isCurrentlyBlocked(maybeUnblockedUser)) {
       return res.status(403).json({
         message: 'Your account is blocked by admin',
         blocked: true,
-        reason: user.blockReason || 'Policy violation',
-        blockedUntil: user.blockedUntil,
-        duration: user.blockDuration || null,
-        durationUnit: user.blockDurationUnit || null,
+        reason: maybeUnblockedUser.blockReason || 'Policy violation',
+        blockedUntil: maybeUnblockedUser.blockedUntil,
+        duration: maybeUnblockedUser.blockDuration || null,
+        durationUnit: maybeUnblockedUser.blockDurationUnit || null,
       });
     }
 
     // Generate JWT token
     const token = jwt.sign(
-      { userId: user._id },
+      { userId: (maybeUnblockedUser._id || user._id) },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -121,7 +158,7 @@ router.post('/login', async (req, res) => {
       message: 'Login successful',
       token,
       user: {
-        ...user.toJSON(),
+        ...(maybeUnblockedUser.toJSON ? maybeUnblockedUser.toJSON() : user.toJSON()),
       }
     });
   } catch (error) {
@@ -133,12 +170,12 @@ router.post('/login', async (req, res) => {
 // Get current user
 router.get('/me', authenticate, async (req, res) => {
   try {
-    const user = await User.findById(req.user._id)
+    let user = await User.findById(req.user._id)
       .populate('solvedProblems', 'title difficulty')
       .populate('contestsParticipated', 'title status');
     if (!user) return res.status(404).json({ message: 'User not found' });
-
-    // If user became unblocked (time passed), we could auto-clear; for now, just report.
+    // Auto-clear block if expired
+    user = await autoUnblockIfExpired(user);
     const blocked = isCurrentlyBlocked(user);
     
     res.json({ 
@@ -158,7 +195,7 @@ router.put('/profile', authenticate, async (req, res) => {
   try {
     const allowedUpdates = [
       'fullName', 'bio', 'location', 'website', 'github', 
-      'linkedin', 'twitter', 'company', 'school', 'avatar'
+      'linkedin', 'twitter', 'company', 'school'
     ];
     
     const updates = {};

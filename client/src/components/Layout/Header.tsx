@@ -408,7 +408,7 @@ export const Header: React.FC = () => {
               <div className="hidden lg:flex items-center space-x-2">
                 <Link
                   to="/login"
-                  className="px-3 py-1.5 text-slate-700 hover:text-blue-700 transition-all duration-300 font-medium relative group whitespace-nowrap text-xs"
+                  className="px-3 py-1.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-md hover:from-red-400 hover:to-indigo-500 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-105 transform whitespace-nowrap text-xs"
                 >
                   <span className="relative z-10">Log in</span>
                   <div className="absolute inset-0 bg-blue-50 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-300" />
@@ -417,7 +417,7 @@ export const Header: React.FC = () => {
                   to="/register"
                   className="px-3 py-1.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-md hover:from-blue-400 hover:to-indigo-500 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-105 transform whitespace-nowrap text-xs"
                 >
-                  Create Free Account
+                  SignUp
                 </Link>
               </div>
             )}

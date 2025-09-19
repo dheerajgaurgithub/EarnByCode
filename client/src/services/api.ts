@@ -41,7 +41,13 @@ interface Contest {
   updatedAt: string;
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+// Resolve API base URL with sensible defaults:
+// 1) If VITE_API_URL is set, use it.
+// 2) Else, in production use the deployed Render URL.
+// 3) Else, default to local dev server.
+const DEFAULT_PROD_API = 'https://algobucks.onrender.com/api';
+const DEFAULT_DEV_API = 'http://localhost:5000/api';
+const API_BASE_URL = (import.meta.env.VITE_API_URL?.toString().trim()) || (import.meta.env.PROD ? DEFAULT_PROD_API : DEFAULT_DEV_API);
 
 // Transient error detection (network resets, timeouts, 5xx)
 const isTransientError = (error: unknown, response?: Response) => {
