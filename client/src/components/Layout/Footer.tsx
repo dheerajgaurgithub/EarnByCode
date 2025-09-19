@@ -1,6 +1,6 @@
 import React from 'react';
 import { Github, Twitter, Mail, ExternalLink, MessageCircle } from 'lucide-react';
-
+import { Link } from 'react-router-dom';
 export default function Footer() {
   const handleNavigation = (path: string) => {
     console.log(`Navigate to: ${path}`);
@@ -130,11 +130,11 @@ export default function Footer() {
             <div className="space-y-4">
               <div className="relative">
                 <h3 className="text-sm sm:text-base font-bold text-slate-800 tracking-tight mb-1">
-                  <button onClick={() => handleNavigation('/company')}>
+                  <Link to="/company">
                     <span className="bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-600 bg-clip-text text-transparent cursor-pointer">
                       Company
                     </span>
-                  </button>
+                  </Link>
                 </h3>
                 <div className="w-8 h-0.5 bg-gradient-to-r from-indigo-600 via-blue-600 to-sky-600 rounded-full"></div>
               </div>

@@ -6,9 +6,75 @@ import imgManish from './Honors/manish.png';
 import imgMukul from './Honors/mukul.png';
 import imgDivesh from './Honors/divesh.png';
 import imgNeelesh from './Honors/neelesh.png';
-import { Building, Users, Award, Clock, BarChart2, CheckCircle } from 'lucide-react';
+import { Building, Users, Award, Clock, BarChart2, CheckCircle, ExternalLink } from 'lucide-react';
 
 export const Company: React.FC = () => {
+  // Team data
+  const team = [
+    {
+      name: 'Dheeraj Gaur',
+      role: 'CEO & Founder',
+      image: imgDheeraj,
+      link: 'https://dheerajgaurofficial.netlify.app/',
+    },
+    {
+      name: 'Manish Kumar',
+      role: 'Chief Technology Officer (CTO)',
+      image: imgManish,
+      link: 'https://www.manishdev.tech/',
+    },
+    {
+      name: 'Mukul Kumar',
+      role: 'VP & Director of Engineering',
+      image: imgMukul,
+      link: 'https://dheerajgaurofficial.netlify.app/',
+    },
+    {
+      name: 'Divesh Singh',
+      role: 'Product Manager & Head of Product',
+      image: imgDivesh,
+      link: 'https://dheerajgaurofficial.netlify.app/',
+    },
+    {
+      name: 'Neelesh Shakya',
+      role: 'Technical Architect & Principal Engineer',
+      image: imgNeelesh,
+      link: 'https://dheerajgaurofficial.netlify.app/',
+    },
+  ];
+
+  const [ceo, ...others] = team;
+
+  const TeamCard = ({ name, role, image, link }: { name: string; role: string; image: string; link?: string }) => (
+    <div className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-300 group">
+      <div className="relative overflow-hidden">
+        <img
+          src={image}
+          alt={name}
+          className="w-full h-40 sm:h-48 lg:h-56 xl:h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+        />
+        <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+      </div>
+      <div className="p-3 sm:p-4 lg:p-6 text-center">
+        <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 mb-1">{name}</h3>
+        <p className="text-gray-600 font-medium text-xs sm:text-sm lg:text-base">{role}</p>
+        {link && (
+          <div className="mt-3">
+            <a
+              href={link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs sm:text-sm font-semibold shadow-sm hover:bg-blue-700 transition-colors"
+            >
+              <span>Know more</span>
+              <ExternalLink className="h-3.5 w-3.5 opacity-90" />
+            </a>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-7xl mx-auto">
@@ -91,53 +157,15 @@ export const Company: React.FC = () => {
         {/* Team Section */}
         <div className="mb-8 sm:mb-12 lg:mb-16">
           <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-center mb-6 sm:mb-8 lg:mb-12 text-gray-900">Meet Our Team</h2>
+          {/* CEO centered at the top */}
+          <div className="max-w-sm mx-auto mb-6 sm:mb-8 lg:mb-10">
+            <TeamCard name={ceo.name} role={ceo.role} image={ceo.image} link={ceo.link} />
+          </div>
+
+          {/* Remaining 4 in a single bottom row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
-            {[
-              {
-                name: 'Dheeraj Gaur',
-                role: 'CEO & Founder',
-                image: imgDheeraj,
-                link: 'https://dheerajgaurofficial.netlify.app/',
-              },
-              {
-                name: 'Manish Kumar',
-                role: 'Chief Technology Officer (CTO)',
-                image: imgManish,
-                link: 'https://www.manishdev.tech/',
-              },
-              {
-                name: 'Mukul Kumar',
-                role: 'VP / Director of Engineering',
-                image: imgMukul,
-                link: 'https://dheerajgaurofficial.netlify.app/',
-              },
-              {
-                name: 'Divesh Singh',
-                role: 'Product Manager / Head of Product',
-                image: imgDivesh,
-                link: 'https://dheerajgaurofficial.netlify.app/',
-              },
-              {
-                name: 'Neelesh Shakya',
-                role: 'Technical Architect / Principal Engineer',
-                image: imgNeelesh,
-                link: 'https://dheerajgaurofficial.netlify.app/',
-              },
-            ].map((member, index) => (
-              <div key={index} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-300 group">
-                <div className="relative overflow-hidden">
-                  <img 
-                    src={member.image} 
-                    alt={member.name}
-                    className="w-full h-40 sm:h-48 lg:h-56 xl:h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
-                  <div className="absolute inset-0 bg-blue-600/10 opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
-                </div>
-                <div className="p-3 sm:p-4 lg:p-6">
-                  <h3 className="text-sm sm:text-base lg:text-lg font-bold text-gray-900 mb-1">{member.name}</h3>
-                  <p className="text-gray-600 font-medium text-xs sm:text-sm lg:text-base">{member.role}</p>
-                </div>
-              </div>
+            {others.map((member) => (
+              <TeamCard key={member.name} name={member.name} role={member.role} image={member.image} link={member.link} />
             ))}
           </div>
         </div>
