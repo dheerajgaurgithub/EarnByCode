@@ -47,11 +47,11 @@ export const Company: React.FC = () => {
 
   const TeamCard = ({ name, role, image, link }: { name: string; role: string; image: string; link?: string }) => (
     <div className="group bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm hover:shadow-lg hover:border-blue-300 transition-all duration-300 transform hover:-translate-y-1">
-      <div className="relative overflow-hidden h-48 sm:h-56 lg:h-64 xl:h-72">
+      <div className="relative overflow-hidden aspect-square">
         <img
           src={image}
           alt={name}
-          className="w-full h-full object-contain bg-gray-50 group-hover:scale-105 transition-transform duration-500"
+          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
       </div>
