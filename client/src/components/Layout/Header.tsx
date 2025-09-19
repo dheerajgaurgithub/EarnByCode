@@ -116,7 +116,7 @@ export const Header: React.FC = () => {
       )}
     >
       {/* Elegant top border gradient */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent pointer-events-none" />
 
       <div className="container mx-auto px-2">
         <div className="flex justify-between items-center h-12">
@@ -193,15 +193,13 @@ export const Header: React.FC = () => {
 
               {/* Company Dropdown */}
               <div className="relative group ml-1">
-                <button className="flex items-center px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition-all duration-300 group whitespace-nowrap">
-                  <Link
-                    to="/company"
-                    className="flex items-center px-3 py-2 text-xs text-slate-600 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-indigo-500/5 hover:text-blue-700 transition-all duration-200"
-                  >
-                    Company
-                  </Link>
+                <Link
+                  to="/company"
+                  className="flex items-center px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition-all duration-300 group whitespace-nowrap"
+                >
+                  <span className="px-3 py-2">Company</span>
                   <ChevronDown className="w-3 h-3 ml-1 transition-transform group-hover:rotate-180 duration-300" />
-                </button>
+                </Link>
                 <div className="absolute left-0 mt-1 w-36 bg-white/95 backdrop-blur-2xl border border-blue-200/60 rounded-lg shadow-lg shadow-blue-500/10 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 z-50">
                   <Link
                     to="/about"
@@ -473,9 +471,16 @@ export const Header: React.FC = () => {
                   );
                 })}
 
-                {/* Mobile Company Section */}
+                {/* Mobile Company Section */
                 <div className="pt-3 mt-3 border-t border-blue-200/50">
                   <div className="text-slate-500 text-xs font-medium mb-2 px-3">Company</div>
+                  <Link
+                    to="/company"
+                    className="flex items-center px-3 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 text-xs rounded-md mx-2"
+                    onClick={() => setShowMobileMenu(false)}
+                  >
+                    Company
+                  </Link>
                   <Link
                     to="/about"
                     className="flex items-center px-3 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 text-xs rounded-md mx-2"

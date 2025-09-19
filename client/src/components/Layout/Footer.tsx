@@ -1,15 +1,20 @@
 import React from 'react';
 import { Github, Twitter, Mail, ExternalLink, MessageCircle } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 export default function Footer() {
+  const navigate = useNavigate();
   const handleNavigation = (path: string) => {
-    console.log(`Navigate to: ${path}`);
+    if (/^https?:\/\//i.test(path)) {
+      window.open(path, '_blank', 'noopener,noreferrer');
+    } else {
+      navigate(path);
+    }
   };
 
   return (
     <footer className="bg-white border-t border-blue-200 py-3 sm:py-4 relative overflow-hidden">
       {/* Ethereal Background Effects */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 pointer-events-none">
         {/* Primary glow orbs */}
         <div className="absolute top-5 left-[10%] w-32 sm:w-48 h-32 sm:h-48 bg-gradient-to-br from-blue-200/20 via-indigo-300/15 to-sky-200/10 rounded-full blur-3xl animate-pulse"></div>
         <div className="absolute bottom-5 right-[15%] w-36 sm:w-56 h-36 sm:h-56 bg-gradient-to-tl from-indigo-200/15 via-blue-300/10 to-sky-300/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
@@ -23,14 +28,14 @@ export default function Footer() {
 
       {/* Sophisticated grid overlay */}
       <div
-        className="absolute inset-0 opacity-[0.02]"
+        className="absolute inset-0 opacity-[0.02] pointer-events-none"
         style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, rgba(59,130,246,0.3) 1px, transparent 0)`
         }}
       ></div>
 
       {/* Radial gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-radial from-blue-50/5 via-transparent to-white/20"></div>
+      <div className="absolute inset-0 bg-gradient-radial from-blue-50/5 via-transparent to-white/20 pointer-events-none"></div>
 
       <div className="max-w-6xl mx-auto px-3 sm:px-4 relative z-20">
         {/* Premium Footer Content */}
