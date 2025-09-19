@@ -471,7 +471,7 @@ export const Header: React.FC = () => {
                   );
                 })}
 
-                {/* Mobile Company Section */
+                {/* Mobile Company Section */}
                 <div className="pt-3 mt-3 border-t border-blue-200/50">
                   <div className="text-slate-500 text-xs font-medium mb-2 px-3">Company</div>
                   <Link
