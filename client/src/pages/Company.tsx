@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Building, Users, Award, Clock, BarChart2, CheckCircle } from 'lucide-react';
 
 export const Company: React.FC = () => {
@@ -86,10 +87,30 @@ export const Company: React.FC = () => {
           <h2 className="text-lg sm:text-xl lg:text-2xl xl:text-3xl font-bold text-center mb-6 sm:mb-8 lg:mb-12 text-gray-900">Meet Our Team</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
             {[
-              { name: 'Dheeraj Gaur', role: 'CEO & Founder', image: 'https://dheerajgaurofficial.netlify.app/assets/dp-De2uMj27.png' },
-              { name: 'Manish Kumar', role: 'CTO', image: 'https://www.manishdev.tech/_next/image?url=%2Fimages%2Fprofile.jpeg&w=750&q=75' },
-              { name: 'Mukul Kumar', role: 'Lead Algorithm Developer', image: 'https://randomuser.me/api/portraits/men/22.jpg' },
-              { name: 'Priya Patel', role: 'Trading Community Manager', image: 'https://randomuser.me/api/portraits/women/63.jpg' },
+               { 
+                name: 'Dheeraj Gaur', 
+                role: 'CEO & Founder', 
+                image: 'https://drive.google.com/uc?export=view&id=1fnErXeiPMxgtFMIXkr3zSPU8EOF8M9my',
+                link: 'https://dheerajgaur-portfolio.com' // replace with your portfolio link
+              },
+              { 
+                name: 'Manish Kumar', 
+                role: 'CTO', 
+                image: 'https://drive.google.com/uc?export=view&id=1I7OP7SNsu86ogvjTGzcP5y7meJ6SPNHU',
+                link: 'https://manishkumar.dev' // replace with real link
+              },
+              { 
+                name: 'Mukul Kumar', 
+                role: 'Lead Algorithm Developer', 
+                image: 'https://drive.google.com/file/d/1bAg18e9-Kwdp3k0Ikdpf2rw5ji9w5JUh/view?usp=sharing',
+                link: 'https://mukul-portfolio.com'
+              },
+              { 
+                name: 'Priya Patel', 
+                role: 'Trading Community Manager', 
+                image: 'https://randomuser.me/api/portraits/women/63.jpg',
+                link: 'https://priyapatel.dev'
+              },
             ].map((member, index) => (
               <div key={index} className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md hover:border-blue-200 transition-all duration-300 group">
                 <div className="relative overflow-hidden">
@@ -115,12 +136,12 @@ export const Company: React.FC = () => {
           <p className="text-gray-600 text-xs sm:text-sm lg:text-base mb-4 sm:mb-6 lg:mb-8 max-w-3xl mx-auto leading-relaxed px-2 sm:px-4">
             Be part of a community of passionate algorithmic traders improving their skills and financial success every day.
           </p>
-          <a 
-            href="/register" 
+          <Link 
+            to="/register" 
             className="inline-block bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800 font-bold py-2 px-4 sm:py-3 sm:px-6 lg:py-4 lg:px-8 rounded-xl transition-all duration-200 text-xs sm:text-sm lg:text-base tracking-wide shadow-md hover:shadow-lg transform hover:scale-105 active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           >
             Start Trading with AlgoBucks
-          </a>
+          </Link>
         </div>
       </div>
     </div>
