@@ -187,11 +187,11 @@ class ApiService {
 
   // Code execution methods
   async runCode(problemId: string, code: string, language: string): Promise<CodeExecutionResult> {
-    return this.request('POST', '/code/run', { problemId, code, language });
+    return this.request('POST', `/problems/${problemId}/run`, { code, language });
   }
 
   async submitCode(problemId: string, code: string, language: string): Promise<CodeExecutionResult> {
-    return this.request('POST', '/code/submit', { problemId, code, language });
+    return this.request('POST', `/problems/${problemId}/submit`, { code, language });
   }
 
   // Contest methods

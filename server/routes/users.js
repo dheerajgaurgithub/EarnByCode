@@ -249,4 +249,32 @@ router.patch('/me', authenticate, async (req, res) => {
   }
 });
 
+// Update user preferences (e.g., preferredCurrency)
+router.patch('/me/preferences', authenticate, async (req, res) => {
+  try {
+    const { preferredCurrency } = req.body;
+    const allowedCurrencies = ['USD', 'EUR', 'GBP', 'INR'];
+
+    const user = await User.findById(req.user.id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (preferredCurrency) {
+      if (!allowedCurrencies.includes(preferredCurrency)) {
+        return res.status(400).json({ success: false, message: 'Unsupported currency' });
+      }
+      user.preferredCurrency = preferredCurrency;
+    }
+
+    await user.save();
+
+    const payload = user.toJSON();
+    return res.json({ success: true, message: 'Preferences updated', user: payload });
+  } catch (error) {
+    console.error('Update preferences error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to update preferences' });
+  }
+});
+
 export default router;

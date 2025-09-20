@@ -116,6 +116,11 @@ const userSchema = new mongoose.Schema({
     enum: ['active', 'suspended', 'restricted'],
     default: 'active'
   },
+  preferredCurrency: {
+    type: String,
+    enum: ['USD', 'EUR', 'GBP', 'INR'],
+    default: 'INR'
+  },
   walletTransactions: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Transaction'

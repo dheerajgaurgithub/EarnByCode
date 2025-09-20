@@ -12,6 +12,7 @@ interface AuthContextType {
   refreshUser: (silent?: boolean) => Promise<void>;
   uploadAvatar: (file: File) => Promise<void>;
   removeAvatar: () => Promise<void>;
+  updatePreferences: (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR' }) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -81,6 +82,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       if (!silent) setIsLoading(false);
     }
+  };
+
+  const updatePreferences = async (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR' }) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+    const res = await fetch(`${config.api.baseUrl}/users/me/preferences`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify(prefs),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update preferences');
+    if (data.user) setUser(prev => prev ? { ...prev, ...data.user } : data.user);
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -240,7 +258,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isLoading,
       refreshUser,
       uploadAvatar,
-      removeAvatar
+      removeAvatar,
+      updatePreferences
     }}>
       {children}
     </AuthContext.Provider>
