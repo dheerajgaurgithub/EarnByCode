@@ -7,6 +7,8 @@ import {
   MapPin, Building, GraduationCap, Globe, Github, Linkedin, Twitter, Loader2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import AvatarCropperModal from '@/components/Profile/AvatarCropperModal';
+import ClampText from '@/components/common/ClampText';
 
 interface EditFormData {
   fullName: string;
@@ -34,9 +36,26 @@ export const Profile: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
+  const [avatarShape, setAvatarShape] = useState<'round' | 'square'>(() => {
+    if (typeof window === 'undefined') return 'round';
+    return (localStorage.getItem('ab_avatar_shape') as 'round' | 'square') || 'round';
+  });
   
   const showSuccess = (message: string) => {
     toast.success(message);
+  };
+
+  const handleCroppedAvatar = async (file: File) => {
+    try {
+      setIsUploadingAvatar(true);
+      await uploadAvatar(file);
+      await refreshUser(true);
+      showSuccess('Profile picture updated');
+    } catch (err: any) {
+      showError(err?.message || 'Failed to upload avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
   };
   
   const showError = (message: string) => {
@@ -57,8 +76,10 @@ export const Profile: React.FC = () => {
   // Avatar upload state
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [showCropper, setShowCropper] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
 
-  const onChooseAvatar = () => fileInputRef.current?.click();
+  const onChooseAvatar = () => setShowCropper(true);
   const onAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -128,6 +149,12 @@ export const Profile: React.FC = () => {
   if (!user) {
     return <Navigate to="/login" state={{ from: '/profile' }} replace />;
   }
+
+  const toggleAvatarShape = () => {
+    const next = avatarShape === 'round' ? 'square' : 'round';
+    setAvatarShape(next);
+    try { localStorage.setItem('ab_avatar_shape', next); } catch {}
+  };
 
   const handleSave = async () => {
     setIsUpdating(true);
@@ -215,11 +242,11 @@ export const Profile: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-xl shadow-lg border border-blue-200 p-4 sm:p-6 mb-6 sm:mb-8"
+          className="bg-white rounded-xl shadow-lg border border-blue-200 p-3 sm:p-6 mb-6 sm:mb-8"
         >
           <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
-              <div className="relative rounded-full overflow-hidden border border-blue-200 bg-white flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28">
+              <div onClick={() => user.avatarUrl && setShowPreview(true)} className={`relative ${avatarShape === 'round' ? 'rounded-full' : 'rounded-lg'} overflow-hidden border border-blue-200 bg-white flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28 cursor-${user.avatarUrl ? 'zoom-in' : 'default'}`}>
                 {user.avatarUrl ? (
                   <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
                 ) : (
@@ -239,16 +266,36 @@ export const Profile: React.FC = () => {
                       placeholder="Full Name"
                       className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm sm:text-base"
                     />
-                    <p className="text-blue-600 text-sm sm:text-base truncate" title={`@${user.username}`}>@{user.username}</p>
-                    <p className="text-blue-500 text-xs sm:text-sm truncate" title={user.email}>{user.email}</p>
+                    <ClampText
+                      text={`@${user.username}`}
+                      lines={2}
+                      title={`@${user.username}`}
+                      className="text-blue-600 text-sm sm:text-base"
+                    />
+                    <ClampText
+                      text={user.email}
+                      lines={2}
+                      title={user.email}
+                      className="text-blue-500 text-xs sm:text-sm"
+                    />
                   </div>
                 ) : (
                   <div>
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-900 mb-1 leading-tight break-words">
+                    <h1 className="text-xl sm:text-3xl md:text-4xl font-bold text-blue-900 mb-1 leading-tight break-words">
                       {user.fullName || user.username}
                     </h1>
-                    <p className="text-blue-600 mb-1 text-sm sm:text-base truncate" title={`@${user.username}`}>@{user.username}</p>
-                    <p className="text-blue-500 mb-3 text-xs sm:text-sm truncate" title={user.email}>{user.email}</p>
+                    <ClampText
+                      text={`@${user.username}`}
+                      lines={2}
+                      title={`@${user.username}`}
+                      className="text-blue-600 mb-1 text-sm sm:text-base"
+                    />
+                    <ClampText
+                      text={user.email}
+                      lines={2}
+                      title={user.email}
+                      className="text-blue-500 mb-3 text-xs sm:text-sm"
+                    />
                     {user.bio && (
                       <p className="text-blue-700 mb-3 text-sm sm:text-base break-words">{user.bio}</p>
                     )}
@@ -300,6 +347,12 @@ export const Profile: React.FC = () => {
                         Remove
                       </button>
                     )}
+                    <button
+                      onClick={toggleAvatarShape}
+                      className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 border border-gray-200 text-xs sm:text-sm"
+                    >
+                      {avatarShape === 'round' ? 'Square' : 'Round'}
+                    </button>
                   </div>
                   <button
                     onClick={() => setIsEditing(true)}
@@ -312,6 +365,23 @@ export const Profile: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Avatar Cropper Modal */}
+          <AvatarCropperModal
+            open={showCropper}
+            onClose={() => setShowCropper(false)}
+            onCropped={handleCroppedAvatar}
+          />
+
+          {/* Avatar Preview Modal */}
+          {showPreview && user.avatarUrl && (
+            <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/60 p-3" onClick={() => setShowPreview(false)}>
+              <div className="bg-white rounded-xl shadow-lg border border-blue-200 overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <img src={user.avatarUrl} alt={user.username} className="max-h-[80vh] max-w-[90vw] object-contain" />
+                <div className="p-2 text-center bg-blue-50 text-blue-700 text-sm">Click outside to close</div>
+              </div>
+            </div>
+          )}
 
           {/* Profile Details */}
           {isEditing ? (
@@ -488,7 +558,7 @@ export const Profile: React.FC = () => {
 
           {/* Admin Welcome Message */}
           {user.isAdmin ? (
-            <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mb-6 rounded-r-lg">
+            <div className="bg-blue-50 border-l-4 border-blue-500 p-3 sm:p-4 mb-6 rounded-r-lg">
               <h3 className="text-lg font-medium text-blue-800">Welcome to the profile of Administrator of AlgoBucks</h3>
               <p className="text-blue-600 text-sm mt-1">You have full administrative access to the platform.</p>
               
@@ -510,19 +580,19 @@ export const Profile: React.FC = () => {
             </div>
           ) : (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
-              <div className="text-center bg-blue-50 p-3 sm:p-4 rounded-lg border border-blue-200">
+              <div className="text-center bg-blue-50 p-2.5 sm:p-4 rounded-lg border border-blue-200">
                 <p className="text-xl sm:text-2xl font-bold text-blue-600">{user.codecoins || 0}</p>
                 <p className="text-blue-500 text-xs sm:text-sm">Codecoins</p>
               </div>
-              <div className="text-center bg-green-50 p-3 sm:p-4 rounded-lg border border-green-200">
+              <div className="text-center bg-green-50 p-2.5 sm:p-4 rounded-lg border border-green-200">
                 <p className="text-xl sm:text-2xl font-bold text-green-600">{user.solvedProblems?.length || 0}</p>
                 <p className="text-green-500 text-xs sm:text-sm">Problems Solved</p>
               </div>
-              <div className="text-center bg-yellow-50 p-3 sm:p-4 rounded-lg border border-yellow-200">
+              <div className="text-center bg-yellow-50 p-2.5 sm:p-4 rounded-lg border border-yellow-200">
                 <p className="text-xl sm:text-2xl font-bold text-yellow-600">{user.points || 0}</p>
                 <p className="text-yellow-500 text-xs sm:text-sm">Points</p>
               </div>
-              <div className="text-center bg-purple-50 p-3 sm:p-4 rounded-lg border border-purple-200">
+              <div className="text-center bg-purple-50 p-2.5 sm:p-4 rounded-lg border border-purple-200">
                 <p className="text-xl sm:text-2xl font-bold text-purple-600">
                   {user.ranking ? `#${user.ranking-1}` : 'N/A'}
                 </p>
@@ -532,13 +602,13 @@ export const Profile: React.FC = () => {
           )}
         </motion.div>
 
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 sm:gap-8">
           {/* Achievements */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.1 }}
-            className="bg-white rounded-xl shadow-lg border border-blue-200 p-4 sm:p-6"
+            className="bg-white rounded-xl shadow-lg border border-blue-200 p-3 sm:p-6"
           >
             <h2 className="text-lg sm:text-xl font-semibold text-blue-900 mb-4 flex items-center">
               <Trophy className="w-5 h-5 mr-2 text-yellow-500" />
@@ -549,7 +619,7 @@ export const Profile: React.FC = () => {
               {achievements.map((achievement, index) => (
                   <div
                     key={index}
-                    className={`flex items-center space-x-3 p-3 rounded-lg transition-colors ${
+                    className={`flex items-center space-x-3 p-2.5 sm:p-3 rounded-lg transition-colors ${
                       achievement.earned ? 'bg-yellow-50 border border-yellow-200' : 'bg-blue-50 border border-blue-200'
                     }`}
                   >
@@ -562,7 +632,7 @@ export const Profile: React.FC = () => {
                       <p className={`font-medium text-sm sm:text-base ${achievement.earned ? 'text-yellow-700' : 'text-blue-600'}`}>
                         {achievement.title}
                       </p>
-                      <p className="text-blue-500 text-xs sm:text-sm">{achievement.description}</p>
+                      <p className="text-blue-500 text-xs sm:text-sm truncate" title={achievement.description}>{achievement.description}</p>
                     </div>
                   </div>
                 ))}
@@ -575,7 +645,7 @@ export const Profile: React.FC = () => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-xl shadow-lg border border-blue-200 p-4 sm:p-6"
+              className="bg-white rounded-xl shadow-lg border border-blue-200 p-3 sm:p-6"
             >
               <h2 className="text-lg sm:text-xl font-semibold text-blue-900 mb-4 flex items-center">
                 <TrendingUp className="w-5 h-5 mr-2 text-green-500" />
@@ -585,7 +655,7 @@ export const Profile: React.FC = () => {
               {recentSubmissions.length > 0 ? (
                 <div className="space-y-3">
                   {recentSubmissions.map((submission) => (
-                    <div key={submission.id} className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div key={submission.id} className="flex items-center justify-between p-2.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
                       <div className="min-w-0 flex-1">
                         <p className="text-blue-900 font-medium text-sm sm:text-base truncate">Problem #{submission.problemId}</p>
                         <p className="text-blue-600 text-xs sm:text-sm">{submission.language}</p>

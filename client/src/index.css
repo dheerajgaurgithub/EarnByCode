@@ -4,6 +4,21 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom global styles */
+
+/* Two-line clamp utility */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Simple tooltip helper: show native title; this class is for consistent cursor */
+.has-tooltip {
+  cursor: help;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;
