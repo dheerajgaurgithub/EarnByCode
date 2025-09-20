@@ -1,32 +1,85 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useSearchParams } from 'react-router-dom';
 import { CheckCircle, X, Clock, AlertCircle, Code, Calendar, Filter } from 'lucide-react';
 import { motion } from 'framer-motion';
-import api from '../services/api';
+import { apiService } from '@/lib/api';
 
 export const Submissions: React.FC = () => {
   const { user } = useAuth();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [submissions, setSubmissions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<string>(searchParams.get('status') || 'all');
+  const [page, setPage] = useState<number>(parseInt(searchParams.get('page') || '1', 10));
+  const [limit, setLimit] = useState<number>(parseInt(searchParams.get('limit') || '10', 10));
+  const [totalPages, setTotalPages] = useState<number>(1);
+  const [total, setTotal] = useState<number>(0);
   const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [sortBy, setSortBy] = useState<string>(searchParams.get('sort') || 'date_desc');
 
   useEffect(() => {
-    if (user) {
-      const fetchSubmissions = async () => {
-        try {
-          const submissions = await api.getSubmissions();
-          setSubmissions(Array.isArray(submissions) ? submissions : []);
-        } catch (error) {
-          console.error('Error fetching submissions:', error);
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchSubmissions();
+    if (!user) return;
+    const fetchSubmissions = async () => {
+      try {
+        setLoading(true);
+        const params: Record<string, any> = { page, limit };
+        if (statusFilter && statusFilter !== 'all') params.status = statusFilter;
+        if (sortBy) params.sort = sortBy;
+        const data = await apiService.get<{ submissions: any[]; totalPages: number; currentPage: number; total: number }>(`/submissions`, { params } as any);
+        const list = (data as any).submissions || (Array.isArray(data) ? data : []);
+        setSubmissions(list);
+        setTotalPages((data as any).totalPages || 1);
+        setTotal((data as any).total || list.length || 0);
+      } catch (error) {
+        console.error('Error fetching submissions:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSubmissions();
+  }, [user, statusFilter, page, limit, sortBy]);
+
+  // Keep URL in sync with filters
+  useEffect(() => {
+    const next = new URLSearchParams();
+    if (statusFilter && statusFilter !== 'all') next.set('status', statusFilter);
+    if (page !== 1) next.set('page', String(page));
+    if (limit !== 10) next.set('limit', String(limit));
+    if (sortBy && sortBy !== 'date_desc') next.set('sort', sortBy);
+    setSearchParams(next, { replace: true });
+  }, [statusFilter, page, limit, sortBy, setSearchParams]);
+
+  // Initialize from localStorage if URL doesn't specify
+  useEffect(() => {
+    if (!searchParams.get('status')) {
+      const saved = localStorage.getItem('subs_status');
+      if (saved) setStatusFilter(saved);
     }
-  }, [user]);
+    if (!searchParams.get('page')) {
+      const saved = localStorage.getItem('subs_page');
+      if (saved) setPage(parseInt(saved, 10) || 1);
+    }
+    if (!searchParams.get('limit')) {
+      const saved = localStorage.getItem('subs_limit');
+      if (saved) setLimit(parseInt(saved, 10) || 10);
+    }
+    if (!searchParams.get('sort')) {
+      const saved = localStorage.getItem('subs_sort');
+      if (saved) setSortBy(saved);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('subs_status', statusFilter);
+      localStorage.setItem('subs_page', String(page));
+      localStorage.setItem('subs_limit', String(limit));
+      localStorage.setItem('subs_sort', sortBy);
+    } catch {}
+  }, [statusFilter, page, limit, sortBy]);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -86,8 +139,8 @@ export const Submissions: React.FC = () => {
           </p>
         </div>
 
-        {/* Filter */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4 mb-6">
+        {/* Filter + Sorting + Pagination */}
+        <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-4 lg:space-y-0 lg:space-x-4 mb-6">
           <div className="relative w-full sm:w-auto">
             <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <select
@@ -103,12 +156,54 @@ export const Submissions: React.FC = () => {
               <option value="compilation_error">Compilation Error</option>
             </select>
           </div>
+          <div className="flex items-center space-x-2">
+            <label className="text-sm text-gray-600">Sort by:</label>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              className="py-2 px-2 bg-white border border-blue-200 rounded-lg text-sm"
+            >
+              <option value="date_desc">Date (newest)</option>
+              <option value="date_asc">Date (oldest)</option>
+              <option value="status_asc">Status (A→Z)</option>
+              <option value="status_desc">Status (Z→A)</option>
+              <option value="lang_asc">Language (A→Z)</option>
+              <option value="lang_desc">Language (Z→A)</option>
+            </select>
+          </div>
+          <div className="flex items-center space-x-2">
+            <button
+              className="px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm disabled:opacity-50"
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              disabled={page <= 1 || loading}
+            >
+              Prev
+            </button>
+            <div className="text-sm text-gray-700">Page {page} of {totalPages}</div>
+            <button
+              className="px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm disabled:opacity-50"
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages || loading}
+            >
+              Next
+            </button>
+            <select
+              value={limit}
+              onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value, 10)); }}
+              className="ml-2 py-2 px-2 bg-white border border-blue-200 rounded-lg text-sm"
+            >
+              <option value={10}>10 / page</option>
+              <option value={20}>20 / page</option>
+              <option value={50}>50 / page</option>
+            </select>
+          </div>
         </div>
 
         {/* Submissions List */}
         <div className="bg-white rounded-xl shadow-lg border border-blue-100 overflow-hidden">
-          <div className="px-4 sm:px-6 py-4 border-b border-blue-100 bg-blue-50">
+          <div className="px-4 sm:px-6 py-4 border-b border-blue-100 bg-blue-50 flex items-center justify-between">
             <h2 className="text-lg sm:text-xl font-semibold text-gray-800">Submission History</h2>
+            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">{total} total</span>
           </div>
 
           <div className="divide-y divide-blue-100">
@@ -130,10 +225,10 @@ export const Submissions: React.FC = () => {
                     
                     <div className="flex-1">
                       <Link
-                        to={`/problems/${submission.problem._id}`}
+                        to={`/problems/${(submission.problem?._id) || submission.problem}`}
                         className="text-gray-800 font-medium hover:text-blue-600 transition-colors text-sm sm:text-base"
                       >
-                        {submission.problem.title}
+                        {submission.problem?.title || `#${(submission.problem?._id) || submission.problem}`}
                       </Link>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mt-1 text-xs sm:text-sm text-gray-600 space-y-1 sm:space-y-0">
                         <span className="capitalize font-medium">{submission.language}</span>

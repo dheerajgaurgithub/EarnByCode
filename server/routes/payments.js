@@ -38,7 +38,7 @@ router.get('/balance', authenticate, async (req, res) => {
     res.json({ 
       success: true, 
       balance: user.walletBalance,
-      currency: 'USD' 
+      currency: 'INR' 
     });
   } catch (error) {
     console.error('Get balance error:', error);
@@ -87,8 +87,8 @@ router.post('/confirm-3d-secure', authenticate, async (req, res) => {
             user: req.user._id,
             type: 'deposit',
             amount,
-            currency: 'USD',
-            description: `Wallet deposit of $${amount.toFixed(2)} (3DS confirm)`,
+            currency: 'INR',
+            description: `Wallet deposit of ₹${amount.toFixed(2)} (3DS confirm)`,
             status: 'completed',
             stripePaymentIntentId: paymentIntentId,
           });
@@ -115,7 +115,7 @@ router.post('/deposit', authenticate, async (req, res) => {
     if (!amount || isNaN(amount) || amount < 1) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Minimum deposit amount is $1' 
+        message: 'Minimum deposit amount is ₹1' 
       });
     }
 
@@ -136,8 +136,8 @@ router.post('/deposit', authenticate, async (req, res) => {
               user: req.user._id,
               type: 'deposit',
               amount: amount,
-              currency: 'USD',
-              description: `Wallet deposit of $${Number(amount).toFixed(2)} via ${method.toUpperCase()} (mock)`,
+              currency: 'INR',
+              description: `Wallet deposit of ₹${Number(amount).toFixed(2)} via ${method.toUpperCase()} (mock)`,
               status: 'completed',
               metadata: { mode: 'mock', method, details: details || {} }
             }
@@ -182,7 +182,7 @@ router.post('/deposit', authenticate, async (req, res) => {
       // Create payment intent
       const paymentIntent = await stripe.paymentIntents.create({
         amount: Math.round(amount * 100), // Convert to cents
-        currency: 'usd',
+        currency: 'inr',
         customer: customer.id,
         payment_method: paymentMethodId,
         confirm: true,
@@ -206,7 +206,8 @@ router.post('/deposit', authenticate, async (req, res) => {
           user: req.user._id,
           type: 'deposit',
           amount: amount,
-          description: `Wallet deposit of $${amount.toFixed(2)}`,
+          currency: 'INR',
+          description: `Wallet deposit of ₹${amount.toFixed(2)}`,
           status: 'completed',
           stripePaymentIntentId: paymentIntent.id,
           metadata: { paymentMethod: paymentMethodId }
@@ -254,7 +255,7 @@ router.post('/withdraw', authenticate, async (req, res) => {
     if (!amount || isNaN(amount) || amount < 10) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Minimum withdrawal amount is $10' 
+        message: 'Minimum withdrawal amount is ₹10' 
       });
     }
 
@@ -270,7 +271,8 @@ router.post('/withdraw', authenticate, async (req, res) => {
       user: req.user._id,
       type: 'withdrawal',
       amount: -amount,
-      description: `Withdrawal of $${amount.toFixed(2)}`,
+      currency: 'INR',
+      description: `Withdrawal of ₹${amount.toFixed(2)}`,
       status: 'pending',
       metadata: { bankAccountId }
     });
@@ -290,7 +292,7 @@ router.post('/withdraw', authenticate, async (req, res) => {
       try {
         transaction.status = 'completed';
         await transaction.save();
-        console.log(`Withdrawal completed for user ${req.user._id}: $${amount}`);
+        console.log(`Withdrawal completed for user ${req.user._id}: ₹${amount}`);
       } catch (error) {
         console.error('Failed to update withdrawal status:', error);
       }

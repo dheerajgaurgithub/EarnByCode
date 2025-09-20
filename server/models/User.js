@@ -108,7 +108,7 @@ const userSchema = new mongoose.Schema({
   },
   walletCurrency: {
     type: String,
-    default: 'USD',
+    default: 'INR',
     enum: ['USD', 'EUR', 'GBP', 'INR']
   },
   walletStatus: {

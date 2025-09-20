@@ -69,8 +69,7 @@ interface BaseCodeResponse {
   earnedCodecoin?: boolean;
 }
 
-interface RunCodeResponse extends BaseCodeResponse {}
-interface SubmitCodeResponse extends BaseCodeResponse {}
+// Removed unused response type aliases
 
 interface TestResults extends Omit<BaseCodeResponse, 'status'> {
   status: TestStatus;
@@ -102,9 +101,7 @@ interface Problem {
   constraints?: string[];
 }
 
-interface ProblemResponse {
-  problem: Problem;
-}
+// Removed unused ProblemResponse type
 
 // Helper function to get default code for a language
 const getDefaultCode = (language: Language): string => {
@@ -290,7 +287,7 @@ const ProblemDetail: React.FC = () => {
         return n > 4096 ? Math.round(n / 1024) : Math.round(n);
       };
       const runtimeMs = parseMs(rawTime);
-      const memoryKb = parseKb(rawMem);
+      // Note: memoryKb not used in UI; skip storing to silence lints
 
       const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
       const hasExpected = typeof exampleOutput === 'string' && exampleOutput.trim().length > 0;
@@ -306,7 +303,7 @@ const ProblemDetail: React.FC = () => {
         message: err ? 'Execution error' : undefined,
         error: err || undefined,
         runtimeMs,
-        memoryKb
+        // memoryKb
       });
     } catch (error: unknown) {
       console.error('Error running code:', error);
@@ -451,33 +448,31 @@ const ProblemDetail: React.FC = () => {
     }));
 
     try {
-      const { data } = await api.post<SubmitCodeResponse>('/code/submit', {
-        problemId: problem._id,
+      // Server expects POST /api/problems/:id/submit with { code, language, contestId? }
+      const resp = await api.post<{ submission: any; result: any }>(`/problems/${problem._id}/submit`, {
         code,
-        language: selectedLanguage
+        language: selectedLanguage,
       });
 
-      // Ensure status is one of the allowed TestStatus values
-      let status: TestStatus = 'error';
-      const statusStr = data.status.toLowerCase();
-      if (['idle', 'loading', 'success', 'error', 'running', 'accepted', 'submitted'].includes(statusStr)) {
-        status = statusStr as TestStatus;
-      } else if (statusStr === 'accepted') {
-        status = 'accepted'; // Already lowercase from toLowerCase()
-      }
+      const payload = (resp as any).data || resp; // our api wrapper returns { data }
+      const result = payload.result || {};
+
+      // Normalize status to our TestStatus union
+      const rawStatus = (result.status || '').toString().toLowerCase();
+      const status: TestStatus = rawStatus === 'accepted' ? 'accepted' : rawStatus === 'running' ? 'running' : rawStatus === 'success' ? 'success' : rawStatus === 'error' ? 'error' : 'submitted';
 
       const updatedResults: TestResults = {
         status,
-        testCases: data.testCases || [],
-        results: data.results || [],
-        testsPassed: data.testsPassed || 0,
-        totalTests: data.totalTests || problem.testCases?.length || 0,
+        testCases: [], // server does not return testCases here
+        results: [], // condensed summary; details not returned from submit endpoint
+        testsPassed: Number(result.testsPassed || 0),
+        totalTests: Number(result.totalTests || problem.testCases?.length || 0),
         isSubmission: true,
-        message: data.message,
-        error: data.error,
-        runtimeMs: data.runtimeMs,
-        memoryKb: data.memoryKb,
-        earnedCodecoin: data.earnedCodecoin
+        message: result.message,
+        error: result.error,
+        runtimeMs: typeof result.runtime === 'number' ? result.runtime : undefined,
+        memoryKb: typeof result.memory === 'number' ? result.memory : undefined,
+        earnedCodecoin: !!result.earnedCodecoin,
       };
 
       setTestResults(updatedResults);

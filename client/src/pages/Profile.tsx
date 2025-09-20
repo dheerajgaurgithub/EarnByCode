@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { 
   Trophy, Calendar, Target, TrendingUp, Edit3, Save, X, 
   MapPin, Building, GraduationCap, Globe, Github, Linkedin, Twitter, Loader2
@@ -9,6 +9,7 @@ import {
 import { motion } from 'framer-motion';
 import AvatarCropperModal from '@/components/Profile/AvatarCropperModal';
 import ClampText from '@/components/common/ClampText';
+import { apiService } from '@/lib/api';
 
 interface EditFormData {
   fullName: string;
@@ -227,7 +228,30 @@ export const Profile: React.FC = () => {
     },
   ];
 
-  const recentSubmissions = (user.submissions || []).slice(-5).reverse();
+  type SubmissionItem = {
+    _id: string;
+    problem?: { _id: string; title?: string } | string;
+    problemId?: string;
+    language: string;
+    status: string;
+    createdAt: string;
+  };
+
+  const [recentSubmissions, setRecentSubmissions] = useState<SubmissionItem[]>([]);
+
+  useEffect(() => {
+    const loadSubmissions = async () => {
+      try {
+        const data = await apiService.get<{ submissions: SubmissionItem[] }>(`/submissions`);
+        const list = (data as any).submissions || (data as any) || [];
+        setRecentSubmissions(list.slice(0, 5));
+      } catch (e) {
+        // Silent fail for profile page
+        console.warn('Failed to load recent submissions');
+      }
+    };
+    loadSubmissions();
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 py-4 sm:py-8">
@@ -654,24 +678,37 @@ export const Profile: React.FC = () => {
               
               {recentSubmissions.length > 0 ? (
                 <div className="space-y-3">
-                  {recentSubmissions.map((submission) => (
-                    <div key={submission.id} className="flex items-center justify-between p-2.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-200">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-blue-900 font-medium text-sm sm:text-base truncate">Problem #{submission.problemId}</p>
-                        <p className="text-blue-600 text-xs sm:text-sm">{submission.language}</p>
-                      </div>
-                      <div className="text-right shrink-0 ml-3">
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          submission.status.toLowerCase() === 'accepted' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
-                        }`}>
-                          {submission.status}
-                        </span>
-                        <p className="text-blue-500 text-xs mt-1">
-                          {new Date(submission.timestamp).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
+                  {recentSubmissions.map((submission) => {
+                    const id = (submission as any)._id || (submission as any).id;
+                    const problem = submission.problem as any;
+                    const problemTitle = typeof problem === 'object' && problem?.title ? problem.title : undefined;
+                    const problemIdText = typeof problem === 'object' && problem?._id ? problem._id : (submission.problemId || '');
+                    return (
+                      <a key={id} href={`/submissions/${id}`} className="flex items-center justify-between p-2.5 sm:p-3 bg-blue-50 rounded-lg border border-blue-200 hover:bg-blue-100 transition-colors">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-blue-900 font-medium text-sm sm:text-base truncate">
+                            {problemTitle || `Problem #${problemIdText}`}
+                          </p>
+                          <p className="text-blue-600 text-xs sm:text-sm capitalize">{submission.language}</p>
+                        </div>
+                        <div className="text-right shrink-0 ml-3">
+                          <span className={`px-2 py-1 rounded text-xs font-medium ${
+                            (submission.status || '').toLowerCase() === 'accepted' ? 'text-green-700 bg-green-100' : 'text-red-700 bg-red-100'
+                          }`}>
+                            {submission.status}
+                          </span>
+                          <p className="text-blue-500 text-xs mt-1">
+                            {new Date((submission as any).createdAt || (submission as any).timestamp || Date.now()).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </a>
+                    );
+                  })}
+                  <div className="pt-1 text-right">
+                    <Link to="/submissions" className="text-blue-700 hover:text-blue-900 text-sm font-medium underline">
+                      View all submissions
+                    </Link>
+                  </div>
                 </div>
               ) : (
                 <div className="text-center py-8">

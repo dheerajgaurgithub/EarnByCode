@@ -28,7 +28,7 @@ const InnerForm: React.FC = () => {
   const onSubmit = async () => {
     const amt = parseFloat(amount);
     if (!amt || amt < 1) {
-      toast.error('Minimum deposit amount is $1');
+      toast.error('Minimum deposit amount is ₹1');
       return;
     }
     if (!stripe || !elements) return;
@@ -80,7 +80,7 @@ const InnerForm: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <label className="text-sm font-medium leading-none">Amount (USD)</label>
+        <label className="text-sm font-medium leading-none">Amount (INR)</label>
         <input
           type="number"
           min={1}

@@ -34,7 +34,7 @@ const transactionSchema = new mongoose.Schema({
   },
   currency: {
     type: String,
-    default: 'USD',
+    default: 'INR',
     uppercase: true,
     enum: {
       values: ['USD', 'EUR', 'GBP', 'INR'],
@@ -115,11 +115,13 @@ const transactionSchema = new mongoose.Schema({
 transactionSchema.index({ user: 1, createdAt: -1 });
 transactionSchema.index({ type: 1, status: 1, createdAt: -1 });
 
-// Virtual for formatted amount (e.g., $10.00)
+// Virtual for formatted amount (e.g., ₹10.00)
 transactionSchema.virtual('formattedAmount').get(function() {
-  const formatter = new Intl.NumberFormat('en-US', {
+  const currency = this.currency || 'INR';
+  const locale = currency === 'INR' ? 'en-IN' : 'en-US';
+  const formatter = new Intl.NumberFormat(locale, {
     style: 'currency',
-    currency: this.currency || 'USD',
+    currency,
     minimumFractionDigits: 2
   });
   return formatter.format(this.amount);

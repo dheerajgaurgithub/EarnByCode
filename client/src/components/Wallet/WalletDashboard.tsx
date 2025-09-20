@@ -43,7 +43,7 @@ export const WalletDashboard = () => {
   const toast = useToast();
   const { user } = useAuth();
   const [balance, setBalance] = useState<number>(0);
-  const [currency, setCurrency] = useState<string>('USD');
+  const [currency, setCurrency] = useState<string>('INR');
   const [transactions, setTransactions] = useState<ExtendedTransaction[]>([]);
   const [loading, setLoading] = useState({
     balance: true,
@@ -132,9 +132,11 @@ export const WalletDashboard = () => {
   }, [timeRange]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-US', {
+    const cur = currency || 'INR';
+    const locale = cur === 'INR' ? 'en-IN' : 'en-US';
+    return new Intl.NumberFormat(locale, {
       style: 'currency',
-      currency: currency || 'USD',
+      currency: cur,
     }).format(amount);
   };
 
@@ -183,7 +185,7 @@ export const WalletDashboard = () => {
   const onDeposit = async () => {
     const amt = parseFloat(depositAmount);
     if (!amt || amt < 1) {
-      toast.error('Minimum deposit amount is $1');
+      toast.error('Minimum deposit amount is ₹1');
       return;
     }
     try {
@@ -203,7 +205,7 @@ export const WalletDashboard = () => {
   const onWithdraw = async () => {
     const amt = parseFloat(withdrawAmount);
     if (!amt || amt < 10) {
-      toast.error('Minimum withdrawal amount is $10');
+      toast.error('Minimum withdrawal amount is ₹10');
       return;
     }
     if (amt > balance) {
@@ -640,20 +642,6 @@ export const WalletDashboard = () => {
                       <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                       Submitting...
                     </>
-                  ) : (
-                    'Withdraw Funds'
-                  )}
-                </Button>
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <p className="text-xs text-blue-600 leading-relaxed">
-                    💳 <strong>Available Balance:</strong> {formatCurrency(balance)} • Minimum withdrawal: $10
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
     </div>
   );
 };

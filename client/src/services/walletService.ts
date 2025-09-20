@@ -280,9 +280,10 @@ export const walletService = {
   /**
    * Format currency amount with proper localization
    */
-  formatCurrency(amount: number, currency = 'USD'): string {
+  formatCurrency(amount: number, currency = 'INR'): string {
     try {
-      return new Intl.NumberFormat('en-US', {
+      const locale = currency === 'INR' ? 'en-IN' : 'en-US';
+      return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency,
         minimumFractionDigits: 2,

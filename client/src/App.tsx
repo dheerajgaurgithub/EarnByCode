@@ -17,6 +17,7 @@ import AdminPanel from './pages/Admin/AdminPanel';
 import { Leaderboard } from './pages/Leaderboard';
 import Discuss from './pages/Discuss';
 import { Submissions } from './pages/Submissions';
+import SubmissionDetail from './pages/SubmissionDetail';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage';
 import { OtpVerification } from './components/Auth/OtpVerification';
@@ -238,6 +239,14 @@ function App() {
                   element={
                     <ProtectedRoute>
                       <Submissions />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/submissions/:id"
+                  element={
+                    <ProtectedRoute>
+                      <SubmissionDetail />
                     </ProtectedRoute>
                   }
                 />

@@ -9,7 +9,7 @@ const router = express.Router();
 // Get user submissions
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { problemId, status, page = 1, limit = 20 } = req.query;
+    const { problemId, status, page = 1, limit = 20, sort } = req.query;
     
     let query = { user: req.user._id };
     
@@ -21,9 +21,31 @@ router.get('/', authenticate, async (req, res) => {
       query.status = status;
     }
 
+    // Server-side sorting
+    let sortOptions = { createdAt: -1 };
+    switch ((sort || '').toString()) {
+      case 'date_asc':
+        sortOptions = { createdAt: 1 };
+        break;
+      case 'status_asc':
+        sortOptions = { status: 1, createdAt: -1 };
+        break;
+      case 'status_desc':
+        sortOptions = { status: -1, createdAt: -1 };
+        break;
+      case 'lang_asc':
+        sortOptions = { language: 1, createdAt: -1 };
+        break;
+      case 'lang_desc':
+        sortOptions = { language: -1, createdAt: -1 };
+        break;
+      default:
+        sortOptions = { createdAt: -1 };
+    }
+
     const submissions = await Submission.find(query)
       .populate('problem', 'title difficulty')
-      .sort({ createdAt: -1 })
+      .sort(sortOptions)
       .limit(limit * 1)
       .skip((page - 1) * limit);
 
