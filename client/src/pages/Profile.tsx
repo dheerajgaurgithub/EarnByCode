@@ -7,7 +7,6 @@ import {
   MapPin, Building, GraduationCap, Globe, Github, Linkedin, Twitter, Loader2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import config from '@/lib/config';
 
 interface EditFormData {
   fullName: string;
@@ -35,9 +34,6 @@ export const Profile: React.FC = () => {
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
-  // Backend health indicator
-  const [backendStatus, setBackendStatus] = useState<'loading' | 'ok' | 'error'>('loading');
-  const [backendOrigin, setBackendOrigin] = useState<string>('');
   
   const showSuccess = (message: string) => {
     toast.success(message);
@@ -117,18 +113,7 @@ export const Profile: React.FC = () => {
     }
   }, [user]);
 
-  // Detect backend origin and ping health endpoint
-  useEffect(() => {
-    const api = (config.api.baseUrl || '').replace(/\/$/, '');
-    const origin = api.replace(/\/api$/, '');
-    setBackendOrigin(origin);
-    const controller = new AbortController();
-    setBackendStatus('loading');
-    fetch(`${api}/health`, { signal: controller.signal })
-      .then(r => setBackendStatus(r.ok ? 'ok' : 'error'))
-      .catch(() => setBackendStatus('error'));
-    return () => controller.abort();
-  }, []);
+  // Removed backend health indicator (kept UI minimal)
 
   if (isAuthLoading) {
     return (
@@ -234,7 +219,7 @@ export const Profile: React.FC = () => {
         >
           <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
-              <div className="relative rounded-full overflow-hidden border border-blue-200 bg-white flex items-center justify-center" style={{ width: 96, height: 96 }}>
+              <div className="relative rounded-full overflow-hidden border border-blue-200 bg-white flex items-center justify-center w-20 h-20 sm:w-24 sm:h-24 md:w-28 md:h-28">
                 {user.avatarUrl ? (
                   <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
                 ) : (
@@ -244,7 +229,7 @@ export const Profile: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex-1 text-center sm:text-left w-full sm:w-auto">
+              <div className="flex-1 text-center sm:text-left w-full sm:w-auto min-w-0">
                 {isEditing ? (
                   <div className="space-y-3">
                     <input
@@ -254,18 +239,18 @@ export const Profile: React.FC = () => {
                       placeholder="Full Name"
                       className="w-full px-3 py-2 bg-blue-50 border border-blue-200 rounded-lg text-blue-900 placeholder-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent text-sm sm:text-base"
                     />
-                    <p className="text-blue-600 text-sm sm:text-base">@{user.username}</p>
-                    <p className="text-blue-500 text-xs sm:text-sm">{user.email}</p>
+                    <p className="text-blue-600 text-sm sm:text-base truncate" title={`@${user.username}`}>@{user.username}</p>
+                    <p className="text-blue-500 text-xs sm:text-sm truncate" title={user.email}>{user.email}</p>
                   </div>
                 ) : (
                   <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-blue-900 mb-1">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-blue-900 mb-1 leading-tight break-words">
                       {user.fullName || user.username}
                     </h1>
-                    <p className="text-blue-600 mb-1 text-sm sm:text-base">@{user.username}</p>
-                    <p className="text-blue-500 mb-3 text-xs sm:text-sm">{user.email}</p>
+                    <p className="text-blue-600 mb-1 text-sm sm:text-base truncate" title={`@${user.username}`}>@{user.username}</p>
+                    <p className="text-blue-500 mb-3 text-xs sm:text-sm truncate" title={user.email}>{user.email}</p>
                     {user.bio && (
-                      <p className="text-blue-700 mb-3 text-sm sm:text-base">{user.bio}</p>
+                      <p className="text-blue-700 mb-3 text-sm sm:text-base break-words">{user.bio}</p>
                     )}
                   </div>
                 )}
@@ -295,18 +280,13 @@ export const Profile: React.FC = () => {
                   </button>
                 </>
               ) : (
-                <div className="flex items-center gap-3">
-                  <div className="hidden sm:block text-xs text-blue-600 bg-blue-50 border border-blue-200 rounded px-2 py-1">
-                    Backend: {backendStatus === 'loading' ? 'Checking…' : backendStatus === 'ok' ? 'Online' : 'Offline'}
-                    <span className="mx-1">•</span>
-                    <span className="truncate max-w-[180px] inline-block align-bottom" title={backendOrigin}>{backendOrigin}</span>
-                  </div>
+                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                   {/* Avatar controls */}
                   <div className="flex items-center gap-2">
                     <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onAvatarSelected} />
                     <button
                       onClick={onChooseAvatar}
-                      className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 text-xs sm:text-sm"
+                      className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 text-xs sm:text-sm"
                       disabled={isUploadingAvatar}
                     >
                       {isUploadingAvatar ? 'Uploading…' : (user.avatarUrl ? 'Change Photo' : 'Add Photo')}
@@ -314,7 +294,7 @@ export const Profile: React.FC = () => {
                     {user.avatarUrl && (
                       <button
                         onClick={onRemoveAvatar}
-                        className="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 border border-red-200 text-xs sm:text-sm"
+                        className="px-2.5 py-1.5 sm:px-3 sm:py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 border border-red-200 text-xs sm:text-sm"
                         disabled={isUploadingAvatar}
                       >
                         Remove
@@ -323,7 +303,7 @@ export const Profile: React.FC = () => {
                   </div>
                   <button
                     onClick={() => setIsEditing(true)}
-                    className="flex items-center justify-center space-x-2 px-3 py-2 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                    className="flex items-center justify-center space-x-2 px-2.5 py-1.5 sm:px-4 sm:py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
                   >
                     <Edit3 className="w-4 h-4" />
                     <span>Edit Profile</span>
@@ -335,7 +315,7 @@ export const Profile: React.FC = () => {
 
           {/* Profile Details */}
           {isEditing ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 sm:gap-4 mb-6">
               <div>
                 <label className="block text-sm font-medium text-blue-700 mb-1">Bio</label>
                 <textarea
