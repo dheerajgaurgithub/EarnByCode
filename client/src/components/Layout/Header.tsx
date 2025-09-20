@@ -73,6 +73,7 @@ type UserDisplayInfo = {
   codecoins?: number;
   walletBalance?: number;
   points?: number;
+  avatarUrl?: string;
 };
 
 export const Header: React.FC = () => {
@@ -263,11 +264,15 @@ export const Header: React.FC = () => {
                 >
                   <span className="sr-only">Open user menu</span>
                   <div className="relative flex-shrink-0">
-                    <div className="h-5 w-5 rounded-full bg-white flex items-center justify-center border border-blue-200">
-                      <span className="text-blue-700 font-semibold text-xs">
-                        {userInfo.username?.[0]?.toUpperCase() || 'U'}
-                      </span>
-                    </div>
+                    {userInfo.avatarUrl ? (
+                      <img src={userInfo.avatarUrl} alt={userInfo.username} className="h-5 w-5 rounded-full object-cover border border-blue-200" />
+                    ) : (
+                      <div className="h-5 w-5 rounded-full bg-white flex items-center justify-center border border-blue-200">
+                        <span className="text-blue-700 font-semibold text-xs">
+                          {userInfo.username?.[0]?.toUpperCase() || 'U'}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
                   <div className="hidden sm:block min-w-0">
@@ -302,11 +307,15 @@ export const Header: React.FC = () => {
                       {/* User info header */}
                       <div className="px-3 py-2 border-b border-blue-200/50">
                         <div className="flex items-center space-x-2">
-                          <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-blue-200 flex-shrink-0">
-                            <span className="text-blue-700 font-bold text-sm">
-                              {userInfo.username?.[0]?.toUpperCase() || 'U'}
-                            </span>
-                          </div>
+                          {userInfo.avatarUrl ? (
+                            <img src={userInfo.avatarUrl} alt={userInfo.username} className="h-8 w-8 rounded-lg object-cover border border-blue-200 flex-shrink-0" />
+                          ) : (
+                            <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-blue-200 flex-shrink-0">
+                              <span className="text-blue-700 font-bold text-sm">
+                                {userInfo.username?.[0]?.toUpperCase() || 'U'}
+                              </span>
+                            </div>
+                          )}
                           <div className="min-w-0 flex-1">
                             <p className="text-slate-800 font-semibold truncate text-xs">{userInfo.username}</p>
                             {userInfo.email && (

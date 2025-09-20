@@ -157,7 +157,16 @@ const userSchema = new mongoose.Schema({
   resetPasswordToken: String,
   resetPasswordExpire: Date,
   googleId: String,
-  googleProfile: Object
+  googleProfile: Object,
+  // Profile avatar fields
+  avatarUrl: {
+    type: String,
+    default: ''
+  },
+  avatarPublicId: {
+    type: String,
+    default: ''
+  }
 }, {
   timestamps: true
 });

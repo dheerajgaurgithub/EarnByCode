@@ -4,6 +4,26 @@ import { authenticate } from '../middleware/auth.js';
 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import multer from 'multer';
+import cloudinary from 'cloudinary';
+
+// Configure Cloudinary from environment
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Multer setup: in-memory storage, 2MB limit, filter images only
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 2 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ok = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype);
+    if (!ok) return cb(new Error('Only JPG, PNG, WEBP, GIF allowed'));
+    cb(null, true);
+  }
+});
 
 const router = express.Router();
 
@@ -47,7 +67,7 @@ router.get('/leaderboard', authenticate, async (req, res) => {
         _id: user._id,
         username: user.username,
         fullName: user.fullName,
-        avatar: user.avatar,
+        avatarUrl: user.avatarUrl,
         points: user.points || 0,
         codecoins: user.codecoins || 0,
         ranking: user.ranking || 0,
@@ -71,6 +91,77 @@ router.get('/leaderboard', authenticate, async (req, res) => {
       message: 'Failed to fetch leaderboard',
       error: error.message 
     });
+  }
+});
+
+// Upload or update avatar
+router.post('/me/avatar', authenticate, upload.single('avatar'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // If existing avatar, delete it in background
+    const prevPublicId = user.avatarPublicId;
+
+    // Upload buffer to Cloudinary
+    const uploadResult = await new Promise((resolve, reject) => {
+      cloudinary.v2.uploader.upload_stream(
+        {
+          folder: 'algobucks/avatars',
+          overwrite: true,
+          resource_type: 'image',
+          transformation: [{ width: 256, height: 256, crop: 'fill', gravity: 'face' }]
+        },
+        (err, result) => {
+          if (err) return reject(err);
+          resolve(result);
+        }
+      ).end(req.file.buffer);
+    });
+
+    const url = uploadResult.secure_url;
+    const publicId = uploadResult.public_id;
+
+    user.avatarUrl = url || '';
+    user.avatarPublicId = publicId || '';
+    await user.save();
+
+    // Best-effort delete previous
+    if (prevPublicId && prevPublicId !== publicId) {
+      cloudinary.v2.uploader.destroy(prevPublicId).catch(() => {});
+    }
+
+    const payload = user.toJSON();
+    return res.json({ success: true, message: 'Avatar updated', user: payload });
+  } catch (error) {
+    console.error('Avatar upload error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to upload avatar' });
+  }
+});
+
+// Delete avatar
+router.delete('/me/avatar', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const publicId = user.avatarPublicId;
+    user.avatarUrl = '';
+    user.avatarPublicId = '';
+    await user.save();
+
+    if (publicId) {
+      cloudinary.v2.uploader.destroy(publicId).catch(() => {});
+    }
+
+    return res.json({ success: true, message: 'Avatar removed', user: user.toJSON() });
+  } catch (error) {
+    console.error('Avatar delete error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to delete avatar' });
   }
 });
 

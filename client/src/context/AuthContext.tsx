@@ -10,6 +10,8 @@ interface AuthContextType {
   updateUser: (updates: Partial<User>) => void;
   isLoading: boolean;
   refreshUser: (silent?: boolean) => Promise<void>;
+  uploadAvatar: (file: File) => Promise<void>;
+  removeAvatar: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -196,6 +198,38 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setUser(null);
   };
 
+  const uploadAvatar = async (file: File): Promise<void> => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const form = new FormData();
+    form.append('avatar', file);
+
+    const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: form,
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to upload avatar');
+    if (data.user) setUser(prev => prev ? { ...prev, ...data.user } : data.user);
+  };
+
+  const removeAvatar = async (): Promise<void> => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+
+    const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${token}` },
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to remove avatar');
+    if (data.user) setUser(prev => prev ? { ...prev, ...data.user } : data.user);
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -204,7 +238,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       logout,
       updateUser,
       isLoading,
-      refreshUser
+      refreshUser,
+      uploadAvatar,
+      removeAvatar
     }}>
       {children}
     </AuthContext.Provider>

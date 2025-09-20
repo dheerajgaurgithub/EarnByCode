@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Navigate } from 'react-router-dom';
@@ -30,7 +30,7 @@ interface Achievement {
 // Removed unused Submission interface
 
 export const Profile: React.FC = () => {
-  const { user, updateUser, isLoading: isAuthLoading, refreshUser } = useAuth();
+  const { user, updateUser, isLoading: isAuthLoading, refreshUser, uploadAvatar, removeAvatar } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -57,6 +57,48 @@ export const Profile: React.FC = () => {
     company: '',
     school: ''
   });
+
+  // Avatar upload state
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const onChooseAvatar = () => fileInputRef.current?.click();
+  const onAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!/^image\/(jpeg|png|webp|gif)$/.test(file.type)) {
+      showError('Only JPG, PNG, WEBP or GIF images are allowed');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showError('Image must be 2MB or smaller');
+      return;
+    }
+    try {
+      setIsUploadingAvatar(true);
+      await uploadAvatar(file);
+      await refreshUser(true);
+      showSuccess('Profile picture updated');
+    } catch (err: any) {
+      showError(err?.message || 'Failed to upload avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const onRemoveAvatar = async () => {
+    try {
+      setIsUploadingAvatar(true);
+      await removeAvatar();
+      await refreshUser(true);
+      showSuccess('Profile picture removed');
+    } catch (err: any) {
+      showError(err?.message || 'Failed to remove avatar');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
 
   // Initialize form with user data when user is loaded
   useEffect(() => {
@@ -193,9 +235,13 @@ export const Profile: React.FC = () => {
           <div className="flex flex-col sm:flex-row items-start justify-between mb-6 gap-4">
             <div className="flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-6 w-full sm:w-auto">
               <div className="relative rounded-full overflow-hidden border border-blue-200 bg-white flex items-center justify-center" style={{ width: 96, height: 96 }}>
-                <div className="w-full h-full flex items-center justify-center text-blue-600 text-2xl font-bold">
-                  {(user.username || 'U').charAt(0).toUpperCase()}
-                </div>
+                {user.avatarUrl ? (
+                  <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-blue-600 text-2xl font-bold">
+                    {(user.username || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
               </div>
 
               <div className="flex-1 text-center sm:text-left w-full sm:w-auto">
@@ -254,6 +300,26 @@ export const Profile: React.FC = () => {
                     Backend: {backendStatus === 'loading' ? 'Checking…' : backendStatus === 'ok' ? 'Online' : 'Offline'}
                     <span className="mx-1">•</span>
                     <span className="truncate max-w-[180px] inline-block align-bottom" title={backendOrigin}>{backendOrigin}</span>
+                  </div>
+                  {/* Avatar controls */}
+                  <div className="flex items-center gap-2">
+                    <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={onAvatarSelected} />
+                    <button
+                      onClick={onChooseAvatar}
+                      className="px-3 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 border border-blue-200 text-xs sm:text-sm"
+                      disabled={isUploadingAvatar}
+                    >
+                      {isUploadingAvatar ? 'Uploading…' : (user.avatarUrl ? 'Change Photo' : 'Add Photo')}
+                    </button>
+                    {user.avatarUrl && (
+                      <button
+                        onClick={onRemoveAvatar}
+                        className="px-3 py-2 bg-red-50 text-red-700 rounded-lg hover:bg-red-100 border border-red-200 text-xs sm:text-sm"
+                        disabled={isUploadingAvatar}
+                      >
+                        Remove
+                      </button>
+                    )}
                   </div>
                   <button
                     onClick={() => setIsEditing(true)}

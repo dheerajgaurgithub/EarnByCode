@@ -41,6 +41,8 @@ export interface User {
   email: string;
   role: string; // Changed from 'user' | 'admin' to string for compatibility
   walletBalance: number;
+  avatarUrl?: string;
+  avatarPublicId?: string;
   name?: string;
   phone?: string;
   fullName?: string;
