@@ -465,6 +465,88 @@ app.use('/api/discussions', discussionRoutes);
 app.use('/api/contest-problems', contestProblemRoutes);
 app.use('/api/oauth', oauthRoutes);
 
+// Legacy compatibility: handle older clients posting to /api/code/submit
+// Mirrors the behavior of POST /api/problems/:id/submit
+app.post('/api/code/submit', authenticate, async (req, res) => {
+  try {
+    const { problemId, code, language, contestId } = req.body || {};
+    if (!problemId || typeof code !== 'string' || typeof language !== 'string') {
+      return res.status(400).json({ status: 'fail', message: 'problemId, code and language are required' });
+    }
+
+    const problem = await Problem.findById(problemId);
+    if (!problem) {
+      return res.status(404).json({ status: 'fail', message: 'Problem not found' });
+    }
+
+    // Optional contest validation (lightweight)
+    if (contestId) {
+      const contest = await Contest.findById(contestId);
+      if (!contest) {
+        return res.status(404).json({ status: 'fail', message: 'Contest not found' });
+      }
+      if (!contest.problems?.some?.(p => p.toString() === String(problemId))) {
+        return res.status(400).json({ status: 'fail', message: 'Problem not part of contest' });
+      }
+      const now = new Date();
+      if (now < new Date(contest.startTime) || now > new Date(contest.endTime)) {
+        return res.status(403).json({ status: 'fail', message: 'Contest is not active' });
+      }
+      const isParticipant = (contest.participants || []).some(p => String(p.user || p) === String(req.user._id));
+      if (!isParticipant) {
+        return res.status(403).json({ status: 'fail', message: 'Not a contest participant' });
+      }
+    }
+
+    // Execute and evaluate against full problem testcases
+    const result = await executeCode(code, language, problem.testCases || []);
+
+    const submission = new Submission({
+      user: req.user._id,
+      problem: problem._id,
+      code,
+      language,
+      status: result?.status || 'Submitted',
+      runtime: result?.runtime,
+      memory: result?.memory,
+      testsPassed: Number(result?.testsPassed || 0),
+      totalTests: Number(result?.totalTests || (problem.testCases?.length || 0)),
+      score: Number(result?.score || 0),
+      contest: contestId || undefined,
+    });
+    await submission.save();
+
+    // Update problem statistics
+    problem.submissions = (problem.submissions || 0) + 1;
+    if ((result?.status || '').toLowerCase() === 'accepted') {
+      problem.acceptedSubmissions = (problem.acceptedSubmissions || 0) + 1;
+      if (typeof problem.updateAcceptance === 'function') {
+        try { problem.updateAcceptance(); } catch {}
+      }
+    }
+    await problem.save();
+
+    // Award codecoin on first AC for this problem
+    let earnedCodecoin = false;
+    if ((result?.status || '').toLowerCase() === 'accepted') {
+      const u = await User.findById(req.user._id);
+      const alreadySolved = (u?.solvedProblems || []).some(p => String(p) === String(problem._id));
+      if (!alreadySolved) {
+        await User.findByIdAndUpdate(req.user._id, {
+          $addToSet: { solvedProblems: problem._id },
+          $inc: { codecoins: 1, points: 10 },
+        });
+        earnedCodecoin = true;
+      }
+    }
+
+    return res.json({ submission, result: { ...(result || {}), earnedCodecoin } });
+  } catch (err) {
+    console.error('Legacy /api/code/submit error:', err);
+    return res.status(500).json({ status: 'error', message: 'Failed to submit code' });
+  }
+});
+
 // In-house code execution for JavaScript/TypeScript using Node's vm (no external runner)
 app.post('/api/execute', async (req, res) => {
   try {

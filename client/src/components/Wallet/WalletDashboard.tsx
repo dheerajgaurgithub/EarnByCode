@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { walletService, type Transaction } from '@/services/walletService';
@@ -185,7 +185,7 @@ export const WalletDashboard = () => {
   const onDeposit = async () => {
     const amt = parseFloat(depositAmount);
     if (!amt || amt < 1) {
-      toast.error('Minimum deposit amount is â‚¹1');
+      toast.error('Minimum deposit amount is ₹1');
       return;
     }
     try {
@@ -205,7 +205,7 @@ export const WalletDashboard = () => {
   const onWithdraw = async () => {
     const amt = parseFloat(withdrawAmount);
     if (!amt || amt < 10) {
-      toast.error('Minimum withdrawal amount is â‚¹10');
+      toast.error('Minimum withdrawal amount is ₹10');
       return;
     }
     if (amt > balance) {
@@ -237,8 +237,10 @@ export const WalletDashboard = () => {
             </h2>
             <p className="text-blue-500 mt-2 text-sm sm:text-base">Manage your funds with ease</p>
           </div>
-          <div className="flex flex-wrap gap-3">
-            {!user?.isAdmin && (                <Button 
+          <div className="flex flex-wrap gap-3 w-full">
+            {!user?.isAdmin && (
+              <div className="flex flex-col items-stretch gap-3 w-full">
+                <Button 
                   className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
                   disabled={balance <= 0 || actionLoading.withdraw} 
                   onClick={onWithdraw}
@@ -254,16 +256,17 @@ export const WalletDashboard = () => {
                 </Button>
                 <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
                   <p className="text-xs text-blue-600 leading-relaxed">
-                     <strong>Available Balance:</strong> {formatCurrency(balance)}  Minimum withdrawal: ₹10
+                    💳 <strong>Available Balance:</strong> {formatCurrency(balance)} • Minimum withdrawal: ₹10
                   </p>
                 </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
 };
 
 export default WalletDashboard;
+
