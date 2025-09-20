@@ -457,9 +457,15 @@ const ProblemDetail: React.FC = () => {
       const payload = (resp as any).data || resp; // our api wrapper returns { data }
       const result = payload.result || {};
 
-      // Normalize status to our TestStatus union
+      // Normalize status to our TestStatus union with wider coverage
       const rawStatus = (result.status || '').toString().toLowerCase();
-      const status: TestStatus = rawStatus === 'accepted' ? 'accepted' : rawStatus === 'running' ? 'running' : rawStatus === 'success' ? 'success' : rawStatus === 'error' ? 'error' : 'submitted';
+      const errorish = ['wrong answer', 'runtime error', 'time limit exceeded', 'compilation error', 'failed'];
+      const status: TestStatus =
+        rawStatus === 'accepted' ? 'accepted' :
+        rawStatus === 'running' ? 'running' :
+        rawStatus === 'success' ? 'success' :
+        rawStatus === 'error' || errorish.includes(rawStatus) ? 'error' :
+        'submitted';
 
       const updatedResults: TestResults = {
         status,

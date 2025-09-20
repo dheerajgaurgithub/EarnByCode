@@ -6,6 +6,7 @@ import Contest from '../models/Contest.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkProblemAccess } from '../middleware/contestAccess.js';
 import { executeCode } from '../utils/codeExecutor.js';
+import ts from 'typescript';
 
 const router = express.Router();
 
@@ -126,7 +127,24 @@ router.get('/:id', checkProblemAccess, async (req, res) => {
 // Submit solution
 router.post('/:id/submit', authenticate, checkProblemAccess, async (req, res) => {
   try {
-    const { code, language, contestId } = req.body;
+    let { code, language, contestId } = req.body;
+    // Normalize TypeScript: transpile to JS and run as JavaScript
+    if ((language || '').toLowerCase() === 'typescript') {
+      try {
+        const result = ts.transpileModule(String(code || ''), {
+          compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES2019,
+            strict: false,
+            esModuleInterop: true,
+          },
+        });
+        code = result.outputText;
+        language = 'javascript';
+      } catch (e) {
+        return res.status(400).json({ message: 'Failed to transpile TypeScript', error: String(e?.message || e) });
+      }
+    }
     const problemId = req.params.id;
 
     const problem = await Problem.findById(problemId);
@@ -219,7 +237,24 @@ router.post('/:id/submit', authenticate, checkProblemAccess, async (req, res) =>
 // Run code (test without submitting)
 router.post('/:id/run', authenticate, checkProblemAccess, async (req, res) => {
   try {
-    const { code, language, contestId } = req.body;
+    let { code, language, contestId } = req.body;
+    // Normalize TypeScript for run endpoint as well
+    if ((language || '').toLowerCase() === 'typescript') {
+      try {
+        const result = ts.transpileModule(String(code || ''), {
+          compilerOptions: {
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES2019,
+            strict: false,
+            esModuleInterop: true,
+          },
+        });
+        code = result.outputText;
+        language = 'javascript';
+      } catch (e) {
+        return res.status(400).json({ message: 'Failed to transpile TypeScript', error: String(e?.message || e) });
+      }
+    }
     const problemId = req.params.id;
 
     const problem = await Problem.findById(problemId);

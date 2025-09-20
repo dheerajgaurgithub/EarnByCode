@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { Script, createContext } from 'node:vm';
 
 // Enhanced OnlineGDB integration for real code compilation
 export const executeCode = async (code, language, testCases) => {
@@ -12,10 +13,11 @@ export const executeCode = async (code, language, testCases) => {
       const testCase = testCases[i];
       
       try {
-        const result = await executeWithOnlineGDB(code, language, testCase.input);
-        
-        const actualOutput = result.output.trim();
-        const expectedOutput = testCase.expectedOutput.trim();
+        const result = await executeWithBestEffort(code, language, testCase.input);
+        // Normalize line endings and trim
+        const normalize = (s) => (s ?? '').toString().replace(/\r\n/g, '\n').trim();
+        const actualOutput = normalize(result.output);
+        const expectedOutput = normalize(testCase.expectedOutput);
         const passed = actualOutput === expectedOutput;
         
         if (!passed) allPassed = false;
@@ -49,8 +51,8 @@ export const executeCode = async (code, language, testCases) => {
     const testsPassed = results.filter(r => r.passed).length;
     const status = allPassed ? 'Accepted' : 
                   testsPassed === 0 ? 'Wrong Answer' : 
-                  results.some(r => r.error && r.error.includes('timeout')) ? 'Time Limit Exceeded' :
-                  results.some(r => r.error && r.error.includes('compilation')) ? 'Compilation Error' :
+                  results.some(r => r.error && /timeout/i.test(r.error)) ? 'Time Limit Exceeded' :
+                  results.some(r => r.error && /compilation/i.test(r.error)) ? 'Compilation Error' :
                   'Wrong Answer';
 
     return {
@@ -76,6 +78,15 @@ export const executeCode = async (code, language, testCases) => {
     };
   }
 };
+
+// Prefer local JS execution for stability, otherwise try OnlineGDB
+export async function executeWithBestEffort(code, language, input) {
+  const lang = (language || '').toString().toLowerCase();
+  if (lang === 'javascript') {
+    return executeJsLocal(code, input);
+  }
+  return executeWithOnlineGDB(code, language, input);
+}
 
 export async function executeWithOnlineGDB(code, language, input) {
   try {
@@ -127,6 +138,45 @@ export async function executeWithOnlineGDB(code, language, input) {
     return simulateExecution(code, language, input);
   }
 };
+
+// Execute JavaScript locally in a sandboxed VM, with simple input helpers
+export function executeJsLocal(code, input) {
+  const start = Date.now();
+  const stdout = [];
+  const stderr = [];
+  try {
+    const stdin = typeof input === 'string' ? input : '';
+    const inputLines = stdin.split(/\r?\n/);
+    let inputIndex = 0;
+    const sandbox = {
+      console: {
+        log: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
+        error: (...args) => stderr.push(args.map(a => String(a)).join(' ')),
+        warn: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
+      },
+      readLine: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      gets: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      prompt: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      require: () => { throw new Error('Module not allowed'); },
+      setTimeout,
+      setInterval,
+      clearTimeout,
+      clearInterval,
+    };
+    const context = createContext(sandbox);
+    const script = new Script(String(code || ''), { filename: 'user_code.js' });
+    script.runInContext(context, { timeout: 3000 });
+  } catch (e) {
+    stderr.push(String(e && e.message ? e.message : e));
+  }
+  const runtime = `${Date.now() - start}ms`;
+  return {
+    output: stderr.length ? '' : stdout.join('\n'),
+    runtime,
+    memory: '—',
+    error: stderr.join('\n') || null
+  };
+}
 
 // Enhanced fallback simulation with better logic
 export function simulateExecution(code, language, input) {
