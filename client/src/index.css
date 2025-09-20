@@ -41,6 +41,15 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
+    
+    /* Additional custom theme variables for your app */
+    --background-light: 0 0% 100%;
+    --background-dark: 222.2 84% 4.9%;
+    --text-primary-light: 222.2 84% 4.9%;
+    --text-primary-dark: 210 40% 98%;
+    --text-secondary-light: 215.4 16.3% 46.9%;
+    --text-secondary-dark: 215 20.2% 65.1%;
+    --surface: 217.2 32.6% 17.5%;
   }
 
   .dark {
@@ -66,6 +75,59 @@
   }
 }
 
+/* Pragmatic dark mode overrides for common classes used across the app.
+   These ensure a consistent dark theme without refactoring every component. */
+@layer components {
+  .dark .bg-white { background-color: hsl(var(--surface)) !important; }
+  .dark .bg-gray-50 { background-color: hsl(var(--surface)) !important; }
+  .dark .bg-blue-50 { background-color: rgba(30, 58, 138, 0.25) !important; }
+  .dark .bg-gray-100 { background-color: hsl(var(--surface)) !important; }
+  .dark .bg-green-50 { background-color: rgba(5, 150, 105, 0.18) !important; }
+  .dark .bg-yellow-50 { background-color: rgba(234, 179, 8, 0.18) !important; }
+  .dark .bg-purple-50 { background-color: rgba(124, 58, 237, 0.18) !important; }
+  .dark .bg-red-50 { background-color: rgba(239, 68, 68, 0.18) !important; }
+  .dark .bg-rose-50 { background-color: rgba(244, 63, 94, 0.18) !important; }
+  .dark .bg-slate-50 { background-color: rgba(15, 23, 42, 0.5) !important; }
+  .dark .bg-blue-100,
+  .dark .bg-green-100,
+  .dark .bg-yellow-100,
+  .dark .bg-purple-100,
+  .dark .bg-red-100,
+  .dark .bg-rose-100,
+  .dark .bg-slate-100 { background-color: hsl(var(--surface)) !important; }
+
+  .dark .text-gray-900,
+  .dark .text-gray-800 { color: hsl(var(--text-primary-dark)) !important; }
+  .dark .text-gray-700,
+  .dark .text-gray-600 { color: hsl(var(--text-secondary-dark)) !important; }
+  .dark .text-blue-900,
+  .dark .text-blue-800 { color: hsl(var(--text-primary-dark)) !important; }
+
+  .dark .border-gray-200,
+  .dark .border-blue-200 { border-color: hsl(var(--border)) !important; }
+  .dark .border-green-200,
+  .dark .border-yellow-200,
+  .dark .border-purple-200,
+  .dark .border-red-200,
+  .dark .border-rose-200,
+  .dark .border-slate-200 { border-color: hsl(var(--border)) !important; }
+  .dark .divide-gray-200 { --tw-divide-opacity: 1; border-color: hsl(var(--border)) !important; }
+
+  /* Surface helpers */
+  .bg-surface-light { background-color: hsl(var(--card)) !important; }
+  .dark .bg-surface-light { background-color: hsl(var(--card)) !important; }
+  .bg-surface-dark { background-color: hsl(var(--card)) !important; }
+
+  /* Support for your custom background classes */
+  .bg-background-light { background-color: hsl(var(--background-light)); }
+  .bg-background-dark { background-color: hsl(var(--background-dark)); }
+  .text-text-primary-light { color: hsl(var(--text-primary-light)); }
+  .text-text-primary-dark { color: hsl(var(--text-primary-dark)); }
+  
+  .dark .bg-background-light { background-color: hsl(var(--background-dark)); }
+  .dark .text-text-primary-light { color: hsl(var(--text-primary-dark)); }
+}
+
 @layer base {
   * {
     border-color: hsl(var(--border));
@@ -76,6 +138,11 @@
     color: hsl(var(--foreground));
     font-feature-settings: "rlig" 1, "calt" 1;
     font-family: 'Inter', sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+
+  html {
+    transition: background-color 0.2s ease;
   }
 
   code {

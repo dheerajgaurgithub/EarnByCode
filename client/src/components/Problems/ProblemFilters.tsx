@@ -37,13 +37,13 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
   const getDifficultyColor = (diff: string) => {
     switch (diff) {
       case 'Easy':
-        return 'text-green-600';
+        return 'text-green-600 dark:text-green-400';
       case 'Medium':
-        return 'text-orange-600';
+        return 'text-orange-600 dark:text-orange-400';
       case 'Hard':
-        return 'text-red-600';
+        return 'text-red-600 dark:text-red-400';
       default:
-        return 'text-gray-600';
+        return 'text-gray-600 dark:text-gray-400';
     }
   };
 
@@ -52,13 +52,13 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="relative bg-gradient-to-br from-white via-blue-50/50 to-white rounded-lg border border-blue-200/60 p-3 sm:p-4 mb-4 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md hover:shadow-blue-100/50 transition-shadow duration-300"
+      className="relative bg-gradient-to-br from-white via-blue-50/50 to-white dark:from-black dark:via-gray-950/50 dark:to-black rounded-lg border border-blue-200/60 dark:border-blue-800/60 p-3 sm:p-4 mb-4 backdrop-blur-sm overflow-hidden shadow-sm hover:shadow-md hover:shadow-blue-100/50 dark:hover:shadow-blue-900/20 transition-shadow duration-300"
     >
       {/* Background pattern */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-blue-600/5 opacity-50" />
+      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-transparent to-blue-600/5 dark:from-blue-400/10 dark:via-transparent dark:to-blue-500/10 opacity-50" />
       
       {/* Animated border glow */}
-      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-400/20 via-blue-500/20 to-blue-400/20 opacity-0 hover:opacity-100 blur-sm transition-opacity duration-500 -z-10" />
+      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-400/20 via-blue-500/20 to-blue-400/20 dark:from-blue-600/30 dark:via-blue-500/30 dark:to-blue-600/30 opacity-0 hover:opacity-100 blur-sm transition-opacity duration-500 -z-10" />
 
       <div className="relative z-10">
         {/* Title */}
@@ -68,8 +68,8 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
           transition={{ delay: 0.2 }}
           className="flex items-center space-x-2 mb-3"
         >
-          <Filter className="h-4 w-4 text-blue-600" />
-          <h3 className="text-sm font-medium text-gray-800">Filter & Search</h3>
+          <Filter className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+          <h3 className="text-sm font-medium text-gray-800 dark:text-blue-400">Filter & Search</h3>
         </motion.div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
@@ -81,7 +81,7 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
             className="relative group"
           >
             <Search className={`absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 transition-colors duration-200 ${
-              focusedInput === 'search' ? 'text-blue-600' : 'text-gray-400'
+              focusedInput === 'search' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
             }`} />
             <input
               type="text"
@@ -90,13 +90,13 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
               onChange={(e) => setSearch(e.target.value)}
               onFocus={() => setFocusedInput('search')}
               onBlur={() => setFocusedInput(null)}
-              className="w-full pl-8 pr-3 py-2 text-sm bg-white/80 border border-blue-200 rounded-md text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all duration-200 backdrop-blur-sm hover:bg-white hover:border-blue-300"
+              className="w-full pl-8 pr-3 py-2 text-sm bg-white/80 dark:bg-gray-900/80 border border-blue-200 dark:border-blue-800 rounded-md text-gray-800 dark:text-blue-400 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-400/50 focus:border-blue-500 dark:focus:border-blue-400 transition-all duration-200 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-900 hover:border-blue-300 dark:hover:border-blue-700"
             />
             {focusedInput === 'search' && (
               <motion.div
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-700 rounded-full"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-700 dark:from-blue-400 dark:to-blue-600 rounded-full"
               />
             )}
           </motion.div>
@@ -109,33 +109,33 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
             className="relative group"
           >
             <Filter className={`absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 transition-colors duration-200 ${
-              focusedInput === 'difficulty' ? 'text-blue-600' : 'text-gray-400'
+              focusedInput === 'difficulty' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
             }`} />
-            <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
             <select
               value={difficulty}
               onChange={(e) => setDifficulty(e.target.value)}
               onFocus={() => setFocusedInput('difficulty')}
               onBlur={() => setFocusedInput(null)}
-              className="w-full pl-8 pr-8 py-2 text-sm bg-white/80 border border-blue-200 rounded-md text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 appearance-none transition-all duration-200 backdrop-blur-sm hover:bg-white hover:border-blue-300 cursor-pointer"
+              className="w-full pl-8 pr-8 py-2 text-sm bg-white/80 dark:bg-gray-900/80 border border-blue-200 dark:border-blue-800 rounded-md text-gray-800 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-400/50 focus:border-blue-500 dark:focus:border-blue-400 appearance-none transition-all duration-200 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-900 hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer"
             >
               {difficulties.map((diff) => (
-                <option key={diff} value={diff} className="bg-white text-gray-800">
+                <option key={diff} value={diff} className="bg-white dark:bg-gray-900 text-gray-800 dark:text-blue-400">
                   {diff === 'All' ? 'All Difficulties' : diff}
                 </option>
               ))}
             </select>
             {difficulty !== 'All' && (
               <div className={`absolute right-8 top-1/2 transform -translate-y-1/2 w-1.5 h-1.5 rounded-full ${
-                difficulty === 'Easy' ? 'bg-green-500' : 
-                difficulty === 'Medium' ? 'bg-orange-500' : 'bg-red-500'
+                difficulty === 'Easy' ? 'bg-green-500 dark:bg-green-400' : 
+                difficulty === 'Medium' ? 'bg-orange-500 dark:bg-orange-400' : 'bg-red-500 dark:bg-red-400'
               } animate-pulse`} />
             )}
             {focusedInput === 'difficulty' && (
               <motion.div
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-700 rounded-full"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-700 dark:from-blue-400 dark:to-blue-600 rounded-full"
               />
             )}
           </motion.div>
@@ -147,28 +147,28 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
             transition={{ delay: 0.5 }}
             className="relative group"
           >
-            <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               onFocus={() => setFocusedInput('category')}
               onBlur={() => setFocusedInput(null)}
-              className="w-full px-3 pr-8 py-2 text-sm bg-white/80 border border-blue-200 rounded-md text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 appearance-none transition-all duration-200 backdrop-blur-sm hover:bg-white hover:border-blue-300 cursor-pointer"
+              className="w-full px-3 pr-8 py-2 text-sm bg-white/80 dark:bg-gray-900/80 border border-blue-200 dark:border-blue-800 rounded-md text-gray-800 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-400/50 focus:border-blue-500 dark:focus:border-blue-400 appearance-none transition-all duration-200 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-900 hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer"
             >
               {categories.map((cat) => (
-                <option key={cat} value={cat} className="bg-white text-gray-800">
+                <option key={cat} value={cat} className="bg-white dark:bg-gray-900 text-gray-800 dark:text-blue-400">
                   {cat === 'All' ? 'All Categories' : cat}
                 </option>
               ))}
             </select>
             {category !== 'All' && (
-              <div className="absolute right-8 top-1/2 transform -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" />
+              <div className="absolute right-8 top-1/2 transform -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-blue-500 dark:bg-blue-400 animate-pulse" />
             )}
             {focusedInput === 'category' && (
               <motion.div
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-700 rounded-full"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-700 dark:from-blue-400 dark:to-blue-600 rounded-full"
               />
             )}
           </motion.div>
@@ -181,18 +181,18 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
             className="relative group"
           >
             <SortAsc className={`absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 transition-colors duration-200 ${
-              focusedInput === 'sort' ? 'text-blue-600' : 'text-gray-400'
+              focusedInput === 'sort' ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
             }`} />
-            <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+            <ChevronDown className="absolute right-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 dark:text-gray-500 pointer-events-none" />
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               onFocus={() => setFocusedInput('sort')}
               onBlur={() => setFocusedInput(null)}
-              className="w-full pl-8 pr-8 py-2 text-sm bg-white/80 border border-blue-200 rounded-md text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 appearance-none transition-all duration-200 backdrop-blur-sm hover:bg-white hover:border-blue-300 cursor-pointer"
+              className="w-full pl-8 pr-8 py-2 text-sm bg-white/80 dark:bg-gray-900/80 border border-blue-200 dark:border-blue-800 rounded-md text-gray-800 dark:text-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-400/50 focus:border-blue-500 dark:focus:border-blue-400 appearance-none transition-all duration-200 backdrop-blur-sm hover:bg-white dark:hover:bg-gray-900 hover:border-blue-300 dark:hover:border-blue-700 cursor-pointer"
             >
               {sortOptions.map((option) => (
-                <option key={option.value} value={option.value} className="bg-white text-gray-800">
+                <option key={option.value} value={option.value} className="bg-white dark:bg-gray-900 text-gray-800 dark:text-blue-400">
                   Sort by {option.label}
                 </option>
               ))}
@@ -201,7 +201,7 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
               <motion.div
                 initial={{ scaleX: 0 }}
                 animate={{ scaleX: 1 }}
-                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-700 rounded-full"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-blue-500 to-blue-700 dark:from-blue-400 dark:to-blue-600 rounded-full"
               />
             )}
           </motion.div>
@@ -215,17 +215,17 @@ export const ProblemFilters: React.FC<ProblemFiltersProps> = ({
           className="mt-3 flex flex-wrap gap-1.5"
         >
           {search && (
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded border border-blue-200">
+            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-xs rounded border border-blue-200 dark:border-blue-700">
               Search: "{search}"
             </span>
           )}
           {difficulty !== 'All' && (
-            <span className={`px-2 py-0.5 bg-gray-100 text-xs rounded border border-gray-200 ${getDifficultyColor(difficulty)}`}>
+            <span className={`px-2 py-0.5 bg-gray-100 dark:bg-gray-800/50 text-xs rounded border border-gray-200 dark:border-gray-700 ${getDifficultyColor(difficulty)}`}>
               {difficulty}
             </span>
           )}
           {category !== 'All' && (
-            <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded border border-blue-200">
+            <span className="px-2 py-0.5 bg-blue-100 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 text-xs rounded border border-blue-200 dark:border-blue-700">
               {category}
             </span>
           )}

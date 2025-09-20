@@ -109,15 +109,15 @@ export const Header: React.FC = () => {
     <header
       className={cn(
         'sticky top-0 z-50 w-full transition-all duration-500',
-        'bg-white/95 backdrop-blur-2xl',
+        'bg-white/95 dark:bg-black/95 backdrop-blur-2xl',
         scrolled
-          ? 'border-b border-blue-200/60 shadow-lg shadow-blue-500/10'
-          : 'border-b border-blue-100/50',
-        'supports-[backdrop-filter]:bg-white/90'
+          ? 'border-b border-blue-200/60 dark:border-blue-800/60 shadow-lg shadow-blue-500/10 dark:shadow-blue-900/20'
+          : 'border-b border-blue-100/50 dark:border-blue-900/50',
+        'supports-[backdrop-filter]:bg-white/90 dark:supports-[backdrop-filter]:bg-black/90'
       )}
     >
       {/* Elegant top border gradient */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/30 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-400/30 dark:via-blue-500/40 to-transparent pointer-events-none" />
 
       <div className="container mx-auto px-2">
         <div className="flex justify-between items-center h-12">
@@ -136,14 +136,14 @@ export const Header: React.FC = () => {
                     className="h-full w-full object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-lg"
                   />
                   {/* Elegant glow effect */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 via-indigo-500/30 to-blue-600/30 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-all duration-700 -z-10 scale-150" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/30 via-indigo-500/30 to-blue-600/30 dark:from-blue-400/40 dark:via-blue-500/40 dark:to-blue-600/40 rounded-full blur-lg opacity-0 group-hover:opacity-100 transition-all duration-700 -z-10 scale-150" />
                 </div>
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm font-bold bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 bg-clip-text text-transparent tracking-tight truncate">
+                <span className="text-sm font-bold bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 dark:from-blue-400 dark:via-blue-500 dark:to-blue-400 bg-clip-text text-transparent tracking-tight truncate">
                   AlgoBucks
                 </span>
-                <span className="text-xs text-slate-600 hidden sm:block font-medium tracking-wide truncate">
+                <span className="text-xs text-slate-600 dark:text-gray-300 hidden sm:block font-medium tracking-wide truncate transition-colors duration-300">
                   Think smart. Code harder.
                 </span>
               </div>
@@ -162,21 +162,21 @@ export const Header: React.FC = () => {
                     className={cn(
                       'flex items-center px-2 py-1.5 rounded-lg text-xs font-medium transition-all duration-300',
                       'group relative overflow-hidden',
-                      'hover:bg-blue-50 hover:shadow-md hover:shadow-blue-500/10',
+                      'hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:shadow-md hover:shadow-blue-500/10 dark:hover:shadow-blue-900/20',
                       isItemActive
-                        ? 'text-blue-700 bg-blue-50 shadow-inner shadow-blue-200/50 border border-blue-200/50'
-                        : 'text-slate-700 hover:text-blue-700'
+                        ? 'text-blue-700 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 shadow-inner shadow-blue-200/50 dark:shadow-blue-800/50 border border-blue-200/50 dark:border-blue-700/50'
+                        : 'text-slate-700 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400'
                     )}
                   >
                     {/* Background gradient on hover */}
                     <div className={cn(
-                      'absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-5 transition-opacity duration-300',
+                      'absolute inset-0 bg-gradient-to-r opacity-0 group-hover:opacity-5 dark:group-hover:opacity-10 transition-opacity duration-300',
                       item.gradient
                     )} />
 
                     <Icon className={cn(
                       'h-3 w-3 mr-1.5 transition-colors duration-300',
-                      isItemActive ? 'text-blue-600' : 'text-slate-500 group-hover:text-blue-600'
+                      isItemActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400'
                     )} />
                     <span className="relative z-10 whitespace-nowrap">{item.name}</span>
 
@@ -196,27 +196,27 @@ export const Header: React.FC = () => {
               <div className="relative group ml-1">
                 <Link
                   to="/company"
-                  className="flex items-center px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition-all duration-300 group whitespace-nowrap"
+                  className="flex items-center px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 group whitespace-nowrap"
                 >
                   <span className="px-3 py-2">Company</span>
                   <ChevronDown className="w-3 h-3 ml-1 transition-transform group-hover:rotate-180 duration-300" />
                 </Link>
-                <div className="absolute left-0 mt-1 w-36 bg-white/95 backdrop-blur-2xl border border-blue-200/60 rounded-lg shadow-lg shadow-blue-500/10 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 z-50">
+                <div className="absolute left-0 mt-1 w-36 bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-blue-200/60 dark:border-blue-800/60 rounded-lg shadow-lg shadow-blue-500/10 dark:shadow-blue-900/20 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 z-50">
                   <Link
                     to="/about"
-                    className="flex items-center px-3 py-2 text-xs text-slate-600 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-indigo-500/5 hover:text-blue-700 transition-all duration-200"
+                    className="flex items-center px-3 py-2 text-xs text-slate-600 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-indigo-500/5 dark:hover:from-blue-500/10 dark:hover:to-indigo-500/10 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200"
                   >
                     About Us
                   </Link>
                   <Link
                     to="/careers"
-                    className="flex items-center px-3 py-2 text-xs text-slate-600 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-sky-500/5 hover:text-blue-700 transition-all duration-200"
+                    className="flex items-center px-3 py-2 text-xs text-slate-600 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-sky-500/5 dark:hover:from-blue-500/10 dark:hover:to-sky-500/10 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200"
                   >
                     Careers
                   </Link>
                   <Link
                     to="/press"
-                    className="flex items-center px-3 py-2 text-xs text-slate-600 hover:bg-gradient-to-r hover:from-indigo-500/5 hover:to-blue-500/5 hover:text-blue-700 transition-all duration-200"
+                    className="flex items-center px-3 py-2 text-xs text-slate-600 dark:text-gray-300 hover:bg-gradient-to-r hover:from-indigo-500/5 hover:to-blue-500/5 dark:hover:from-indigo-500/10 dark:hover:to-blue-500/10 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200"
                   >
                     Press
                   </Link>
@@ -226,7 +226,7 @@ export const Header: React.FC = () => {
               {/* Contact Link */}
               <Link
                 to="/contact"
-                className="flex items-center px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 hover:text-blue-700 hover:bg-blue-50 transition-all duration-300 group relative ml-1 whitespace-nowrap"
+                className="flex items-center px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 group relative ml-1 whitespace-nowrap"
               >
                 <span className="relative z-10">Contact</span>
                 <span className="absolute -bottom-0.5 left-1/2 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 group-hover:w-[calc(100%-0.5rem)] transition-all duration-300 transform -translate-x-1/2"></span>
@@ -239,7 +239,7 @@ export const Header: React.FC = () => {
             {/* Mobile menu button */}
             <button
               type="button"
-              className="inline-flex items-center justify-center p-1.5 rounded-lg text-slate-600 hover:text-blue-700 hover:bg-blue-50 transition-all duration-300 lg:hidden border border-blue-200/50 hover:border-blue-300/50"
+              className="inline-flex items-center justify-center p-1.5 rounded-lg text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 lg:hidden border border-blue-200/50 dark:border-blue-800/50 hover:border-blue-300/50 dark:hover:border-blue-700/50"
               onClick={() => setShowMobileMenu(!showMobileMenu)}
               aria-expanded={showMobileMenu}
               aria-label={showMobileMenu ? 'Close menu' : 'Open menu'}
@@ -256,7 +256,7 @@ export const Header: React.FC = () => {
               <div className="relative ml-1">
                 <button
                   type="button"
-                  className="flex items-center space-x-2 rounded-lg bg-blue-50 border border-blue-200/60 px-2 py-1.5 text-xs hover:bg-blue-100 hover:border-blue-300/60 transition-all duration-300 group shadow-md shadow-blue-500/5"
+                  className="flex items-center space-x-2 rounded-lg bg-blue-50 dark:bg-blue-900/50 border border-blue-200/60 dark:border-blue-800/60 px-2 py-1.5 text-xs hover:bg-blue-100 dark:hover:bg-blue-900/70 hover:border-blue-300/60 dark:hover:border-blue-700/60 transition-all duration-300 group shadow-md shadow-blue-500/5 dark:shadow-blue-900/10"
                   id="user-menu-button"
                   onClick={() => setShowDropdown(!showDropdown)}
                   aria-expanded={showDropdown}
@@ -265,10 +265,10 @@ export const Header: React.FC = () => {
                   <span className="sr-only">Open user menu</span>
                   <div className="relative flex-shrink-0">
                     {userInfo.avatarUrl ? (
-                      <img src={userInfo.avatarUrl} alt={userInfo.username} className="h-5 w-5 rounded-full object-cover border border-blue-200" />
+                      <img src={userInfo.avatarUrl} alt={userInfo.username} className="h-5 w-5 rounded-full object-cover border border-blue-200 dark:border-blue-700" />
                     ) : (
-                      <div className="h-5 w-5 rounded-full bg-white flex items-center justify-center border border-blue-200">
-                        <span className="text-blue-700 font-semibold text-xs">
+                      <div className="h-5 w-5 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center border border-blue-200 dark:border-blue-700">
+                        <span className="text-blue-700 dark:text-blue-400 font-semibold text-xs">
                           {userInfo.username?.[0]?.toUpperCase() || 'U'}
                         </span>
                       </div>
@@ -277,9 +277,9 @@ export const Header: React.FC = () => {
 
                   <div className="hidden sm:block min-w-0">
                     <div className="flex flex-col items-start">
-                      <span className="text-slate-800 font-medium text-xs truncate max-w-20">{userInfo.username}</span>
+                      <span className="text-slate-800 dark:text-blue-400 font-medium text-xs truncate max-w-20 transition-colors duration-300">{userInfo.username}</span>
                       {userInfo.isAdmin && (
-                        <span className="text-blue-600 text-xs font-medium flex items-center">
+                        <span className="text-blue-600 dark:text-blue-400 text-xs font-medium flex items-center">
                           <Shield className="w-2 h-2 mr-0.5" />
                           Admin
                         </span>
@@ -287,7 +287,7 @@ export const Header: React.FC = () => {
                     </div>
                   </div>
 
-                  <ChevronDown className="h-3 w-3 text-slate-500 group-hover:text-blue-600 transition-colors duration-300 flex-shrink-0" />
+                  <ChevronDown className="h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-300 flex-shrink-0" />
                 </button>
 
                 {/* Dropdown menu */}
@@ -298,31 +298,31 @@ export const Header: React.FC = () => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 10, scale: 0.95 }}
                       transition={{ duration: 0.2, ease: "easeOut" }}
-                      className="absolute right-0 mt-2 w-48 rounded-lg bg-white/95 backdrop-blur-2xl py-1 shadow-lg shadow-blue-500/10 border border-blue-200/60 z-50"
+                      className="absolute right-0 mt-2 w-48 rounded-lg bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl py-1 shadow-lg shadow-blue-500/10 dark:shadow-blue-900/20 border border-blue-200/60 dark:border-blue-800/60 z-50"
                       role="menu"
                       aria-orientation="vertical"
                       aria-labelledby="user-menu-button"
                       tabIndex={-1}
                     >
                       {/* User info header */}
-                      <div className="px-3 py-2 border-b border-blue-200/50">
+                      <div className="px-3 py-2 border-b border-blue-200/50 dark:border-blue-800/50">
                         <div className="flex items-center space-x-2">
                           {userInfo.avatarUrl ? (
-                            <img src={userInfo.avatarUrl} alt={userInfo.username} className="h-8 w-8 rounded-lg object-cover border border-blue-200 flex-shrink-0" />
+                            <img src={userInfo.avatarUrl} alt={userInfo.username} className="h-8 w-8 rounded-lg object-cover border border-blue-200 dark:border-blue-700 flex-shrink-0" />
                           ) : (
-                            <div className="h-8 w-8 rounded-lg bg-white flex items-center justify-center border border-blue-200 flex-shrink-0">
-                              <span className="text-blue-700 font-bold text-sm">
+                            <div className="h-8 w-8 rounded-lg bg-white dark:bg-gray-800 flex items-center justify-center border border-blue-200 dark:border-blue-700 flex-shrink-0">
+                              <span className="text-blue-700 dark:text-blue-400 font-bold text-sm">
                                 {userInfo.username?.[0]?.toUpperCase() || 'U'}
                               </span>
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="text-slate-800 font-semibold truncate text-xs">{userInfo.username}</p>
+                            <p className="text-slate-800 dark:text-blue-400 font-semibold truncate text-xs transition-colors duration-300">{userInfo.username}</p>
                             {userInfo.email && (
-                              <p className="text-slate-600 text-xs truncate">{userInfo.email}</p>
+                              <p className="text-slate-600 dark:text-gray-300 text-xs truncate transition-colors duration-300">{userInfo.email}</p>
                             )}
                             {userInfo.isAdmin && (
-                              <span className="inline-flex items-center text-blue-600 text-xs font-medium mt-0.5">
+                              <span className="inline-flex items-center text-blue-600 dark:text-blue-400 text-xs font-medium mt-0.5">
                                 <Shield className="w-2 h-2 mr-0.5" />
                                 Administrator
                               </span>
@@ -332,22 +332,22 @@ export const Header: React.FC = () => {
                       </div>
 
                       {/* Stats section */}
-                      <div className="px-3 py-2 border-b border-blue-200/50">
+                      <div className="px-3 py-2 border-b border-blue-200/50 dark:border-blue-800/50">
                         <div className="grid grid-cols-3 gap-1 text-xs">
-                          <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-md p-1.5 border border-blue-500/20">
-                            <Award className="w-3 h-3 text-blue-500 mb-0.5" />
-                            <div className="text-blue-700 font-semibold text-xs">{userInfo.codecoins || 0}</div>
-                            <div className="text-slate-600 text-xs">Coins</div>
+                          <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-md p-1.5 border border-blue-500/20 dark:border-blue-500/30">
+                            <Award className="w-3 h-3 text-blue-500 dark:text-blue-400 mb-0.5" />
+                            <div className="text-blue-700 dark:text-blue-300 font-semibold text-xs">{userInfo.codecoins || 0}</div>
+                            <div className="text-slate-600 dark:text-gray-400 text-xs">Coins</div>
                           </div>
-                          <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 rounded-md p-1.5 border border-sky-500/20">
-                            <WalletIcon className="w-3 h-3 text-sky-500 mb-0.5" />
-                            <div className="text-sky-700 font-semibold text-xs">${(userInfo.walletBalance || 0).toFixed(0)}</div>
-                            <div className="text-slate-600 text-xs">Wallet</div>
+                          <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20 rounded-md p-1.5 border border-sky-500/20 dark:border-sky-500/30">
+                            <WalletIcon className="w-3 h-3 text-sky-500 dark:text-sky-400 mb-0.5" />
+                            <div className="text-sky-700 dark:text-sky-300 font-semibold text-xs">${(userInfo.walletBalance || 0).toFixed(0)}</div>
+                            <div className="text-slate-600 dark:text-gray-400 text-xs">Wallet</div>
                           </div>
-                          <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 rounded-md p-1.5 border border-indigo-500/20">
-                            <Trophy className="w-3 h-3 text-indigo-500 mb-0.5" />
-                            <div className="text-indigo-700 font-semibold text-xs">{userInfo.points || 0}</div>
-                            <div className="text-slate-600 text-xs">Points</div>
+                          <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 dark:from-indigo-500/20 dark:to-blue-500/20 rounded-md p-1.5 border border-indigo-500/20 dark:border-indigo-500/30">
+                            <Trophy className="w-3 h-3 text-indigo-500 dark:text-indigo-400 mb-0.5" />
+                            <div className="text-indigo-700 dark:text-indigo-300 font-semibold text-xs">{userInfo.points || 0}</div>
+                            <div className="text-slate-600 dark:text-gray-400 text-xs">Points</div>
                           </div>
                         </div>
                       </div>
@@ -356,58 +356,58 @@ export const Header: React.FC = () => {
                       <div className="py-1">
                         <Link
                           to="/profile"
-                          className="flex items-center px-3 py-2 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group text-xs"
+                          className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200 group text-xs"
                           role="menuitem"
                           onClick={() => setShowDropdown(false)}
                         >
-                          <User className="mr-2 h-3 w-3 text-slate-500 group-hover:text-blue-500 transition-colors" />
+                          <User className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
                           <span>Your Profile</span>
                         </Link>
 
                         <Link
                           to="/wallet"
-                          className="flex items-center px-3 py-2 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group text-xs"
+                          className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200 group text-xs"
                           role="menuitem"
                           onClick={() => setShowDropdown(false)}
                         >
-                          <WalletIcon className="mr-2 h-3 w-3 text-slate-500 group-hover:text-sky-500 transition-colors" />
+                          <WalletIcon className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors" />
                           <span>Wallet</span>
-                          <span className="ml-auto text-sky-600 text-xs font-semibold">${(userInfo.walletBalance || 0).toFixed(2)}</span>
+                          <span className="ml-auto text-sky-600 dark:text-sky-400 text-xs font-semibold">${(userInfo.walletBalance || 0).toFixed(2)}</span>
                         </Link>
 
                         <Link
                           to="/settings"
-                          className="flex items-center px-3 py-2 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group text-xs"
+                          className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200 group text-xs"
                           role="menuitem"
                           onClick={() => setShowDropdown(false)}
                         >
-                          <Settings className="mr-2 h-3 w-3 text-slate-500 group-hover:text-indigo-500 transition-colors" />
+                          <Settings className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" />
                           <span>Settings</span>
                         </Link>
 
                         {userInfo.isAdmin && (
                           <Link
                             to="/admin"
-                            className="flex items-center px-3 py-2 text-slate-600 hover:bg-blue-50 hover:text-blue-700 transition-all duration-200 group text-xs"
+                            className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200 group text-xs"
                             role="menuitem"
                             onClick={() => setShowDropdown(false)}
                           >
-                            <Shield className="mr-2 h-3 w-3 text-slate-500 group-hover:text-purple-500 transition-colors" />
+                            <Shield className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors" />
                             <span>Admin Panel</span>
-                            <span className="ml-auto bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs px-1.5 py-0.5 rounded-full">Admin</span>
+                            <span className="ml-auto bg-gradient-to-r from-purple-500 to-indigo-500 dark:from-purple-400 dark:to-indigo-400 text-white dark:text-gray-900 text-xs px-1.5 py-0.5 rounded-full">Admin</span>
                           </Link>
                         )}
 
-                        <div className="border-t border-blue-200/50 mt-1 pt-1">
+                        <div className="border-t border-blue-200/50 dark:border-blue-800/50 mt-1 pt-1">
                           <button
                             onClick={() => {
                               logout();
                               setShowDropdown(false);
                             }}
-                            className="flex w-full items-center px-3 py-2 text-slate-600 hover:bg-red-500/5 hover:text-red-600 transition-all duration-200 group text-xs"
+                            className="flex w-full items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:bg-red-500/5 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 group text-xs"
                             role="menuitem"
                           >
-                            <LogOut className="mr-2 h-3 w-3 text-slate-500 group-hover:text-red-500 transition-colors" />
+                            <LogOut className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" />
                             <span>Sign out</span>
                           </button>
                         </div>
@@ -420,14 +420,14 @@ export const Header: React.FC = () => {
               <div className="hidden lg:flex items-center space-x-2">
                 <Link
                   to="/login"
-                  className="px-3 py-1.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-md hover:from-red-400 hover:to-indigo-500 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-105 transform whitespace-nowrap text-xs"
+                  className="px-3 py-1.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-md hover:from-blue-400 hover:to-indigo-500 dark:hover:from-blue-500 dark:hover:to-indigo-600 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 dark:shadow-blue-900/20 hover:shadow-blue-500/30 dark:hover:shadow-blue-900/30 hover:scale-105 transform whitespace-nowrap text-xs"
                 >
                   <span className="relative z-10">Log in</span>
-                  <div className="absolute inset-0 bg-blue-50 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                  <div className="absolute inset-0 bg-blue-50 dark:bg-blue-900/30 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-300" />
                 </Link>
                 <Link
                   to="/register"
-                  className="px-3 py-1.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-md hover:from-blue-400 hover:to-indigo-500 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 hover:scale-105 transform whitespace-nowrap text-xs"
+                  className="px-3 py-1.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-md hover:from-blue-400 hover:to-indigo-500 dark:hover:from-blue-500 dark:hover:to-indigo-600 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 dark:shadow-blue-900/20 hover:shadow-blue-500/30 dark:hover:shadow-blue-900/30 hover:scale-105 transform whitespace-nowrap text-xs"
                 >
                   SignUp
                 </Link>
@@ -444,7 +444,7 @@ export const Header: React.FC = () => {
               animate={{ opacity: 1, height: "auto" }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
-              className="lg:hidden border-t border-blue-200/50 py-3 overflow-hidden"
+              className="lg:hidden border-t border-blue-200/50 dark:border-blue-800/50 py-3 overflow-hidden"
             >
               <nav className="space-y-1">
                 {NAV_ITEMS.map((item) => {
@@ -458,14 +458,14 @@ export const Header: React.FC = () => {
                       className={cn(
                         'flex items-center px-3 py-2 rounded-lg text-xs font-medium transition-all duration-300 group',
                         isItemActive
-                          ? 'bg-blue-50 text-blue-700 shadow-inner border border-blue-200/50'
-                          : 'text-slate-600 hover:text-blue-700 hover:bg-blue-50/50'
+                          ? 'bg-blue-50 dark:bg-blue-900/40 text-blue-700 dark:text-blue-400 shadow-inner border border-blue-200/50 dark:border-blue-700/50'
+                          : 'text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30'
                       )}
                       onClick={() => setShowMobileMenu(false)}
                     >
                       <div className={cn(
                         'w-6 h-6 rounded-md flex items-center justify-center mr-2 transition-colors duration-300',
-                        isItemActive ? 'bg-blue-100/70' : 'bg-blue-50/50 group-hover:bg-blue-100/50'
+                        isItemActive ? 'bg-blue-100/70 dark:bg-blue-800/50' : 'bg-blue-50/50 dark:bg-blue-900/30 group-hover:bg-blue-100/50 dark:group-hover:bg-blue-800/40'
                       )}>
                         <Icon className="h-3 w-3" />
                       </div>
@@ -481,32 +481,32 @@ export const Header: React.FC = () => {
                 })}
 
                 {/* Mobile Company Section */}
-                <div className="pt-3 mt-3 border-t border-blue-200/50">
-                  <div className="text-slate-500 text-xs font-medium mb-2 px-3">Company</div>
+                <div className="pt-3 mt-3 border-t border-blue-200/50 dark:border-blue-800/50">
+                  <div className="text-slate-500 dark:text-gray-400 text-xs font-medium mb-2 px-3">Company</div>
                   <Link
                     to="/company"
-                    className="flex items-center px-3 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 text-xs rounded-md mx-2"
+                    className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 text-xs rounded-md mx-2"
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Company
                   </Link>
                   <Link
                     to="/about"
-                    className="flex items-center px-3 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 text-xs rounded-md mx-2"
+                    className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 text-xs rounded-md mx-2"
                     onClick={() => setShowMobileMenu(false)}
                   >
                     About Us
                   </Link>
                   <Link
                     to="/careers"
-                    className="flex items-center px-3 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 text-xs rounded-md mx-2"
+                    className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 text-xs rounded-md mx-2"
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Careers
                   </Link>
                   <Link
                     to="/press"
-                    className="flex items-center px-3 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 text-xs rounded-md mx-2"
+                    className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 text-xs rounded-md mx-2"
                     onClick={() => setShowMobileMenu(false)}
                   >
                     Press
@@ -516,7 +516,7 @@ export const Header: React.FC = () => {
                 {/* Mobile Contact */}
                 <Link
                   to="/contact"
-                  className="flex items-center px-3 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50/50 transition-all duration-300 font-medium rounded-md text-xs"
+                  className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 font-medium rounded-md text-xs"
                   onClick={() => setShowMobileMenu(false)}
                 >
                   Contact
@@ -524,17 +524,17 @@ export const Header: React.FC = () => {
 
                 {/* Mobile auth buttons */}
                 {!userInfo && (
-                  <div className="pt-3 mt-3 border-t border-blue-200/50 space-y-2">
+                  <div className="pt-3 mt-3 border-t border-blue-200/50 dark:border-blue-800/50 space-y-2">
                     <Link
                       to="/login"
-                      className="flex items-center justify-center w-full px-3 py-2 text-slate-600 hover:text-blue-700 hover:bg-blue-50 rounded-md transition-all duration-300 text-xs"
+                      className="flex items-center justify-center w-full px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-all duration-300 text-xs"
                       onClick={() => setShowMobileMenu(false)}
                     >
                       Log in
                     </Link>
                     <Link
                       to="/register"
-                      className="flex items-center justify-center w-full px-3 py-2 text-white bg-gradient-to-r from-blue-500 to-indigo-600 rounded-md hover:from-blue-400 hover:to-indigo-500 transition-all duration-300 shadow-md text-xs"
+                      className="flex items-center justify-center w-full px-3 py-2 text-white bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-md hover:from-blue-400 hover:to-indigo-500 dark:hover:from-blue-500 dark:hover:to-indigo-600 transition-all duration-300 shadow-md text-xs"
                       onClick={() => setShowMobileMenu(false)}
                     >
                       Create Free Account
@@ -544,22 +544,22 @@ export const Header: React.FC = () => {
 
                 {/* Mobile user stats */}
                 {userInfo && (
-                  <div className="pt-3 mt-3 border-t border-blue-200/50">
+                  <div className="pt-3 mt-3 border-t border-blue-200/50 dark:border-blue-800/50">
                     <div className="grid grid-cols-3 gap-2 mb-3">
-                      <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 rounded-lg p-2 border border-blue-500/20 text-center">
-                        <Award className="w-4 h-4 text-blue-500 mx-auto mb-1" />
-                        <div className="text-blue-700 font-bold text-xs">{userInfo.codecoins || 0}</div>
-                        <div className="text-slate-600 text-xs">Coins</div>
+                      <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-lg p-2 border border-blue-500/20 dark:border-blue-500/30 text-center">
+                        <Award className="w-4 h-4 text-blue-500 dark:text-blue-400 mx-auto mb-1" />
+                        <div className="text-blue-700 dark:text-blue-300 font-bold text-xs">{userInfo.codecoins || 0}</div>
+                        <div className="text-slate-600 dark:text-gray-400 text-xs">Coins</div>
                       </div>
-                      <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 rounded-lg p-2 border border-sky-500/20 text-center">
-                        <WalletIcon className="w-4 h-4 text-sky-500 mx-auto mb-1" />
-                        <div className="text-sky-700 font-bold text-xs">${(userInfo.walletBalance || 0).toFixed(0)}</div>
-                        <div className="text-slate-600 text-xs">Wallet</div>
+                      <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20 rounded-lg p-2 border border-sky-500/20 dark:border-sky-500/30 text-center">
+                        <WalletIcon className="w-4 h-4 text-sky-500 dark:text-sky-400 mx-auto mb-1" />
+                        <div className="text-sky-700 dark:text-sky-300 font-bold text-xs">${(userInfo.walletBalance || 0).toFixed(0)}</div>
+                        <div className="text-slate-600 dark:text-gray-400 text-xs">Wallet</div>
                       </div>
-                      <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 rounded-lg p-2 border border-indigo-500/20 text-center">
-                        <Trophy className="w-4 h-4 text-indigo-500 mx-auto mb-1" />
-                        <div className="text-indigo-700 font-bold text-xs">{userInfo.points || 0}</div>
-                        <div className="text-slate-600 text-xs">Points</div>
+                      <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 dark:from-indigo-500/20 dark:to-blue-500/20 rounded-lg p-2 border border-indigo-500/20 dark:border-indigo-500/30 text-center">
+                        <Trophy className="w-4 h-4 text-indigo-500 dark:text-indigo-400 mx-auto mb-1" />
+                        <div className="text-indigo-700 dark:text-indigo-300 font-bold text-xs">{userInfo.points || 0}</div>
+                        <div className="text-slate-600 dark:text-gray-400 text-xs">Points</div>
                       </div>
                     </div>
                   </div>
@@ -571,7 +571,7 @@ export const Header: React.FC = () => {
       </div>
 
       {/* Bottom gradient accent */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-300/40 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-blue-300/40 dark:via-blue-500/50 to-transparent" />
     </header>
   );
 };

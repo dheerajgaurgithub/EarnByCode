@@ -153,40 +153,40 @@ export const Leaderboard: React.FC = () => {
   const getRankIcon = (rank: number) => {
     switch (rank) {
       case 1:
-        return <Crown className="h-4 w-4 text-yellow-500" />;
+        return <Crown className="h-4 w-4 text-yellow-500 dark:text-yellow-400" />;
       case 2:
-        return <Medal className="h-4 w-4 text-gray-500" />;
+        return <Medal className="h-4 w-4 text-gray-500 dark:text-gray-400" />;
       case 3:
-        return <Award className="h-4 w-4 text-orange-500" />;
+        return <Award className="h-4 w-4 text-orange-500 dark:text-orange-400" />;
       default:
-        return <span className="text-sm font-bold text-gray-600">#{rank}</span>;
+        return <span className="text-sm font-bold text-gray-600 dark:text-gray-400">#{rank}</span>;
     }
   };
 
   const getRankBg = (rank: number) => {
     switch (rank) {
       case 1:
-        return 'bg-gradient-to-r from-yellow-50 to-orange-50 border-yellow-200 shadow-sm';
+        return 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/20 dark:to-orange-900/20 border-yellow-200 dark:border-yellow-700 shadow-sm';
       case 2:
-        return 'bg-gradient-to-r from-gray-50 to-slate-50 border-gray-200 shadow-sm';
+        return 'bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800/50 dark:to-slate-800/50 border-gray-200 dark:border-gray-700 shadow-sm';
       case 3:
-        return 'bg-gradient-to-r from-orange-50 to-red-50 border-orange-200 shadow-sm';
+        return 'bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-900/20 dark:to-red-900/20 border-orange-200 dark:border-orange-700 shadow-sm';
       default:
-        return 'bg-white border-gray-200 hover:bg-blue-50';
+        return 'bg-white dark:bg-gray-900 border-gray-200 dark:border-blue-800 hover:bg-blue-50 dark:hover:bg-gray-800';
     }
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-black flex flex-col items-center justify-center px-4 transition-colors duration-300">
         <div className="relative">
-          <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 border-t-blue-600"></div>
-          <div className="absolute inset-0 animate-ping rounded-full h-10 w-10 border-4 border-blue-200 opacity-20"></div>
+          <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400"></div>
+          <div className="absolute inset-0 animate-ping rounded-full h-10 w-10 border-4 border-blue-200 dark:border-blue-800 opacity-20"></div>
         </div>
-        <p className="mt-4 text-gray-600 text-sm font-medium">Loading leaderboard...</p>
+        <p className="mt-4 text-gray-600 dark:text-gray-300 text-sm font-medium transition-colors duration-300">Loading leaderboard...</p>
         <div className="mt-2 flex space-x-1">
-          <div className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-bounce"></div>
-          <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-bounce animation-delay-100"></div>
+          <div className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce"></div>
+          <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-bounce animation-delay-100"></div>
           <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce animation-delay-200"></div>
         </div>
       </div>
@@ -194,7 +194,7 @@ export const Leaderboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-3 sm:py-4 px-3 sm:px-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-black py-3 sm:py-4 px-3 sm:px-4 transition-colors duration-300">
       <div className="max-w-7xl mx-auto">
         {/* Header Section */}
         <motion.div 
@@ -206,37 +206,37 @@ export const Leaderboard: React.FC = () => {
             {/* Main Title */}
             <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
               <div className="relative">
-                <Trophy className="h-6 w-6 text-yellow-500" />
+                <Trophy className="h-6 w-6 text-yellow-500 dark:text-yellow-400" />
                 <Sparkles className="absolute -top-1 -right-1 h-2.5 w-2.5 text-yellow-400" />
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 bg-clip-text text-transparent text-center">
+              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 dark:from-blue-400 dark:via-blue-500 dark:to-blue-600 bg-clip-text text-transparent text-center">
                 AlgoBucks Leaderboard
               </h1>
-              <Heart className="h-4 w-4 text-red-500" />
+              <Heart className="h-4 w-4 text-red-500 dark:text-red-400" />
             </div>
 
             {/* Search Bar */}
             <div className="w-full max-w-lg mt-3 relative">
               <div className="relative group">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 group-focus-within:text-blue-600 transition-colors duration-200" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 group-focus-within:text-blue-600 dark:group-focus-within:text-blue-400 transition-colors duration-200" />
                 <input
                   type="text"
                   placeholder="Search by username or name..."
-                  className="w-full pl-9 pr-9 py-2.5 rounded-lg border border-gray-300 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-sm"
+                  className="w-full pl-9 pr-9 py-2.5 rounded-lg border border-gray-300 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-sm"
                   value={searchTerm}
                   onChange={handleSearchChange}
                 />
                 {searchTerm && (
                   <button
                     onClick={clearSearch}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </button>
                 )}
                 {isSearching && (
                   <div className="absolute right-9 top-1/2 transform -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-200 border-t-blue-600"></div>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400"></div>
                   </div>
                 )}
               </div>
@@ -248,8 +248,8 @@ export const Leaderboard: React.FC = () => {
                 onClick={() => handleSortChange('username')}
                 className={`px-3 py-1.5 rounded-lg font-medium transition-all duration-200 text-sm ${
                   sortBy === 'username' 
-                    ? 'bg-blue-600 text-white shadow-md' 
-                    : 'bg-white text-gray-700 hover:bg-blue-50 border border-gray-300'
+                    ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-md' 
+                    : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-800 border border-gray-300 dark:border-blue-800'
                 }`}
               >
                 <Users className="inline h-3 w-3 mr-1" />
@@ -259,8 +259,8 @@ export const Leaderboard: React.FC = () => {
                 onClick={() => handleSortChange('points')}
                 className={`px-3 py-1.5 rounded-lg font-medium transition-all duration-200 text-sm ${
                   sortBy === 'points' 
-                    ? 'bg-yellow-500 text-white shadow-md' 
-                    : 'bg-white text-gray-700 hover:bg-yellow-50 border border-gray-300'
+                    ? 'bg-yellow-500 dark:bg-yellow-600 text-white shadow-md' 
+                    : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-yellow-50 dark:hover:bg-gray-800 border border-gray-300 dark:border-blue-800'
                 }`}
               >
                 <Zap className="inline h-3 w-3 mr-1" />
@@ -270,8 +270,8 @@ export const Leaderboard: React.FC = () => {
                 onClick={() => handleSortChange('totalSolved')}
                 className={`px-3 py-1.5 rounded-lg font-medium transition-all duration-200 text-sm ${
                   sortBy === 'totalSolved' 
-                    ? 'bg-green-600 text-white shadow-md' 
-                    : 'bg-white text-gray-700 hover:bg-green-50 border border-gray-300'
+                    ? 'bg-green-600 dark:bg-green-500 text-white shadow-md' 
+                    : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-gray-800 border border-gray-300 dark:border-blue-800'
                 }`}
               >
                 <Trophy className="inline h-3 w-3 mr-1" />
@@ -281,8 +281,8 @@ export const Leaderboard: React.FC = () => {
 
             {/* Subtitle */}
             <div className="text-center mt-3">
-              <p className="text-gray-700 text-sm font-medium">Top performers and their achievements</p>
-              <p className="text-gray-600 mt-1 text-xs">
+              <p className="text-gray-700 dark:text-blue-400 text-sm font-medium transition-colors duration-300">Top performers and their achievements</p>
+              <p className="text-gray-600 dark:text-gray-300 mt-1 text-xs transition-colors duration-300">
                 Compete and climb the ranks to earn more AlgoBucks
               </p>
             </div>
@@ -297,24 +297,24 @@ export const Leaderboard: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white border-2 border-gray-200 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl dark:shadow-gray-900/20 dark:hover:shadow-gray-900/40 transition-all duration-300 transform hover:scale-105"
             >
               <div className="relative mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200">
-                  <span className="text-gray-700 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200 dark:ring-gray-700">
+                  <span className="text-gray-700 dark:text-gray-300 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
                 </div>
-                <div className="absolute -top-1 -right-1 bg-gray-500 rounded-full p-1 shadow-lg">
-                  <span className="text-white font-bold text-xs">2</span>
+                <div className="absolute -top-1 -right-1 bg-gray-500 dark:bg-gray-400 rounded-full p-1 shadow-lg">
+                  <span className="text-white dark:text-gray-900 font-bold text-xs">2</span>
                 </div>
                 <div className="absolute -bottom-1 -right-1">
-                  <Medal className="h-4 w-4 text-gray-500" />
+                  <Medal className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 </div>
               </div>
-              <h3 className="text-gray-900 font-bold text-sm truncate">{users[1]?.fullName || users[1]?.username}</h3>
-              <p className="text-gray-600 text-xs mb-2 truncate">@{users[1]?.username}</p>
-              <div className="bg-gray-50 rounded-lg p-2 border border-gray-200">
-                <p className="text-gray-900 font-bold text-sm">{users[1]?.points} points</p>
-                <p className="text-gray-600 text-xs">Silver Champion</p>
+              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">{users[1]?.fullName || users[1]?.username}</h3>
+              <p className="text-gray-600 dark:text-gray-300 text-xs mb-2 truncate transition-colors duration-300">@{users[1]?.username}</p>
+              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+                <p className="text-gray-900 dark:text-blue-400 font-bold text-sm transition-colors duration-300">{users[1]?.points} points</p>
+                <p className="text-gray-600 dark:text-gray-300 text-xs transition-colors duration-300">Silver Champion</p>
               </div>
             </motion.div>
 
@@ -322,24 +322,24 @@ export const Leaderboard: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300 rounded-xl p-4 text-center shadow-xl hover:shadow-2xl transform hover:scale-105 transition-all duration-300"
+              className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30 border-2 border-yellow-300 dark:border-yellow-600 rounded-xl p-4 text-center shadow-xl hover:shadow-2xl dark:shadow-yellow-900/20 dark:hover:shadow-yellow-900/40 transform hover:scale-105 transition-all duration-300"
             >
               <div className="relative mb-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-yellow-200 to-orange-200 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300">
-                  <span className="text-yellow-800 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                <div className="w-12 h-12 bg-gradient-to-br from-yellow-200 to-orange-200 dark:from-yellow-700 dark:to-orange-700 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300 dark:ring-yellow-600">
+                  <span className="text-yellow-800 dark:text-yellow-200 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
                 </div>
-                <div className="absolute -top-2 -right-2 bg-yellow-500 rounded-full p-1.5 shadow-xl">
+                <div className="absolute -top-2 -right-2 bg-yellow-500 dark:bg-yellow-600 rounded-full p-1.5 shadow-xl">
                   <Crown className="w-3 h-3 text-white" />
                 </div>
                 <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-                  <Star className="h-5 w-5 text-yellow-500" />
+                  <Star className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
                 </div>
               </div>
-              <h3 className="text-gray-900 font-bold text-sm mb-1 truncate">{users[0]?.fullName || users[0]?.username}</h3>
-              <p className="text-yellow-700 text-xs mb-3 truncate">@{users[0]?.username}</p>
-              <div className="bg-yellow-100 rounded-lg p-2 border border-yellow-200">
-                <p className="text-yellow-800 font-bold text-sm">{users[0]?.points} points</p>
-                <p className="text-yellow-700 text-xs font-medium">Champion</p>
+              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm mb-1 truncate transition-colors duration-300">{users[0]?.fullName || users[0]?.username}</h3>
+              <p className="text-yellow-700 dark:text-yellow-300 text-xs mb-3 truncate transition-colors duration-300">@{users[0]?.username}</p>
+              <div className="bg-yellow-100 dark:bg-yellow-900/50 rounded-lg p-2 border border-yellow-200 dark:border-yellow-700 transition-colors duration-300">
+                <p className="text-yellow-800 dark:text-yellow-200 font-bold text-sm transition-colors duration-300">{users[0]?.points} points</p>
+                <p className="text-yellow-700 dark:text-yellow-300 text-xs font-medium transition-colors duration-300">Champion</p>
               </div>
             </motion.div>
 
@@ -348,24 +348,24 @@ export const Leaderboard: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white border-2 border-orange-200 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+              className="bg-white dark:bg-gray-900 border-2 border-orange-200 dark:border-orange-700 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl dark:shadow-gray-900/20 dark:hover:shadow-gray-900/40 transition-all duration-300 transform hover:scale-105"
             >
               <div className="relative mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-red-100 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200">
-                  <span className="text-orange-800 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-800 dark:to-red-800 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200 dark:ring-orange-700">
+                  <span className="text-orange-800 dark:text-orange-200 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
                 </div>
-                <div className="absolute -top-1 -right-1 bg-orange-500 rounded-full p-1 shadow-lg">
+                <div className="absolute -top-1 -right-1 bg-orange-500 dark:bg-orange-600 rounded-full p-1 shadow-lg">
                   <span className="text-white font-bold text-xs">3</span>
                 </div>
                 <div className="absolute -bottom-1 -right-1">
-                  <Award className="h-4 w-4 text-orange-500" />
+                  <Award className="h-4 w-4 text-orange-500 dark:text-orange-400" />
                 </div>
               </div>
-              <h3 className="text-gray-900 font-bold text-sm truncate">{users[2]?.fullName || users[2]?.username}</h3>
-              <p className="text-orange-700 text-xs mb-2 truncate">@{users[2]?.username}</p>
-              <div className="bg-orange-50 rounded-lg p-2 border border-orange-200">
-                <p className="text-orange-800 font-bold text-sm">{users[2]?.points} points</p>
-                <p className="text-orange-700 text-xs">Bronze Star</p>
+              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">{users[2]?.fullName || users[2]?.username}</h3>
+              <p className="text-orange-700 dark:text-orange-300 text-xs mb-2 truncate transition-colors duration-300">@{users[2]?.username}</p>
+              <div className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-2 border border-orange-200 dark:border-orange-700 transition-colors duration-300">
+                <p className="text-orange-800 dark:text-orange-200 font-bold text-sm transition-colors duration-300">{users[2]?.points} points</p>
+                <p className="text-orange-700 dark:text-orange-300 text-xs transition-colors duration-300">Bronze Star</p>
               </div>
             </motion.div>
           </div>
@@ -376,27 +376,27 @@ export const Leaderboard: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-lg"
+          className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-blue-800 overflow-hidden shadow-lg dark:shadow-gray-900/20 transition-colors duration-300"
         >
-          <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-blue-100">
-            <h2 className="text-sm font-bold text-gray-900 flex items-center">
-              <TrendingUp className="h-4 w-4 mr-2 text-blue-600" />
-              <span className="bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+          <div className="px-4 py-3 border-b border-gray-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/50 transition-colors duration-300">
+            <h2 className="text-sm font-bold text-gray-900 dark:text-blue-400 flex items-center transition-colors duration-300">
+              <TrendingUp className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
+              <span className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
                 Full Rankings
               </span>
             </h2>
           </div>
 
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-gray-200 dark:divide-blue-800">
             {filteredUsers.length === 0 ? (
               <div className="text-center py-8">
                 <div className="mb-3">
-                  <Search className="h-8 w-8 text-gray-400 mx-auto mb-3" />
+                  <Search className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
                 </div>
-                <p className="text-gray-600 text-sm mb-4">No users found matching your search</p>
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 transition-colors duration-300">No users found matching your search</p>
                 <button
                   onClick={clearSearch}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-all duration-200 text-sm"
+                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-all duration-200 text-sm"
                 >
                   Clear Search
                 </button>
@@ -408,7 +408,7 @@ export const Leaderboard: React.FC = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.03 }}
-                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 hover:shadow-sm transition-all duration-300 ${getRankBg(index + 1)} mx-1 my-1 rounded-lg`}
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 hover:shadow-sm dark:hover:shadow-gray-800/20 transition-all duration-300 ${getRankBg(index + 1)} mx-1 my-1 rounded-lg`}
                 >
                   <div className="flex items-center space-x-3 mb-2 sm:mb-0">
                     <div className="flex items-center justify-center w-6">
@@ -417,37 +417,37 @@ export const Leaderboard: React.FC = () => {
                     
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
                       <div className="relative flex-shrink-0">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 rounded-full flex items-center justify-center ring-2 ring-gray-200">
-                          <span className="text-blue-700 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
+                        <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-900 rounded-full flex items-center justify-center ring-2 ring-gray-200 dark:ring-blue-700 transition-colors duration-300">
+                          <span className="text-blue-700 dark:text-blue-300 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
                         </div>
                         {index < 10 && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 rounded-full flex items-center justify-center">
+                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center">
                             <Star className="w-1.5 h-1.5 text-white" />
                           </div>
                         )}
                       </div>
                       
                       <div className="min-w-0 flex-1">
-                        <p className="text-gray-900 font-bold text-sm truncate">
+                        <p className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">
                           {user.fullName || user.username}
                         </p>
-                        <p className="text-gray-600 text-xs truncate">@{user.username}</p>
+                        <p className="text-gray-600 dark:text-gray-300 text-xs truncate transition-colors duration-300">@{user.username}</p>
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between sm:justify-end space-x-2 text-xs">
-                    <div className="text-center bg-gray-50 rounded-lg p-1.5 min-w-[50px] border border-gray-200">
-                      <p className="text-gray-900 font-bold text-xs">{user.points}</p>
-                      <p className="text-gray-600 text-xs">Points</p>
+                    <div className="text-center bg-gray-50 dark:bg-gray-800 rounded-lg p-1.5 min-w-[50px] border border-gray-200 dark:border-gray-700 transition-colors duration-300">
+                      <p className="text-gray-900 dark:text-blue-400 font-bold text-xs transition-colors duration-300">{user.points}</p>
+                      <p className="text-gray-600 dark:text-gray-300 text-xs transition-colors duration-300">Points</p>
                     </div>
-                    <div className="text-center bg-yellow-50 rounded-lg p-1.5 min-w-[50px] border border-yellow-200">
-                      <p className="text-yellow-700 font-bold text-xs">{user.codecoins}</p>
-                      <p className="text-yellow-600 text-xs">Coins</p>
+                    <div className="text-center bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-1.5 min-w-[50px] border border-yellow-200 dark:border-yellow-700 transition-colors duration-300">
+                      <p className="text-yellow-700 dark:text-yellow-300 font-bold text-xs transition-colors duration-300">{user.codecoins}</p>
+                      <p className="text-yellow-600 dark:text-yellow-400 text-xs transition-colors duration-300">Coins</p>
                     </div>
-                    <div className="text-center bg-green-50 rounded-lg p-1.5 min-w-[50px] border border-green-200">
-                      <p className="text-green-700 font-bold text-xs">{user.solvedProblems.length}</p>
-                      <p className="text-green-600 text-xs">Solved</p>
+                    <div className="text-center bg-green-50 dark:bg-green-900/30 rounded-lg p-1.5 min-w-[50px] border border-green-200 dark:border-green-700 transition-colors duration-300">
+                      <p className="text-green-700 dark:text-green-300 font-bold text-xs transition-colors duration-300">{user.solvedProblems.length}</p>
+                      <p className="text-green-600 dark:text-green-400 text-xs transition-colors duration-300">Solved</p>
                     </div>
                   </div>
                 </motion.div>
@@ -463,9 +463,9 @@ export const Leaderboard: React.FC = () => {
             animate={{ opacity: 1 }}
             className="text-center py-8"
           >
-            <div className="bg-white rounded-xl border border-gray-200 p-6">
-              <Trophy className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 text-sm">No users found</p>
+            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-blue-800 p-6 transition-colors duration-300">
+              <Trophy className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-300 text-sm transition-colors duration-300">No users found</p>
             </div>
           </motion.div>
         )}
