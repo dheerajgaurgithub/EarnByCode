@@ -480,9 +480,34 @@ app.post('/api/execute', async (req, res) => {
       try {
         // Map our language ids to Piston languages if needed
         const pistonLang = language === 'cpp' ? 'cpp' : language;
+        // Version is required by Piston. Prefer client-provided payload.version,
+        // otherwise fall back to defaults; if missing, discover from /runtimes.
+        const defaultVersions = {
+          javascript: '18.15.0',
+          typescript: '5.0.3',
+          python: '3.11.2',
+          java: '17.0.1',
+          cpp: '10.2.0',
+        };
+        let version = (typeof payload.version === 'string' && payload.version) || defaultVersions[pistonLang] || '';
+        if (!version) {
+          try {
+            const httpFetch = await getFetch();
+            const runtimesUrl = PISTON_URL.replace(/\/execute$/, '/runtimes');
+            const rr = await httpFetch(runtimesUrl);
+            const runtimes = await rr.json();
+            const match = Array.isArray(runtimes) ? runtimes.find(r => r.language === pistonLang) : null;
+            if (match && typeof match.version === 'string') {
+              version = match.version;
+            }
+          } catch (e) {
+            // ignore discovery errors, will attempt request and report error if needed
+          }
+        }
+
         const pistonReq = {
           language: pistonLang,
-          // Let Piston choose latest; advanced: allow version via payload.version
+          version,
           files: [{ content: source, name: files[0]?.name || 'Main.' + (language === 'cpp' ? 'cpp' : language) }],
           stdin: typeof payload.stdin === 'string' ? payload.stdin : ''
         };

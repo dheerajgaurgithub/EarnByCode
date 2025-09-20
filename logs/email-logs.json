@@ -408,5 +408,37 @@
     "timestamp": "2025-09-19T12:44:12.112Z",
     "type": "config_success",
     "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-20T01:45:54.133Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-20T01:54:10.358Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-20T02:17:26.105Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-20T03:10:58.636Z",
+    "type": "contact_request",
+    "requestId": "mfroymvdodqm1",
+    "ip": "::1",
+    "name": "Manish Kumar",
+    "email": "john@example.com",
+    "subject": "General Inquiry"
+  },
+  {
+    "timestamp": "2025-09-20T03:11:03.333Z",
+    "type": "email_sent",
+    "requestId": "mfroymvdodqm1",
+    "ip": "::1",
+    "messageId": "<e498e2d3-88ef-9f14-6ac5-71f357b8caed@gmail.com>",
+    "response": "250 2.0.0 OK  1758337863 98e67ed59e1d1-32ed275fb3csm9790246a91.20 - gsmtp"
   }
 ]

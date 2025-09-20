@@ -40,7 +40,7 @@ const getExecuteUrl = () => {
   return `${base}${normalized}`;
 };
 
-type Language = 'javascript' | 'typescript' | 'python' | 'java' | 'cpp';
+type Language = 'javascript' | 'python' | 'java' | 'cpp';
 type TestStatus = 'idle' | 'loading' | 'success' | 'error' | 'running' | 'accepted' | 'submitted';
 
 interface TestCaseResult {
@@ -111,14 +111,6 @@ const getDefaultCode = (language: Language): string => {
   const templates: Record<Language, string> = {
     javascript: `// Write your solution here
 function solve() {
-  // Read input via readLine() per line if needed
-  // Example: const s = readLine();
-  return 'Hello AlgoBucks';
-}
-
-console.log(solve());`,
-    typescript: `// Write your solution here
-function solve(): string {
   // Read input via readLine() per line if needed
   // Example: const s = readLine();
   return 'Hello AlgoBucks';
@@ -225,9 +217,7 @@ const ProblemDetail: React.FC = () => {
     
     // Guardrails: language mismatch detection
     const inferred = detectCodeLanguage(code) as Language | null;
-    // Allow JS/TS cross-usage without blocking
-    const jsTsPair = (a: any, b: any) => (a === 'javascript' && b === 'typescript') || (a === 'typescript' && b === 'javascript');
-    if (inferred && inferred !== selectedLanguage && !jsTsPair(inferred, selectedLanguage)) {
+    if (inferred && inferred !== selectedLanguage) {
       setTestResults({
         status: 'error',
         error: `Language mismatch: your code looks like ${inferred.toUpperCase()}, but '${selectedLanguage.toUpperCase()}' is selected. Please switch the tab.`,
@@ -263,7 +253,6 @@ const ProblemDetail: React.FC = () => {
       const exampleOutput = problem.examples?.[0]?.output ?? '';
       const versionMap: Record<Language, string> = {
         javascript: '18.15.0',
-        typescript: '5.0.3',
         python: '3.11.2',
         java: '17.0.1',
         cpp: '10.2.0',
@@ -362,7 +351,6 @@ const ProblemDetail: React.FC = () => {
       const runOne = async (stdin: string | undefined, expected: string | undefined) => {
         const versionMap: Record<Language, string> = {
           javascript: '18.15.0',
-          typescript: '5.0.3',
           python: '3.11.2',
           java: '17.0.1',
           cpp: '10.2.0',

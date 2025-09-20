@@ -125,31 +125,31 @@ export const Contests: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center px-4">
-        <div className="flex flex-col items-center space-y-4">
+        <div className="flex flex-col items-center space-y-3">
           <div className="relative">
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-blue-100"></div>
-            <div className="animate-spin rounded-full h-16 w-16 border-4 border-t-blue-600 absolute top-0"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-blue-100"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-4 border-t-blue-600 absolute top-0"></div>
           </div>
-          <p className="text-blue-600 font-medium">Loading contests...</p>
+          <p className="text-blue-600 font-medium text-sm">Loading contests...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-4 sm:py-6 lg:py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 py-3 sm:py-4 lg:py-6">
+      <div className="max-w-6xl mx-auto px-3 sm:px-4 lg:px-6">
         {/* Header */}
-        <div className="mb-8 lg:mb-12 text-center">
+        <div className="mb-6 lg:mb-8 text-center">
           <motion.div
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
           >
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 bg-clip-text text-transparent mb-4">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-800 bg-clip-text text-transparent mb-3">
               AlgoBucks Contests
             </h1>
-            <p className="text-base sm:text-lg lg:text-xl text-slate-600 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base text-slate-600 max-w-xl mx-auto">
               Compete with developers worldwide and win cash prizes! Test your skills and climb the leaderboard.
             </p>
           </motion.div>
@@ -157,13 +157,13 @@ export const Contests: React.FC = () => {
 
         {/* Tabs */}
         <motion.div 
-          className="mb-8 lg:mb-12"
+          className="mb-6 lg:mb-8"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2, duration: 0.6 }}
         >
           <div className="flex justify-center">
-            <div className="inline-flex p-1.5 bg-white/70 backdrop-blur-sm rounded-xl border border-blue-100 shadow-lg max-w-full overflow-x-auto">
+            <div className="inline-flex p-1 bg-white/70 backdrop-blur-sm rounded-xl border border-blue-100 shadow-md max-w-full overflow-x-auto">
               {[
                 { key: 'all', label: 'All Contests', icon: Trophy },
                 { key: 'upcoming', label: 'Upcoming', icon: Calendar },
@@ -175,13 +175,13 @@ export const Contests: React.FC = () => {
                   <button
                     key={tab.key}
                     onClick={() => setSelectedTab(tab.key as any)}
-                    className={`relative flex items-center space-x-2 px-4 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-semibold rounded-lg transition-all duration-300 whitespace-nowrap ${
+                    className={`relative flex items-center space-x-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-semibold rounded-lg transition-all duration-300 whitespace-nowrap ${
                       selectedTab === tab.key
-                        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-lg transform scale-105'
+                        ? 'bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md transform scale-105'
                         : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/50'
                     }`}
                   >
-                    <IconComponent className="h-4 w-4" />
+                    <IconComponent className="h-3 w-3" />
                     <span>{tab.label}</span>
                     {selectedTab === tab.key && (
                       <motion.div
@@ -197,21 +197,21 @@ export const Contests: React.FC = () => {
         </motion.div>
 
         {/* Contest Cards */}
-        <div className="space-y-6 lg:space-y-8">
+        <div className="space-y-4 lg:space-y-6">
           {contests.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 0.3 }}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl border border-blue-100 p-12 text-center shadow-xl"
+              className="bg-white/80 backdrop-blur-sm rounded-xl border border-blue-100 p-8 text-center shadow-lg"
             >
-              <div className="flex flex-col items-center justify-center space-y-6">
-                <div className="w-20 h-20 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
-                  <Trophy className="h-10 w-10 text-blue-500" />
+              <div className="flex flex-col items-center justify-center space-y-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full flex items-center justify-center">
+                  <Trophy className="h-8 w-8 text-blue-500" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-slate-800 mb-2">No contests found</h3>
-                  <p className="text-slate-600 max-w-md mx-auto">
+                  <h3 className="text-lg font-bold text-slate-800 mb-2">No contests found</h3>
+                  <p className="text-sm text-slate-600 max-w-md mx-auto">
                     {selectedTab === 'all' 
                       ? 'There are currently no contests available. New exciting contests are coming soon!'
                       : `There are no ${selectedTab} contests at the moment.`}
@@ -220,7 +220,7 @@ export const Contests: React.FC = () => {
                 {selectedTab !== 'all' && (
                   <button
                     onClick={() => setSelectedTab('all')}
-                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-xl shadow-sm text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-lg shadow-sm text-white bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-all duration-200 transform hover:scale-105"
                   >
                     View all contests
                   </button>
@@ -228,106 +228,106 @@ export const Contests: React.FC = () => {
               </div>
             </motion.div>
           ) : (
-            <div className="grid gap-6 lg:gap-8">
+            <div className="grid gap-4 lg:gap-6">
               {contests.map((contest, index) => (
                 <motion.div
                   key={contest._id}
                   initial={{ opacity: 0, y: 30 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.1, duration: 0.6 }}
-                  className="group bg-white/80 backdrop-blur-sm rounded-2xl border border-blue-100 hover:border-blue-200 hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1"
+                  className="group bg-white/80 backdrop-blur-sm rounded-xl border border-blue-100 hover:border-blue-200 hover:shadow-xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1"
                 >
-                  <div className="p-6 sm:p-8">
+                  <div className="p-4 sm:p-6">
                     {/* Contest Header */}
-                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-6 space-y-4 lg:space-y-0">
+                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between mb-4 space-y-3 lg:space-y-0">
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4 mb-3">
-                          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 group-hover:text-blue-700 transition-colors duration-200">
+                        <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 mb-2">
+                          <h3 className="text-lg sm:text-xl font-bold text-slate-800 group-hover:text-blue-700 transition-colors duration-200">
                             {contest.title}
                           </h3>
-                          <div className="flex items-center space-x-3">
-                            <span className={`px-3 py-1.5 rounded-full text-sm font-semibold capitalize border ${getStatusColor(contest.status)}`}>
+                          <div className="flex items-center space-x-2">
+                            <span className={`px-2 py-1 rounded-full text-xs font-semibold capitalize border ${getStatusColor(contest.status)}`}>
                               {getStatusDisplay(contest.status)}
                             </span>
                             {contest.status === 'ongoing' && (
-                              <div className="flex items-center space-x-2 px-3 py-1.5 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-full">
+                              <div className="flex items-center space-x-1 px-2 py-1 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 rounded-full">
                                 <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                                <span className="text-sm font-bold text-red-600">LIVE NOW</span>
+                                <span className="text-xs font-bold text-red-600">LIVE NOW</span>
                               </div>
                             )}
                           </div>
                         </div>
-                        <p className="text-base text-slate-600 mb-6 leading-relaxed">
+                        <p className="text-sm text-slate-600 mb-4 leading-relaxed">
                           {contest.description}
                         </p>
                       </div>
                     </div>
 
                     {/* Contest Details Grid */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-8">
-                      <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-100">
-                        <div className="p-2 bg-blue-500 rounded-lg">
-                          <Calendar className="h-5 w-5 text-white" />
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
+                      <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                        <div className="p-1.5 bg-blue-500 rounded-lg">
+                          <Calendar className="h-3 w-3 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm text-slate-500 font-medium">Start Time</p>
-                          <p className="text-sm font-semibold text-slate-800">
+                          <p className="text-xs text-slate-500 font-medium">Start Time</p>
+                          <p className="text-xs font-semibold text-slate-800">
                             {formatDate(contest.startTime)}
                           </p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-xl border border-purple-100">
-                        <div className="p-2 bg-purple-500 rounded-lg">
-                          <Clock className="h-5 w-5 text-white" />
+                      <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-100">
+                        <div className="p-1.5 bg-purple-500 rounded-lg">
+                          <Clock className="h-3 w-3 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm text-slate-500 font-medium">Duration</p>
-                          <p className="text-sm font-semibold text-slate-800">{contest.duration} min</p>
+                          <p className="text-xs text-slate-500 font-medium">Duration</p>
+                          <p className="text-xs font-semibold text-slate-800">{contest.duration} min</p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-emerald-50 to-green-50 rounded-xl border border-emerald-100">
-                        <div className="p-2 bg-emerald-500 rounded-lg">
-                          <DollarSign className="h-5 w-5 text-white" />
+                      <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-emerald-50 to-green-50 rounded-lg border border-emerald-100">
+                        <div className="p-1.5 bg-emerald-500 rounded-lg">
+                          <DollarSign className="h-3 w-3 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm text-slate-500 font-medium">Entry Fee</p>
-                          <p className="text-sm font-semibold text-slate-800">${contest.entryFee}</p>
+                          <p className="text-xs text-slate-500 font-medium">Entry Fee</p>
+                          <p className="text-xs font-semibold text-slate-800">${contest.entryFee}</p>
                         </div>
                       </div>
                       
-                      <div className="flex items-center space-x-3 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-xl border border-amber-100">
-                        <div className="p-2 bg-amber-500 rounded-lg">
-                          <Trophy className="h-5 w-5 text-white" />
+                      <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-amber-50 to-yellow-50 rounded-lg border border-amber-100">
+                        <div className="p-1.5 bg-amber-500 rounded-lg">
+                          <Trophy className="h-3 w-3 text-white" />
                         </div>
                         <div>
-                          <p className="text-sm text-slate-500 font-medium">Prize Pool</p>
-                          <p className="text-sm font-semibold text-slate-800">${contest.prizePool}</p>
+                          <p className="text-xs text-slate-500 font-medium">Prize Pool</p>
+                          <p className="text-xs font-semibold text-slate-800">${contest.prizePool}</p>
                         </div>
                       </div>
                     </div>
 
                     {/* Contest Stats and Actions */}
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                      <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-6">
-                        <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
-                          <Users className="h-5 w-5 text-blue-500" />
-                          <span className="text-sm font-semibold text-slate-700">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-3 lg:space-y-0">
+                      <div className="flex flex-col sm:flex-row sm:items-center space-y-2 sm:space-y-0 sm:space-x-4">
+                        <div className="flex items-center space-x-2 p-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                          <Users className="h-4 w-4 text-blue-500" />
+                          <span className="text-xs font-semibold text-slate-700">
                             {contest.participants?.length || 0}/{contest.maxParticipants} participants
                           </span>
                         </div>
-                        <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-violet-100">
-                          <Award className="h-5 w-5 text-violet-500" />
-                          <span className="text-sm font-semibold text-slate-700">{contest.problems?.length || 0} problems</span>
+                        <div className="flex items-center space-x-2 p-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-violet-100">
+                          <Award className="h-4 w-4 text-violet-500" />
+                          <span className="text-xs font-semibold text-slate-700">{contest.problems?.length || 0} problems</span>
                         </div>
                       </div>
 
-                      <div className="flex items-center space-x-3">
+                      <div className="flex items-center space-x-2">
                         {contest.status === 'completed' ? (
                           <Link
                             to={`/contests/${contest._id}/results`}
-                            className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-slate-500 to-gray-600 text-white font-semibold rounded-xl hover:from-slate-600 hover:to-gray-700 transition-all duration-200 text-center transform hover:scale-105 shadow-lg"
+                            className="w-full sm:w-auto px-4 py-2 text-sm bg-gradient-to-r from-slate-500 to-gray-600 text-white font-semibold rounded-lg hover:from-slate-600 hover:to-gray-700 transition-all duration-200 text-center transform hover:scale-105 shadow-md"
                           >
                             View Results
                           </Link>
@@ -335,26 +335,26 @@ export const Contests: React.FC = () => {
                           isUserRegistered(contest) ? (
                             <Link
                               to={`/contests/${contest._id}`}
-                              className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold rounded-xl hover:from-emerald-600 hover:to-green-700 transition-all duration-200 text-center transform hover:scale-105 shadow-lg"
+                              className="w-full sm:w-auto px-4 py-2 text-sm bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-green-700 transition-all duration-200 text-center transform hover:scale-105 shadow-md"
                             >
                               Enter Contest
                             </Link>
                           ) : (
-                            <span className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-gray-100 to-slate-100 text-slate-500 font-semibold rounded-xl text-center border border-gray-200 shadow-sm">
+                            <span className="w-full sm:w-auto px-4 py-2 text-sm bg-gradient-to-r from-gray-100 to-slate-100 text-slate-500 font-semibold rounded-lg text-center border border-gray-200 shadow-sm">
                               Registration Closed
                             </span>
                           )
                         ) : (
                           <>
                             {isUserRegistered(contest) ? (
-                              <span className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 font-semibold rounded-xl text-center border border-emerald-200 shadow-sm">
+                              <span className="w-full sm:w-auto px-4 py-2 text-sm bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 font-semibold rounded-lg text-center border border-emerald-200 shadow-sm">
                                 ✓ Registered
                               </span>
                             ) : (
                               <button
                                 onClick={() => handleJoinContest(contest._id)}
                                 disabled={!user}
-                                className="w-full sm:w-auto px-6 py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-xl hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-indigo-600 transform hover:scale-105 shadow-lg"
+                                className="w-full sm:w-auto px-4 py-2 text-sm bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-semibold rounded-lg hover:from-blue-600 hover:to-indigo-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:from-blue-500 disabled:hover:to-indigo-600 transform hover:scale-105 shadow-md"
                               >
                                 Join Contest
                               </button>
@@ -370,12 +370,12 @@ export const Contests: React.FC = () => {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.5 }}
-                        className="mt-6 flex items-start space-x-3 text-amber-700 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-xl p-4"
+                        className="mt-4 flex items-start space-x-2 text-amber-700 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-3"
                       >
-                        <AlertCircle className="h-5 w-5 flex-shrink-0 mt-0.5" />
+                        <AlertCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
                         <div>
-                          <p className="text-sm font-semibold">Login Required</p>
-                          <p className="text-sm">Please login to participate in contests and compete for prizes.</p>
+                          <p className="text-xs font-semibold">Login Required</p>
+                          <p className="text-xs">Please login to participate in contests and compete for prizes.</p>
                         </div>
                       </motion.div>
                     )}
