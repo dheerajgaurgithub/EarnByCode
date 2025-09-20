@@ -43,6 +43,12 @@ import discussionRoutes from './routes/discussions.js';
 import contestProblemRoutes from './routes/contestProblems.js';
 import oauthRoutes from './routes/oauth.js';
 import walletRoutes from './routes/wallet.js';
+import { authenticate } from './middleware/auth.js';
+import Problem from './models/Problem.js';
+import Submission from './models/Submission.js';
+import User from './models/User.js';
+import Contest from './models/Contest.js';
+import { executeCode } from './utils/codeExecutor.js';
 
 // Initialize express app
 const app = express();

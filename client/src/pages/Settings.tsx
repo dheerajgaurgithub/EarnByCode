@@ -8,7 +8,7 @@ import {
 import { motion } from 'framer-motion';
 
 export const Settings: React.FC = () => {
-  const { user, updateUser } = useAuth();
+  const { user, updateUser, updatePreferences } = useAuth();
   const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'privacy' | 'preferences'>('account');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -42,8 +42,10 @@ export const Settings: React.FC = () => {
     theme: 'light',
     language: 'en',
     timezone: 'UTC',
-    defaultCodeLanguage: 'javascript'
+    defaultCodeLanguage: 'javascript',
+    preferredCurrency: (user?.preferredCurrency as any) || 'INR'
   });
+  const [savingCurrency, setSavingCurrency] = useState(false);
 
   if (!user) {
     return <Navigate to="/login" replace />;
@@ -168,6 +170,39 @@ export const Settings: React.FC = () => {
                           className="pl-10 w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         />
                       </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Preferred Currency
+                      </label>
+                      <div className="flex items-center space-x-3">
+                        <select
+                          value={preferences.preferredCurrency}
+                          onChange={async (e) => {
+                            const next = e.target.value as 'INR' | 'USD' | 'EUR' | 'GBP';
+                            setPreferences((p) => ({ ...p, preferredCurrency: next }));
+                            try {
+                              setSavingCurrency(true);
+                              await updatePreferences({ preferredCurrency: next });
+                            } catch (err) {
+                              alert((err as Error)?.message || 'Failed to update currency');
+                            } finally {
+                              setSavingCurrency(false);
+                            }
+                          }}
+                          className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        >
+                          <option value="INR">INR (₹)</option>
+                          <option value="USD">USD ($)</option>
+                          <option value="EUR">EUR (€)</option>
+                          <option value="GBP">GBP (£)</option>
+                        </select>
+                        {savingCurrency && (
+                          <span className="text-xs text-blue-600">Saving…</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-1">Affects how amounts are displayed in the UI.</p>
+                    </div>
                     </div>
 
                     <div className="border-t border-blue-100 pt-6">
