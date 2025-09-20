@@ -6,9 +6,11 @@ import {
   Save, Mail, Lock, Info
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useTheme } from '@/context/ThemeContext';
 
 export const Settings: React.FC = () => {
   const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar } = useAuth();
+  const { setTheme: setUiTheme } = useTheme();
   const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'privacy' | 'preferences'>('account');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -128,6 +130,11 @@ export const Settings: React.FC = () => {
       highContrast: (user?.preferences as any)?.accessibility?.highContrast ?? false
     });
     setAccountForm((prev) => ({ ...prev, email: user.email || '' }));
+
+    // Apply UI theme from user preference (auto -> system)
+    const prefTheme = (user?.preferences?.theme as string) || 'light';
+    const uiTheme = prefTheme === 'auto' ? 'system' : (prefTheme as any);
+    try { setUiTheme(uiTheme); } catch {}
   }, [user]);
 
   const handleAccountUpdate = async (e: React.FormEvent) => {
@@ -203,6 +210,9 @@ export const Settings: React.FC = () => {
       const { theme, language, timezone, defaultCodeLanguage } = preferences;
       await updatePreferences({ preferences: { theme, language, timezone, defaultCodeLanguage, editor: editorPrefs, accessibility } });
       alert('Preferences updated');
+      // Also apply UI theme immediately
+      const uiTheme = (theme as any) === 'auto' ? 'system' : (theme as any);
+      try { setUiTheme(uiTheme); } catch {}
     } catch (e) {
       alert('Failed to update preferences');
     } finally {
@@ -617,12 +627,18 @@ export const Settings: React.FC = () => {
                       </label>
                       <select
                         value={preferences.theme}
-                        onChange={(e) => setPreferences({ ...preferences, theme: e.target.value })}
+                        onChange={(e) => {
+                          const next = e.target.value as 'light' | 'dark' | 'auto';
+                          setPreferences({ ...preferences, theme: next });
+                          // Apply UI theme immediately for instant preview
+                          const uiTheme = next === 'auto' ? 'system' : next;
+                          try { setUiTheme(uiTheme as any); } catch {}
+                        }}
                         className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       >
                         <option value="light">Light Theme</option>
                         <option value="dark">Dark Theme</option>
-                        <option value="auto">Auto (System)</option>
+                        <option value="auto">System (Auto)</option>
                       </select>
                     </div>
 

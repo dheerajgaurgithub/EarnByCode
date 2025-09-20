@@ -111,7 +111,7 @@ function App() {
   return (
     <ThemeProvider>
       <WalletProvider>
-          <div className="min-h-screen flex flex-col bg-gray-900 text-white">
+          <div className="min-h-screen flex flex-col transition-colors">
             <Toaster
               position="bottom-right"
               toastOptions={{
