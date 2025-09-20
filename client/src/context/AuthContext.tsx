@@ -12,7 +12,8 @@ interface AuthContextType {
   refreshUser: (silent?: boolean) => Promise<void>;
   uploadAvatar: (file: File) => Promise<void>;
   removeAvatar: () => Promise<void>;
-  updatePreferences: (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR' }) => Promise<void>;
+  updatePreferences: (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR'; preferences?: any }) => Promise<void>;
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -84,7 +85,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const updatePreferences = async (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR' }) => {
+  const updatePreferences = async (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR'; preferences?: any }) => {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
     const res = await fetch(`${config.api.baseUrl}/users/me/preferences`, {
@@ -99,6 +100,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const data = await res.json();
     if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update preferences');
     if (data.user) setUser(prev => prev ? { ...prev, ...data.user } : data.user);
+  };
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+    const res = await fetch(`${config.api.baseUrl}/users/me/password`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ currentPassword, newPassword }),
+      credentials: 'include'
+    });
+    const data = await res.json();
+    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update password');
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -259,7 +276,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       refreshUser,
       uploadAvatar,
       removeAvatar,
-      updatePreferences
+      updatePreferences,
+      changePassword
     }}>
       {children}
     </AuthContext.Provider>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Editor } from '@monaco-editor/react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -154,6 +154,18 @@ int main(){
 const ProblemDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user, refreshUser } = useAuth();
+  const editorTheme = useMemo(() => {
+    const t = (user as any)?.preferences?.editor?.theme;
+    return t === 'vs-dark' ? 'vs-dark' : 'light';
+  }, [user]);
+  const editorFontSize = useMemo(() => {
+    const n = Number((user as any)?.preferences?.editor?.fontSize);
+    return Number.isFinite(n) && n >= 10 && n <= 24 ? n : 14;
+  }, [user]);
+  const editorTabSize = useMemo(() => {
+    const n = Number((user as any)?.preferences?.editor?.tabSize);
+    return Number.isFinite(n) && n >= 2 && n <= 8 ? n : 2;
+  }, [user]);
   
   const [problem, setProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(true);
@@ -842,22 +854,20 @@ const ProblemDetail: React.FC = () => {
               <div className="relative">
                 <Editor
                   height="60vh"
-                  theme="vs-dark"
+                  theme={editorTheme}
                   language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage}
                   value={code}
-                  onChange={(val) => setCode(val ?? '')}
+                  onChange={(value) => setCode(value || '')}
                   options={{
-                    automaticLayout: true,
-                    fontSize: 13,
-                    fontLigatures: true,
-                    minimap: { enabled: false },
+                    fontSize: editorFontSize,
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
                     wordWrap: 'on',
-                    tabSize: 2,
+                    minimap: { enabled: false },
+                    automaticLayout: true,
+                    smoothScrolling: true,
+                    scrollbar: { verticalScrollbarSize: 12, horizontalScrollbarSize: 12 },
+                    tabSize: editorTabSize,
                     insertSpaces: true,
-                    detectIndentation: true,
-                    autoIndent: 'advanced',
-                    formatOnType: true,
-                    formatOnPaste: true,
                     bracketPairColorization: { enabled: true },
                     renderWhitespace: 'selection',
                     renderControlCharacters: false,

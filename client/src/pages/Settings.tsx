@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { 
-  Settings as SettingsIcon, Bell, Shield, Palette, Globe, 
-  Save, Eye, EyeOff, Smartphone, Mail, Lock
+  Settings as SettingsIcon, Bell, Shield, Palette, 
+  Save, Mail, Lock, Info
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export const Settings: React.FC = () => {
-  const { user, updateUser, updatePreferences } = useAuth();
+  const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar } = useAuth();
   const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'privacy' | 'preferences'>('account');
   const [isLoading, setIsLoading] = useState(false);
   
@@ -22,34 +22,113 @@ export const Settings: React.FC = () => {
   
   // Notification settings
   const [notifications, setNotifications] = useState({
-    emailNotifications: true,
-    contestReminders: true,
-    submissionResults: true,
-    weeklyDigest: false,
-    marketingEmails: false
+    emailNotifications: user?.preferences?.notifications?.emailNotifications ?? true,
+    contestReminders: user?.preferences?.notifications?.contestReminders ?? true,
+    submissionResults: user?.preferences?.notifications?.submissionResults ?? true,
+    weeklyDigest: user?.preferences?.notifications?.weeklyDigest ?? false,
+    marketingEmails: user?.preferences?.notifications?.marketingEmails ?? false,
+    frequency: (user?.preferences?.notifications as any)?.frequency || 'immediate',
+    digestTime: (user?.preferences?.notifications as any)?.digestTime || '09:00'
   });
   
   // Privacy settings
   const [privacy, setPrivacy] = useState({
-    profileVisibility: 'public',
-    showEmail: false,
-    showSolvedProblems: true,
-    showContestHistory: true
+    profileVisibility: user?.preferences?.privacy?.profileVisibility || 'public',
+    showEmail: user?.preferences?.privacy?.showEmail ?? false,
+    showSolvedProblems: user?.preferences?.privacy?.showSolvedProblems ?? true,
+    showContestHistory: user?.preferences?.privacy?.showContestHistory ?? true,
+    showBio: (user?.preferences?.privacy as any)?.showBio ?? true,
+    showSocialLinks: (user?.preferences?.privacy as any)?.showSocialLinks ?? true
   });
   
   // Preference settings
   const [preferences, setPreferences] = useState({
-    theme: 'light',
-    language: 'en',
-    timezone: 'UTC',
-    defaultCodeLanguage: 'javascript',
+    theme: (user?.preferences?.theme as string) || 'light',
+    language: user?.preferences?.language || 'en',
+    timezone: user?.preferences?.timezone || 'UTC',
+    defaultCodeLanguage: (user?.preferences?.defaultCodeLanguage as string) || 'javascript',
     preferredCurrency: (user?.preferredCurrency as any) || 'INR'
   });
+  const [editorPrefs, setEditorPrefs] = useState({
+    fontSize: (user?.preferences as any)?.editor?.fontSize || 14,
+    tabSize: (user?.preferences as any)?.editor?.tabSize || 2,
+    theme: (user?.preferences as any)?.editor?.theme || 'light'
+  });
+  const [accessibility, setAccessibility] = useState({
+    reducedMotion: (user?.preferences as any)?.accessibility?.reducedMotion ?? false,
+    highContrast: (user?.preferences as any)?.accessibility?.highContrast ?? false
+  });
   const [savingCurrency, setSavingCurrency] = useState(false);
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [savingPrivacy, setSavingPrivacy] = useState(false);
+  const [savingNotifications, setSavingNotifications] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarRemoving, setAvatarRemoving] = useState(false);
+
+  const languageOptions = useMemo(() => {
+    try {
+      const fallbacks = ['en', 'hi', 'es', 'fr', 'de', 'zh', 'ja'];
+      const langs = Array.from(new Set([...(navigator.languages || []), ...fallbacks]))
+        .map((s) => s.toLowerCase().split('-')[0])
+        .filter(Boolean);
+      const uniq = Array.from(new Set(langs));
+      const dn = new (Intl as any).DisplayNames(['en'], { type: 'language' });
+      return uniq.map((code) => ({ code, label: (dn?.of?.(code) as string) || code.toUpperCase() }));
+    } catch {
+      return [
+        { code: 'en', label: 'English' },
+        { code: 'hi', label: 'Hindi' },
+        { code: 'es', label: 'Spanish' },
+        { code: 'fr', label: 'French' },
+        { code: 'de', label: 'German' },
+        { code: 'zh', label: 'Chinese' },
+        { code: 'ja', label: 'Japanese' },
+      ];
+    }
+  }, []);
 
   if (!user) {
     return <Navigate to="/login" replace />;
   }
+
+  // Keep local state in sync with latest user data (after save or refresh)
+  useEffect(() => {
+    if (!user) return;
+    setNotifications({
+      emailNotifications: user?.preferences?.notifications?.emailNotifications ?? true,
+      contestReminders: user?.preferences?.notifications?.contestReminders ?? true,
+      submissionResults: user?.preferences?.notifications?.submissionResults ?? true,
+      weeklyDigest: user?.preferences?.notifications?.weeklyDigest ?? false,
+      marketingEmails: user?.preferences?.notifications?.marketingEmails ?? false,
+      frequency: (user?.preferences?.notifications as any)?.frequency || 'immediate',
+      digestTime: (user?.preferences?.notifications as any)?.digestTime || '09:00'
+    });
+    setPrivacy({
+      profileVisibility: user?.preferences?.privacy?.profileVisibility || 'public',
+      showEmail: user?.preferences?.privacy?.showEmail ?? false,
+      showSolvedProblems: user?.preferences?.privacy?.showSolvedProblems ?? true,
+      showContestHistory: user?.preferences?.privacy?.showContestHistory ?? true,
+      showBio: (user?.preferences?.privacy as any)?.showBio ?? true,
+      showSocialLinks: (user?.preferences?.privacy as any)?.showSocialLinks ?? true
+    });
+    setPreferences({
+      theme: (user?.preferences?.theme as string) || 'light',
+      language: user?.preferences?.language || 'en',
+      timezone: user?.preferences?.timezone || 'UTC',
+      defaultCodeLanguage: (user?.preferences?.defaultCodeLanguage as string) || 'javascript',
+      preferredCurrency: (user?.preferredCurrency as any) || 'INR'
+    });
+    setEditorPrefs({
+      fontSize: (user?.preferences as any)?.editor?.fontSize || 14,
+      tabSize: (user?.preferences as any)?.editor?.tabSize || 2,
+      theme: (user?.preferences as any)?.editor?.theme || 'light'
+    });
+    setAccessibility({
+      reducedMotion: (user?.preferences as any)?.accessibility?.reducedMotion ?? false,
+      highContrast: (user?.preferences as any)?.accessibility?.highContrast ?? false
+    });
+    setAccountForm((prev) => ({ ...prev, email: user.email || '' }));
+  }, [user]);
 
   const handleAccountUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,15 +150,22 @@ export const Settings: React.FC = () => {
           alert('Password must be at least 6 characters');
           return;
         }
-        updates.password = accountForm.newPassword;
-        updates.currentPassword = accountForm.currentPassword;
+        if (!accountForm.currentPassword) {
+          alert('Please enter your current password');
+          return;
+        }
       }
       
       if (Object.keys(updates).length > 0) {
         await updateUser(updates);
         alert('Account settings updated successfully');
-        setAccountForm({ ...accountForm, currentPassword: '', newPassword: '', confirmPassword: '' });
       }
+
+      if (accountForm.newPassword) {
+        await changePassword(accountForm.currentPassword, accountForm.newPassword);
+        alert('Password updated successfully');
+      }
+      setAccountForm({ ...accountForm, currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
       alert('Failed to update account settings');
     } finally {
@@ -87,19 +173,41 @@ export const Settings: React.FC = () => {
     }
   };
 
-  const handleNotificationUpdate = () => {
-    // In real app, save to backend
-    alert('Notification preferences updated');
+  const handleNotificationUpdate = async () => {
+    try {
+      setSavingNotifications(true);
+      await updatePreferences({ preferences: { notifications } });
+      alert('Notification preferences updated');
+    } catch (e) {
+      alert('Failed to update notification settings');
+    } finally {
+      setSavingNotifications(false);
+    }
   };
 
-  const handlePrivacyUpdate = () => {
-    // In real app, save to backend
-    alert('Privacy settings updated');
+  const handlePrivacyUpdate = async () => {
+    try {
+      setSavingPrivacy(true);
+      await updatePreferences({ preferences: { privacy } });
+      alert('Privacy settings updated');
+    } catch (e) {
+      alert('Failed to update privacy settings');
+    } finally {
+      setSavingPrivacy(false);
+    }
   };
 
-  const handlePreferenceUpdate = () => {
-    // In real app, save to backend
-    alert('Preferences updated');
+  const handlePreferenceUpdate = async () => {
+    try {
+      setSavingPrefs(true);
+      const { theme, language, timezone, defaultCodeLanguage } = preferences;
+      await updatePreferences({ preferences: { theme, language, timezone, defaultCodeLanguage, editor: editorPrefs, accessibility } });
+      alert('Preferences updated');
+    } catch (e) {
+      alert('Failed to update preferences');
+    } finally {
+      setSavingPrefs(false);
+    }
   };
 
   const tabs = [
@@ -170,6 +278,66 @@ export const Settings: React.FC = () => {
                           className="pl-10 w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         />
                       </div>
+
+                    {/* Avatar management */}
+                    <div className="mt-6">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Profile Avatar
+                      </label>
+                      <div className="flex items-center gap-4">
+                        {user?.avatarUrl ? (
+                          <img src={user.avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full border border-blue-200 object-cover" />
+                        ) : (
+                          <div className="w-16 h-16 rounded-full border border-dashed border-blue-200 flex items-center justify-center text-blue-400 text-xs">
+                            No Avatar
+                          </div>
+                        )}
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <label className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer text-sm">
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={async (e) => {
+                                const file = e.target.files?.[0];
+                                if (!file) return;
+                                try {
+                                  setAvatarUploading(true);
+                                  await uploadAvatar(file);
+                                  alert('Avatar uploaded');
+                                } catch (err) {
+                                  alert((err as Error)?.message || 'Failed to upload avatar');
+                                } finally {
+                                  setAvatarUploading(false);
+                                  e.currentTarget.value = '';
+                                }
+                              }}
+                            />
+                            {avatarUploading ? 'Uploading…' : 'Upload New'}
+                          </label>
+                          {user?.avatarUrl && (
+                            <button
+                              type="button"
+                              disabled={avatarRemoving}
+                              onClick={async () => {
+                                try {
+                                  setAvatarRemoving(true);
+                                  await removeAvatar();
+                                  alert('Avatar removed');
+                                } catch (err) {
+                                  alert((err as Error)?.message || 'Failed to remove avatar');
+                                } finally {
+                                  setAvatarRemoving(false);
+                                }
+                              }}
+                              className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 text-sm disabled:opacity-50"
+                            >
+                              {avatarRemoving ? 'Removing…' : 'Remove'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -278,7 +446,7 @@ export const Settings: React.FC = () => {
                   </h2>
                   
                   <div className="space-y-4">
-                    {Object.entries(notifications).map(([key, value]) => (
+                    {(['emailNotifications','contestReminders','submissionResults','weeklyDigest','marketingEmails'] as const).map((key) => (
                       <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3 sm:space-y-0">
                         <div className="flex-1">
                           <h3 className="text-gray-800 font-medium capitalize text-sm sm:text-base">
@@ -295,7 +463,7 @@ export const Settings: React.FC = () => {
                         <label className="relative inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={value}
+                            checked={notifications[key] as boolean}
                             onChange={(e) => setNotifications({ ...notifications, [key]: e.target.checked })}
                             className="sr-only peer"
                           />
@@ -303,14 +471,41 @@ export const Settings: React.FC = () => {
                         </label>
                       </div>
                     ))}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Notification Frequency</label>
+                        <select
+                          value={notifications.frequency}
+                          onChange={(e) => setNotifications({ ...notifications, frequency: e.target.value })}
+                          className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        >
+                          <option value="immediate">Immediate</option>
+                          <option value="daily">Daily</option>
+                          <option value="weekly">Weekly</option>
+                          <option value="none">None</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Digest Time (HH:MM)</label>
+                        <input
+                          type="time"
+                          value={notifications.digestTime}
+                          onChange={(e) => setNotifications({ ...notifications, digestTime: e.target.value })}
+                          className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                        />
+                        <p className="text-xs text-gray-500 mt-1">Applied in your timezone: {preferences.timezone}</p>
+                      </div>
+                    </div>
                   </div>
 
                   <button
                     onClick={handleNotificationUpdate}
+                    disabled={savingNotifications}
                     className="flex items-center justify-center space-x-2 w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-md"
                   >
                     <Save className="h-4 w-4" />
-                    <span>Save Notification Settings</span>
+                    <span>{savingNotifications ? 'Saving…' : 'Save Notification Settings'}</span>
                   </button>
                 </motion.div>
               )}
@@ -327,12 +522,15 @@ export const Settings: React.FC = () => {
                   
                   <div className="space-y-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Profile Visibility
+                      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-2">
+                        <span>Profile Visibility</span>
+                        <span title="Control who can view your profile: Public (anyone), Registered users only, or Private (only you).">
+                          <Info className="w-4 h-4 text-gray-400" />
+                        </span>
                       </label>
                       <select
                         value={privacy.profileVisibility}
-                        onChange={(e) => setPrivacy({ ...privacy, profileVisibility: e.target.value })}
+                        onChange={(e) => setPrivacy({ ...privacy, profileVisibility: e.target.value as 'public' | 'registered' | 'private' })}
                         className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       >
                         <option value="public">Public - Anyone can view</option>
@@ -347,13 +545,34 @@ export const Settings: React.FC = () => {
                       {Object.entries(privacy).slice(1).map(([key, value]) => (
                         <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200 space-y-3 sm:space-y-0">
                           <div className="flex-1">
-                            <h4 className="text-gray-800 font-medium capitalize text-sm sm:text-base">
-                              {key.replace(/([A-Z])/g, ' $1').trim()}
-                            </h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-gray-800 font-medium capitalize text-sm sm:text-base">
+                                {key.replace(/([A-Z])/g, ' $1').trim()}
+                              </h4>
+                              <span
+                                title={
+                                  key === 'showEmail'
+                                    ? 'Display email address on profile'
+                                    : key === 'showSolvedProblems'
+                                    ? 'Show solved problems count'
+                                    : key === 'showContestHistory'
+                                    ? 'Display contest participation history'
+                                    : key === 'showBio'
+                                    ? 'Display your bio on profile'
+                                    : key === 'showSocialLinks'
+                                    ? 'Display your social links (website, GitHub, LinkedIn, Twitter)'
+                                    : ''
+                                }
+                              >
+                                <Info className="w-4 h-4 text-gray-400" />
+                              </span>
+                            </div>
                             <p className="text-gray-600 text-xs sm:text-sm">
                               {key === 'showEmail' && 'Display email address on profile'}
                               {key === 'showSolvedProblems' && 'Show solved problems count'}
                               {key === 'showContestHistory' && 'Display contest participation history'}
+                              {key === 'showBio' && 'Display your bio on profile'}
+                              {key === 'showSocialLinks' && 'Display your social links (website, GitHub, LinkedIn, Twitter)'}
                             </p>
                           </div>
                           <label className="relative inline-flex items-center cursor-pointer">
@@ -372,10 +591,11 @@ export const Settings: React.FC = () => {
 
                   <button
                     onClick={handlePrivacyUpdate}
+                    disabled={savingPrivacy}
                     className="flex items-center justify-center space-x-2 w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-md"
                   >
                     <Save className="h-4 w-4" />
-                    <span>Save Privacy Settings</span>
+                    <span>{savingPrivacy ? 'Saving…' : 'Save Privacy Settings'}</span>
                   </button>
                 </motion.div>
               )}
@@ -423,19 +643,65 @@ export const Settings: React.FC = () => {
                     </div>
 
                     <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Editor Font Size</label>
+                      <input
+                        type="number"
+                        min={10}
+                        max={24}
+                        value={editorPrefs.fontSize}
+                        onChange={(e) => setEditorPrefs({ ...editorPrefs, fontSize: Number(e.target.value) })}
+                        className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Editor Tab Size</label>
+                      <select
+                        value={editorPrefs.tabSize}
+                        onChange={(e) => setEditorPrefs({ ...editorPrefs, tabSize: Number(e.target.value) })}
+                        className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      >
+                        <option value={2}>2</option>
+                        <option value={4}>4</option>
+                        <option value={8}>8</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Editor Theme</label>
+                      <select
+                        value={editorPrefs.theme}
+                        onChange={(e) => setEditorPrefs({ ...editorPrefs, theme: e.target.value as any })}
+                        className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                      >
+                        <option value="light">Light</option>
+                        <option value="vs-dark">Dark</option>
+                      </select>
+                    </div>
+
+                    <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Language
                       </label>
                       <select
                         value={preferences.language}
-                        onChange={(e) => setPreferences({ ...preferences, language: e.target.value })}
+                        onChange={async (e) => {
+                          const next = e.target.value;
+                          setPreferences({ ...preferences, language: next });
+                          try {
+                            setSavingPrefs(true);
+                            await updatePreferences({ preferences: { language: next } });
+                          } catch (err) {
+                            alert((err as Error)?.message || 'Failed to update language');
+                          } finally {
+                            setSavingPrefs(false);
+                          }
+                        }}
                         className="w-full px-3 py-3 bg-blue-50 border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                       >
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                        <option value="zh">Chinese</option>
+                        {languageOptions.map(({ code, label }) => (
+                          <option key={code} value={code}>
+                            {label} ({code})
+                          </option>
+                        ))}
                       </select>
                     </div>
 
@@ -460,10 +726,11 @@ export const Settings: React.FC = () => {
 
                   <button
                     onClick={handlePreferenceUpdate}
+                    disabled={savingPrefs}
                     className="flex items-center justify-center space-x-2 w-full sm:w-auto px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-md"
                   >
                     <Save className="h-4 w-4" />
-                    <span>Save Preferences</span>
+                    <span>{savingPrefs ? 'Saving…' : 'Save Preferences'}</span>
                   </button>
                 </motion.div>
               )}

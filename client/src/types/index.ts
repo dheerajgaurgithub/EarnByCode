@@ -42,6 +42,38 @@ export interface User {
   role: string; // Changed from 'user' | 'admin' to string for compatibility
   walletBalance: number;
   preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR';
+  preferences?: {
+    theme?: 'light' | 'dark' | 'auto';
+    language?: string;
+    timezone?: string;
+    defaultCodeLanguage?: 'javascript' | 'python' | 'java' | 'cpp';
+    notifications?: {
+      emailNotifications?: boolean;
+      contestReminders?: boolean;
+      submissionResults?: boolean;
+      weeklyDigest?: boolean;
+      marketingEmails?: boolean;
+      frequency?: 'immediate' | 'daily' | 'weekly' | 'none';
+      digestTime?: string; // HH:MM
+    };
+    privacy?: {
+      profileVisibility?: 'public' | 'registered' | 'private';
+      showEmail?: boolean;
+      showSolvedProblems?: boolean;
+      showContestHistory?: boolean;
+      showBio?: boolean;
+      showSocialLinks?: boolean;
+    };
+    editor?: {
+      fontSize?: number; // 10-24
+      tabSize?: number; // 2-8
+      theme?: 'light' | 'vs-dark';
+    };
+    accessibility?: {
+      reducedMotion?: boolean;
+      highContrast?: boolean;
+    };
+  };
   avatarUrl?: string;
   avatarPublicId?: string;
   name?: string;

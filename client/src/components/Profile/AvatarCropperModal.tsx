@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDropzone } from 'react-dropzone';
 import Cropper, { Area } from 'react-easy-crop';
+import './AvatarCropperModal.css';
 import { X, Upload, Image as ImageIcon, ZoomIn, ZoomOut } from 'lucide-react';
-
 interface AvatarCropperModalProps {
   open: boolean;
   onClose: () => void;

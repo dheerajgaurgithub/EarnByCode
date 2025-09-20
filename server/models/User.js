@@ -141,6 +141,37 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // User UI/UX preferences and settings
+  preferences: {
+    theme: { type: String, enum: ['light', 'dark', 'auto'], default: 'light' },
+    language: { type: String, default: 'en' },
+    timezone: { type: String, default: 'UTC' },
+    defaultCodeLanguage: { type: String, enum: ['javascript', 'python', 'java', 'cpp'], default: 'javascript' },
+    notifications: {
+      emailNotifications: { type: Boolean, default: true },
+      contestReminders: { type: Boolean, default: true },
+      submissionResults: { type: Boolean, default: true },
+      weeklyDigest: { type: Boolean, default: false },
+      marketingEmails: { type: Boolean, default: false },
+      frequency: { type: String, enum: ['immediate', 'daily', 'weekly', 'none'], default: 'immediate' },
+      digestTime: { type: String, default: '09:00' } // HH:MM in user timezone
+    },
+    privacy: {
+      profileVisibility: { type: String, enum: ['public', 'registered', 'private'], default: 'public' },
+      showEmail: { type: Boolean, default: false },
+      showSolvedProblems: { type: Boolean, default: true },
+      showContestHistory: { type: Boolean, default: true }
+    },
+    editor: {
+      fontSize: { type: Number, default: 14, min: 10, max: 24 },
+      tabSize: { type: Number, default: 2, min: 2, max: 8 },
+      theme: { type: String, enum: ['light', 'vs-dark'], default: 'light' }
+    },
+    accessibility: {
+      reducedMotion: { type: Boolean, default: false },
+      highContrast: { type: Boolean, default: false }
+    }
+  },
   isAdmin: {
     type: Boolean,
     default: false

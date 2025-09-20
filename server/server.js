@@ -58,9 +58,9 @@ const __dirname = path.dirname(__filename);
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
-// Trust reverse proxy (Render/Heroku/NGINX) so req.protocol and req.hostname respect X-Forwarded-* headers
-// This is important for constructing absolute URLs (e.g., avatarUrl) behind HTTPS proxies
-app.set('trust proxy', true);
+// Trust the first proxy (Render/NGINX) so req.protocol and req.hostname respect X-Forwarded-* headers
+// Do NOT set to true (all) to avoid permissive trust proxy issues
+app.set('trust proxy', 1);
 
 // Environment check endpoint
 app.get('/api/env/check', (req, res) => {
@@ -396,6 +396,10 @@ app.use(hpp({
 const limiter = rateLimit({
   max: 100,
   windowMs: 60 * 60 * 1000,
+  standardHeaders: true, // Return rate limit info in the RateLimit-* headers
+  legacyHeaders: false,  // Disable the X-RateLimit-* headers
+  // Explicitly use Express's trust proxy setting; safe because we only trust 1 hop above
+  trustProxy: true,
   message: 'Too many requests from this IP, please try again in an hour!'
 });
 app.use('/api', limiter);
@@ -958,15 +962,14 @@ if (fs.existsSync(clientBuildPath)) {
     '/settings'
   ];
 
-  // Serve static files from the client build
   app.use(express.static(clientBuildPath, {
-    // Don't redirect to index.html for API routes
+ 
     index: false,
-    // Enable etag for better caching
+  
     etag: true,
-    // Enable last-modified header
+
     lastModified: true,
-    // Set max age for static assets
+ 
     maxAge: '1y'
   }));
   

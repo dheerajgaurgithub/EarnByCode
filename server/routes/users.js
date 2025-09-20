@@ -27,6 +27,25 @@ const upload = multer({
 
 const router = express.Router();
 
+// Optional auth: if Authorization header is present and valid, attach req.user; otherwise continue as guest
+function optionalAuth(req, _res, next) {
+  try {
+    const auth = req.headers?.authorization || '';
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : null;
+    if (!token) return next();
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || process.env.JWT_KEY || 'secret');
+    // Attach minimal identity for ownership/admin checks
+    req.user = {
+      id: decoded.id || decoded._id || decoded.sub,
+      _id: decoded.id || decoded._id || decoded.sub,
+      isAdmin: !!decoded.isAdmin
+    };
+  } catch (e) {
+    // ignore invalid token; treat as anonymous
+  }
+  return next();
+}
+
 // Get leaderboard
 router.get('/leaderboard', authenticate, async (req, res) => {
   try {
@@ -166,18 +185,75 @@ router.delete('/me/avatar', authenticate, async (req, res) => {
 });
 
 // Get user profile
-router.get('/:id', async (req, res) => {
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
-    const user = await User.findById(req.params.id)
-      .select('-password')
+    const target = await User.findById(req.params.id)
+      .select('-password -resetPasswordToken -resetPasswordExpire -verificationToken -verificationTokenExpires')
       .populate('solvedProblems', 'title difficulty')
       .populate('contestsParticipated', 'title status');
 
-    if (!user) {
+    if (!target) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json({ user });
+    const isOwner = req.user && String(req.user._id || req.user.id) === String(target._id);
+    const isAdmin = req.user && req.user.isAdmin;
+    const privacy = (target.preferences && target.preferences.privacy) || {};
+    const visibility = privacy.profileVisibility || 'public';
+
+    // Owner or admin: return full safe profile
+    if (isOwner || isAdmin) {
+      return res.json({ user: target });
+    }
+
+    // If profile is private or registered-only (and requester is guest), restrict aggressively
+    if (visibility === 'private' || (visibility === 'registered' && !req.user)) {
+      const minimal = {
+        _id: target._id,
+        username: target.username,
+        fullName: target.fullName,
+        avatarUrl: target.avatarUrl,
+        message: visibility === 'private' ? 'This profile is private' : 'This profile is visible to registered users only'
+      };
+      return res.json({ user: minimal });
+    }
+
+    // Public view: filter based on granular privacy settings
+    const filtered = target.toObject();
+    // Always remove sensitive fields
+    delete filtered.email; // default hide, re-add if showEmail
+    delete filtered.resetPasswordToken;
+    delete filtered.resetPasswordExpire;
+    delete filtered.verificationToken;
+    delete filtered.verificationTokenExpires;
+
+    if (privacy.showEmail) {
+      filtered.email = target.email;
+    }
+
+    if (!privacy.showSolvedProblems) {
+      // Remove detailed solvedProblems but keep count if present
+      delete filtered.solvedProblems;
+      // Optionally expose only a count
+      filtered.totalSolved = Array.isArray(target.solvedProblems) ? target.solvedProblems.length : 0;
+    }
+
+    if (!privacy.showContestHistory) {
+      delete filtered.contestsParticipated;
+    }
+
+    if (privacy.showBio === false) {
+      delete filtered.bio;
+    }
+
+    if (privacy.showSocialLinks === false) {
+      delete filtered.website;
+      delete filtered.github;
+      delete filtered.linkedin;
+      delete filtered.twitter;
+    }
+
+    return res.json({ user: filtered });
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ message: 'Failed to fetch user' });
@@ -189,6 +265,7 @@ router.patch('/me', authenticate, async (req, res) => {
   try {
     const updates = req.body;
     const allowedUpdates = [
+      'email',
       'fullName', 'bio', 'location', 'website', 
       'github', 'linkedin', 'twitter', 'company',
       'school'
@@ -252,7 +329,7 @@ router.patch('/me', authenticate, async (req, res) => {
 // Update user preferences (e.g., preferredCurrency)
 router.patch('/me/preferences', authenticate, async (req, res) => {
   try {
-    const { preferredCurrency } = req.body;
+    const { preferredCurrency, preferences } = req.body;
     const allowedCurrencies = ['USD', 'EUR', 'GBP', 'INR'];
 
     const user = await User.findById(req.user.id);
@@ -267,6 +344,57 @@ router.patch('/me/preferences', authenticate, async (req, res) => {
       user.preferredCurrency = preferredCurrency;
     }
 
+    if (preferences && typeof preferences === 'object') {
+      // Merge allowed preference fields only
+      user.preferences = user.preferences || {};
+      const p = preferences;
+      if (p.theme && ['light', 'dark', 'auto'].includes(p.theme)) user.preferences.theme = p.theme;
+      if (typeof p.language === 'string') user.preferences.language = p.language;
+      if (typeof p.timezone === 'string') user.preferences.timezone = p.timezone;
+      if (p.defaultCodeLanguage && ['javascript', 'python', 'java', 'cpp'].includes(p.defaultCodeLanguage)) {
+        user.preferences.defaultCodeLanguage = p.defaultCodeLanguage;
+      }
+      if (p.notifications && typeof p.notifications === 'object') {
+        user.preferences.notifications = {
+          ...user.preferences.notifications,
+          ...['emailNotifications','contestReminders','submissionResults','weeklyDigest','marketingEmails']
+            .reduce((acc, key) => {
+              if (typeof p.notifications[key] === 'boolean') acc[key] = p.notifications[key];
+              return acc;
+            }, {})
+          ,
+          ...(typeof p.notifications.frequency === 'string' && ['immediate','daily','weekly','none'].includes(p.notifications.frequency) ? { frequency: p.notifications.frequency } : {}),
+          ...(typeof p.notifications.digestTime === 'string' ? { digestTime: p.notifications.digestTime } : {})
+        };
+      }
+      if (p.privacy && typeof p.privacy === 'object') {
+        user.preferences.privacy = {
+          ...user.preferences.privacy,
+          ...(p.privacy.profileVisibility && ['public','registered','private'].includes(p.privacy.profileVisibility) ? { profileVisibility: p.privacy.profileVisibility } : {}),
+          ...(typeof p.privacy.showEmail === 'boolean' ? { showEmail: p.privacy.showEmail } : {}),
+          ...(typeof p.privacy.showSolvedProblems === 'boolean' ? { showSolvedProblems: p.privacy.showSolvedProblems } : {}),
+          ...(typeof p.privacy.showContestHistory === 'boolean' ? { showContestHistory: p.privacy.showContestHistory } : {}),
+          ...(typeof p.privacy.showBio === 'boolean' ? { showBio: p.privacy.showBio } : {}),
+          ...(typeof p.privacy.showSocialLinks === 'boolean' ? { showSocialLinks: p.privacy.showSocialLinks } : {}),
+        };
+      }
+      if (p.editor && typeof p.editor === 'object') {
+        user.preferences.editor = {
+          ...user.preferences.editor,
+          ...(typeof p.editor.fontSize === 'number' ? { fontSize: p.editor.fontSize } : {}),
+          ...(typeof p.editor.tabSize === 'number' ? { tabSize: p.editor.tabSize } : {}),
+          ...(typeof p.editor.theme === 'string' && ['light','vs-dark'].includes(p.editor.theme) ? { theme: p.editor.theme } : {}),
+        };
+      }
+      if (p.accessibility && typeof p.accessibility === 'object') {
+        user.preferences.accessibility = {
+          ...user.preferences.accessibility,
+          ...(typeof p.accessibility.reducedMotion === 'boolean' ? { reducedMotion: p.accessibility.reducedMotion } : {}),
+          ...(typeof p.accessibility.highContrast === 'boolean' ? { highContrast: p.accessibility.highContrast } : {}),
+        };
+      }
+    }
+
     await user.save();
 
     const payload = user.toJSON();
@@ -274,6 +402,30 @@ router.patch('/me/preferences', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Update preferences error:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to update preferences' });
+  }
+});
+
+// Change password
+router.patch('/me/password', authenticate, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword || String(newPassword).length < 6) {
+      return res.status(400).json({ success: false, message: 'Current and new password (min 6 chars) are required' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const match = await user.comparePassword(currentPassword);
+    if (!match) return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.json({ success: true, message: 'Password updated successfully' });
+  } catch (error) {
+    console.error('Change password error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to update password' });
   }
 });
 

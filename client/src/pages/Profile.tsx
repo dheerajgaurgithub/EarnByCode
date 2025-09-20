@@ -36,6 +36,15 @@ export const Profile: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewPublic, setPreviewPublic] = useState(false);
+  // Privacy helpers (applied only when previewing as public)
+  const privacy = (user as any)?.preferences?.privacy || { profileVisibility: 'public', showEmail: false, showSolvedProblems: true, showContestHistory: true };
+  const isPublicView = previewPublic; // local preview mode
+  const canShowEmail = !isPublicView || !!privacy.showEmail;
+  const canShowSolved = !isPublicView || !!privacy.showSolvedProblems;
+  const canShowContestHistory = !isPublicView || !!privacy.showContestHistory;
+  const canShowBio = !isPublicView || (privacy as any)?.showBio !== false;
+  const canShowSocialLinks = !isPublicView || (privacy as any)?.showSocialLinks !== false;
   const toast = useToast();
   const [avatarShape, setAvatarShape] = useState<'round' | 'square'>(() => {
     if (typeof window === 'undefined') return 'round';
@@ -296,12 +305,14 @@ export const Profile: React.FC = () => {
                       title={`@${user.username}`}
                       className="text-blue-600 text-sm sm:text-base"
                     />
-                    <ClampText
-                      text={user.email}
-                      lines={2}
-                      title={user.email}
-                      className="text-blue-500 text-xs sm:text-sm"
-                    />
+                    {canShowEmail && (
+                      <ClampText
+                        text={user.email}
+                        lines={2}
+                        title={user.email}
+                        className="text-blue-500 text-xs sm:text-sm"
+                      />
+                    )}
                   </div>
                 ) : (
                   <div>
@@ -314,14 +325,19 @@ export const Profile: React.FC = () => {
                       title={`@${user.username}`}
                       className="text-blue-600 mb-1 text-sm sm:text-base"
                     />
-                    <ClampText
-                      text={user.email}
-                      lines={2}
-                      title={user.email}
-                      className="text-blue-500 mb-3 text-xs sm:text-sm"
-                    />
-                    {user.bio && (
+                    {canShowEmail && (
+                      <ClampText
+                        text={user.email}
+                        lines={2}
+                        title={user.email}
+                        className="text-blue-500 mb-3 text-xs sm:text-sm"
+                      />
+                    )}
+                    {canShowBio && user.bio && (
                       <p className="text-blue-700 mb-3 text-sm sm:text-base break-words">{user.bio}</p>
+                    )}
+                    {isPublicView && !canShowBio && user.bio && (
+                      <p className="text-xs text-blue-500 italic mb-3">Bio hidden due to your privacy settings.</p>
                     )}
                   </div>
                 )}
@@ -385,6 +401,10 @@ export const Profile: React.FC = () => {
                     <Edit3 className="w-4 h-4" />
                     <span>Edit Profile</span>
                   </button>
+                  <label className="flex items-center gap-2 text-xs sm:text-sm text-blue-700 bg-blue-50 border border-blue-200 px-3 py-2 rounded-lg cursor-pointer">
+                    <input type="checkbox" checked={previewPublic} onChange={(e) => setPreviewPublic(e.target.checked)} />
+                    <span title="Preview how your profile looks to others based on your privacy settings">Preview as public</span>
+                  </label>
                 </div>
               )}
             </div>
@@ -533,7 +553,7 @@ export const Profile: React.FC = () => {
             </div>
           ) : (
             <div className="flex flex-wrap gap-2 sm:gap-3 mb-6">
-              {user.website && (
+              {canShowSocialLinks && user.website && (
                 <a
                   href={user.website.startsWith('http') ? user.website : `https://${user.website}`}
                   target="_blank"
@@ -544,7 +564,7 @@ export const Profile: React.FC = () => {
                   <span>Website</span>
                 </a>
               )}
-              {user.github && (
+              {canShowSocialLinks && user.github && (
                 <a
                   href={user.github.startsWith('http') ? user.github : `https://${user.github}`}
                   target="_blank"
@@ -555,7 +575,7 @@ export const Profile: React.FC = () => {
                   <span>GitHub</span>
                 </a>
               )}
-              {user.linkedin && (
+              {canShowSocialLinks && user.linkedin && (
                 <a
                   href={user.linkedin.startsWith('http') ? user.linkedin : `https://${user.linkedin}`}
                   target="_blank"
@@ -566,7 +586,7 @@ export const Profile: React.FC = () => {
                   <span>LinkedIn</span>
                 </a>
               )}
-              {user.twitter && (
+              {canShowSocialLinks && user.twitter && (
                 <a
                   href={user.twitter.startsWith('http') ? user.twitter : `https://${user.twitter}`}
                   target="_blank"
@@ -576,6 +596,9 @@ export const Profile: React.FC = () => {
                   <Twitter className="w-4 h-4" />
                   <span>Twitter</span>
                 </a>
+              )}
+              {isPublicView && !canShowSocialLinks && (user.website || user.github || user.linkedin || user.twitter) && (
+                <span className="text-xs text-blue-500 italic">Social links hidden due to your privacy settings.</span>
               )}
             </div>
           )}
@@ -608,10 +631,12 @@ export const Profile: React.FC = () => {
                 <p className="text-xl sm:text-2xl font-bold text-blue-600">{user.codecoins || 0}</p>
                 <p className="text-blue-500 text-xs sm:text-sm">Codecoins</p>
               </div>
-              <div className="text-center bg-green-50 p-2.5 sm:p-4 rounded-lg border border-green-200">
-                <p className="text-xl sm:text-2xl font-bold text-green-600">{user.solvedProblems?.length || 0}</p>
-                <p className="text-green-500 text-xs sm:text-sm">Problems Solved</p>
-              </div>
+              {canShowSolved && (
+                <div className="text-center bg-green-50 p-2.5 sm:p-4 rounded-lg border border-green-200">
+                  <p className="text-xl sm:text-2xl font-bold text-green-600">{user.solvedProblems?.length || 0}</p>
+                  <p className="text-green-500 text-xs sm:text-sm">Problems Solved</p>
+                </div>
+              )}
               <div className="text-center bg-yellow-50 p-2.5 sm:p-4 rounded-lg border border-yellow-200">
                 <p className="text-xl sm:text-2xl font-bold text-yellow-600">{user.points || 0}</p>
                 <p className="text-yellow-500 text-xs sm:text-sm">Points</p>
@@ -663,8 +688,8 @@ export const Profile: React.FC = () => {
               </div>
           </motion.div>
 
-          {/* Recent Activity - Only show for non-admin users */}
-          {!user.isAdmin && (
+          {/* Recent Activity - Only show for non-admin users and if allowed by privacy when previewing */}
+          {!user.isAdmin && canShowContestHistory && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
