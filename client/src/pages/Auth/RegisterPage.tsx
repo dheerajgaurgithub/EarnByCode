@@ -52,16 +52,23 @@ export function RegisterPage() {
 
     setIsLoading(true);
     try {
-      // Send registration request with skipVerification flag
-      const response = await apiService.register(
+      // Send registration request
+      const response: any = await apiService.register(
         formData.username,
         formData.email,
         formData.password,
         formData.fullName
       );
 
-      // Store the token and redirect to dashboard
-      if (response.token) {
+      // If server requires email verification via OTP, route to verify page
+      if (response?.requiresVerification) {
+        toast.success('We\'ve sent a verification code to your email. Please verify to continue.');
+        navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
+        return;
+      }
+
+      // Otherwise, proceed with token login
+      if (response?.token) {
         localStorage.setItem('token', response.token);
         toast.success('Registration successful! Welcome to AlgoBucks.');
         navigate('/dashboard');

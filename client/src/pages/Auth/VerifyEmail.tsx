@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '../../components/ui/input';
 import { Button } from '../../components/ui/button';
 import { toast } from '../../components/ui/use-toast';
@@ -22,6 +22,7 @@ export function VerifyEmailPage() {
   const [verifying, setVerifying] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const emailInputRef = useRef<HTMLInputElement | null>(null);
   
   useEffect(() => {
     if (!email && initialEmail) setEmail(initialEmail);
@@ -110,7 +111,23 @@ export function VerifyEmailPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
                   className="w-full pl-7 pr-2 py-2 bg-blue-50/50 border border-blue-200 rounded-lg text-gray-800 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-400 hover:border-blue-300 transition-all duration-300 font-medium text-xs backdrop-blur-sm"
+                  ref={emailInputRef}
                 />
+              </div>
+              <div className="flex items-center justify-between mt-1">
+                <span className="text-[11px] text-gray-600">
+                  Make sure this matches the inbox where you received the code.
+                </span>
+                <button
+                  type="button"
+                  className="text-[11px] text-blue-700 hover:text-blue-900 underline"
+                  onClick={() => {
+                    setEmail('');
+                    setTimeout(() => emailInputRef.current?.focus(), 0);
+                  }}
+                >
+                  Wrong email? Change
+                </button>
               </div>
             </div>
 
@@ -162,6 +179,12 @@ export function VerifyEmailPage() {
             </div>
 
             <p className="text-[11px] text-gray-600">Didn’t receive the email? Check your spam folder or try resending.</p>
+
+            <div className="mt-3 text-center">
+              <Link to="/login" className="text-xs text-blue-700 hover:text-blue-900 underline">
+                Back to Login
+              </Link>
+            </div>
           </div>
         </div>
       </div>
