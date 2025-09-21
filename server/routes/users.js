@@ -6,6 +6,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import cloudinary from 'cloudinary';
+import { sendEmail } from '../utils/mailer.js';
 
 // Configure Cloudinary from environment
 cloudinary.v2.config({
@@ -426,6 +427,91 @@ router.patch('/me/password', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Change password error:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to update password' });
+  }
+});
+
+// Request OTP for email change
+router.post('/me/email/change/request', authenticate, async (req, res) => {
+  try {
+    const { newEmail } = req.body || {};
+    if (!newEmail || typeof newEmail !== 'string') {
+      return res.status(400).json({ success: false, message: 'newEmail is required' });
+    }
+    const email = String(newEmail).trim().toLowerCase();
+
+    // Check if email already in use
+    const exists = await User.findOne({ email });
+    if (exists && String(exists._id) !== String(req.user.id)) {
+      return res.status(400).json({ success: false, message: 'Email already in use' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.pendingEmailChange = email;
+    user.emailChangeOtp = otp; // For production, hash this value
+    user.emailChangeOtpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await user.save();
+
+    // Send OTP via email
+    const subject = process.env.EMAIL_SUBJECT_EMAIL_CHANGE || 'AlgoBucks: Verify your new email';
+    const text = `Use this code to verify your new email for AlgoBucks: ${otp}\n\nThis code expires in 10 minutes.`;
+    const html = `
+      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
+        <h2>Verify your new email</h2>
+        <p>Use the following code to verify your new email for <strong>AlgoBucks</strong>:</p>
+        <p style="font-size: 20px; font-weight: bold; letter-spacing: 2px;">${otp}</p>
+        <p style="color:#555">This code expires in <strong>10 minutes</strong>.</p>
+      </div>
+    `;
+    await sendEmail({ to: email, subject, text, html });
+
+    return res.json({ success: true, message: 'Verification code sent' });
+  } catch (error) {
+    console.error('Email change request error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to request email change' });
+  }
+});
+
+// Verify OTP and update email
+router.post('/me/email/change/verify', authenticate, async (req, res) => {
+  try {
+    const { newEmail, otp } = req.body || {};
+    if (!newEmail || !otp) {
+      return res.status(400).json({ success: false, message: 'newEmail and otp are required' });
+    }
+    const email = String(newEmail).trim().toLowerCase();
+    const code = String(otp).trim();
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (!user.pendingEmailChange || !user.emailChangeOtp || !user.emailChangeOtpExpires) {
+      return res.status(400).json({ success: false, message: 'No email change request found' });
+    }
+    if (user.pendingEmailChange !== email) {
+      return res.status(400).json({ success: false, message: 'Email does not match pending request' });
+    }
+    if (new Date(user.emailChangeOtpExpires).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, message: 'OTP has expired' });
+    }
+    if (user.emailChangeOtp !== code) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+
+    // All good: update email and clear pending fields
+    user.email = email;
+    user.pendingEmailChange = null;
+    user.emailChangeOtp = null;
+    user.emailChangeOtpExpires = null;
+    await user.save();
+
+    return res.json({ success: true, message: 'Email updated', user: user.toJSON() });
+  } catch (error) {
+    console.error('Email change verify error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to verify code' });
   }
 });
 

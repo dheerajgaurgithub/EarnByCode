@@ -194,6 +194,19 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpire: Date,
   googleId: String,
   googleProfile: Object,
+  // Email change verification
+  pendingEmailChange: {
+    type: String,
+    default: null
+  },
+  emailChangeOtp: {
+    type: String,
+    default: null
+  },
+  emailChangeOtpExpires: {
+    type: Date,
+    default: null
+  },
   // Profile avatar fields
   avatarUrl: {
     type: String,

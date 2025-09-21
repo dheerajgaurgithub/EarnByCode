@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { 
   Settings as SettingsIcon, Bell, Shield, Palette, 
-  Save, Mail, Lock, Info, ShieldAlert, Trash2
+  Save, Mail, Lock, Info, ShieldAlert, Trash2, CheckCircle, Loader2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/context/ThemeContext';
@@ -29,6 +29,10 @@ export const Settings: React.FC = () => {
   const [emailOtp, setEmailOtp] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
   const [deleteText, setDeleteText] = useState('');
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [otpError, setOtpError] = useState<string | null>(null);
+  const [verifyingOtp, setVerifyingOtp] = useState(false);
+  const [otpVerified, setOtpVerified] = useState(false);
   
   // Notification settings
   const [notifications, setNotifications] = useState({
@@ -159,6 +163,8 @@ export const Settings: React.FC = () => {
           setEmailOtpSent(true);
           setPendingEmail(accountForm.email);
           toast.success('Verification code sent to the new email. Please enter the code below to confirm change.');
+          setResendCooldown(60);
+          setOtpError(null);
           return; // stop here; user must verify before other updates
         }
       }
@@ -195,22 +201,36 @@ export const Settings: React.FC = () => {
     }
   };
 
+  // Resend cooldown ticker
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const t = setTimeout(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearTimeout(t);
+  }, [resendCooldown]);
+
   const handleVerifyEmailOtp = async () => {
     if (!pendingEmail || !emailOtp) {
       toast.error('Please enter the verification code');
       return;
     }
     try {
-      setIsLoading(true);
+      setVerifyingOtp(true);
+      setOtpError(null);
       await verifyEmailChangeOtp(pendingEmail, emailOtp);
       toast.success('Email updated successfully');
       setEmailOtp('');
       setEmailOtpSent(false);
       setPendingEmail('');
+      setOtpError(null);
+      setOtpVerified(true);
+      // Auto-hide the verified tick after a few seconds
+      setTimeout(() => setOtpVerified(false), 3000);
     } catch (err) {
-      toast.error((err as Error)?.message || 'Failed to verify code');
+      const msg = (err as Error)?.message || 'Failed to verify code';
+      setOtpError(msg);
+      toast.error(msg);
     } finally {
-      setIsLoading(false);
+      setVerifyingOtp(false);
     }
   };
 
@@ -510,7 +530,10 @@ export const Settings: React.FC = () => {
                                 <input
                                   type="text"
                                   value={emailOtp}
-                                  onChange={(e) => setEmailOtp(e.target.value)}
+                                  onChange={(e) => {
+                                    setEmailOtp(e.target.value);
+                                    if (otpError) setOtpError(null);
+                                  }}
                                   placeholder="Enter OTP"
                                   className="w-full sm:w-48 px-3 py-2 adaptive-input rounded-lg"
                                 />
@@ -528,19 +551,48 @@ export const Settings: React.FC = () => {
                                           setEmailOtp('');
                                           setEmailOtpSent(false);
                                           setPendingEmail('');
+                                          setOtpError(null);
                                         } catch (e2) {
-                                          toast.error((e2 as Error)?.message || 'Failed to update email');
+                                          const m2 = (e2 as Error)?.message || 'Failed to update email';
+                                          setOtpError(m2);
+                                          toast.error(m2);
                                         }
                                       } else {
-                                        toast.error(msg || 'Failed to verify code');
+                                        const finalMsg = msg || 'Failed to verify code';
+                                        setOtpError(finalMsg);
+                                        toast.error(finalMsg);
                                       }
                                     }
                                   }}
-                                  className="px-4 py-2 adaptive-button text-white rounded-lg"
-                                  disabled={isLoading || !emailOtp}
+                                  className="px-4 py-2 adaptive-button text-white rounded-lg inline-flex items-center gap-2 disabled:opacity-60"
+                                  disabled={verifyingOtp || !emailOtp}
                                 >
-                                  Verify & Update Email
+                                  {verifyingOtp ? (
+                                    <>
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                      Verifying…
+                                    </>
+                                  ) : (
+                                    'Verify & Update Email'
+                                  )}
                                 </button>
+                                {otpVerified && (
+                                  <span className="inline-flex items-center gap-1 text-green-600 text-xs mt-1 sm:mt-0">
+                                    <CheckCircle className="h-4 w-4" /> Verified
+                                  </span>
+                                )}
+                                {otpError && (
+                                  <div className="flex items-center gap-2 mt-1 sm:mt-0 sm:ml-2">
+                                    <p className="text-rose-600 text-xs">{otpError}</p>
+                                    <button
+                                      type="button"
+                                      className="text-xs text-rose-600 hover:text-rose-700 underline"
+                                      onClick={() => setOtpError(null)}
+                                    >
+                                      Clear
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             )}
                             <p className="text-xs adaptive-text-muted">We will send a one-time code to the new email to confirm this change.</p>
