@@ -20,7 +20,7 @@ import { Submissions } from './pages/Submissions';
 import SubmissionDetail from './pages/SubmissionDetail';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage';
-import { OtpVerification } from './components/Auth/OtpVerification';
+import VerifyEmailPage from './pages/Auth/VerifyEmail';
 import { Settings } from './pages/Settings';
 import About from './pages/About';
 import Company from './pages/Company';
@@ -206,7 +206,7 @@ function App() {
                 path="/verify-email"
                 element={
                   <PublicRoute>
-                    <OtpVerification />
+                    <VerifyEmailPage />
                   </PublicRoute>
                 }
               />
