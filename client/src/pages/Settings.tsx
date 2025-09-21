@@ -33,6 +33,7 @@ export const Settings: React.FC = () => {
   const [otpError, setOtpError] = useState<string | null>(null);
   const [verifyingOtp, setVerifyingOtp] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
+  const [emailUpdated, setEmailUpdated] = useState(false);
   
   // Notification settings
   const [notifications, setNotifications] = useState({
@@ -223,8 +224,11 @@ export const Settings: React.FC = () => {
       setPendingEmail('');
       setOtpError(null);
       setOtpVerified(true);
+      setEmailUpdated(true);
+      setResendCooldown(0);
       // Auto-hide the verified tick after a few seconds
       setTimeout(() => setOtpVerified(false), 3000);
+      setTimeout(() => setEmailUpdated(false), 4000);
     } catch (err) {
       const msg = (err as Error)?.message || 'Failed to verify code';
       setOtpError(msg);
@@ -493,6 +497,11 @@ export const Settings: React.FC = () => {
                             className="pl-10 w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
                           />
                         </div>
+                        {emailUpdated && (
+                          <p className="text-green-600 text-xs mt-1 inline-flex items-center gap-1">
+                            <CheckCircle className="h-3 w-3" /> Email updated
+                          </p>
+                        )}
                         {accountForm.email !== user.email && (
                           <div className="mt-2 flex flex-col sm:flex-row gap-2">
                             {!emailOtpSent ? (
@@ -504,6 +513,8 @@ export const Settings: React.FC = () => {
                                     setEmailOtpSent(true);
                                     setPendingEmail(accountForm.email);
                                     toast.success('Verification code sent to the new email.');
+                                    setResendCooldown(60);
+                                    setOtpError(null);
                                   } catch (err) {
                                     const msg = (err as Error)?.message || '';
                                     // Fallback: if endpoint not found, update email directly
@@ -513,17 +524,23 @@ export const Settings: React.FC = () => {
                                         toast.success('Email updated (OTP not required on this server)');
                                         setEmailOtpSent(false);
                                         setPendingEmail('');
+                                        setOtpError(null);
                                       } catch (e2) {
-                                        toast.error((e2 as Error)?.message || 'Failed to update email');
+                                        const m2 = (e2 as Error)?.message || 'Failed to update email';
+                                        setOtpError(m2);
+                                        toast.error(m2);
                                       }
                                     } else {
-                                      toast.error(msg || 'Failed to send verification code');
+                                      const finalMsg = msg || 'Failed to send verification code';
+                                      setOtpError(finalMsg);
+                                      toast.error(finalMsg);
                                     }
                                   }
                                 }}
-                                className="px-4 py-2 adaptive-button text-white rounded-lg"
+                                className="px-4 py-2 adaptive-button text-white rounded-lg disabled:opacity-60"
+                                disabled={resendCooldown > 0 || verifyingOtp}
                               >
-                                Send OTP
+                                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Send OTP'}
                               </button>
                             ) : (
                               <div className="w-full flex flex-col sm:flex-row gap-2">
@@ -594,6 +611,9 @@ export const Settings: React.FC = () => {
                                   </div>
                                 )}
                               </div>
+                            )}
+                            {emailOtpSent && pendingEmail && (
+                              <p className="text-xs text-slate-600 dark:text-gray-300 mt-1">Code sent to <span className="font-medium">{pendingEmail}</span></p>
                             )}
                             <p className="text-xs adaptive-text-muted">We will send a one-time code to the new email to confirm this change.</p>
                           </div>
