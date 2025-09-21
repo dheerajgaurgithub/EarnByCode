@@ -1,18 +1,22 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { 
   Settings as SettingsIcon, Bell, Shield, Palette, 
-  Save, Mail, Lock, Info
+  Save, Mail, Lock, Info, ShieldAlert, Trash2
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/context/ThemeContext';
+import { useToast } from '@/components/ui/use-toast';
 
 export const Settings: React.FC = () => {
-  const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar } = useAuth();
+  const navigate = useNavigate();
+  const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar, requestEmailChangeOtp, verifyEmailChangeOtp, deleteAccount } = useAuth();
   const { setTheme: setUiTheme } = useTheme();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'privacy' | 'preferences'>('account');
   const [isLoading, setIsLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   
   // Account settings
   const [accountForm, setAccountForm] = useState({
@@ -21,6 +25,10 @@ export const Settings: React.FC = () => {
     newPassword: '',
     confirmPassword: ''
   });
+  const [emailOtpSent, setEmailOtpSent] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
+  const [pendingEmail, setPendingEmail] = useState('');
+  const [deleteText, setDeleteText] = useState('');
   
   // Notification settings
   const [notifications, setNotifications] = useState({
@@ -144,39 +152,87 @@ export const Settings: React.FC = () => {
     try {
       const updates: any = {};
       
+      // Email change is handled via OTP flow; trigger OTP if email changed and OTP not yet sent/verified
       if (accountForm.email !== user.email) {
-        updates.email = accountForm.email;
+        if (!emailOtpSent) {
+          await requestEmailChangeOtp(accountForm.email);
+          setEmailOtpSent(true);
+          setPendingEmail(accountForm.email);
+          toast.success('Verification code sent to the new email. Please enter the code below to confirm change.');
+          return; // stop here; user must verify before other updates
+        }
       }
       
       if (accountForm.newPassword) {
         if (accountForm.newPassword !== accountForm.confirmPassword) {
-          alert('New passwords do not match');
+          toast.error('New passwords do not match');
           return;
         }
         if (accountForm.newPassword.length < 6) {
-          alert('Password must be at least 6 characters');
+          toast.error('Password must be at least 6 characters');
           return;
         }
         if (!accountForm.currentPassword) {
-          alert('Please enter your current password');
+          toast.error('Please enter your current password');
           return;
         }
       }
       
       if (Object.keys(updates).length > 0) {
         await updateUser(updates);
-        alert('Account settings updated successfully');
+        toast.success('Account settings updated successfully');
       }
 
       if (accountForm.newPassword) {
         await changePassword(accountForm.currentPassword, accountForm.newPassword);
-        alert('Password updated successfully');
+        toast.success('Password updated successfully');
       }
       setAccountForm({ ...accountForm, currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (error) {
-      alert('Failed to update account settings');
+      toast.error('Failed to update account settings');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async () => {
+    if (!pendingEmail || !emailOtp) {
+      toast.error('Please enter the verification code');
+      return;
+    }
+    try {
+      setIsLoading(true);
+      await verifyEmailChangeOtp(pendingEmail, emailOtp);
+      toast.success('Email updated successfully');
+      setEmailOtp('');
+      setEmailOtpSent(false);
+      setPendingEmail('');
+    } catch (err) {
+      toast.error((err as Error)?.message || 'Failed to verify code');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const onDeleteAccount = async () => {
+    const phrase = 'delete algobucks account';
+    if (deleteText.trim().toLowerCase() !== phrase) {
+      toast.error("Please type 'delete AlgoBucks account' exactly to confirm.");
+      return;
+    }
+    if (!confirm('This action is permanent. Are you sure you want to delete your account?')) return;
+    try {
+      setDeleting(true);
+      const tid = toast.loading('Deleting your account…');
+      await deleteAccount();
+      toast.dismiss(tid);
+      toast.success('Account deleted');
+      // Redirect to home page after deletion
+      navigate('/', { replace: true });
+    } catch (err) {
+      toast.error((err as Error)?.message || 'Failed to delete account');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -184,9 +240,9 @@ export const Settings: React.FC = () => {
     try {
       setSavingNotifications(true);
       await updatePreferences({ preferences: { notifications } });
-      alert('Notification preferences updated');
+      toast.success('Notification preferences updated');
     } catch (e) {
-      alert('Failed to update notification settings');
+      toast.error('Failed to update notification settings');
     } finally {
       setSavingNotifications(false);
     }
@@ -196,9 +252,9 @@ export const Settings: React.FC = () => {
     try {
       setSavingPrivacy(true);
       await updatePreferences({ preferences: { privacy } });
-      alert('Privacy settings updated');
+      toast.success('Privacy settings updated');
     } catch (e) {
-      alert('Failed to update privacy settings');
+      toast.error('Failed to update privacy settings');
     } finally {
       setSavingPrivacy(false);
     }
@@ -209,12 +265,12 @@ export const Settings: React.FC = () => {
       setSavingPrefs(true);
       const { theme, language, timezone, defaultCodeLanguage } = preferences;
       await updatePreferences({ preferences: { theme, language, timezone, defaultCodeLanguage, editor: editorPrefs, accessibility } });
-      alert('Preferences updated');
+      toast.success('Preferences updated');
       // Also apply UI theme immediately
       const uiTheme = (theme as any) === 'auto' ? 'system' : (theme as any);
       try { setUiTheme(uiTheme); } catch {}
     } catch (e) {
-      alert('Failed to update preferences');
+      toast.error('Failed to update preferences');
     } finally {
       setSavingPrefs(false);
     }
@@ -417,6 +473,79 @@ export const Settings: React.FC = () => {
                             className="pl-10 w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
                           />
                         </div>
+                        {accountForm.email !== user.email && (
+                          <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                            {!emailOtpSent ? (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    await requestEmailChangeOtp(accountForm.email);
+                                    setEmailOtpSent(true);
+                                    setPendingEmail(accountForm.email);
+                                    toast.success('Verification code sent to the new email.');
+                                  } catch (err) {
+                                    const msg = (err as Error)?.message || '';
+                                    // Fallback: if endpoint not found, update email directly
+                                    if (/endpoint not found/i.test(msg)) {
+                                      try {
+                                        await updateUser({ email: accountForm.email });
+                                        toast.success('Email updated (OTP not required on this server)');
+                                        setEmailOtpSent(false);
+                                        setPendingEmail('');
+                                      } catch (e2) {
+                                        toast.error((e2 as Error)?.message || 'Failed to update email');
+                                      }
+                                    } else {
+                                      toast.error(msg || 'Failed to send verification code');
+                                    }
+                                  }
+                                }}
+                                className="px-4 py-2 adaptive-button text-white rounded-lg"
+                              >
+                                Send OTP
+                              </button>
+                            ) : (
+                              <div className="w-full flex flex-col sm:flex-row gap-2">
+                                <input
+                                  type="text"
+                                  value={emailOtp}
+                                  onChange={(e) => setEmailOtp(e.target.value)}
+                                  placeholder="Enter OTP"
+                                  className="w-full sm:w-48 px-3 py-2 adaptive-input rounded-lg"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    try {
+                                      await handleVerifyEmailOtp();
+                                    } catch (err) {
+                                      const msg = (err as Error)?.message || '';
+                                      if (/endpoint not found/i.test(msg)) {
+                                        try {
+                                          await updateUser({ email: accountForm.email });
+                                          toast.success('Email updated (OTP not required on this server)');
+                                          setEmailOtp('');
+                                          setEmailOtpSent(false);
+                                          setPendingEmail('');
+                                        } catch (e2) {
+                                          toast.error((e2 as Error)?.message || 'Failed to update email');
+                                        }
+                                      } else {
+                                        toast.error(msg || 'Failed to verify code');
+                                      }
+                                    }
+                                  }}
+                                  className="px-4 py-2 adaptive-button text-white rounded-lg"
+                                  disabled={isLoading || !emailOtp}
+                                >
+                                  Verify & Update Email
+                                </button>
+                              </div>
+                            )}
+                            <p className="text-xs adaptive-text-muted">We will send a one-time code to the new email to confirm this change.</p>
+                          </div>
+                        )}
 
                       {/* Avatar management */}
                       <div className="mt-6">
@@ -442,10 +571,12 @@ export const Settings: React.FC = () => {
                                   if (!file) return;
                                   try {
                                     setAvatarUploading(true);
+                                    const tid = toast.loading('Uploading avatar…');
                                     await uploadAvatar(file);
-                                    alert('Avatar uploaded');
+                                    toast.dismiss(tid);
+                                    toast.success('Avatar uploaded');
                                   } catch (err) {
-                                    alert((err as Error)?.message || 'Failed to upload avatar');
+                                    toast.error((err as Error)?.message || 'Failed to upload avatar');
                                   } finally {
                                     setAvatarUploading(false);
                                     e.currentTarget.value = '';
@@ -461,10 +592,12 @@ export const Settings: React.FC = () => {
                                 onClick={async () => {
                                   try {
                                     setAvatarRemoving(true);
+                                    const tid = toast.loading('Removing avatar…');
                                     await removeAvatar();
-                                    alert('Avatar removed');
+                                    toast.dismiss(tid);
+                                    toast.success('Avatar removed');
                                   } catch (err) {
-                                    alert((err as Error)?.message || 'Failed to remove avatar');
+                                    toast.error((err as Error)?.message || 'Failed to remove avatar');
                                   } finally {
                                     setAvatarRemoving(false);
                                   }
@@ -571,6 +704,35 @@ export const Settings: React.FC = () => {
                         <span>{isLoading ? 'Saving...' : 'Save Changes'}</span>
                       </button>
                     </form>
+
+                    {/* Danger Zone */}
+                    <div className="mt-8 border-t adaptive-border pt-6">
+                      <h3 className="text-lg font-semibold text-rose-600 flex items-center gap-2">
+                        <ShieldAlert className="h-5 w-5" /> Danger Zone
+                      </h3>
+                      <div className="mt-4 p-4 rounded-lg border adaptive-border bg-red-50/50">
+                        <h4 className="text-sm font-medium text-rose-700 mb-2">Delete My Account</h4>
+                        <p className="text-xs text-rose-700 mb-3">This will permanently delete your AlgoBucks account and all associated data. This action cannot be undone.</p>
+                        <label className="block text-xs font-medium text-rose-700 mb-1">Type "delete AlgoBucks account" to confirm:</label>
+                        <input
+                          type="text"
+                          value={deleteText}
+                          onChange={(e) => setDeleteText(e.target.value)}
+                          className="w-full sm:w-96 px-3 py-2 rounded-lg border adaptive-border"
+                          placeholder="delete AlgoBucks account"
+                        />
+                        <div className="mt-3">
+                          <button
+                            type="button"
+                            onClick={onDeleteAccount}
+                            disabled={deleting || deleteText.trim().toLowerCase() !== 'delete algobucks account'}
+                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50"
+                          >
+                            <Trash2 className="h-4 w-4" /> {deleting ? 'Deleting…' : 'Delete Account'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </motion.div>
                 )}
 

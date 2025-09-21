@@ -14,6 +14,10 @@ interface AuthContextType {
   removeAvatar: () => Promise<void>;
   updatePreferences: (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR'; preferences?: any }) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
+  // New methods for account/email management
+  requestEmailChangeOtp: (newEmail: string) => Promise<void>;
+  verifyEmailChangeOtp: (newEmail: string, otp: string) => Promise<void>;
+  deleteAccount: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,6 +87,70 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       if (!silent) setIsLoading(false);
     }
+  };
+
+  // Request OTP to change email
+  const requestEmailChangeOtp = async (newEmail: string): Promise<void> => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+    const requestPath = (import.meta.env.VITE_EMAIL_CHANGE_REQUEST_PATH as string) || '/users/me/email/change/request';
+    const res = await fetch(`${config.api.baseUrl}${requestPath}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ newEmail }),
+      credentials: 'include',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) {
+      const extra = res.status === 404 ? ' Endpoint not found. Please configure VITE_EMAIL_CHANGE_REQUEST_PATH to match your backend.' : '';
+      throw new Error(data.message || ('Failed to send verification code.' + extra));
+    }
+  };
+
+  // Verify OTP and update email
+  const verifyEmailChangeOtp = async (newEmail: string, otp: string): Promise<void> => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+    const verifyPath = (import.meta.env.VITE_EMAIL_CHANGE_VERIFY_PATH as string) || '/users/me/email/change/verify';
+    const res = await fetch(`${config.api.baseUrl}${verifyPath}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ newEmail, otp }),
+      credentials: 'include',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) {
+      const extra = res.status === 404 ? ' Endpoint not found. Please configure VITE_EMAIL_CHANGE_VERIFY_PATH to match your backend.' : '';
+      throw new Error(data.message || ('Failed to verify code.' + extra));
+    }
+    if (data.user) setUser((prev) => (prev ? { ...prev, ...data.user } : data.user));
+    else await refreshUser(true);
+  };
+
+  // Permanently delete account
+  const deleteAccount = async (): Promise<void> => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('Not authenticated');
+    const res = await fetch(`${config.api.baseUrl}/users/me`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+      credentials: 'include',
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) {
+      throw new Error(data.message || 'Failed to delete account');
+    }
+    // Clear local session
+    localStorage.removeItem('token');
+    setUser(null);
   };
 
   const updatePreferences = async (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR'; preferences?: any }) => {
@@ -277,7 +345,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       uploadAvatar,
       removeAvatar,
       updatePreferences,
-      changePassword
+      changePassword,
+      requestEmailChangeOtp,
+      verifyEmailChangeOtp,
+      deleteAccount
     }}>
       {children}
     </AuthContext.Provider>

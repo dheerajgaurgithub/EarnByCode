@@ -664,8 +664,8 @@ export const Profile: React.FC = () => {
               </div>
           </motion.div>
 
-          {/* Recent Activity - Only show for non-admin users and if allowed by privacy when previewing */}
-          {!user.isAdmin && canShowContestHistory && (
+          {/* Recent Activity - Show if allowed by privacy settings (also for admins) */}
+          {canShowContestHistory && (
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -685,7 +685,7 @@ export const Profile: React.FC = () => {
                     const problemTitle = typeof problem === 'object' && problem?.title ? problem.title : undefined;
                     const problemIdText = typeof problem === 'object' && problem?._id ? problem._id : (submission.problemId || '');
                     return (
-                      <a key={id} href={`/submissions/${id}`} className="flex items-center justify-between p-2.5 sm:p-3 bg-blue-50 dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-gray-600 hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors">
+                      <Link key={id} to={`/submissions/${id}`} className="flex items-center justify-between p-2.5 sm:p-3 bg-blue-50 dark:bg-gray-800 rounded-lg border border-blue-200 dark:border-gray-600 hover:bg-blue-100 dark:hover:bg-gray-700 transition-colors">
                         <div className="min-w-0 flex-1">
                           <p className="text-blue-900 dark:text-blue-400 font-medium text-sm sm:text-base truncate">
                             {problemTitle || `Problem #${problemIdText}`}
@@ -702,7 +702,7 @@ export const Profile: React.FC = () => {
                             {new Date((submission as any).createdAt || (submission as any).timestamp || Date.now()).toLocaleDateString()}
                           </p>
                         </div>
-                      </a>
+                      </Link>
                     );
                   })}
                   <div className="pt-1 text-right">
@@ -716,6 +716,11 @@ export const Profile: React.FC = () => {
                   <Target className="h-10 w-10 sm:h-12 sm:w-12 text-blue-300 dark:text-gray-600 mx-auto mb-3" />
                   <p className="text-blue-600 dark:text-blue-400 text-sm sm:text-base">No submissions yet</p>
                   <p className="text-blue-500 dark:text-gray-500 text-xs sm:text-sm">Start solving problems to see your progress here</p>
+                  <div className="mt-3">
+                    <Link to="/submissions" className="text-blue-700 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300 text-sm font-medium underline transition-colors">
+                      View all submissions
+                    </Link>
+                  </div>
                 </div>
               )}
             </motion.div>

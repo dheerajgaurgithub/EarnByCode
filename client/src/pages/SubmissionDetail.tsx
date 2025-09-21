@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, Navigate, Link } from 'react-router-dom';
+import { useParams, Navigate, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { apiService } from '@/lib/api';
 import { motion } from 'framer-motion';
@@ -21,6 +21,7 @@ type Submission = {
 const SubmissionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
@@ -67,9 +68,20 @@ const SubmissionDetail: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 py-4 sm:py-8">
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-4 sm:mb-6 flex items-center justify-between">
-          <Link to="/submissions" className="inline-flex items-center text-blue-700 hover:text-blue-900">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Submissions
-          </Link>
+          <button
+            type="button"
+            onClick={() => {
+              // Prefer history back; fallback to submissions if there's no prior entry
+              if (window.history.length > 1) {
+                navigate(-1);
+              } else {
+                navigate('/submissions', { replace: true });
+              }
+            }}
+            className="inline-flex items-center text-blue-700 hover:text-blue-900"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+          </button>
         </div>
 
         {loading ? (

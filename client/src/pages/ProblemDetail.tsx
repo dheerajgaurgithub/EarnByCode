@@ -665,7 +665,7 @@ const ProblemDetail: React.FC = () => {
                 </div>
                 <div className="flex items-center">
                   <Trophy className="h-3 w-3 mr-1 text-blue-600 flex-shrink-0" />
-                  <span>{problem.submissions || 0} Submissions</span>
+                  <a href="/submissions" className="text-blue-600 hover:underline"><span>{problem.submissions || 0} Submissions</span></a> 
                 </div>
                 <div className="flex items-center">
                   <Award className="h-3 w-3 mr-1 text-yellow-600 flex-shrink-0" />

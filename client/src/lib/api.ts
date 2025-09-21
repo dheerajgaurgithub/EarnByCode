@@ -168,19 +168,19 @@ api.interceptors.response.use(
 // Helper function to make API calls
 export const apiService = {
   get: <T>(url: string, config?: AxiosRequestConfig): Promise<T> => 
-    api.get<T>(url, config).then(response => response as unknown as T),
+    api.get<T>(url, config).then(response => response.data as T),
   
   post: <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => 
-    api.post<T>(url, data, config).then(response => response as unknown as T),
+    api.post<T>(url, data, config).then(response => response.data as T),
   
   put: <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => 
-    api.put<T>(url, data, config).then(response => response as unknown as T),
+    api.put<T>(url, data, config).then(response => response.data as T),
     
   delete: <T>(url: string, config?: AxiosRequestConfig): Promise<T> => 
-    api.delete<T>(url, config).then(response => response as unknown as T),
+    api.delete<T>(url, config).then(response => response.data as T),
     
   patch: <T>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> => 
-    api.patch<T>(url, data, config).then(response => response as unknown as T),
+    api.patch<T>(url, data, config).then(response => response.data as T),
 };
 
 export default api;

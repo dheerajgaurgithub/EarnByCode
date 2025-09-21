@@ -115,7 +115,7 @@ const AdminRoute = ({ children }: { children: JSX.Element }) => {
 function App() {
   const location = useLocation();
   const pathname = location.pathname;
-  const { theme } = useTheme();
+  // theme is managed via ThemeSync and CSS class; no need to read here
   
   // Footer visibility logic
   const footerHiddenPrefixes = ['/problems', '/contests'];
@@ -123,6 +123,13 @@ function App() {
   const hideFooter =
     footerHiddenPrefixes.some((p) => pathname.startsWith(p)) ||
     footerHiddenExact.includes(pathname);
+
+  // Header visibility logic
+  const headerHiddenPrefixes = ['/submissions/'];
+  const headerHiddenExact = ['/submissions'];
+  const hideHeader =
+    headerHiddenPrefixes.some((p) => pathname.startsWith(p)) ||
+    headerHiddenExact.includes(pathname);
 
   // Enhanced toast configuration with better dark mode support
   const getToastOptions = () => {
@@ -174,7 +181,7 @@ function App() {
         
         {/* Main app container with enhanced dark mode classes */}
         <div className="flex flex-col min-h-screen bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-200">
-          <Header />
+          {!hideHeader && <Header />}
           
           <main className="flex-grow">
             <Routes>

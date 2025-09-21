@@ -429,4 +429,28 @@ router.patch('/me/password', authenticate, async (req, res) => {
   }
 });
 
+// Permanently delete the authenticated user's account
+router.delete('/me', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const publicId = user.avatarPublicId;
+
+    await User.deleteOne({ _id: user._id });
+
+    if (publicId) {
+      cloudinary.v2.uploader.destroy(publicId).catch(() => {});
+    }
+
+    // TODO: If you have related collections (submissions, discussions, etc.),
+    // you may want to anonymize or delete those here as well.
+
+    return res.json({ success: true, message: 'Account deleted' });
+  } catch (error) {
+    console.error('Delete account error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to delete account' });
+  }
+});
+
 export default router;
