@@ -15,6 +15,9 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Initialize router BEFORE any route definitions
+const router = express.Router();
+
 // Get user profile by username (public)
 router.get('/username/:username', optionalAuth, async (req, res) => {
   try {
@@ -96,7 +99,6 @@ const upload = multer({
   }
 });
 
-const router = express.Router();
 
 // Optional auth: if Authorization header is present and valid, attach req.user; otherwise continue as guest
 function optionalAuth(req, _res, next) {
