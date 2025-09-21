@@ -2,6 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Trophy, Medal, Award, TrendingUp, Users, Crown, Search, X, Sparkles, Zap, Heart, Star } from 'lucide-react';
 import { motion } from 'framer-motion';
 import apiService from '../services/api';
+import { Link } from 'react-router-dom';
+import { useAuth } from '@/context/AuthContext';
 
 // Debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -24,6 +26,7 @@ interface LeaderboardUser {
   _id: string;
   username: string;
   fullName?: string;
+  avatarUrl?: string;
   points: number;
   codecoins: number;
   ranking: number;
@@ -32,6 +35,7 @@ interface LeaderboardUser {
 }
 
 export const Leaderboard: React.FC = () => {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<LeaderboardUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<LeaderboardUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -130,16 +134,55 @@ export const Leaderboard: React.FC = () => {
         include: 'profile,solved'
       });
       
-      const formattedUsers = data.map((user: any) => ({
-        _id: user._id,
-        username: user.username,
-        fullName: user.fullName,
-        points: user.points || 0,
-        codecoins: user.codecoins || 0,
-        ranking: user.ranking || 0,
-        solvedProblems: user.solvedProblems || [],
-        totalSolved: user.totalSolved || 0
-      }));
+      // Debug a couple of users to verify payload structure (field names for avatar)
+      if (Array.isArray(data) && data.length > 0) {
+        console.debug('[Leaderboard] Sample user payload:', {
+          keys: Object.keys(data[0] || {}),
+          avatarUrl: (data[0] as any)?.avatarUrl,
+          profile: (data[0] as any)?.profile,
+          avatar: (data[0] as any)?.avatar,
+          avatarPublicId: (data[0] as any)?.avatarPublicId,
+          image: (data[0] as any)?.image,
+          picture: (data[0] as any)?.picture,
+        });
+      }
+
+      const formattedUsers = data.map((u: any) => {
+        // Try various common fields for avatar
+        const cloudinaryBase = (import.meta as any)?.env?.VITE_CLOUDINARY_FETCH_BASE as string | undefined;
+        let resolvedAvatar = (
+          u.avatarUrl ||
+          u.profile?.avatarUrl ||
+          u.avatar?.url ||
+          u.photoURL ||
+          u.image ||
+          u.picture ||
+          (u.avatarPublicId && cloudinaryBase ? `${cloudinaryBase}/${u.avatarPublicId}` : '')
+        );
+
+        // If backend gives relative path like /uploads/..., prefix server origin
+        if (resolvedAvatar && resolvedAvatar.startsWith('/')) {
+          const apiUrl = (import.meta as any)?.env?.VITE_API_URL as string | undefined;
+          try {
+            const origin = apiUrl ? new URL(apiUrl).origin : window.location.origin;
+            resolvedAvatar = `${origin}${resolvedAvatar}`;
+          } catch {
+            resolvedAvatar = `${window.location.origin}${resolvedAvatar}`;
+          }
+        }
+
+        return {
+          _id: u._id,
+          username: u.username,
+          fullName: u.fullName,
+          avatarUrl: resolvedAvatar || '',
+          points: u.points || 0,
+          codecoins: u.codecoins || 0,
+          ranking: u.ranking || 0,
+          solvedProblems: u.solvedProblems || [],
+          totalSolved: u.totalSolved || 0
+        } as LeaderboardUser;
+      });
       
       setUsers(formattedUsers);
       setFilteredUsers(formattedUsers);
@@ -300,8 +343,14 @@ export const Leaderboard: React.FC = () => {
               className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl dark:shadow-gray-900/20 dark:hover:shadow-gray-900/40 transition-all duration-300 transform hover:scale-105"
             >
               <div className="relative mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200 dark:ring-gray-700">
-                  <span className="text-gray-700 dark:text-gray-300 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200 dark:ring-gray-700 overflow-hidden bg-gray-100 dark:bg-gray-700">
+                  {(() => { const a = users[1]?.avatarUrl || (currentUser?.username === users[1]?.username ? currentUser?.avatarUrl : '');
+                    return a ? (
+                      <img src={a} alt={users[1]?.username} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-gray-700 dark:text-gray-300 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                    );
+                  })()}
                 </div>
                 <div className="absolute -top-1 -right-1 bg-gray-500 dark:bg-gray-400 rounded-full p-1 shadow-lg">
                   <span className="text-white dark:text-gray-900 font-bold text-xs">2</span>
@@ -325,8 +374,14 @@ export const Leaderboard: React.FC = () => {
               className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30 border-2 border-yellow-300 dark:border-yellow-600 rounded-xl p-4 text-center shadow-xl hover:shadow-2xl dark:shadow-yellow-900/20 dark:hover:shadow-yellow-900/40 transform hover:scale-105 transition-all duration-300"
             >
               <div className="relative mb-3">
-                <div className="w-12 h-12 bg-gradient-to-br from-yellow-200 to-orange-200 dark:from-yellow-700 dark:to-orange-700 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300 dark:ring-yellow-600">
-                  <span className="text-yellow-800 dark:text-yellow-200 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300 dark:ring-yellow-600 overflow-hidden bg-yellow-100 dark:bg-yellow-700">
+                  {(() => { const a = users[0]?.avatarUrl || (currentUser?.username === users[0]?.username ? currentUser?.avatarUrl : '');
+                    return a ? (
+                      <img src={a} alt={users[0]?.username} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-yellow-800 dark:text-yellow-200 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                    );
+                  })()}
                 </div>
                 <div className="absolute -top-2 -right-2 bg-yellow-500 dark:bg-yellow-600 rounded-full p-1.5 shadow-xl">
                   <Crown className="w-3 h-3 text-white" />
@@ -351,8 +406,14 @@ export const Leaderboard: React.FC = () => {
               className="bg-white dark:bg-gray-900 border-2 border-orange-200 dark:border-orange-700 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl dark:shadow-gray-900/20 dark:hover:shadow-gray-900/40 transition-all duration-300 transform hover:scale-105"
             >
               <div className="relative mb-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-orange-100 to-red-100 dark:from-orange-800 dark:to-red-800 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200 dark:ring-orange-700">
-                  <span className="text-orange-800 dark:text-orange-200 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200 dark:ring-orange-700 overflow-hidden bg-orange-100 dark:bg-orange-800">
+                  {(() => { const a = users[2]?.avatarUrl || (currentUser?.username === users[2]?.username ? currentUser?.avatarUrl : '');
+                    return a ? (
+                      <img src={a} alt={users[2]?.username} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-orange-800 dark:text-orange-200 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                    );
+                  })()}
                 </div>
                 <div className="absolute -top-1 -right-1 bg-orange-500 dark:bg-orange-600 rounded-full p-1 shadow-lg">
                   <span className="text-white font-bold text-xs">3</span>
@@ -420,8 +481,14 @@ export const Leaderboard: React.FC = () => {
                     
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
                       <div className="relative flex-shrink-0">
-                        <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-900 rounded-full flex items-center justify-center ring-2 ring-gray-200 dark:ring-blue-700 transition-colors duration-300">
-                          <span className="text-blue-700 dark:text-blue-300 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
+                        <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-gray-200 dark:ring-blue-700 transition-colors duration-300 overflow-hidden bg-blue-100 dark:bg-blue-900">
+                          {(() => { const a = user.avatarUrl || (currentUser?.username === user.username ? currentUser?.avatarUrl : '');
+                            return a ? (
+                              <img src={a} alt={user.username} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-blue-700 dark:text-blue-300 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
+                            );
+                          })()}
                         </div>
                         {rank <= 10 && (
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center">
@@ -432,9 +499,19 @@ export const Leaderboard: React.FC = () => {
                       
                       <div className="min-w-0 flex-1">
                         <p className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">
-                          {user.fullName || user.username}
+                          {currentUser?.username === user.username ? (
+                            <Link to="/profile">{user.fullName || user.username}</Link>
+                          ) : (
+                            user.fullName || user.username
+                          )}
                         </p>
-                        <p className="text-gray-600 dark:text-gray-300 text-xs truncate transition-colors duration-300">@{user.username}</p>
+                        <p className="text-gray-600 dark:text-gray-300 text-xs truncate transition-colors duration-300">
+                          {currentUser?.username === user.username ? (
+                            <Link to="/profile">@{user.username}</Link>
+                          ) : (
+                            <>@{user.username}</>
+                          )}
+                        </p>
                       </div>
                     </div>
                   </div>

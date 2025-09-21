@@ -200,7 +200,7 @@ export const Header: React.FC = () => {
                   to="/company"
                   className="flex items-center px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 group whitespace-nowrap"
                 >
-                  <span className="px-3 py-2">Company</span>
+                  <span className="px-3 py-2">{t('common.company')}</span>
                   <ChevronDown className="w-3 h-3 ml-1 transition-transform group-hover:rotate-180 duration-300" />
                 </Link>
                 <div className="absolute left-0 mt-1 w-36 bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-blue-200/60 dark:border-blue-800/60 rounded-lg shadow-lg shadow-blue-500/10 dark:shadow-blue-900/20 py-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform translate-y-1 group-hover:translate-y-0 z-50">
@@ -208,19 +208,19 @@ export const Header: React.FC = () => {
                     to="/about"
                     className="flex items-center px-3 py-2 text-xs text-slate-600 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-indigo-500/5 dark:hover:from-blue-500/10 dark:hover:to-indigo-500/10 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200"
                   >
-                    About Us
+                    {t('common.about_us')}
                   </Link>
                   <Link
                     to="/careers"
                     className="flex items-center px-3 py-2 text-xs text-slate-600 dark:text-gray-300 hover:bg-gradient-to-r hover:from-blue-500/5 hover:to-sky-500/5 dark:hover:from-blue-500/10 dark:hover:to-sky-500/10 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200"
                   >
-                    Careers
+                    {t('common.careers')}
                   </Link>
                   <Link
                     to="/press"
                     className="flex items-center px-3 py-2 text-xs text-slate-600 dark:text-gray-300 hover:bg-gradient-to-r hover:from-indigo-500/5 hover:to-blue-500/5 dark:hover:from-indigo-500/10 dark:hover:to-blue-500/10 hover:text-blue-700 dark:hover:text-blue-400 transition-all duration-200"
                   >
-                    Press
+                    {t('common.press')}
                   </Link>
                 </div>
               </div>
@@ -230,7 +230,7 @@ export const Header: React.FC = () => {
                 to="/contact"
                 className="flex items-center px-2 py-1.5 rounded-lg text-xs font-medium text-slate-700 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 transition-all duration-300 group relative ml-1 whitespace-nowrap"
               >
-                <span className="relative z-10">Contact</span>
+                <span className="relative z-10">{t('common.contact')}</span>
                 <span className="absolute -bottom-0.5 left-1/2 w-0 h-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 group-hover:w-[calc(100%-0.5rem)] transition-all duration-300 transform -translate-x-1/2"></span>
               </Link>
             </nav>
@@ -264,7 +264,7 @@ export const Header: React.FC = () => {
                   aria-expanded={showDropdown}
                   aria-haspopup="true"
                 >
-                  <span className="sr-only">Open user menu</span>
+                  <span className="sr-only">{t('user.open_menu')}</span>
                   <div className="relative flex-shrink-0">
                     {userInfo.avatarUrl ? (
                       <img src={userInfo.avatarUrl} alt={userInfo.username} className="h-5 w-5 rounded-full object-cover border border-blue-200 dark:border-blue-700" />
@@ -283,7 +283,7 @@ export const Header: React.FC = () => {
                       {userInfo.isAdmin && (
                         <span className="text-blue-600 dark:text-blue-400 text-xs font-medium flex items-center">
                           <Shield className="w-2 h-2 mr-0.5" />
-                          Admin
+                          {t('user.admin')}
                         </span>
                       )}
                     </div>
@@ -326,7 +326,7 @@ export const Header: React.FC = () => {
                             {userInfo.isAdmin && (
                               <span className="inline-flex items-center text-blue-600 dark:text-blue-400 text-xs font-medium mt-0.5">
                                 <Shield className="w-2 h-2 mr-0.5" />
-                                Administrator
+                                {t('user.admin')}
                               </span>
                             )}
                           </div>
@@ -339,17 +339,17 @@ export const Header: React.FC = () => {
                           <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-md p-1.5 border border-blue-500/20 dark:border-blue-500/30">
                             <Award className="w-3 h-3 text-blue-500 dark:text-blue-400 mb-0.5" />
                             <div className="text-blue-700 dark:text-blue-300 font-semibold text-xs">{userInfo.codecoins || 0}</div>
-                            <div className="text-slate-600 dark:text-gray-400 text-xs">Coins</div>
+                            <div className="text-slate-600 dark:text-gray-400 text-xs">{t('stats.coins')}</div>
                           </div>
                           <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20 rounded-md p-1.5 border border-sky-500/20 dark:border-sky-500/30">
                             <WalletIcon className="w-3 h-3 text-sky-500 dark:text-sky-400 mb-0.5" />
                             <div className="text-sky-700 dark:text-sky-300 font-semibold text-xs">${(userInfo.walletBalance || 0).toFixed(0)}</div>
-                            <div className="text-slate-600 dark:text-gray-400 text-xs">Wallet</div>
+                            <div className="text-slate-600 dark:text-gray-400 text-xs">{t('stats.wallet')}</div>
                           </div>
                           <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 dark:from-indigo-500/20 dark:to-blue-500/20 rounded-md p-1.5 border border-indigo-500/20 dark:border-indigo-500/30">
                             <Trophy className="w-3 h-3 text-indigo-500 dark:text-indigo-400 mb-0.5" />
                             <div className="text-indigo-700 dark:text-indigo-300 font-semibold text-xs">{userInfo.points || 0}</div>
-                            <div className="text-slate-600 dark:text-gray-400 text-xs">Points</div>
+                            <div className="text-slate-600 dark:text-gray-400 text-xs">{t('stats.points')}</div>
                           </div>
                         </div>
                       </div>
@@ -363,7 +363,7 @@ export const Header: React.FC = () => {
                           onClick={() => setShowDropdown(false)}
                         >
                           <User className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors" />
-                          <span>Your Profile</span>
+                          <span>{t('user.your_profile')}</span>
                         </Link>
 
                         <Link
@@ -373,7 +373,7 @@ export const Header: React.FC = () => {
                           onClick={() => setShowDropdown(false)}
                         >
                           <WalletIcon className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors" />
-                          <span>Wallet</span>
+                          <span>{t('stats.wallet')}</span>
                           <span className="ml-auto text-sky-600 dark:text-sky-400 text-xs font-semibold">${(userInfo.walletBalance || 0).toFixed(2)}</span>
                         </Link>
 
@@ -384,7 +384,7 @@ export const Header: React.FC = () => {
                           onClick={() => setShowDropdown(false)}
                         >
                           <Settings className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-indigo-500 dark:group-hover:text-indigo-400 transition-colors" />
-                          <span>Settings</span>
+                          <span>{t('user.settings')}</span>
                         </Link>
 
                         {userInfo.isAdmin && (
@@ -395,8 +395,8 @@ export const Header: React.FC = () => {
                             onClick={() => setShowDropdown(false)}
                           >
                             <Shield className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors" />
-                            <span>Admin Panel</span>
-                            <span className="ml-auto bg-gradient-to-r from-purple-500 to-indigo-500 dark:from-purple-400 dark:to-indigo-400 text-white dark:text-gray-900 text-xs px-1.5 py-0.5 rounded-full">Admin</span>
+                            <span>{t('user.admin_panel')}</span>
+                            <span className="ml-auto bg-gradient-to-r from-purple-500 to-indigo-500 dark:from-purple-400 dark:to-indigo-400 text-white dark:text-gray-900 text-xs px-1.5 py-0.5 rounded-full">{t('user.admin')}</span>
                           </Link>
                         )}
 
@@ -410,7 +410,7 @@ export const Header: React.FC = () => {
                             role="menuitem"
                           >
                             <LogOut className="mr-2 h-3 w-3 text-slate-500 dark:text-gray-400 group-hover:text-red-500 dark:group-hover:text-red-400 transition-colors" />
-                            <span>Sign out</span>
+                            <span>{t('user.sign_out')}</span>
                           </button>
                         </div>
                       </div>
@@ -424,14 +424,13 @@ export const Header: React.FC = () => {
                   to="/login"
                   className="px-3 py-1.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-md hover:from-blue-400 hover:to-indigo-500 dark:hover:from-blue-500 dark:hover:to-indigo-600 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 dark:shadow-blue-900/20 hover:shadow-blue-500/30 dark:hover:shadow-blue-900/30 hover:scale-105 transform whitespace-nowrap text-xs"
                 >
-                  <span className="relative z-10">Log in</span>
-                  <div className="absolute inset-0 bg-blue-50 dark:bg-blue-900/30 rounded-md opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                  <span className="relative z-10">{t('auth.login')}</span>
                 </Link>
                 <Link
                   to="/register"
                   className="px-3 py-1.5 text-white bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-md hover:from-blue-400 hover:to-indigo-500 dark:hover:from-blue-500 dark:hover:to-indigo-600 transition-all duration-300 font-medium shadow-lg shadow-blue-500/20 dark:shadow-blue-900/20 hover:shadow-blue-500/30 dark:hover:shadow-blue-900/30 hover:scale-105 transform whitespace-nowrap text-xs"
                 >
-                  SignUp
+                  {t('auth.signup')}
                 </Link>
               </div>
             )}
@@ -484,34 +483,34 @@ export const Header: React.FC = () => {
 
                 {/* Mobile Company Section */}
                 <div className="pt-3 mt-3 border-t border-blue-200/50 dark:border-blue-800/50">
-                  <div className="text-slate-500 dark:text-gray-400 text-xs font-medium mb-2 px-3">Company</div>
+                  <div className="text-slate-500 dark:text-gray-400 text-xs font-medium mb-2 px-3">{t('common.company')}</div>
                   <Link
                     to="/company"
                     className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 text-xs rounded-md mx-2"
                     onClick={() => setShowMobileMenu(false)}
                   >
-                    Company
+                    {t('common.company')}
                   </Link>
                   <Link
                     to="/about"
                     className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 text-xs rounded-md mx-2"
                     onClick={() => setShowMobileMenu(false)}
                   >
-                    About Us
+                    {t('common.about_us')}
                   </Link>
                   <Link
                     to="/careers"
                     className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 text-xs rounded-md mx-2"
                     onClick={() => setShowMobileMenu(false)}
                   >
-                    Careers
+                    {t('common.careers')}
                   </Link>
                   <Link
                     to="/press"
                     className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 text-xs rounded-md mx-2"
                     onClick={() => setShowMobileMenu(false)}
                   >
-                    Press
+                    {t('common.press')}
                   </Link>
                 </div>
 
@@ -521,7 +520,7 @@ export const Header: React.FC = () => {
                   className="flex items-center px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/30 transition-all duration-300 font-medium rounded-md text-xs"
                   onClick={() => setShowMobileMenu(false)}
                 >
-                  Contact
+                  {t('common.contact')}
                 </Link>
 
                 {/* Mobile auth buttons */}
@@ -532,14 +531,14 @@ export const Header: React.FC = () => {
                       className="flex items-center justify-center w-full px-3 py-2 text-slate-600 dark:text-gray-300 hover:text-blue-700 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-all duration-300 text-xs"
                       onClick={() => setShowMobileMenu(false)}
                     >
-                      Log in
+                      {t('auth.login')}
                     </Link>
                     <Link
                       to="/register"
                       className="flex items-center justify-center w-full px-3 py-2 text-white bg-gradient-to-r from-blue-500 to-indigo-600 dark:from-blue-600 dark:to-indigo-700 rounded-md hover:from-blue-400 hover:to-indigo-500 dark:hover:from-blue-500 dark:hover:to-indigo-600 transition-all duration-300 shadow-md text-xs"
                       onClick={() => setShowMobileMenu(false)}
                     >
-                      Create Free Account
+                      {t('auth.create_free_account')}
                     </Link>
                   </div>
                 )}

@@ -104,6 +104,25 @@ export const Settings: React.FC = () => {
     }
   }, []);
 
+  // List of IANA time zones for the Timezone dropdown
+  const timezoneOptions = useMemo(() => {
+    try {
+      const tz = (Intl as any).supportedValuesOf?.('timeZone');
+      if (Array.isArray(tz) && tz.length) return tz as string[];
+    } catch {}
+    // Fallback shortlist
+    return [
+      'UTC',
+      'Asia/Kolkata',
+      'Asia/Dubai',
+      'Europe/London',
+      'Europe/Berlin',
+      'America/New_York',
+      'America/Los_Angeles',
+      'Australia/Sydney',
+    ];
+  }, []);
+
   if (!user) {
     return <Navigate to="/login" replace />;
   }
@@ -150,6 +169,8 @@ export const Settings: React.FC = () => {
     const prefTheme = (user?.preferences?.theme as string) || 'auto';
     const uiTheme = prefTheme === 'auto' ? 'system' : (prefTheme as any);
     try { setUiTheme(uiTheme); } catch {}
+    // Apply app language from user preference
+    try { setLanguage((user?.preferences?.language as any) || 'en'); } catch {}
   }, [user]);
 
   const handleAccountUpdate = async (e: React.FormEvent) => {
@@ -295,6 +316,8 @@ export const Settings: React.FC = () => {
       // Also apply UI theme immediately
       const uiTheme = (theme as any) === 'auto' ? 'system' : (theme as any);
       try { setUiTheme(uiTheme); } catch {}
+      // Apply app language after saving preferences
+      try { setLanguage(language as any); } catch {}
     } catch (e) {
       toast.error('Failed to update preferences');
     } finally {
@@ -1025,26 +1048,74 @@ export const Settings: React.FC = () => {
 
                       <div>
                         <label className="block text-sm font-medium adaptive-text mb-2">Editor Font Size</label>
-                        <input
-                          type="number"
-                          min={10}
-                          max={24}
-                          value={editorPrefs.fontSize}
-                          onChange={(e) => setEditorPrefs({ ...editorPrefs, fontSize: Number(e.target.value) })}
-                          className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
-                        />
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="px-3 py-2 rounded-lg adaptive-accent hover:opacity-90"
+                            disabled={(editorPrefs.fontSize ?? 14) <= 10}
+                            onClick={() =>
+                              setEditorPrefs((p) => ({ ...p, fontSize: Math.max(10, (p.fontSize ?? 14) - 1) }))
+                            }
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min={10}
+                            max={24}
+                            value={editorPrefs.fontSize}
+                            onChange={(e) => setEditorPrefs({ ...editorPrefs, fontSize: Number(e.target.value) })}
+                            className="w-24 px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition text-center"
+                          />
+                          <button
+                            type="button"
+                            className="px-3 py-2 rounded-lg adaptive-accent hover:opacity-90"
+                            disabled={(editorPrefs.fontSize ?? 14) >= 24}
+                            onClick={() =>
+                              setEditorPrefs((p) => ({ ...p, fontSize: Math.min(24, (p.fontSize ?? 14) + 1) }))
+                            }
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium adaptive-text mb-2">Editor Tab Size</label>
-                        <select
-                          value={editorPrefs.tabSize}
-                          onChange={(e) => setEditorPrefs({ ...editorPrefs, tabSize: Number(e.target.value) })}
-                          className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
-                        >
-                          <option value={2}>2</option>
-                          <option value={4}>4</option>
-                          <option value={8}>8</option>
-                        </select>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            className="px-3 py-2 rounded-lg adaptive-accent hover:opacity-90"
+                            disabled={[2,4,8].indexOf(editorPrefs.tabSize) <= 0}
+                            onClick={() => {
+                              const steps = [2, 4, 8];
+                              const idx = Math.max(0, steps.indexOf(editorPrefs.tabSize) - 1);
+                              setEditorPrefs({ ...editorPrefs, tabSize: steps[idx] });
+                            }}
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            min={1}
+                            max={8}
+                            step={1}
+                            value={editorPrefs.tabSize}
+                            onChange={(e) => setEditorPrefs({ ...editorPrefs, tabSize: Math.min(8, Math.max(1, Number(e.target.value))) })}
+                            className="w-24 px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition text-center"
+                          />
+                          <button
+                            type="button"
+                            className="px-3 py-2 rounded-lg adaptive-accent hover:opacity-90"
+                            disabled={[2,4,8].indexOf(editorPrefs.tabSize) >= 2}
+                            onClick={() => {
+                              const steps = [2, 4, 8];
+                              const idx = Math.min(steps.length - 1, steps.indexOf(editorPrefs.tabSize) + 1);
+                              setEditorPrefs({ ...editorPrefs, tabSize: steps[idx] });
+                            }}
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-sm font-medium adaptive-text mb-2">Editor Theme</label>
@@ -1083,13 +1154,36 @@ export const Settings: React.FC = () => {
                       {/* Timezone */}
                       <div>
                         <label className="block text-sm font-medium adaptive-text mb-2">Timezone</label>
-                        <input
-                          type="text"
-                          value={preferences.timezone}
-                          onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
-                          className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
-                          placeholder="e.g., UTC, Asia/Kolkata"
-                        />
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <select
+                            value={preferences.timezone}
+                            onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
+                            className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                          >
+                            {/* Ensure current value is present */}
+                            {!timezoneOptions.includes(preferences.timezone) && (
+                              <option value={preferences.timezone}>{preferences.timezone}</option>
+                            )}
+                            {timezoneOptions.map((tz) => (
+                              <option key={tz} value={tz}>
+                                {tz}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            className="px-4 py-3 adaptive-accent rounded-lg"
+                            title="Detect from your system"
+                            onClick={() => {
+                              try {
+                                const sysTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+                                if (sysTz) setPreferences((p) => ({ ...p, timezone: sysTz }));
+                              } catch {}
+                            }}
+                          >
+                            Detect
+                          </button>
+                        </div>
                         <p className="text-xs adaptive-text-muted mt-1">Used for digests and date displays.</p>
                       </div>
                     </div>

@@ -1,9 +1,11 @@
 import React from 'react';
 import { Github, Twitter, Mail, ExternalLink, MessageCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useI18n } from '@/context/I18nContext';
 
 export default function Footer() {
   const navigate = useNavigate();
+  const { t } = useI18n();
   const handleNavigation = (path: string) => {
     if (/^https?:\/\//i.test(path)) {
       window.open(path, '_blank', 'noopener,noreferrer');
@@ -123,7 +125,7 @@ export default function Footer() {
                 <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-blue-300 tracking-tight mb-2 transition-colors duration-300">
                   <Link to="/company">
                     <span className="bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 dark:from-indigo-300 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent cursor-pointer hover:from-indigo-500 hover:via-blue-500 hover:to-purple-500 transition-all duration-300">
-                      Company
+                      {t('common.company')}
                     </span>
                   </Link>
                 </h3>
@@ -133,20 +135,20 @@ export default function Footer() {
               {/* Vertical List for better mobile layout */}
               <ul className="space-y-2">
                 {[
-                  { name: "About", link: "/about" },
-                  { name: "Careers", link: "/careers" },
-                  { name: "Press", link: "/press" },
-                  { name: "Contact", link: "/contact" },
-                  { name: "Blog", link: "/blog" },
-                  { name: "Help Center", link: "/help" },
+                  { nameKey: 'common.about', link: '/about' },
+                  { nameKey: 'common.careers', link: '/careers' },
+                  { nameKey: 'common.press', link: '/press' },
+                  { nameKey: 'common.contact', link: '/contact' },
+                  { nameKey: 'common.blog', link: '/blog' },
+                  { nameKey: 'common.help_center', link: '/help' },
                 ].map((item) => (
-                  <li key={item.name}>
+                  <li key={item.link}>
                     <Link
                       to={item.link}
                       className="group flex items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all duration-300 py-1 px-2 rounded-lg hover:bg-blue-50/50 dark:hover:bg-gray-800/50 border border-transparent hover:border-blue-200/50 dark:hover:border-gray-600/50"
                     >
                       <span className="font-semibold tracking-wide group-hover:translate-x-1 transition-transform duration-300 text-xs sm:text-sm">
-                        {item.name}
+                        {t(item.nameKey as any)}
                       </span>
                       <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all duration-300 text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
                     </Link>
@@ -162,7 +164,7 @@ export default function Footer() {
               <div className="relative">
                 <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-purple-300 tracking-tight mb-2 transition-colors duration-300">
                   <span className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 dark:from-purple-300 dark:via-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
-                    Stay Connected
+                    {t('common.stay_connected')}
                   </span>
                 </h3>
                 <div className="w-8 h-0.5 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 dark:from-purple-300 dark:via-blue-400 dark:to-indigo-400 rounded-full"></div>
@@ -170,7 +172,7 @@ export default function Footer() {
 
               <div className="space-y-3">
                 <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm leading-relaxed transition-colors duration-300 font-medium">
-                  Join our community of algorithmic traders and stay updated.
+                  {t('common.stay_connected')}
                 </p>
 
                 <div className="space-y-2">
@@ -178,13 +180,13 @@ export default function Footer() {
                     onClick={() => handleNavigation('/newsletter')}
                     className="w-full px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-600 text-white rounded-lg hover:from-blue-500 hover:to-indigo-500 dark:hover:from-blue-400 dark:hover:to-indigo-500 transition-all duration-300 text-xs sm:text-sm font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5"
                   >
-                    Subscribe Newsletter
+                    {t('common.subscribe_newsletter')}
                   </button>
                   <button
                     onClick={() => handleNavigation('/community')}
                     className="w-full px-3 py-2 border-2 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-300 text-xs sm:text-sm font-semibold hover:-translate-y-0.5"
                   >
-                    Join Community
+                    {t('common.join_community')}
                   </button>
                 </div>
               </div>
@@ -197,7 +199,7 @@ export default function Footer() {
               <div className="relative">
                 <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-cyan-300 tracking-tight mb-2 transition-colors duration-300">
                   <span className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 dark:from-cyan-300 dark:via-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
-                    Legal
+                    {t('common.legal')}
                   </span>
                 </h3>
                 <div className="w-8 h-0.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 dark:from-cyan-300 dark:via-blue-400 dark:to-indigo-400 rounded-full"></div>
@@ -207,19 +209,28 @@ export default function Footer() {
                 <p className="text-gray-800 dark:text-gray-200 text-xs font-semibold tracking-wide transition-colors duration-300">
                   © 2025
                   <span className="text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-300 dark:via-indigo-400 dark:to-purple-400 bg-clip-text font-bold mx-1">AlgoBucks</span>
-                  All rights reserved.
+                  {t('common.all_rights_reserved')}
                 </p>
 
                 <div className="space-y-1">
-                  {['Terms of Service', 'Privacy Policy', 'Cookie Policy'].map((name) => (
-                    <Link
-                      key={name}
-                      to={`/${name.toLowerCase().replace(/\s+/g, '-')}`}
-                      className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-blue-50/30 dark:hover:bg-gray-800/50 text-xs"
-                    >
-                      {name}
-                    </Link>
-                  ))}
+                  <Link
+                    to="/terms-of-service"
+                    className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-blue-50/30 dark:hover:bg-gray-800/50 text-xs"
+                  >
+                    {t('common.terms')}
+                  </Link>
+                  <Link
+                    to="/privacy-policy"
+                    className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-blue-50/30 dark:hover:bg-gray-800/50 text-xs"
+                  >
+                    {t('common.privacy')}
+                  </Link>
+                  <Link
+                    to="/cookie-policy"
+                    className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-blue-50/30 dark:hover:bg-gray-800/50 text-xs"
+                  >
+                    {t('common.cookies')}
+                  </Link>
                 </div>
               </div>
             </div>
