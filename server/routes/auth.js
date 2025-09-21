@@ -4,7 +4,7 @@ import crypto from 'crypto';
 import passport from 'passport';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
-import { sendVerificationEmail } from '../config/auth.js';
+import { sendEmail } from '../utils/mailer.js';
 import config from '../config/config.js';
 
 // Helper: is user currently blocked (without modifying DB)
@@ -73,10 +73,10 @@ router.post('/register', async (req, res) => {
       });
     }
 
-    // Generate verification token and OTP
-    const verificationToken = crypto.randomBytes(20).toString('hex');
-    const verificationTokenExpires = Date.now() + 3600000; // 1 hour
+    // Generate OTP and set as verification token (expires in 1 hour)
     const otp = generateOTP();
+    const verificationToken = otp;
+    const verificationTokenExpires = Date.now() + 60 * 60 * 1000; // 1 hour
 
     // Create new user
     const user = new User({
@@ -93,8 +93,20 @@ router.post('/register', async (req, res) => {
     await user.save();
 
     // Send verification email with OTP
-    const emailSent = await sendVerificationEmail(email, otp);
-    if (!emailSent) {
+    try {
+      const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
+      const text = `Welcome to AlgoBucks! Your verification code is ${otp}. It expires in 60 minutes.`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2>Verify your email</h2>
+          <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>
+          <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
+          <p style="color:#555">This code expires in <strong>60 minutes</strong>.</p>
+        </div>
+      `;
+      await sendEmail({ to: email, subject, text, html });
+    } catch (e) {
+      console.error('Send verification email error:', e);
       return res.status(500).json({ message: 'Failed to send verification email' });
     }
 
@@ -286,12 +298,24 @@ router.post('/resend-verification', async (req, res) => {
     // Generate new OTP
     const otp = generateOTP();
     user.verificationToken = otp;
-    user.verificationTokenExpires = Date.now() + 3600000; // 1 hour
+    user.verificationTokenExpires = Date.now() + 60 * 60 * 1000; // 1 hour
     await user.save();
 
     // Send verification email
-    const emailSent = await sendVerificationEmail(email, otp);
-    if (!emailSent) {
+    try {
+      const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
+      const text = `Your verification code is ${otp}. It expires in 60 minutes.`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2>Verify your email</h2>
+          <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>
+          <p style=\"font-size: 22px; font-weight: 700; letter-spacing: 2px;\">${otp}</p>
+          <p style=\"color:#555\">This code expires in <strong>60 minutes</strong>.</p>
+        </div>
+      `;
+      await sendEmail({ to: email, subject, text, html });
+    } catch (e) {
+      console.error('Resend verification email error:', e);
       return res.status(500).json({ message: 'Failed to send verification email' });
     }
 
