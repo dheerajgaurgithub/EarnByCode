@@ -15,6 +15,76 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Get user profile by username (public)
+router.get('/username/:username', optionalAuth, async (req, res) => {
+  try {
+    const target = await User.findOne({ username: req.params.username })
+      .select('-password -resetPasswordToken -resetPasswordExpire -verificationToken -verificationTokenExpires')
+      .populate('solvedProblems', 'title difficulty')
+      .populate('contestsParticipated', 'title status');
+
+    if (!target) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    const isOwner = req.user && String(req.user._id || req.user.id) === String(target._id);
+    const isAdmin = req.user && req.user.isAdmin;
+    const privacy = (target.preferences && target.preferences.privacy) || {};
+    const visibility = privacy.profileVisibility || 'public';
+
+    if (isOwner || isAdmin) {
+      return res.json({ user: target });
+    }
+
+    if (visibility === 'private' || (visibility === 'registered' && !req.user)) {
+      const minimal = {
+        _id: target._id,
+        username: target.username,
+        fullName: target.fullName,
+        avatarUrl: target.avatarUrl,
+        message: visibility === 'private' ? 'This profile is private' : 'This profile is visible to registered users only'
+      };
+      return res.json({ user: minimal });
+    }
+
+    const filtered = target.toObject();
+    delete filtered.email;
+    delete filtered.resetPasswordToken;
+    delete filtered.resetPasswordExpire;
+    delete filtered.verificationToken;
+    delete filtered.verificationTokenExpires;
+
+    if (privacy.showEmail) {
+      filtered.email = target.email;
+    }
+
+    if (!privacy.showSolvedProblems) {
+      delete filtered.solvedProblems;
+      filtered.totalSolved = Array.isArray(target.solvedProblems) ? target.solvedProblems.length : 0;
+    }
+
+    if (!privacy.showContestHistory) {
+      delete filtered.contestsParticipated;
+    }
+
+    if (privacy.showBio === false) {
+      delete filtered.bio;
+    }
+
+    if (privacy.showSocialLinks === false) {
+      delete filtered.website;
+      delete filtered.github;
+      delete filtered.linkedin;
+      delete filtered.twitter;
+    }
+
+    return res.json({ user: filtered });
+  } catch (error) {
+    console.error('Get user by username error:', error);
+    res.status(500).json({ message: 'Failed to fetch user' });
+  }
+});
+
 // Multer setup: in-memory storage, 2MB limit, filter images only
 const upload = multer({
   storage: multer.memoryStorage(),

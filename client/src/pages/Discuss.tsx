@@ -490,22 +490,20 @@ const Discuss: React.FC = () => {
                   <div key={discussion._id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-blue-800 rounded-lg shadow-sm p-4 transition-colors duration-300">
                     <div className="flex items-start space-x-3">
                       <div className="flex-shrink-0">
-                        <div className="h-8 w-8 rounded-full overflow-hidden ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 font-medium text-sm transition-colors duration-300">
-                          {discussion.author?.avatarUrl ? (
-                            <img src={discussion.author.avatarUrl} alt={discussion.author.username} className="w-full h-full object-cover" />
-                          ) : (
-                            discussion.author?.username?.charAt(0).toUpperCase() || 'U'
-                          )}
-                        </div>
+                        <Link to={`/u/${discussion.author?.username || ''}`} className="block">
+                          <div className="h-8 w-8 rounded-full overflow-hidden ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 font-medium text-sm transition-colors duration-300">
+                            {discussion.author?.avatarUrl ? (
+                              <img src={discussion.author.avatarUrl} alt={discussion.author.username} className="w-full h-full object-cover" />
+                            ) : (
+                              discussion.author?.username?.charAt(0).toUpperCase() || 'U'
+                            )}
+                          </div>
+                        </Link>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <h3 className="text-xs font-medium text-gray-900 dark:text-blue-400 transition-colors duration-300">
-                            {user && discussion.author?.username === user.username ? (
-                              <Link to="/profile">{discussion.author?.fullName || discussion.author?.username}</Link>
-                            ) : (
-                              discussion.author?.fullName || discussion.author?.username || 'Anonymous'
-                            )}
+                            <Link to={`/u/${discussion.author?.username || ''}`}>{discussion.author?.fullName || discussion.author?.username || 'Anonymous'}</Link>
                           </h3>
                           <span className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">
                             {formatDate(discussion.createdAt)}
@@ -586,22 +584,20 @@ const Discuss: React.FC = () => {
                                       return (
                                         <div key={reply._id} className="bg-gray-50 dark:bg-gray-800 p-3 rounded transition-colors duration-300">
                                           <div className="flex items-start space-x-3">
-                                            <div className="h-6 w-6 rounded-full overflow-hidden ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xs font-medium flex-shrink-0 transition-colors duration-300">
-                                              {author?.avatarUrl ? (
-                                                <img src={author.avatarUrl} alt={username} className="w-full h-full object-cover" />
-                                              ) : (
-                                                userInitial
-                                              )}
-                                            </div>
+                                            <Link to={`/u/${username}`} className="block">
+                                              <div className="h-6 w-6 rounded-full overflow-hidden ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xs font-medium flex-shrink-0 transition-colors duration-300">
+                                                {author?.avatarUrl ? (
+                                                  <img src={author.avatarUrl} alt={username} className="w-full h-full object-cover" />
+                                                ) : (
+                                                  userInitial
+                                                )}
+                                              </div>
+                                            </Link>
                                             
                                             <div className="flex-1 min-w-0">
                                               <div className="flex items-center justify-between">
                                                 <span className="text-xs font-medium text-gray-900 dark:text-blue-400 transition-colors duration-300">
-                                                  {user && username === user.username ? (
-                                                    <Link to="/profile">{author?.fullName || username}</Link>
-                                                  ) : (
-                                                    author?.fullName || username
-                                                  )}
+                                                  <Link to={`/u/${username}`}>{author?.fullName || username}</Link>
                                                 </span>
                                                 <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ml-2 transition-colors duration-300">
                                                   {formatDate(reply.createdAt)}

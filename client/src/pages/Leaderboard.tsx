@@ -343,15 +343,17 @@ export const Leaderboard: React.FC = () => {
               className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl dark:shadow-gray-900/20 dark:hover:shadow-gray-900/40 transition-all duration-300 transform hover:scale-105"
             >
               <div className="relative mb-3">
-                <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200 dark:ring-gray-700 overflow-hidden bg-gray-100 dark:bg-gray-700">
-                  {(() => { const a = users[1]?.avatarUrl || (currentUser?.username === users[1]?.username ? currentUser?.avatarUrl : '');
-                    return a ? (
-                      <img src={a} alt={users[1]?.username} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-gray-700 dark:text-gray-300 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
-                    );
-                  })()}
-                </div>
+                <Link to={`/u/${users[1]?.username}`} className="block">
+                  <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200 dark:ring-gray-700 overflow-hidden bg-gray-100 dark:bg-gray-700">
+                    {(() => { const a = users[1]?.avatarUrl || (currentUser?.username === users[1]?.username ? currentUser?.avatarUrl : '');
+                      return a ? (
+                        <img src={a} alt={users[1]?.username} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-gray-700 dark:text-gray-300 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                      );
+                    })()}
+                  </div>
+                </Link>
                 <div className="absolute -top-1 -right-1 bg-gray-500 dark:bg-gray-400 rounded-full p-1 shadow-lg">
                   <span className="text-white dark:text-gray-900 font-bold text-xs">2</span>
                 </div>
@@ -359,8 +361,12 @@ export const Leaderboard: React.FC = () => {
                   <Medal className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 </div>
               </div>
-              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">{users[1]?.fullName || users[1]?.username}</h3>
-              <p className="text-gray-600 dark:text-gray-300 text-xs mb-2 truncate transition-colors duration-300">@{users[1]?.username}</p>
+              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">
+                <Link to={`/u/${users[1]?.username}`}>{users[1]?.fullName || users[1]?.username}</Link>
+              </h3>
+              <p className="text-gray-600 dark:text-gray-300 text-xs mb-2 truncate transition-colors duration-300">
+                <Link to={`/u/${users[1]?.username}`}>@{users[1]?.username}</Link>
+              </p>
               <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
                 <p className="text-gray-900 dark:text-blue-400 font-bold text-sm transition-colors duration-300">{users[1]?.points} points</p>
                 <p className="text-gray-600 dark:text-gray-300 text-xs transition-colors duration-300">Silver Champion</p>
@@ -374,15 +380,17 @@ export const Leaderboard: React.FC = () => {
               className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30 border-2 border-yellow-300 dark:border-yellow-600 rounded-xl p-4 text-center shadow-xl hover:shadow-2xl dark:shadow-yellow-900/20 dark:hover:shadow-yellow-900/40 transform hover:scale-105 transition-all duration-300"
             >
               <div className="relative mb-3">
-                <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300 dark:ring-yellow-600 overflow-hidden bg-yellow-100 dark:bg-yellow-700">
-                  {(() => { const a = users[0]?.avatarUrl || (currentUser?.username === users[0]?.username ? currentUser?.avatarUrl : '');
-                    return a ? (
-                      <img src={a} alt={users[0]?.username} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-yellow-800 dark:text-yellow-200 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
-                    );
-                  })()}
-                </div>
+                <Link to={`/u/${users[0]?.username}`} className="block">
+                  <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300 dark:ring-yellow-600 overflow-hidden bg-yellow-100 dark:bg-yellow-700">
+                    {(() => { const a = users[0]?.avatarUrl || (currentUser?.username === users[0]?.username ? currentUser?.avatarUrl : '');
+                      return a ? (
+                        <img src={a} alt={users[0]?.username} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-yellow-800 dark:text-yellow-200 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                      );
+                    })()}
+                  </div>
+                </Link>
                 <div className="absolute -top-2 -right-2 bg-yellow-500 dark:bg-yellow-600 rounded-full p-1.5 shadow-xl">
                   <Crown className="w-3 h-3 text-white" />
                 </div>
@@ -390,8 +398,12 @@ export const Leaderboard: React.FC = () => {
                   <Star className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
                 </div>
               </div>
-              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm mb-1 truncate transition-colors duration-300">{users[0]?.fullName || users[0]?.username}</h3>
-              <p className="text-yellow-700 dark:text-yellow-300 text-xs mb-3 truncate transition-colors duration-300">@{users[0]?.username}</p>
+              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm mb-1 truncate transition-colors duration-300">
+                <Link to={`/u/${users[0]?.username}`}>{users[0]?.fullName || users[0]?.username}</Link>
+              </h3>
+              <p className="text-yellow-700 dark:text-yellow-300 text-xs mb-3 truncate transition-colors duration-300">
+                <Link to={`/u/${users[0]?.username}`}>@{users[0]?.username}</Link>
+              </p>
               <div className="bg-yellow-100 dark:bg-yellow-900/50 rounded-lg p-2 border border-yellow-200 dark:border-yellow-700 transition-colors duration-300">
                 <p className="text-yellow-800 dark:text-yellow-200 font-bold text-sm transition-colors duration-300">{users[0]?.points} points</p>
                 <p className="text-yellow-700 dark:text-yellow-300 text-xs font-medium transition-colors duration-300">Champion</p>
@@ -406,15 +418,17 @@ export const Leaderboard: React.FC = () => {
               className="bg-white dark:bg-gray-900 border-2 border-orange-200 dark:border-orange-700 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl dark:shadow-gray-900/20 dark:hover:shadow-gray-900/40 transition-all duration-300 transform hover:scale-105"
             >
               <div className="relative mb-3">
-                <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200 dark:ring-orange-700 overflow-hidden bg-orange-100 dark:bg-orange-800">
-                  {(() => { const a = users[2]?.avatarUrl || (currentUser?.username === users[2]?.username ? currentUser?.avatarUrl : '');
-                    return a ? (
-                      <img src={a} alt={users[2]?.username} className="w-full h-full object-cover" />
-                    ) : (
-                      <span className="text-orange-800 dark:text-orange-200 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
-                    );
-                  })()}
-                </div>
+                <Link to={`/u/${users[2]?.username}`} className="block">
+                  <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200 dark:ring-orange-700 overflow-hidden bg-orange-100 dark:bg-orange-800">
+                    {(() => { const a = users[2]?.avatarUrl || (currentUser?.username === users[2]?.username ? currentUser?.avatarUrl : '');
+                      return a ? (
+                        <img src={a} alt={users[2]?.username} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-orange-800 dark:text-orange-200 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                      );
+                    })()}
+                  </div>
+                </Link>
                 <div className="absolute -top-1 -right-1 bg-orange-500 dark:bg-orange-600 rounded-full p-1 shadow-lg">
                   <span className="text-white font-bold text-xs">3</span>
                 </div>
@@ -422,8 +436,12 @@ export const Leaderboard: React.FC = () => {
                   <Award className="h-4 w-4 text-orange-500 dark:text-orange-400" />
                 </div>
               </div>
-              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">{users[2]?.fullName || users[2]?.username}</h3>
-              <p className="text-orange-700 dark:text-orange-300 text-xs mb-2 truncate transition-colors duration-300">@{users[2]?.username}</p>
+              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">
+                <Link to={`/u/${users[2]?.username}`}>{users[2]?.fullName || users[2]?.username}</Link>
+              </h3>
+              <p className="text-orange-700 dark:text-orange-300 text-xs mb-2 truncate transition-colors duration-300">
+                <Link to={`/u/${users[2]?.username}`}>@{users[2]?.username}</Link>
+              </p>
               <div className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-2 border border-orange-200 dark:border-orange-700 transition-colors duration-300">
                 <p className="text-orange-800 dark:text-orange-200 font-bold text-sm transition-colors duration-300">{users[2]?.points} points</p>
                 <p className="text-orange-700 dark:text-orange-300 text-xs transition-colors duration-300">Bronze Star</p>
@@ -481,15 +499,17 @@ export const Leaderboard: React.FC = () => {
                     
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
                       <div className="relative flex-shrink-0">
-                        <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-gray-200 dark:ring-blue-700 transition-colors duration-300 overflow-hidden bg-blue-100 dark:bg-blue-900">
-                          {(() => { const a = user.avatarUrl || (currentUser?.username === user.username ? currentUser?.avatarUrl : '');
-                            return a ? (
-                              <img src={a} alt={user.username} className="w-full h-full object-cover" />
-                            ) : (
-                              <span className="text-blue-700 dark:text-blue-300 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
-                            );
-                          })()}
-                        </div>
+                        <Link to={`/u/${user.username}`} className="block">
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-gray-200 dark:ring-blue-700 transition-colors duration-300 overflow-hidden bg-blue-100 dark:bg-blue-900">
+                            {(() => { const a = user.avatarUrl || (currentUser?.username === user.username ? currentUser?.avatarUrl : '');
+                              return a ? (
+                                <img src={a} alt={user.username} className="w-full h-full object-cover" />
+                              ) : (
+                                <span className="text-blue-700 dark:text-blue-300 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
+                              );
+                            })()}
+                          </div>
+                        </Link>
                         {rank <= 10 && (
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center">
                             <Star className="w-1.5 h-1.5 text-white" />
@@ -499,18 +519,10 @@ export const Leaderboard: React.FC = () => {
                       
                       <div className="min-w-0 flex-1">
                         <p className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">
-                          {currentUser?.username === user.username ? (
-                            <Link to="/profile">{user.fullName || user.username}</Link>
-                          ) : (
-                            user.fullName || user.username
-                          )}
+                          <Link to={`/u/${user.username}`}>{user.fullName || user.username}</Link>
                         </p>
                         <p className="text-gray-600 dark:text-gray-300 text-xs truncate transition-colors duration-300">
-                          {currentUser?.username === user.username ? (
-                            <Link to="/profile">@{user.username}</Link>
-                          ) : (
-                            <>@{user.username}</>
-                          )}
+                          <Link to={`/u/${user.username}`}>@{user.username}</Link>
                         </p>
                       </div>
                     </div>
