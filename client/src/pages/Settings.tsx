@@ -58,7 +58,7 @@ export const Settings: React.FC = () => {
   
   // Preference settings
   const [preferences, setPreferences] = useState({
-    theme: (user?.preferences?.theme as string) || 'light',
+    theme: (user?.preferences?.theme as string) || 'auto',
     language: user?.preferences?.language || 'en',
     timezone: user?.preferences?.timezone || 'UTC',
     defaultCodeLanguage: (user?.preferences?.defaultCodeLanguage as string) || 'javascript',
@@ -127,7 +127,7 @@ export const Settings: React.FC = () => {
       showSocialLinks: (user?.preferences?.privacy as any)?.showSocialLinks ?? true
     });
     setPreferences({
-      theme: (user?.preferences?.theme as string) || 'light',
+      theme: (user?.preferences?.theme as string) || 'auto',
       language: user?.preferences?.language || 'en',
       timezone: user?.preferences?.timezone || 'UTC',
       defaultCodeLanguage: (user?.preferences?.defaultCodeLanguage as string) || 'javascript',
@@ -145,7 +145,7 @@ export const Settings: React.FC = () => {
     setAccountForm((prev) => ({ ...prev, email: user.email || '' }));
 
     // Apply UI theme from user preference (auto -> system)
-    const prefTheme = (user?.preferences?.theme as string) || 'light';
+    const prefTheme = (user?.preferences?.theme as string) || 'auto';
     const uiTheme = prefTheme === 'auto' ? 'system' : (prefTheme as any);
     try { setUiTheme(uiTheme); } catch {}
   }, [user]);

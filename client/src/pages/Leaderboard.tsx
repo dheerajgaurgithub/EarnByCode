@@ -402,17 +402,20 @@ export const Leaderboard: React.FC = () => {
                 </button>
               </div>
             ) : (
-              filteredUsers.map((user, index) => (
+              // Exclude top 3 (shown in podium) and list from rank 4 onward
+              filteredUsers.slice(3).map((user, idx) => {
+                const rank = idx + 4;
+                return (
                 <motion.div
                   key={user._id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.03 }}
-                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 hover:shadow-sm dark:hover:shadow-gray-800/20 transition-all duration-300 ${getRankBg(index + 1)} mx-1 my-1 rounded-lg`}
+                  transition={{ delay: idx * 0.03 }}
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 hover:shadow-sm dark:hover:shadow-gray-800/20 transition-all duration-300 ${getRankBg(rank)} mx-1 my-1 rounded-lg`}
                 >
                   <div className="flex items-center space-x-3 mb-2 sm:mb-0">
                     <div className="flex items-center justify-center w-6">
-                      {getRankIcon(index + 1)}
+                      {getRankIcon(rank)}
                     </div>
                     
                     <div className="flex items-center space-x-3 min-w-0 flex-1">
@@ -420,7 +423,7 @@ export const Leaderboard: React.FC = () => {
                         <div className="w-8 h-8 bg-gradient-to-br from-blue-100 to-blue-200 dark:from-blue-800 dark:to-blue-900 rounded-full flex items-center justify-center ring-2 ring-gray-200 dark:ring-blue-700 transition-colors duration-300">
                           <span className="text-blue-700 dark:text-blue-300 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
                         </div>
-                        {index < 10 && (
+                        {rank <= 10 && (
                           <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center">
                             <Star className="w-1.5 h-1.5 text-white" />
                           </div>
@@ -451,7 +454,8 @@ export const Leaderboard: React.FC = () => {
                     </div>
                   </div>
                 </motion.div>
-              ))
+              );
+              })
             )}
           </div>
         </motion.div>
