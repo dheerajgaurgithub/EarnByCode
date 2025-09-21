@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { WalletProvider } from './context/WalletContext';
 import { useTheme } from '@/context/ThemeContext';
+import { I18nProvider } from '@/context/I18nContext';
 // Import types
 import { Header } from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
@@ -170,8 +171,10 @@ function App() {
     };
   };
 
+  const { user } = useAuth();
   return (
     <WalletProvider>
+      <I18nProvider initialLang={(user?.preferences?.language as any) || 'en'}>
       <ThemeSync />
       <div className="min-h-screen flex flex-col transition-colors duration-200">
         <Toaster
@@ -321,6 +324,7 @@ function App() {
           {!hideFooter && <Footer />}
         </div>
       </div>
+      </I18nProvider>
     </WalletProvider>
   );
 }

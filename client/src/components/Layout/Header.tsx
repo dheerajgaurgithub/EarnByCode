@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
+import { useI18n } from '@/context/I18nContext';
 import {
   User,
   LogOut,
@@ -20,7 +21,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 type NavItem = {
-  name: string;
+  nameKey: string;
   path: string;
   icon: React.ComponentType<{ className?: string }>;
   gradient: string;
@@ -30,35 +31,35 @@ type NavItem = {
 // Navigation items with blue theme gradients
 const NAV_ITEMS: NavItem[] = [
   {
-    name: 'Wallet',
+    nameKey: 'nav.wallet',
     path: '/wallet',
     icon: WalletIcon,
     gradient: 'from-blue-400 to-blue-600',
     hoverGradient: 'from-blue-400 to-blue-600'
   },
   {
-    name: 'Problems',
+    nameKey: 'nav.problems',
     path: '/problems',
     icon: Code2,
     gradient: 'from-blue-500 to-indigo-600',
     hoverGradient: 'from-blue-500 to-indigo-600'
   },
   {
-    name: 'Contests',
+    nameKey: 'nav.contests',
     path: '/contests',
     icon: Trophy,
     gradient: 'from-blue-400 to-blue-600',
     hoverGradient: 'from-blue-400 to-blue-600'
   },
   {
-    name: 'Discuss',
+    nameKey: 'nav.discuss',
     path: '/discuss',
     icon: MessageSquare,
     gradient: 'from-indigo-500 to-blue-600',
     hoverGradient: 'from-indigo-500 to-blue-600'
   },
   {
-    name: 'Leaderboard',
+    nameKey: 'nav.leaderboard',
     path: '/leaderboard',
     icon: Users,
     gradient: 'from-sky-500 to-blue-600',
@@ -78,6 +79,7 @@ type UserDisplayInfo = {
 
 export const Header: React.FC = () => {
   const { user, logout } = useAuth();
+  const { t } = useI18n();
   const location = useLocation();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
@@ -178,7 +180,7 @@ export const Header: React.FC = () => {
                       'h-3 w-3 mr-1.5 transition-colors duration-300',
                       isItemActive ? 'text-blue-600 dark:text-blue-400' : 'text-slate-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400'
                     )} />
-                    <span className="relative z-10 whitespace-nowrap">{item.name}</span>
+                    <span className="relative z-10 whitespace-nowrap">{t(item.nameKey)}</span>
 
                     {/* Active indicator */}
                     {isItemActive && (
@@ -469,7 +471,7 @@ export const Header: React.FC = () => {
                       )}>
                         <Icon className="h-3 w-3" />
                       </div>
-                      <span>{item.name}</span>
+                      <span>{t(item.nameKey)}</span>
                       {isItemActive && (
                         <div className={cn(
                           'ml-auto w-1.5 h-1.5 rounded-full bg-gradient-to-r',

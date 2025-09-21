@@ -7,12 +7,14 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/context/ThemeContext';
+import { useI18n } from '@/context/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar, requestEmailChangeOtp, verifyEmailChangeOtp, deleteAccount } = useAuth();
   const { setTheme: setUiTheme } = useTheme();
+  const { setLanguage } = useI18n();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'privacy' | 'preferences'>('account');
   const [isLoading, setIsLoading] = useState(false);
@@ -1062,44 +1064,33 @@ export const Settings: React.FC = () => {
                         </label>
                         <select
                           value={preferences.language}
-                          onChange={async (e) => {
-                            const next = e.target.value;
+                          onChange={(e) => {
+                            const next = e.target.value as any;
+                            // Only update the selected language in local state so the displayed name updates.
+                            // Do NOT apply app-wide language or persist yet; that will happen on Save Preferences.
                             setPreferences({ ...preferences, language: next });
-                            try {
-                              setSavingPrefs(true);
-                              await updatePreferences({ preferences: { language: next } });
-                            } catch (err) {
-                              alert((err as Error)?.message || 'Failed to update language');
-                            } finally {
-                              setSavingPrefs(false);
-                            }
                           }}
                           className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
                         >
-                          {languageOptions.map(({ code, label }) => (
-                            <option key={code} value={code}>
-                              {label} ({code})
+                          {languageOptions.map((opt) => (
+                            <option key={opt.code} value={opt.code}>
+                              {opt.label}
                             </option>
                           ))}
                         </select>
                       </div>
 
+                      {/* Timezone */}
                       <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">
-                          Timezone
-                        </label>
-                        <select
+                        <label className="block text-sm font-medium adaptive-text mb-2">Timezone</label>
+                        <input
+                          type="text"
                           value={preferences.timezone}
                           onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
                           className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
-                        >
-                          <option value="UTC">UTC</option>
-                          <option value="America/New_York">Eastern Time</option>
-                          <option value="America/Los_Angeles">Pacific Time</option>
-                          <option value="Europe/London">London</option>
-                          <option value="Asia/Tokyo">Tokyo</option>
-                          <option value="Asia/Kolkata">India</option>
-                        </select>
+                          placeholder="e.g., UTC, Asia/Kolkata"
+                        />
+                        <p className="text-xs adaptive-text-muted mt-1">Used for digests and date displays.</p>
                       </div>
                     </div>
 
