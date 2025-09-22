@@ -52,22 +52,37 @@ async function executeWithLocalExecutor(code, language, input) {
 }
 
 // Enhanced OnlineGDB integration for real code compilation
-export const executeCode = async (code, language, testCases) => {
+export const executeCode = async (code, language, testCases, options = {}) => {
   try {
     const results = [];
     let allPassed = true;
     
     console.log(`Executing ${language} code with ${testCases.length} test cases`);
     
+    // Build comparison options
+    const compareMode = (options.compareMode || '').toString().toLowerCase();
+    const optIgnoreWhitespace = typeof options.ignoreWhitespace === 'boolean' ? options.ignoreWhitespace : (compareMode !== 'strict');
+    const optIgnoreCase = typeof options.ignoreCase === 'boolean' ? options.ignoreCase : (compareMode !== 'strict');
+
+    const normalizeFn = (s) => {
+      let str = (s ?? '').toString().replace(/\r\n/g, '\n');
+      if (optIgnoreWhitespace) {
+        str = str.replace(/\s+/g, ' ').trim();
+      }
+      if (optIgnoreCase) {
+        str = str.toLowerCase();
+      }
+      return str;
+    };
+
     for (let i = 0; i < testCases.length; i++) {
       const testCase = testCases[i];
       
       try {
         const result = await executeWithBestEffort(code, language, testCase.input);
-        // Normalize line endings and trim
-        const normalize = (s) => (s ?? '').toString().replace(/\r\n/g, '\n').trim();
-        const actualOutput = normalize(result.output);
-        const expectedOutput = normalize(testCase.expectedOutput);
+        // Normalize output for comparison
+        const actualOutput = normalizeFn(result.output);
+        const expectedOutput = normalizeFn(testCase.expectedOutput);
         const passed = actualOutput === expectedOutput;
         
         if (!passed) allPassed = false;

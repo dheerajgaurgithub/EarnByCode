@@ -610,8 +610,23 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
       }
     }
 
+    // Determine comparison options: default relaxed; allow strict per problem/contest or env
+    const compareMode = (
+      (problem && (problem.comparisonMode || problem.compareMode || problem?.settings?.comparison)) ||
+      (typeof contest !== 'undefined' && contest && (contest.comparisonMode || contest.compareMode || contest?.settings?.comparison)) ||
+      process.env.COMPARISON_MODE ||
+      'relaxed'
+    ).toString().toLowerCase();
+
+    const ignoreWhitespace = compareMode === 'strict' ? false : true;
+    const ignoreCase = compareMode === 'strict' ? false : true;
+
     // Execute and evaluate against full problem testcases
-    const result = await executeCode(code, language, problem.testCases || []);
+    const result = await executeCode(code, language, problem.testCases || [], {
+      compareMode,
+      ignoreWhitespace,
+      ignoreCase,
+    });
 
     const submission = new Submission({
       user: req.user._id,

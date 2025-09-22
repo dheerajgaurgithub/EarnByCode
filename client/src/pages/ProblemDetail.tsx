@@ -113,48 +113,77 @@ interface Problem {
 
 // Removed unused ProblemResponse type
 
-// Helper function to get default code for a language
+// Helper function to get default code for a language (IO-ready patterns)
 const getDefaultCode = (language: Language): string => {
   const templates: Record<Language, string> = {
-    javascript: `// Write your solution here
-function solve() {
-  // Read input via readLine() per line if needed
-  // Example: const s = readLine();
-  return 'Hello AlgoBucks';
+    javascript: `// Read stdin line-by-line with readLine() and print one result per line
+function solveOne(line) {
+  // TODO: implement per-line solution
+  return line;
 }
 
-console.log(solve());`,
-    python: `# Write your solution here
-def solve():
-    # Read input lines via input() if needed
-    # Example: s = input().strip()
-    return 'Hello AlgoBucks'
+(function main(){
+  const out = [];
+  for(;;){
+    const line = readLine();
+    if (line === '') break; // end of input in this sandbox
+    out.push(solveOne(line));
+  }
+  console.log(out.join('\n'));
+})();`,
+    python: `# Read stdin lines and print one result per line
+import sys
+
+def solve_one(s: str) -> str:
+    # TODO: implement per-line solution
+    return s
+
+def main():
+    lines = sys.stdin.read().splitlines()
+    out = [solve_one(line) for line in lines]
+    sys.stdout.write("\n".join(out))
 
 if __name__ == '__main__':
-    print(solve())`,
+    main()`,
     java: `import java.io.*;
 import java.util.*;
 
 public class Solution {
-    public static void main(String[] args) throws Exception {
-        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
-        // String s = br.readLine(); // read one line
-        System.out.println(solve());
+    static String solveOne(String s) {
+        // TODO: implement per-line solution
+        return s;
     }
 
-    static String solve() {
-        // TODO: implement your solution
-        return "Hello AlgoBucks";
+    public static void main(String[] args) throws Exception {
+        BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
+        String line;
+        boolean first = true;
+        StringBuilder out = new StringBuilder();
+        while ((line = br.readLine()) != null) {
+            if (!first) out.append('\n');
+            first = false;
+            out.append(solveOne(line));
+        }
+        System.out.print(out.toString());
     }
 }`,
     cpp: `#include <bits/stdc++.h>
 using namespace std;
 
+string solveOne(const string& s){
+    // TODO: implement per-line solution
+    return s;
+}
+
 int main(){
     ios::sync_with_stdio(false);
     cin.tie(nullptr);
-    // string s; getline(cin, s); // read one line
-    cout << "Hello AlgoBucks" << "\n";
+    string line; bool first = true;
+    while (getline(cin, line)){
+        if (!first) cout << '\n';
+        first = false;
+        cout << solveOne(line);
+    }
     return 0;
 }`
   };
