@@ -705,7 +705,13 @@ app.post('/api/execute', async (req, res) => {
     if (EXECUTOR_MODE === 'piston') {
       try {
         // Map our language ids to Piston languages if needed
-        const pistonLang = language === 'cpp' ? 'cpp' : language;
+        const mapToPiston = (lang) => {
+          const l = (lang || '').toString().toLowerCase();
+          if (l === 'c++' || l === 'cpp') return 'cpp';
+          if (l === 'node' || l === 'nodejs' || l === 'javascript') return 'javascript';
+          return l;
+        };
+        const pistonLang = mapToPiston(language);
         // Version is required by Piston. Prefer client-provided payload.version,
         // otherwise fall back to defaults; if missing, discover from /runtimes.
         const defaultVersions = {
@@ -734,6 +740,19 @@ app.post('/api/execute', async (req, res) => {
           }
         }
 
+        // Final guard: ensure non-empty version string to satisfy Piston
+        if (!version) {
+          const fallbackVersions = {
+            cpp: '10.2.0', // common gcc on public Piston
+            python: '3.10.0',
+            java: '17.0.0',
+            typescript: '5.0.3',
+            javascript: '18.15.0',
+          };
+          version = fallbackVersions[pistonLang] || '1.0.0';
+          console.warn(`[Piston] Runtime discovery failed for ${pistonLang}. Using fallback version: ${version}`);
+        }
+
         if (pistonLang === 'java') {
           console.log(`[Piston] Selected Java runtime version: ${version || '(auto-discovery failed)'}`);
         } else if (pistonLang === 'python') {
@@ -745,7 +764,7 @@ app.post('/api/execute', async (req, res) => {
         const pistonReq = {
           language: pistonLang,
           version,
-          files: [{ content: source, name: files[0]?.name || 'Main.' + (language === 'cpp' ? 'cpp' : language) }],
+          files: [{ content: source, name: files[0]?.name || 'Main.' + (pistonLang === 'cpp' ? 'cpp' : pistonLang) }],
           stdin: typeof payload.stdin === 'string' ? payload.stdin : ''
         };
         const httpFetch = await getFetch();
