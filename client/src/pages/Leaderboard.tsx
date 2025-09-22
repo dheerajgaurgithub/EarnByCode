@@ -3,6 +3,7 @@ import { Trophy, Medal, Award, TrendingUp, Users, Crown, Search, X, Sparkles, Za
 import { motion } from 'framer-motion';
 import apiService from '../services/api';
 import { Link } from 'react-router-dom';
+import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 
 // Debounce hook
@@ -35,6 +36,7 @@ interface LeaderboardUser {
 }
 
 export const Leaderboard: React.FC = () => {
+  const { t } = useI18n();
   const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<LeaderboardUser[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<LeaderboardUser[]>([]);
@@ -270,7 +272,7 @@ export const Leaderboard: React.FC = () => {
                 <Sparkles className="absolute -top-1 -right-1 h-2.5 w-2.5 text-yellow-400" />
               </div>
               <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 dark:from-blue-400 dark:via-blue-500 dark:to-blue-600 bg-clip-text text-transparent text-center">
-                AlgoBucks Leaderboard
+                {t('leaderboard.title')}
               </h1>
               <Heart className="h-4 w-4 text-red-500 dark:text-red-400" />
             </div>
@@ -281,7 +283,7 @@ export const Leaderboard: React.FC = () => {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 group-focus-within:text-blue-600 dark:group-focus-within:text-blue-400 transition-colors duration-200" />
                 <input
                   type="text"
-                  placeholder="Search by username or name..."
+                  placeholder={t('leaderboard.search_placeholder')}
                   className="w-full pl-9 pr-9 py-2.5 rounded-lg border border-gray-300 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-sm"
                   value={searchTerm}
                   onChange={handleSearchChange}
@@ -313,7 +315,7 @@ export const Leaderboard: React.FC = () => {
                 }`}
               >
                 <Users className="inline h-3 w-3 mr-1" />
-                Name <SortIndicator field="username" />
+                {t('leaderboard.sort_name')} <SortIndicator field="username" />
               </button>
               <button
                 onClick={() => handleSortChange('points')}
@@ -324,7 +326,7 @@ export const Leaderboard: React.FC = () => {
                 }`}
               >
                 <Zap className="inline h-3 w-3 mr-1" />
-                Points <SortIndicator field="points" />
+                {t('stats.points')} <SortIndicator field="points" />
               </button>
               <button
                 onClick={() => handleSortChange('totalSolved')}
@@ -335,15 +337,15 @@ export const Leaderboard: React.FC = () => {
                 }`}
               >
                 <Trophy className="inline h-3 w-3 mr-1" />
-                Solved <SortIndicator field="totalSolved" />
+                {t('leaderboard.solved')} <SortIndicator field="totalSolved" />
               </button>
             </div>
 
             {/* Subtitle */}
             <div className="text-center mt-3">
-              <p className="text-gray-700 dark:text-blue-400 text-sm font-medium transition-colors duration-300">Top performers and their achievements</p>
+              <p className="text-gray-700 dark:text-blue-400 text-sm font-medium transition-colors duration-300">{t('leaderboard.subtitle')}</p>
               <p className="text-gray-600 dark:text-gray-300 mt-1 text-xs transition-colors duration-300">
-                Compete and climb the ranks to earn more AlgoBucks
+                {t('leaderboard.subtitle2')}
               </p>
             </div>
           </div>
@@ -472,7 +474,7 @@ export const Leaderboard: React.FC = () => {
             <h2 className="text-sm font-bold text-gray-900 dark:text-blue-400 flex items-center transition-colors duration-300">
               <TrendingUp className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
               <span className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
-                Full Rankings
+                {t('leaderboard.full_rankings')}
               </span>
             </h2>
           </div>
@@ -483,12 +485,12 @@ export const Leaderboard: React.FC = () => {
                 <div className="mb-3">
                   <Search className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
                 </div>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 transition-colors duration-300">No users found matching your search</p>
+                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 transition-colors duration-300">{t('leaderboard.no_users')}</p>
                 <button
                   onClick={clearSearch}
                   className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-all duration-200 text-sm"
                 >
-                  Clear Search
+                  {t('leaderboard.clear_search')}
                 </button>
               </div>
             ) : (
@@ -540,15 +542,15 @@ export const Leaderboard: React.FC = () => {
                   <div className="flex items-center justify-between sm:justify-end space-x-2 text-xs">
                     <div className="text-center bg-gray-50 dark:bg-gray-800 rounded-lg p-1.5 min-w-[50px] border border-gray-200 dark:border-gray-700 transition-colors duration-300">
                       <p className="text-gray-900 dark:text-blue-400 font-bold text-xs transition-colors duration-300">{user.points}</p>
-                      <p className="text-gray-600 dark:text-gray-300 text-xs transition-colors duration-300">Points</p>
+                      <p className="text-gray-600 dark:text-gray-300 text-xs transition-colors duration-300">{t('stats.points')}</p>
                     </div>
                     <div className="text-center bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-1.5 min-w-[50px] border border-yellow-200 dark:border-yellow-700 transition-colors duration-300">
                       <p className="text-yellow-700 dark:text-yellow-300 font-bold text-xs transition-colors duration-300">{user.codecoins}</p>
-                      <p className="text-yellow-600 dark:text-yellow-400 text-xs transition-colors duration-300">Coins</p>
+                      <p className="text-yellow-600 dark:text-yellow-400 text-xs transition-colors duration-300">{t('stats.coins')}</p>
                     </div>
                     <div className="text-center bg-green-50 dark:bg-green-900/30 rounded-lg p-1.5 min-w-[50px] border border-green-200 dark:border-green-700 transition-colors duration-300">
                       <p className="text-green-700 dark:text-green-300 font-bold text-xs transition-colors duration-300">{user.solvedProblems.length}</p>
-                      <p className="text-green-600 dark:text-green-400 text-xs transition-colors duration-300">Solved</p>
+                      <p className="text-green-600 dark:text-green-400 text-xs transition-colors duration-300">{t('leaderboard.solved')}</p>
                     </div>
                   </div>
                 </motion.div>

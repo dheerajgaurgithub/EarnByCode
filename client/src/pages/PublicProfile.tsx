@@ -2,6 +2,7 @@ import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiService } from '@/lib/api';
 import { Loader2, MapPin, Trophy, Award } from 'lucide-react';
+import { useI18n } from '@/context/I18nContext';
 
 interface PublicUser {
   _id: string;
@@ -25,6 +26,7 @@ const PublicProfile: React.FC = () => {
   const [user, setUser] = React.useState<PublicUser | null>(null);
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
+  const { t } = useI18n();
 
   React.useEffect(() => {
     let mounted = true;
@@ -57,8 +59,8 @@ const PublicProfile: React.FC = () => {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-black px-4">
         <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-blue-800 p-6 text-center">
-          <p className="text-gray-800 dark:text-blue-400 font-semibold">{error || 'User not found'}</p>
-          <Link to="/leaderboard" className="inline-block mt-3 text-blue-600 dark:text-blue-400 hover:underline">Back to Leaderboard</Link>
+          <p className="text-gray-800 dark:text-blue-400 font-semibold">{error || t('profile.user_not_found')}</p>
+          <Link to="/leaderboard" className="inline-block mt-3 text-blue-600 dark:text-blue-400 hover:underline">{t('profile.back_to_leaderboard')}</Link>
         </div>
       </div>
     );
@@ -97,26 +99,26 @@ const PublicProfile: React.FC = () => {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
           <div className="text-center bg-blue-50 dark:bg-gray-800 p-3 rounded-lg border border-blue-200 dark:border-gray-600">
             <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{user.codecoins ?? 0}</p>
-            <p className="text-blue-500 dark:text-blue-400 text-xs">Codecoins</p>
+            <p className="text-blue-500 dark:text-blue-400 text-xs">{t('profile.codecoins')}</p>
           </div>
           <div className="text-center bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-800">
             <p className="text-xl font-bold text-yellow-600 dark:text-yellow-400">{user.points ?? 0}</p>
-            <p className="text-yellow-500 dark:text-yellow-400 text-xs">Points</p>
+            <p className="text-yellow-500 dark:text-yellow-400 text-xs">{t('profile.points')}</p>
           </div>
           <div className="text-center bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
             <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{typeof user.ranking === 'number' && user.ranking > 0 ? `#${user.ranking}` : 'N/A'}</p>
-            <p className="text-purple-500 dark:text-purple-400 text-xs">Leaderboard Rank</p>
+            <p className="text-purple-500 dark:text-purple-400 text-xs">{t('profile.rank')}</p>
           </div>
           <div className="text-center bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
             <p className="text-xl font-bold text-green-600 dark:text-green-400">{user.totalSolved ?? (user.solvedProblems?.length ?? 0)}</p>
-            <p className="text-green-500 dark:text-green-400 text-xs">Solved</p>
+            <p className="text-green-500 dark:text-green-400 text-xs">{t('profile.solved')}</p>
           </div>
         </div>
 
         {/* Recent sections (optional, only if present) */}
         {Array.isArray(user.solvedProblems) && user.solvedProblems.length > 0 && (
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-blue-200 dark:border-gray-700 p-4 sm:p-6 mb-6">
-            <h2 className="text-lg font-semibold text-blue-900 dark:text-blue-400 mb-3 flex items-center gap-2"><Trophy className="w-5 h-5"/>Recent Solved Problems</h2>
+            <h2 className="text-lg font-semibold text-blue-900 dark:text-blue-400 mb-3 flex items-center gap-2"><Trophy className="w-5 h-5"/>{t('profile.recent_solved')}</h2>
             <ul className="list-disc pl-5 space-y-1 text-sm text-blue-800 dark:text-blue-300">
               {user.solvedProblems.slice(0, 10).map(p => (
                 <li key={p._id}>{p.title} <span className="text-xs opacity-70">({p.difficulty})</span></li>
@@ -127,7 +129,7 @@ const PublicProfile: React.FC = () => {
 
         {Array.isArray(user.contestsParticipated) && user.contestsParticipated.length > 0 && (
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-blue-200 dark:border-gray-700 p-4 sm:p-6">
-            <h2 className="text-lg font-semibold text-blue-900 dark:text-blue-400 mb-3 flex items-center gap-2"><Award className="w-5 h-5"/>Recent Contests</h2>
+            <h2 className="text-lg font-semibold text-blue-900 dark:text-blue-400 mb-3 flex items-center gap-2"><Award className="w-5 h-5"/>{t('profile.recent_contests')}</h2>
             <ul className="list-disc pl-5 space-y-1 text-sm text-blue-800 dark:text-blue-300">
               {user.contestsParticipated.slice(0, 10).map(c => (
                 <li key={c._id}>{c.title} <span className="text-xs opacity-70">({c.status})</span></li>

@@ -14,7 +14,7 @@ export const Settings: React.FC = () => {
   const navigate = useNavigate();
   const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar, requestEmailChangeOtp, verifyEmailChangeOtp, deleteAccount } = useAuth();
   const { setTheme: setUiTheme } = useTheme();
-  const { setLanguage } = useI18n();
+  const { setLanguage, t } = useI18n();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'privacy' | 'preferences'>('account');
   const [isLoading, setIsLoading] = useState(false);
@@ -326,10 +326,10 @@ export const Settings: React.FC = () => {
   };
 
   const tabs = [
-    { key: 'account', label: 'Account', icon: SettingsIcon },
-    { key: 'notifications', label: 'Notifications', icon: Bell },
-    { key: 'privacy', label: 'Privacy', icon: Shield },
-    { key: 'preferences', label: 'Preferences', icon: Palette }
+    { key: 'account', label: t('settings.tab.account'), icon: SettingsIcon },
+    { key: 'notifications', label: t('settings.tab.notifications'), icon: Bell },
+    { key: 'privacy', label: t('settings.tab.privacy'), icon: Shield },
+    { key: 'preferences', label: t('settings.tab.preferences'), icon: Palette }
   ];
 
   return (
@@ -467,9 +467,9 @@ export const Settings: React.FC = () => {
           <div className="mb-6 sm:mb-8">
             <h1 className="text-2xl sm:text-3xl font-bold adaptive-text mb-2 flex items-center">
               <SettingsIcon className="h-6 w-6 sm:h-8 sm:w-8 adaptive-icon-primary mr-2 sm:mr-3" />
-              Settings
+              {t('settings.title')}
             </h1>
-            <p className="adaptive-text-secondary text-sm sm:text-base">Manage your account and preferences</p>
+            <p className="adaptive-text-secondary text-sm sm:text-base">{t('settings.subtitle')}</p>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">

@@ -550,17 +550,17 @@ export const Header: React.FC = () => {
                       <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 dark:from-blue-500/20 dark:to-indigo-500/20 rounded-lg p-2 border border-blue-500/20 dark:border-blue-500/30 text-center">
                         <Award className="w-4 h-4 text-blue-500 dark:text-blue-400 mx-auto mb-1" />
                         <div className="text-blue-700 dark:text-blue-300 font-bold text-xs">{userInfo.codecoins || 0}</div>
-                        <div className="text-slate-600 dark:text-gray-400 text-xs">Coins</div>
+                        <div className="text-slate-600 dark:text-gray-400 text-xs">{t('stats.coins')}</div>
                       </div>
                       <div className="bg-gradient-to-br from-sky-500/10 to-blue-500/10 dark:from-sky-500/20 dark:to-blue-500/20 rounded-lg p-2 border border-sky-500/20 dark:border-sky-500/30 text-center">
                         <WalletIcon className="w-4 h-4 text-sky-500 dark:text-sky-400 mx-auto mb-1" />
                         <div className="text-sky-700 dark:text-sky-300 font-bold text-xs">${(userInfo.walletBalance || 0).toFixed(0)}</div>
-                        <div className="text-slate-600 dark:text-gray-400 text-xs">Wallet</div>
+                        <div className="text-slate-600 dark:text-gray-400 text-xs">{t('stats.wallet')}</div>
                       </div>
                       <div className="bg-gradient-to-br from-indigo-500/10 to-blue-500/10 dark:from-indigo-500/20 dark:to-blue-500/20 rounded-lg p-2 border border-indigo-500/20 dark:border-indigo-500/30 text-center">
                         <Trophy className="w-4 h-4 text-indigo-500 dark:text-indigo-400 mx-auto mb-1" />
                         <div className="text-indigo-700 dark:text-indigo-300 font-bold text-xs">{userInfo.points || 0}</div>
-                        <div className="text-slate-600 dark:text-gray-400 text-xs">Points</div>
+                        <div className="text-slate-600 dark:text-gray-400 text-xs">{t('stats.points')}</div>
                       </div>
                     </div>
                   </div>

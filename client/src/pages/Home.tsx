@@ -1,39 +1,42 @@
 // React import not required with automatic JSX runtime
 import { Code, ArrowRight, Trophy, Zap, Target, DollarSign, Brain } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
-// Mock data for the component
-const stats = [
-  { label: "Active Coders", value: "50K+" },
-  { label: "Problems Solved", value: "2M+" },
-  { label: "Total Prizes Won", value: "$1M+" },
-  { label: "Live Contests", value: "24/7" }
+import { useI18n } from '@/context/I18nContext';
+
+// Mock data for the component (values stay same; labels via i18n)
+const stats = (t: (k: string) => string) => [
+  { label: t('home.stats.active_coders'), value: '50K+' },
+  { label: t('home.stats.problems_solved'), value: '2M+' },
+  { label: t('home.stats.total_prizes'), value: '$1M+' },
+  { label: t('home.stats.live_contests'), value: '24/7' }
 ];
 
-const features = [
+const features = (t: (k: string) => string) => [
   {
     icon: Zap,
-    title: "Real-time Coding",
-    description: "Code in your browser with instant feedback and lightning-fast execution"
+    title: t('home.features.realtime.title'),
+    description: t('home.features.realtime.desc')
   },
   {
     icon: DollarSign,
-    title: "Earn Real Money",
-    description: "Convert your coding skills into cash rewards through contests and challenges"
+    title: t('home.features.earn_money.title'),
+    description: t('home.features.earn_money.desc')
   },
   {
     icon: Target,
-    title: "Skill-based Matching",
-    description: "Compete against developers of similar skill levels for fair competition"
+    title: t('home.features.matching.title'),
+    description: t('home.features.matching.desc')
   },
   {
     icon: Brain,
-    title: "AI-Powered Learning",
-    description: "Get personalized problem recommendations based on your coding patterns"
+    title: t('home.features.ai.title'),
+    description: t('home.features.ai.desc')
   }
 ];
 
 export default function Home() {
   const { user, isLoading } = useAuth();
+  const { t } = useI18n();
 
   const handleNavigation = (path: string) => {
     console.log(`Navigate to: ${path}`);
@@ -68,11 +71,10 @@ export default function Home() {
 
                 <div className="space-y-2 mb-4 sm:mb-6">
                   <p className="text-sm sm:text-base md:text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-blue-900 dark:from-blue-400 dark:to-blue-500 px-2">
-                    Think smart. Code harder. Earn more.
+                    {t('home.hero.tagline')}
                   </p>
                   <p className="text-xs sm:text-sm md:text-base text-gray-700 dark:text-gray-300 max-w-md sm:max-w-lg mx-auto px-3 leading-relaxed transition-colors duration-300">
-                    The ultimate platform for algorithmic traders to compete, earn, and grow their skills.
-                    Develop winning strategies, earn AlgoBucks, and cash out your success.
+                    {t('home.hero.subtitle')}
                   </p>
                 </div>
               </div>
@@ -85,7 +87,7 @@ export default function Home() {
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-700 to-blue-800 dark:from-blue-600 dark:to-blue-700 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <div className="absolute inset-0 bg-white/10 dark:bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12"></div>
                   <a href="/problems" className="relative flex items-center whitespace-nowrap">
-                    Start Coding
+                    {t('home.btn.start_coding')}
                     <ArrowRight className="ml-1 h-3 w-3 sm:h-4 sm:w-4 group-hover:translate-x-1 transition-transform" />
                   </a>
                 </button>
@@ -98,7 +100,7 @@ export default function Home() {
                   <div className="absolute inset-0 bg-white/20 dark:bg-white/30 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12"></div>
                   <a href="/contests" className="relative flex items-center whitespace-nowrap">
                     <Trophy className="mr-1 h-3 w-3 sm:h-4 sm:w-4" />
-                    Join Contest
+                    {t('home.btn.join_contest')}
                   </a>
                 </button>
 
@@ -108,7 +110,7 @@ export default function Home() {
                     className="group relative inline-flex items-center justify-center w-full xs:w-auto px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30 rounded-lg backdrop-blur-sm hover:border-blue-500 dark:hover:border-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all duration-300 hover:scale-105"
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-blue-50/0 to-blue-100/50 dark:from-blue-950/0 dark:to-blue-900/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-                    <span className="relative w-full h-full flex items-center justify-center whitespace-nowrap">Create Free Account</span>
+                    <span className="relative w-full h-full flex items-center justify-center whitespace-nowrap">{t('home.btn.create_account')}</span>
                   </button>
                 )}
               </div>
@@ -121,7 +123,7 @@ export default function Home() {
           <div className="absolute inset-0 bg-gradient-to-r from-white/80 to-blue-50/80 dark:from-gray-950/80 dark:to-black/80 backdrop-blur-sm transition-colors duration-300"></div>
           <div className="max-w-5xl mx-auto relative">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
-              {stats.map((stat) => (
+              {stats(t).map((stat) => (
                 <div
                   key={stat.label}
                   className="group text-center bg-gradient-to-br from-white/90 to-blue-50/90 dark:from-gray-900/90 dark:to-gray-950/90 backdrop-blur-sm border border-blue-200/50 dark:border-blue-800/50 rounded-lg p-2 sm:p-3 hover:border-blue-400/50 dark:hover:border-blue-600/50 hover:shadow-lg dark:hover:shadow-blue-900/20 transition-all duration-300"
@@ -141,16 +143,15 @@ export default function Home() {
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-8 sm:mb-12">
               <h2 className="text-lg sm:text-xl md:text-2xl font-black bg-gradient-to-r from-gray-800 via-blue-700 to-blue-900 dark:from-blue-400 dark:via-blue-500 dark:to-blue-600 bg-clip-text text-transparent mb-3 sm:mb-4 leading-tight">
-                Why Choose AlgoBucks?
+                {t('home.why.title')}
               </h2>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 max-w-md sm:max-w-lg mx-auto px-3 leading-relaxed transition-colors duration-300">
-                More than just coding practice - it's a complete ecosystem where your skills
-                earn you real rewards and recognition.
+                {t('home.why.subtitle')}
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-              {features.map((feature) => (
+              {features(t).map((feature) => (
                 <div
                   key={feature.title}
                   className="group relative bg-gradient-to-br from-white/95 to-blue-50/95 dark:from-gray-900/95 dark:to-gray-950/95 backdrop-blur-sm p-3 sm:p-4 rounded-lg sm:rounded-xl border border-blue-200/50 dark:border-blue-800/50 hover:border-blue-400/50 dark:hover:border-blue-600/50 hover:shadow-xl dark:hover:shadow-blue-900/20 transition-all duration-500 overflow-hidden"
@@ -184,10 +185,10 @@ export default function Home() {
           <div className="max-w-5xl mx-auto relative">
             <div className="text-center mb-8 sm:mb-12">
               <h2 className="text-lg sm:text-xl md:text-2xl font-black bg-gradient-to-r from-gray-800 via-blue-700 to-blue-900 dark:from-blue-400 dark:via-blue-500 dark:to-blue-600 bg-clip-text text-transparent mb-3 sm:mb-4 leading-tight">
-                How It Works
+                {t('home.how.title')}
               </h2>
               <p className="text-sm sm:text-base text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-500 font-semibold">
-                Simple steps to start earning
+                {t('home.how.subtitle')}
               </p>
             </div>
 
@@ -201,10 +202,10 @@ export default function Home() {
                 </div>
 
                 <h3 className="text-sm sm:text-base font-bold text-gray-800 dark:text-blue-400 mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-blue-800 dark:group-hover:from-blue-400 dark:group-hover:to-blue-500 transition-all duration-300 leading-tight">
-                  Solve Problems
+                  {t('home.how.step1.title')}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm leading-relaxed group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300 px-2">
-                  Complete coding challenges and earn 1 codecoin per solved problem
+                  {t('home.how.step1.desc')}
                 </p>
               </div>
 
@@ -217,10 +218,10 @@ export default function Home() {
                 </div>
 
                 <h3 className="text-sm sm:text-base font-bold text-gray-800 dark:text-blue-400 mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-blue-800 dark:group-hover:from-blue-400 dark:group-hover:to-blue-500 transition-all duration-300 leading-tight">
-                  Join Contests
+                  {t('home.how.step2.title')}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm leading-relaxed group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300 px-2">
-                  Participate in paid contests and compete for cash prizes
+                  {t('home.how.step2.desc')}
                 </p>
               </div>
 
@@ -233,10 +234,10 @@ export default function Home() {
                 </div>
 
                 <h3 className="text-sm sm:text-base font-bold text-gray-800 dark:text-blue-400 mb-2 group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-blue-600 group-hover:to-blue-800 dark:group-hover:from-blue-400 dark:group-hover:to-blue-500 transition-all duration-300 leading-tight">
-                  Win & Withdraw
+                  {t('home.how.step3.title')}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm leading-relaxed group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors duration-300 px-2">
-                  Win contests and withdraw your earnings to your bank account
+                  {t('home.how.step3.desc')}
                 </p>
               </div>
             </div>
@@ -253,10 +254,10 @@ export default function Home() {
           <div className="max-w-4xl mx-auto text-center relative">
             <div className="max-w-sm sm:max-w-md md:max-w-lg mx-auto">
               <h2 className="text-lg sm:text-xl md:text-2xl font-black bg-gradient-to-r from-gray-800 via-blue-700 to-blue-900 dark:from-blue-400 dark:via-blue-500 dark:to-blue-600 bg-clip-text text-transparent mb-4 sm:mb-6 leading-tight">
-                Ready to Start Earning with Code?
+                {t('home.cta.title')}
               </h2>
               <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mb-6 sm:mb-8 leading-relaxed px-2 transition-colors duration-300">
-                Join thousands of developers who are already earning with AlgoBucks
+                {t('home.cta.subtitle')}
               </p>
 
               <div className="flex flex-col xs:flex-row gap-3 sm:gap-4 justify-center max-w-sm sm:max-w-md mx-auto">
@@ -269,7 +270,7 @@ export default function Home() {
                     <div className="absolute inset-0 bg-white/20 dark:bg-white/30 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 skew-x-12"></div>
                     <span className="relative flex items-center whitespace-nowrap">
                       <Trophy className="mr-1 sm:mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                      Get Started Now
+                      {t('home.cta.get_started')}
                     </span>
                   </button>
                 )}
@@ -279,7 +280,7 @@ export default function Home() {
                   className="group relative inline-flex items-center justify-center w-full xs:w-auto px-4 sm:px-6 py-2 sm:py-3 text-xs sm:text-sm font-bold text-blue-700 dark:text-blue-400 border border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-950/30 rounded-lg backdrop-blur-sm hover:border-blue-500 dark:hover:border-blue-600 hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all duration-300 hover:scale-105"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-50/0 to-blue-100/50 dark:from-blue-950/0 dark:to-blue-900/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-                  <span className="relative whitespace-nowrap">Browse Contests</span>
+                  <span className="relative whitespace-nowrap">{t('home.cta.browse_contests')}</span>
                 </button>
               </div>
             </div>
