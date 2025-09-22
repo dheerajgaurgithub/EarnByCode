@@ -299,15 +299,8 @@ const ProblemDetail: React.FC = () => {
       // Build optional stdin from first example if present
       const exampleInput = problem.examples?.[0]?.input ?? '';
       const exampleOutput = problem.examples?.[0]?.output ?? '';
-      const versionMap: Record<Language, string> = {
-        javascript: '18.15.0',
-        python: '3.11.2',
-        java: '17.0.1',
-        cpp: '10.2.0',
-      };
       const payload = {
         language: selectedLanguage,
-        version: versionMap[selectedLanguage],
         files: [{ content: code }],
         ...(typeof exampleInput === 'string' ? { stdin: exampleInput } : {})
       };
@@ -397,15 +390,8 @@ const ProblemDetail: React.FC = () => {
       let passedCount = 0;
 
       const runOne = async (stdin: string | undefined, expected: string | undefined) => {
-        const versionMap: Record<Language, string> = {
-          javascript: '18.15.0',
-          python: '3.11.2',
-          java: '17.0.1',
-          cpp: '10.2.0',
-        };
         const payload = {
           language: selectedLanguage,
-          version: versionMap[selectedLanguage],
           files: [{ content: code }],
           ...(stdin ? { stdin } : {})
         };

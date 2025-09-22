@@ -619,7 +619,7 @@ export const Profile: React.FC = () => {
               </div>
               <div className="text-center bg-purple-50 dark:bg-purple-900/20 p-2.5 sm:p-4 rounded-lg border border-purple-200 dark:border-purple-800 transition-colors duration-300">
                 <p className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
-                  {user.ranking ? `#${user.ranking-1}` : 'N/A'}
+                  {typeof user.ranking === 'number' && user.ranking > 0 ? `#${user.ranking}` : 'N/A'}
                 </p>
                 <p className="text-purple-500 dark:text-purple-400 text-xs sm:text-sm">Global Rank</p>
               </div>

@@ -104,7 +104,7 @@ const PublicProfile: React.FC = () => {
             <p className="text-yellow-500 dark:text-yellow-400 text-xs">Points</p>
           </div>
           <div className="text-center bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg border border-purple-200 dark:border-purple-800">
-            <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{user.ranking ? `#${user.ranking - 1}` : 'N/A'}</p>
+            <p className="text-xl font-bold text-purple-600 dark:text-purple-400">{typeof user.ranking === 'number' && user.ranking > 0 ? `#${user.ranking}` : 'N/A'}</p>
             <p className="text-purple-500 dark:text-purple-400 text-xs">Global Rank</p>
           </div>
           <div className="text-center bg-green-50 dark:bg-green-900/20 p-3 rounded-lg border border-green-200 dark:border-green-800">
