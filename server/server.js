@@ -469,6 +469,135 @@ app.use('/api/discussions', discussionRoutes);
 app.use('/api/contest-problems', contestProblemRoutes);
 app.use('/api/oauth', oauthRoutes);
 
+// Lightweight compiler endpoint for CodeEditor
+// Accepts { code, input, lang } where lang is one of: 'Cpp' | 'Java' | 'Python' | 'JavaScript'
+// Responds with { output, runtimeMs, exitCode }
+app.post('/compile', async (req, res) => {
+  try {
+    const { code, input, lang } = req.body || {};
+    if (typeof code !== 'string' || !lang) {
+      return res.status(400).json({ output: 'Missing code or language', runtimeMs: 0, exitCode: 1 });
+    }
+    const start = Date.now();
+    const done = (output, exitCode = 0) => {
+      return res.status(200).json({ output: String(output || ''), runtimeMs: Date.now() - start, exitCode });
+    };
+
+    if (lang === 'JavaScript') {
+      // Execute with Node.js
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-js-'));
+      const filePath = path.join(tmpDir, 'main.js');
+      fs.writeFileSync(filePath, code, 'utf8');
+      const child = spawn(process.execPath, [filePath], { stdio: ['pipe', 'pipe', 'pipe'] });
+      if (input) child.stdin.write(String(input));
+      child.stdin.end();
+      let out = '', err = '';
+      let killed = false;
+      const killTimer = setTimeout(() => { killed = true; try { child.kill('SIGKILL'); } catch {} }, 3000);
+      child.stdout.on('data', d => (out += d.toString()));
+      child.stderr.on('data', d => (err += d.toString()));
+      child.on('close', (code) => {
+        clearTimeout(killTimer);
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+        if (killed) return done('Time limit exceeded', 124);
+        return done(out || err, typeof code === 'number' ? code : 0);
+      });
+      return;
+    }
+
+    if (lang === 'Python') {
+      const tmpFile = path.join(os.tmpdir(), `algobucks-${Date.now()}-${Math.random().toString(36).slice(2)}.py`);
+      fs.writeFileSync(tmpFile, code, 'utf8');
+      const pythonBin = process.env.PYTHON_BIN || 'python';
+      const child = spawn(pythonBin, [tmpFile], { stdio: ['pipe', 'pipe', 'pipe'] });
+      if (input) child.stdin.write(String(input));
+      child.stdin.end();
+      let out = '', err = '';
+      let killed = false;
+      const killTimer = setTimeout(() => { killed = true; try { child.kill('SIGKILL'); } catch {} }, 3000);
+      child.stdout.on('data', d => (out += d.toString()));
+      child.stderr.on('data', d => (err += d.toString()));
+      child.on('close', (code) => {
+        clearTimeout(killTimer);
+        try { fs.unlinkSync(tmpFile); } catch {}
+        if (killed) return done('Time limit exceeded', 124);
+        return done(out || err, typeof code === 'number' ? code : 0);
+      });
+      return;
+    }
+
+    if (lang === 'Java') {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-java-'));
+      const srcFile = path.join(tmpDir, 'Main.java');
+      fs.writeFileSync(srcFile, code, 'utf8');
+      const javac = process.env.JAVAC_BIN || 'javac';
+      const java = process.env.JAVA_BIN || 'java';
+      const compile = spawn(javac, ['-d', tmpDir, srcFile]);
+      const compileErr = [];
+      compile.stderr.on('data', d => compileErr.push(d));
+      compile.on('close', (status) => {
+        if (status !== 0) {
+          const err = Buffer.concat(compileErr).toString('utf8');
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          return done(err || 'Compilation failed', 1);
+        }
+        const child = spawn(java, ['-cp', tmpDir, 'Main'], { stdio: ['pipe', 'pipe', 'pipe'] });
+        if (input) child.stdin.write(String(input));
+        child.stdin.end();
+        let out = '', err = '';
+        let killed = false;
+        const killTimer = setTimeout(() => { killed = true; try { child.kill('SIGKILL'); } catch {} }, 3000);
+        child.stdout.on('data', d => (out += d.toString()));
+        child.stderr.on('data', d => (err += d.toString()));
+        child.on('close', (code) => {
+          clearTimeout(killTimer);
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          if (killed) return done('Time limit exceeded', 124);
+          return done(out || err, typeof code === 'number' ? code : 0);
+        });
+      });
+      return;
+    }
+
+    if (lang === 'Cpp') {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-cpp-'));
+      const srcFile = path.join(tmpDir, 'main.cpp');
+      const exeFile = path.join(tmpDir, process.platform === 'win32' ? 'a.exe' : 'a.out');
+      fs.writeFileSync(srcFile, code, 'utf8');
+      const gxx = process.env.GXX_BIN || 'g++';
+      const compile = spawn(gxx, ['-std=c++17', '-O2', srcFile, '-o', exeFile]);
+      const compileErr = [];
+      compile.stderr.on('data', d => compileErr.push(d));
+      compile.on('close', (status) => {
+        if (status !== 0) {
+          const err = Buffer.concat(compileErr).toString('utf8');
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          return done(err || 'Compilation failed', 1);
+        }
+        const child = spawn(exeFile, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+        if (input) child.stdin.write(String(input));
+        child.stdin.end();
+        let out = '', err = '';
+        let killed = false;
+        const killTimer = setTimeout(() => { killed = true; try { child.kill('SIGKILL'); } catch {} }, 3000);
+        child.stdout.on('data', d => (out += d.toString()));
+        child.stderr.on('data', d => (err += d.toString()));
+        child.on('close', (code) => {
+          clearTimeout(killTimer);
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          if (killed) return done('Time limit exceeded', 124);
+          return done(out || err, typeof code === 'number' ? code : 0);
+        });
+      });
+      return;
+    }
+
+    return done('Unsupported language', 1);
+  } catch (e) {
+    return res.status(500).json({ output: 'error', runtimeMs: 0, exitCode: 1 });
+  }
+});
+
 // Legacy compatibility: handle older clients posting to /api/code/submit
 // Mirrors the behavior of POST /api/problems/:id/submit
 app.post('/api/code/submit', authenticate, async (req, res) => {
