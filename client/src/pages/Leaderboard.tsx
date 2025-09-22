@@ -148,17 +148,26 @@ export const Leaderboard: React.FC = () => {
       }
 
       const formattedUsers = data.map((u: any) => {
+        // Helper to build Cloudinary URL
+        const cloudName = (import.meta as any)?.env?.VITE_CLOUDINARY_CLOUD_NAME as string | undefined;
+        const fetchBase = (import.meta as any)?.env?.VITE_CLOUDINARY_FETCH_BASE as string | undefined;
+        const buildCloudinaryUrl = (publicId?: string) => {
+          if (!publicId) return '';
+          if (fetchBase) return `${fetchBase}/${publicId}`;
+          if (cloudName) return `https://res.cloudinary.com/${cloudName}/image/upload/${publicId}`;
+          return '';
+        };
+
         // Try various common fields for avatar
-        const cloudinaryBase = (import.meta as any)?.env?.VITE_CLOUDINARY_FETCH_BASE as string | undefined;
         let resolvedAvatar = (
           u.avatarUrl ||
           u.profile?.avatarUrl ||
-          u.avatar?.url ||
+          (typeof u.avatar === 'string' ? u.avatar : u.avatar?.url) ||
           u.photoURL ||
           u.image ||
           u.picture ||
-          (u.avatarPublicId && cloudinaryBase ? `${cloudinaryBase}/${u.avatarPublicId}` : '')
-        );
+          buildCloudinaryUrl(u.avatarPublicId || u.profile?.avatarPublicId)
+        ) as string | undefined;
 
         // If backend gives relative path like /uploads/..., prefix server origin
         if (resolvedAvatar && resolvedAvatar.startsWith('/')) {
