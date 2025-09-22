@@ -1,6 +1,56 @@
 import axios from 'axios';
 import { Script, createContext } from 'node:vm';
 
+// Prefer local in-house executor to keep behavior identical between Run and Submit
+async function getFetch() {
+  if (typeof fetch !== 'undefined') return fetch;
+  const mod = await import('node-fetch');
+  return mod.default;
+}
+
+async function executeWithLocalExecutor(code, language, input) {
+  try {
+    const httpFetch = await getFetch();
+    // Derive base URL for self server
+    const base = (process.env.SELF_URL || process.env.SERVER_URL || process.env.API_BASE_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:5000')
+      .replace(/\/+$/, '')
+      .replace(/\/?api$/, '');
+
+    // Map language ids to API expectations
+    const lang = (language || '').toString().toLowerCase();
+    const files = [{ content: String(code || '') }];
+    const body = {
+      language: lang,
+      files,
+      ...(typeof input === 'string' ? { stdin: input } : {})
+    };
+
+    const res = await httpFetch(`${base}/api/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`Local executor HTTP ${res.status}: ${text}`);
+    }
+    const data = await res.json();
+    const out = (data?.run?.output ?? data?.stdout ?? '').toString();
+    const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
+
+    return {
+      output: out,
+      runtime: data?.runtimeMs ? `${data.runtimeMs}ms` : undefined,
+      memory: undefined,
+      error: err || null,
+    };
+  } catch (e) {
+    // Bubble up to allow fallback
+    throw e;
+  }
+}
+
 // Enhanced OnlineGDB integration for real code compilation
 export const executeCode = async (code, language, testCases) => {
   try {
@@ -82,9 +132,21 @@ export const executeCode = async (code, language, testCases) => {
 // Prefer local JS execution for stability, otherwise try OnlineGDB
 export async function executeWithBestEffort(code, language, input) {
   const lang = (language || '').toString().toLowerCase();
-  if (lang === 'javascript') {
-    return executeJsLocal(code, input);
+  // 1) Try local in-house executor for all supported languages to keep parity with Run
+  try {
+    return await executeWithLocalExecutor(code, language, input);
+  } catch (e) {
+    // continue to fallback(s)
   }
+
+  // 2) For JavaScript, we also have a fast local VM fallback
+  if (lang === 'javascript') {
+    try {
+      return executeJsLocal(code, input);
+    } catch {}
+  }
+
+  // 3) Last resort: OnlineGDB (may be flaky) then simulation
   return executeWithOnlineGDB(code, language, input);
 }
 

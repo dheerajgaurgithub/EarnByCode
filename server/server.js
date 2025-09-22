@@ -296,14 +296,11 @@ app.post('/api/code/run', async (req, res) => {
 
 // Middleware
 app.use(helmet());
-// Configure CORS
+// Configure CORS (locked to specific origins)
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://localhost:5174',
-  'https://algobucks-tau.vercel.app',
-  'https://www.algobucks-tau.vercel.app',
-  config.FRONTEND_URL
-].filter(Boolean);
+  'https://algobucks-tau.vercel.app'
+];
 
 // CORS configuration
 const corsOptions = {
@@ -312,38 +309,10 @@ const corsOptions = {
     if (!origin) {
       return callback(null, true);
     }
-    
-    // For development, allow all origins
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('Development mode - allowing origin:', origin);
-      return callback(null, true);
-    }
-    
-    // Check if origin is in allowed origins
+    // Strictly allow only the configured origins
     if (allowedOrigins.includes(origin)) {
       return callback(null, true);
     }
-    
-    // Check for subdomains
-    try {
-      const originHostname = new URL(origin).hostname;
-      const isSubdomain = allowedOrigins.some(allowed => {
-        try {
-          const allowedHostname = new URL(allowed).hostname;
-          return originHostname === allowedHostname || 
-                 originHostname.endsWith('.' + allowedHostname);
-        } catch (e) {
-          return false;
-        }
-      });
-      
-      if (isSubdomain) {
-        return callback(null, true);
-      }
-    } catch (e) {
-      console.error('Error checking origin:', e);
-    }
-    
     console.warn('CORS Blocked:', origin, 'not in allowed origins:', allowedOrigins);
     callback(new Error('Not allowed by CORS'));
   },
