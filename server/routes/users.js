@@ -138,7 +138,7 @@ router.get('/leaderboard', authenticate, async (req, res) => {
     const query = User.find({ isAdmin: false });
     
     // Select fields
-    let selectFields = 'username fullName points codecoins ranking';
+    let selectFields = 'username fullName points codecoins ranking avatarUrl avatarPublicId';
     if (include.includes('profile')) {
       selectFields += ' bio location website';
     }

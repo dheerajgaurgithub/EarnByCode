@@ -180,6 +180,14 @@ export const Leaderboard: React.FC = () => {
           }
         }
 
+        // Final fallback: generate a placeholder avatar using ui-avatars
+        if (!resolvedAvatar) {
+          const display = (u.fullName || u.username || 'User').toString();
+          const bg = 'random';
+          const size = 128;
+          resolvedAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(display)}&background=${bg}&size=${size}`;
+        }
+
         return {
           _id: u._id,
           username: u.username,
