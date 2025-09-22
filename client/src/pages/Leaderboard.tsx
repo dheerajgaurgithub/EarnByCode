@@ -345,13 +345,11 @@ export const Leaderboard: React.FC = () => {
               <div className="relative mb-3">
                 <Link to={`/u/${users[1]?.username}`} className="block">
                   <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200 dark:ring-gray-700 overflow-hidden bg-gray-100 dark:bg-gray-700">
-                    {(() => { const a = users[1]?.avatarUrl || (currentUser?.username === users[1]?.username ? currentUser?.avatarUrl : '');
-                      return a ? (
-                        <img src={a} alt={users[1]?.username} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-gray-700 dark:text-gray-300 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
-                      );
-                    })()}
+                    {users[1]?.avatarUrl ? (
+                      <img src={users[1]?.avatarUrl} alt={users[1]?.username} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-gray-700 dark:text-gray-300 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                    )}
                   </div>
                 </Link>
                 <div className="absolute -top-1 -right-1 bg-gray-500 dark:bg-gray-400 rounded-full p-1 shadow-lg">
@@ -382,13 +380,11 @@ export const Leaderboard: React.FC = () => {
               <div className="relative mb-3">
                 <Link to={`/u/${users[0]?.username}`} className="block">
                   <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300 dark:ring-yellow-600 overflow-hidden bg-yellow-100 dark:bg-yellow-700">
-                    {(() => { const a = users[0]?.avatarUrl || (currentUser?.username === users[0]?.username ? currentUser?.avatarUrl : '');
-                      return a ? (
-                        <img src={a} alt={users[0]?.username} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-yellow-800 dark:text-yellow-200 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
-                      );
-                    })()}
+                    {users[0]?.avatarUrl ? (
+                      <img src={users[0]?.avatarUrl} alt={users[0]?.username} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-yellow-800 dark:text-yellow-200 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                    )}
                   </div>
                 </Link>
                 <div className="absolute -top-2 -right-2 bg-yellow-500 dark:bg-yellow-600 rounded-full p-1.5 shadow-xl">
@@ -420,13 +416,11 @@ export const Leaderboard: React.FC = () => {
               <div className="relative mb-3">
                 <Link to={`/u/${users[2]?.username}`} className="block">
                   <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200 dark:ring-orange-700 overflow-hidden bg-orange-100 dark:bg-orange-800">
-                    {(() => { const a = users[2]?.avatarUrl || (currentUser?.username === users[2]?.username ? currentUser?.avatarUrl : '');
-                      return a ? (
-                        <img src={a} alt={users[2]?.username} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-orange-800 dark:text-orange-200 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
-                      );
-                    })()}
+                    {users[2]?.avatarUrl ? (
+                      <img src={users[2]?.avatarUrl} alt={users[2]?.username} className="w-full h-full object-cover" />
+                    ) : (
+                      <span className="text-orange-800 dark:text-orange-200 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                    )}
                   </div>
                 </Link>
                 <div className="absolute -top-1 -right-1 bg-orange-500 dark:bg-orange-600 rounded-full p-1 shadow-lg">
@@ -501,13 +495,11 @@ export const Leaderboard: React.FC = () => {
                       <div className="relative flex-shrink-0">
                         <Link to={`/u/${user.username}`} className="block">
                           <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-gray-200 dark:ring-blue-700 transition-colors duration-300 overflow-hidden bg-blue-100 dark:bg-blue-900">
-                            {(() => { const a = user.avatarUrl || (currentUser?.username === user.username ? currentUser?.avatarUrl : '');
-                              return a ? (
-                                <img src={a} alt={user.username} className="w-full h-full object-cover" />
-                              ) : (
-                                <span className="text-blue-700 dark:text-blue-300 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
-                              );
-                            })()}
+                            {user.avatarUrl ? (
+                              <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+                            ) : (
+                              <span className="text-blue-700 dark:text-blue-300 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
+                            )}
                           </div>
                         </Link>
                         {rank <= 10 && (
