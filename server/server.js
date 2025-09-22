@@ -131,6 +131,11 @@ app.post('/api/code/run', async (req, res) => {
       compile.on('error', (e) => {
         const errMsg = `Failed to start Java compiler (${javac}). ${e?.code === 'ENOENT' ? 'javac not found in PATH. Install JDK or set JAVAC_BIN.' : String(e?.message || e)}`;
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+        return done(errMsg, 1);
+      });
+      compile.on('error', (e) => {
+        const errMsg = `Failed to start Java compiler (${javac}). ${e?.code === 'ENOENT' ? 'javac not found in PATH. Install JDK or set JAVAC_BIN.' : String(e?.message || e)}`;
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
         return res.status(200).json({ run: { output: '', stderr: errMsg } });
       });
 
@@ -181,6 +186,11 @@ app.post('/api/code/run', async (req, res) => {
       const compile = spawn(gxx, ['-std=c++17', '-O2', srcFile, '-o', exeFile]);
       const compileErr = [];
       compile.stderr.on('data', d => compileErr.push(d));
+      compile.on('error', (e) => {
+        const errMsg = `Failed to start C++ compiler (${gxx}). ${e?.code === 'ENOENT' ? 'Compiler not found in PATH. Install MinGW-w64/LLVM or set GXX_BIN.' : String(e?.message || e)}`;
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+        return done(errMsg, 1);
+      });
       compile.on('error', (e) => {
         const errMsg = `Failed to start C++ compiler (${gxx}). ${e?.code === 'ENOENT' ? 'g++ not found in PATH. Install MinGW-w64/LLVM or set GXX_BIN.' : String(e?.message || e)}`;
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
