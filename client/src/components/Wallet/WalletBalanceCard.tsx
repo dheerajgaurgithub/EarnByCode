@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 // Import dialogs directly for now
 import { DepositDialog } from './DepositDialog';
 import { WithdrawDialog } from './WithdrawDialog';
+import { useI18n } from '@/context/I18nContext';
 
 export const WalletBalanceCard: React.FC = () => {
   const { 
@@ -19,6 +20,7 @@ export const WalletBalanceCard: React.FC = () => {
   
   const [showDepositDialog, setShowDepositDialog] = React.useState(false);
   const [showWithdrawDialog, setShowWithdrawDialog] = React.useState(false);
+  const { t } = useI18n();
 
   const formattedBalance = formatCurrency(balance, currency);
 
@@ -42,7 +44,7 @@ export const WalletBalanceCard: React.FC = () => {
                 <Wallet className="h-7 w-7 text-white" />
               </div>
               <span className="bg-gradient-to-r from-white to-blue-100 bg-clip-text text-transparent">
-                Wallet Balance
+                {t('wallet.title')}
               </span>
             </CardTitle>
             <Button
@@ -87,7 +89,7 @@ export const WalletBalanceCard: React.FC = () => {
                 
                 {!isLoading && !error && (
                   <p className="text-blue-600 font-medium text-lg">
-                    Available Balance
+                    {t('wallet.available_balance')}
                   </p>
                 )}
               </div>
@@ -103,7 +105,7 @@ export const WalletBalanceCard: React.FC = () => {
                   <div className="p-2 bg-white/20 rounded-lg">
                     <ArrowDownCircle className="h-5 w-5" />
                   </div>
-                  <span>Deposit Funds</span>
+                  <span>{t('wallet.add_funds')}</span>
                 </div>
               </Button>
               
@@ -116,7 +118,7 @@ export const WalletBalanceCard: React.FC = () => {
                   <div className="p-2 bg-white/20 rounded-lg">
                     <ArrowUpCircle className="h-5 w-5" />
                   </div>
-                  <span>Withdraw Funds</span>
+                  <span>{t('wallet.withdraw_funds')}</span>
                 </div>
               </Button>
             </div>

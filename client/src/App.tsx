@@ -15,6 +15,7 @@ import { Contests } from './pages/Contests';
 import Wallet from './app/wallet/page';
 import { Profile } from './pages/Profile';
 import AdminPanel from './pages/Admin/AdminPanel';
+import WalletDashboard from './pages/Admin/WalletDashboard';
 import { Leaderboard } from './pages/Leaderboard';
 import Discuss from './pages/Discuss';
 import { Submissions } from './pages/Submissions';
@@ -274,6 +275,14 @@ function App() {
                 element={
                   <AdminRoute>
                     <AdminPanel />
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/wallet"
+                element={
+                  <AdminRoute>
+                    <WalletDashboard />
                   </AdminRoute>
                 }
               />

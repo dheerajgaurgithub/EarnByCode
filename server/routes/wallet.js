@@ -13,5 +13,8 @@ router.get('/statistics', authenticate, walletController.getWalletStatistics);
 // Admin wallet routes
 router.get('/admin/wallets', authenticate, admin, walletController.adminGetAllWallets);
 router.get('/admin/wallets/:userId/transactions', authenticate, admin, walletController.adminGetWalletTransactions);
+router.get('/admin/metrics', authenticate, admin, walletController.adminGetMetrics);
+router.get('/admin/transactions', authenticate, admin, walletController.adminGetAllTransactions);
+router.post('/admin/withdraw', authenticate, admin, walletController.adminWithdraw);
 
 export default router;

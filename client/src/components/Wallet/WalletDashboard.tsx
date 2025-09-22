@@ -3,7 +3,7 @@ import { useToast } from '@/components/ui/use-toast';
 import { format } from 'date-fns';
 import { walletService, type Transaction } from '@/services/walletService';
 import { Icons } from '../icons';
-import StripeDepositForm from './StripeDepositForm';
+import RazorpayDeposit from './RazorpayDeposit';
 import { useAuth } from '@/context/AuthContext';
 import config from '@/lib/config';
 
@@ -65,7 +65,7 @@ export const WalletDashboard = () => {
   const [withdrawAmount, setWithdrawAmount] = useState<string>('');
   const [bankAccountId, setBankAccountId] = useState<string>('');
   const [actionLoading, setActionLoading] = useState<{ deposit: boolean; withdraw: boolean }>({ deposit: false, withdraw: false });
-  const isStripeConfigured = Boolean(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
+  const isStripeConfigured = false;
   // Admin-only: contest pool stats
   const [contestPool, setContestPool] = useState<{ totalAmount: number; totalParticipants: number } | null>(null);
 
@@ -237,27 +237,37 @@ export const WalletDashboard = () => {
             </h2>
             <p className="text-blue-500 mt-2 text-sm sm:text-base">Manage your funds with ease</p>
           </div>
-          <div className="flex flex-wrap gap-3 w-full">
+          <div className="flex flex-col lg:flex-row gap-4 w-full">
             {!user?.isAdmin && (
-              <div className="flex flex-col items-stretch gap-3 w-full">
-                <Button 
-                  className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
-                  disabled={balance <= 0 || actionLoading.withdraw} 
-                  onClick={onWithdraw}
-                >
-                  {actionLoading.withdraw ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                      Submitting...
-                    </>
-                  ) : (
-                    'Withdraw Funds'
-                  )}
-                </Button>
-                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                  <p className="text-xs text-blue-600 leading-relaxed">
-                    💳 <strong>Available Balance:</strong> {formatCurrency(balance)} • Minimum withdrawal: ₹10
-                  </p>
+              <div className="flex-1 bg-white rounded-2xl border border-blue-100 p-4 space-y-3">
+                <h3 className="text-lg font-semibold text-blue-900">Add Funds</h3>
+                <RazorpayDeposit onSuccess={refreshAll} />
+                <p className="text-xs text-blue-600">Minimum deposit: ₹1</p>
+              </div>
+            )}
+            {!user?.isAdmin && (
+              <div className="flex-1 bg-white rounded-2xl border border-blue-100 p-4 space-y-3">
+                <h3 className="text-lg font-semibold text-blue-900">Withdraw</h3>
+                <div className="flex flex-col items-stretch gap-3 w-full">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
+                    disabled={balance <= 0 || actionLoading.withdraw} 
+                    onClick={onWithdraw}
+                  >
+                    {actionLoading.withdraw ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        Submitting...
+                      </>
+                    ) : (
+                      'Withdraw Funds'
+                    )}
+                  </Button>
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+                    <p className="text-xs text-blue-600 leading-relaxed">
+                      💳 <strong>Available Balance:</strong> {formatCurrency(balance)} • Minimum withdrawal: ₹10
+                    </p>
+                  </div>
                 </div>
               </div>
             )}

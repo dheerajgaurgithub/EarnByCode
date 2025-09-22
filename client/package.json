@@ -29,8 +29,6 @@
     "@radix-ui/react-label": "^2.1.7",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-toast": "^1.2.15",
-    "@stripe/react-stripe-js": "^3.9.2",
-    "@stripe/stripe-js": "^7.9.0",
     "@types/react-toastify": "^4.0.2",
     "axios": "^1.12.2",
     "class-variance-authority": "^0.7.1",

@@ -140,6 +140,30 @@ export const walletService = {
   },
 
   /**
+   * Create Razorpay order for a wallet deposit
+   */
+  async createRazorpayOrder(amount: number): Promise<{ orderId: string; amount: number; currency: string; keyId: string; }> {
+    try {
+      const response = await api.post('/payments/razorpay/order', { amount });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
+   * Verify Razorpay payment after Checkout success
+   */
+  async verifyRazorpayPayment(payload: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string; amount: number; }): Promise<{ success: boolean; balance: number; transactionId: string; }> {
+    try {
+      const response = await api.post('/payments/razorpay/verify', payload);
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
    * Get wallet statistics and recent activity
    */
   async getWalletStatistics(): Promise<WalletStatistics> {

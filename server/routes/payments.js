@@ -1,14 +1,130 @@
 import express from 'express';
-import Stripe from 'stripe';
 import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { authenticate } from '../middleware/auth.js';
+import crypto from 'crypto';
 
 const router = express.Router();
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
-const paymentsMode = (process.env.PAYMENTS_MODE || '').toLowerCase(); // 'mock' to bypass Stripe
-const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
+const paymentsMode = (process.env.PAYMENTS_MODE || '').toLowerCase(); // 'mock' to bypass live gateways
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID || '';
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || '';
+
+async function createRazorpayOrder(amountInRupees) {
+  const amountPaise = Math.round(Number(amountInRupees) * 100);
+  if (!razorpayKeyId || !razorpayKeySecret) {
+    // Mock order when keys not present
+    return {
+      id: `order_mock_${Date.now()}`,
+      amount: amountPaise,
+      currency: 'INR',
+      status: 'created',
+    };
+  }
+  try {
+    const { default: Razorpay } = await import('razorpay');
+    const instance = new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
+    const order = await instance.orders.create({ amount: amountPaise, currency: 'INR' });
+    return order;
+  } catch (e) {
+    console.error('Razorpay order error:', e);
+    throw new Error('Failed to create payment order');
+  }
+}
+
+function verifyRazorpaySignature({ order_id, payment_id, signature }) {
+  if (!razorpayKeySecret) {
+    // In mock, accept any signature
+    return true;
+  }
+  const body = `${order_id}|${payment_id}`;
+  const expected = crypto.createHmac('sha256', razorpayKeySecret).update(body).digest('hex');
+  return expected === signature;
+}
+
+// Razorpay: Create deposit order
+router.post('/razorpay/order', authenticate, async (req, res) => {
+  try {
+    const { amount } = req.body;
+    if (!amount || isNaN(amount) || amount < 1) {
+      return res.status(400).json({ success: false, message: 'Minimum deposit amount is ₹1' });
+    }
+    const order = await createRazorpayOrder(amount);
+    return res.json({
+      success: true,
+      orderId: order.id,
+      amount: order.amount,
+      currency: order.currency || 'INR',
+      keyId: razorpayKeyId || 'rzp_test_mock',
+    });
+  } catch (error) {
+    console.error('Create Razorpay order error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create order' });
+  }
+});
+
+// Razorpay: Verify payment and credit wallet
+router.post('/razorpay/verify', authenticate, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, amount } = req.body;
+    if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+      return res.status(400).json({ success: false, message: 'Missing payment verification fields' });
+    }
+    if (!amount || isNaN(amount) || amount < 1) {
+      return res.status(400).json({ success: false, message: 'Invalid amount' });
+    }
+
+    const ok = verifyRazorpaySignature({
+      order_id: razorpay_order_id,
+      payment_id: razorpay_payment_id,
+      signature: razorpay_signature,
+    });
+    if (!ok) {
+      return res.status(400).json({ success: false, message: 'Invalid payment signature' });
+    }
+
+    // Credit wallet and record transaction
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      { $inc: { walletBalance: Number(amount) } },
+      { new: true, session }
+    );
+
+    const amtNum = Number(amount);
+    const fee = 0;
+    const netAmount = amtNum - fee;
+    const transaction = await Transaction.create([
+      {
+        user: req.user._id,
+        type: 'deposit',
+        amount: amtNum,
+        currency: 'INR',
+        description: `Wallet deposit of ₹${amtNum.toFixed(2)} via Razorpay`,
+        status: 'completed',
+        fee,
+        netAmount,
+        balanceAfter: updatedUser.walletBalance,
+        metadata: {
+          gateway: 'razorpay',
+          order_id: razorpay_order_id,
+          payment_id: razorpay_payment_id,
+        },
+      },
+    ], { session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.json({ success: true, balance: updatedUser.walletBalance, transactionId: transaction[0]._id });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Razorpay verify error:', error);
+    res.status(500).json({ success: false, message: 'Failed to verify payment' });
+  }
+});
 
 // Helper function to create or retrieve Stripe customer
 async function getOrCreateStripeCustomer(user) {
@@ -49,197 +165,57 @@ router.get('/balance', authenticate, async (req, res) => {
   }
 });
 
-// Confirm 3D Secure (SCA) for a PaymentIntent and finalize the deposit
+// Stripe SCA confirm endpoint removed
 router.post('/confirm-3d-secure', authenticate, async (req, res) => {
-  try {
-    if (!stripe) {
-      return res.status(400).json({ success: false, message: 'Stripe is not configured on the server' });
-    }
-
-    const { paymentIntentId } = req.body;
-    if (!paymentIntentId) {
-      return res.status(400).json({ success: false, message: 'paymentIntentId is required' });
-    }
-
-    // Retrieve latest status
-    const pi = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-    if (pi.status === 'requires_action' || pi.status === 'requires_confirmation') {
-      // Try to confirm again, just in case
-      await stripe.paymentIntents.confirm(paymentIntentId);
-    }
-
-    const updated = await stripe.paymentIntents.retrieve(paymentIntentId);
-
-    if (updated.status === 'succeeded') {
-      const amount = (updated.amount_received ?? updated.amount ?? 0) / 100;
-      if (amount > 0) {
-        // Update wallet balance and record transaction if not already recorded
-        const existing = await Transaction.findOne({ stripePaymentIntentId: paymentIntentId, user: req.user._id });
-        if (!existing) {
-          // Credit wallet
-          const user = await User.findByIdAndUpdate(
-            req.user._id,
-            { $inc: { walletBalance: amount } },
-            { new: true }
-          );
-          const txn = new Transaction({
-            user: req.user._id,
-            type: 'deposit',
-            amount,
-            currency: 'INR',
-            description: `Wallet deposit of ₹${amount.toFixed(2)} (3DS confirm)`,
-            status: 'completed',
-            stripePaymentIntentId: paymentIntentId,
-          });
-          await txn.save();
-        }
-      }
-
-      return res.json({ success: true, status: 'succeeded' });
-    }
-
-    return res.status(202).json({ success: true, status: updated.status });
-  } catch (error) {
-    console.error('Confirm 3D Secure error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to confirm payment' });
-  }
+  return res.status(410).json({ success: false, message: 'Endpoint removed. Use Razorpay flow.' });
 });
 
 // Add funds to wallet
 router.post('/deposit', authenticate, async (req, res) => {
   try {
-    const { amount, paymentMethodId, method = 'card', details } = req.body;
-    
-    // Validation
+    const { amount } = req.body;
     if (!amount || isNaN(amount) || amount < 1) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Minimum deposit amount is ₹1' 
-      });
+      return res.status(400).json({ success: false, message: 'Minimum deposit amount is ₹1' });
     }
-
-    // Mock mode: bypass Stripe, directly credit wallet and create transaction
-    if (!stripe || paymentsMode === 'mock') {
+    if (paymentsMode === 'mock') {
+      // For convenience, in mock mode credit directly
+      const session = await mongoose.startSession();
+      session.startTransaction();
       try {
-        const session = await mongoose.startSession();
-        session.startTransaction();
-        try {
-          const updatedUser = await User.findByIdAndUpdate(
-            req.user._id,
-            { $inc: { walletBalance: amount } },
-            { new: true, session }
-          );
-
-          const transaction = await Transaction.create([
-            {
-              user: req.user._id,
-              type: 'deposit',
-              amount: amount,
-              currency: 'INR',
-              description: `Wallet deposit of ₹${Number(amount).toFixed(2)} via ${method.toUpperCase()} (mock)`,
-              status: 'completed',
-              metadata: { mode: 'mock', method, details: details || {} }
-            }
-          ], { session });
-
-          await session.commitTransaction();
-          session.endSession();
-
-          return res.json({
-            success: true,
-            message: 'Funds added successfully (mock)',
-            balance: updatedUser.walletBalance,
-            transactionId: transaction[0]._id
-          });
-        } catch (e) {
-          await session.abortTransaction();
-          session.endSession();
-          throw e;
-        }
-      } catch (e) {
-        console.error('Mock deposit failed:', e);
-        return res.status(500).json({ success: false, message: 'Failed to process deposit' });
-      }
-    }
-
-    // If live mode and not card, currently unsupported
-    if (method !== 'card') {
-      return res.status(400).json({ success: false, message: `Payment method '${method}' is not supported in live mode` });
-    }
-
-    // Get or create Stripe customer (live mode)
-    const customer = await getOrCreateStripeCustomer(req.user);
-    
-    try {
-      // Attach payment method if provided
-      if (paymentMethodId) {
-        await stripe.paymentMethods.attach(paymentMethodId, {
-          customer: customer.id,
-        });
-      }
-
-      // Create payment intent
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: Math.round(amount * 100), // Convert to cents
-        currency: 'inr',
-        customer: customer.id,
-        payment_method: paymentMethodId,
-        confirm: true,
-        off_session: true,
-        metadata: {
-          userId: req.user._id.toString(),
-          type: 'wallet_deposit'
-        }
-      });
-
-      if (paymentIntent.status === 'succeeded') {
-        // Update user's wallet balance
         const updatedUser = await User.findByIdAndUpdate(
           req.user._id,
-          { $inc: { walletBalance: amount } },
-          { new: true }
+          { $inc: { walletBalance: Number(amount) } },
+          { new: true, session }
         );
-
-        // Create transaction record
-        const transaction = new Transaction({
-          user: req.user._id,
-          type: 'deposit',
-          amount: amount,
-          currency: 'INR',
-          description: `Wallet deposit of ₹${amount.toFixed(2)}`,
-          status: 'completed',
-          stripePaymentIntentId: paymentIntent.id,
-          metadata: { paymentMethod: paymentMethodId }
-        });
-
-        await transaction.save();
-
-        return res.json({
-          success: true,
-          message: 'Funds added successfully',
-          balance: updatedUser.walletBalance,
-          transactionId: transaction._id
-        });
+        const fee = 0;
+        const netAmount = Number(amount) - fee;
+        const [txn] = await Transaction.create([
+          {
+            user: req.user._id,
+            type: 'deposit',
+            amount: Number(amount),
+            currency: 'INR',
+            description: `Wallet deposit of ₹${Number(amount).toFixed(2)} (mock)` ,
+            status: 'completed',
+            fee,
+            netAmount,
+            balanceAfter: updatedUser.walletBalance,
+            metadata: { mode: 'mock' }
+          }
+        ], { session });
+        await session.commitTransaction();
+        session.endSession();
+        return res.json({ success: true, balance: updatedUser.walletBalance, transactionId: txn._id });
+      } catch (e) {
+        await session.abortTransaction();
+        session.endSession();
+        throw e;
       }
-    } catch (error) {
-      if (error.code === 'authentication_required') {
-        // Handle 3D Secure authentication
-        return res.status(402).json({
-          requiresAction: true,
-          paymentIntentId: error.raw.payment_intent.id,
-          clientSecret: error.raw.payment_intent.client_secret
-        });
-      }
-      throw error;
     }
+    return res.status(410).json({ success: false, message: 'Deposit via Stripe has been removed. Use /payments/razorpay/order and /payments/razorpay/verify' });
   } catch (error) {
     console.error('Deposit error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Failed to process deposit',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    return res.status(500).json({ success: false, message: 'Failed to process deposit' });
   }
 });
 

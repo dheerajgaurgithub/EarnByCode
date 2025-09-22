@@ -324,6 +324,36 @@ class ApiService {
     return this.request('GET', '/admin/stats');
   }
 
+  // Admin wallet metrics
+  async getAdminWalletMetrics(): Promise<{ success: boolean; metrics: { totalCollected: number; totalPayouts: number; adminBalance: number; } }> {
+    return this.request('GET', '/wallet/admin/metrics');
+  }
+
+  // Admin all transactions
+  async getAdminAllTransactions(params: { page?: number; limit?: number; type?: string; status?: string; userId?: string } = {}): Promise<{
+    success: boolean;
+    transactions: any[];
+    pagination: { total: number; page: number; pages: number; limit: number };
+  }> {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', String(params.page));
+    if (params.limit) query.append('limit', String(params.limit));
+    if (params.type) query.append('type', params.type);
+    if (params.status) query.append('status', params.status);
+    if (params.userId) query.append('userId', params.userId);
+    return this.request('GET', `/wallet/admin/transactions?${query.toString()}`);
+  }
+
+  // Admin withdraw
+  async adminWithdraw(amount: number): Promise<{ success: boolean; balance: number; transactionId: string }> {
+    return this.request('POST', '/wallet/admin/withdraw', { amount });
+  }
+
+  // Settle a contest (admin)
+  async settleContest(contestId: string): Promise<{ message: string; totals: { totalCollected: number; totalPrizes: number; remainder: number } }> {
+    return this.request('POST', `/contests/${contestId}/settle`);
+  }
+
   async getAdminUsers(params: { page?: number; limit?: number; search?: string } = {}): Promise<{
     users: User[];
     total: number;

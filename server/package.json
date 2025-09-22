@@ -1,7 +1,7 @@
 {
-  "name": "codearena-backend",
+  "name": "algobucks-backend",
   "version": "1.0.0",
-  "description": "Backend for Mahir's CodeArena",
+  "description": "Backend for AlgoBucks",
   "main": "server.js",
   "type": "module",
   "scripts": {
@@ -17,6 +17,7 @@
     "concurrently": "^9.2.1",
     "connect-mongo": "^5.1.0",
     "cors": "^2.8.5",
+    "crypto": "^1.0.1",
     "dotenv": "^16.6.1",
     "express": "^4.21.2",
     "express-mongo-sanitize": "^2.2.0",
@@ -32,7 +33,7 @@
     "nodemailer": "^7.0.6",
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
-    "stripe": "^14.25.0",
+    "razorpay": "^2.9.6",
     "vm2": "^3.9.19",
     "xss-clean": "^0.1.4"
   },

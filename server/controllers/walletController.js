@@ -22,6 +22,131 @@ export const getWalletBalance = async (req, res) => {
   }
 };
 
+// Admin: withdraw admin earnings from admin's wallet
+export const adminWithdraw = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { amount } = req.body;
+    const amt = Number(amount);
+    if (!amt || isNaN(amt) || amt < 10) {
+      return res.status(400).json({ success: false, message: 'Minimum withdrawal amount is ₹10' });
+    }
+
+    // The admin making the request withdraws from their wallet
+    const adminUser = await User.findById(req.user._id).session(session);
+    if (!adminUser || !adminUser.isAdmin) {
+      return res.status(403).json({ success: false, message: 'Not authorized' });
+    }
+    if (adminUser.walletBalance < amt) {
+      return res.status(400).json({ success: false, message: 'Insufficient balance' });
+    }
+
+    // Deduct and record transaction
+    adminUser.walletBalance = parseFloat((adminUser.walletBalance - amt).toFixed(2));
+    await adminUser.save({ session });
+
+    const txn = new Transaction({
+      user: adminUser._id,
+      type: 'withdrawal',
+      amount: -amt,
+      currency: 'INR',
+      description: `Admin withdrawal of ₹${amt.toFixed(2)}`,
+      status: 'pending',
+    });
+    await txn.save({ session });
+
+    // Simulate completion (or integrate RazorpayX payout here)
+    setTimeout(async () => {
+      try {
+        txn.status = 'completed';
+        await txn.save();
+      } catch (e) {
+        console.error('Admin withdraw finalize failed:', e);
+      }
+    }, 3000);
+
+    await session.commitTransaction();
+    session.endSession();
+    return res.json({ success: true, balance: adminUser.walletBalance, transactionId: txn._id });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Admin withdraw error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to process withdrawal' });
+  }
+};
+
+// Admin: aggregated metrics across all users
+export const adminGetMetrics = async (req, res) => {
+  try {
+    const [collectedAgg, payoutsAgg] = await Promise.all([
+      Transaction.aggregate([
+        { $match: { type: 'contest_entry' } },
+        { $group: { _id: null, total: { $sum: { $abs: '$amount' } }, count: { $sum: 1 } } }
+      ]),
+      Transaction.aggregate([
+        { $match: { type: 'contest_prize' } },
+        { $group: { _id: null, total: { $sum: '$amount' }, count: { $sum: 1 } } }
+      ]),
+    ]);
+
+    const totalCollected = collectedAgg[0]?.total || 0;
+    const totalPayouts = payoutsAgg[0]?.total || 0;
+
+    // If you keep admin earnings in an admin user's wallet
+    const adminUser = await User.findOne({ isAdmin: true }).select('walletBalance').lean();
+    const adminBalance = adminUser?.walletBalance ?? Math.max(0, totalCollected - totalPayouts);
+
+    return res.json({
+      success: true,
+      metrics: {
+        totalCollected,
+        totalPayouts,
+        adminBalance,
+      },
+    });
+  } catch (error) {
+    console.error('Admin metrics error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch admin metrics' });
+  }
+};
+
+// Admin: list all transactions with optional filters
+export const adminGetAllTransactions = async (req, res) => {
+  try {
+    const { page = 1, limit = 20, type, status, userId } = req.query;
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const query = {};
+    if (type) query.type = type;
+    if (status) query.status = status;
+    if (userId) query.user = userId;
+
+    const [transactions, total] = await Promise.all([
+      Transaction.find(query)
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(parseInt(limit))
+        .lean(),
+      Transaction.countDocuments(query),
+    ]);
+
+    res.json({
+      success: true,
+      transactions,
+      pagination: {
+        total,
+        page: parseInt(page),
+        pages: Math.ceil(total / parseInt(limit)),
+        limit: parseInt(limit),
+      },
+    });
+  } catch (error) {
+    console.error('Admin get all transactions error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get transactions' });
+  }
+};
+
 export const getTransactionHistory = async (req, res) => {
   try {
     const { page = 1, limit = 10, type, status } = req.query;

@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useWallet } from '@/context/WalletContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useI18n } from '@/context/I18nContext';
 
 export const WithdrawDialog: React.FC<{
   open: boolean;
@@ -17,6 +18,7 @@ export const WithdrawDialog: React.FC<{
   const [bankAccount, setBankAccount] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { withdraw, refreshBalance } = useWallet();
+  const { t } = useI18n();
 
   // In a real app, you would fetch this from your API
   const bankAccounts = [
@@ -55,9 +57,9 @@ export const WithdrawDialog: React.FC<{
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Withdraw Funds</DialogTitle>
+          <DialogTitle>{t('wallet.withdraw_funds')}</DialogTitle>
           <DialogDescription>
-            Transfer money from your wallet to your bank account.
+            {t('wallet.minimum_withdrawal')}
           </DialogDescription>
         </DialogHeader>
         
@@ -81,7 +83,7 @@ export const WithdrawDialog: React.FC<{
               />
             </div>
             <p className="text-sm text-muted-foreground">
-              Available: {currency} {maxAmount.toFixed(2)}
+              {t('wallet.available_balance')} {currency} {maxAmount.toFixed(2)}
             </p>
             {amount && !isValidAmount && (
               <p className="text-sm text-red-500">
@@ -151,7 +153,7 @@ export const WithdrawDialog: React.FC<{
               disabled={!isValidForm || isLoading}
               className="min-w-[120px]"
             >
-              {isLoading ? 'Processing...' : 'Withdraw'}
+              {isLoading ? 'Processing...' : t('wallet.withdraw')}
             </Button>
           </div>
         </form>

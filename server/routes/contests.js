@@ -3,6 +3,8 @@ import Contest from '../models/Contest.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { authenticate } from '../middleware/auth.js';
+import admin from '../middleware/admin.js';
+import mongoose from 'mongoose';
 
 const router = express.Router();
 
@@ -152,7 +154,11 @@ router.post('/:id/join', authenticate, async (req, res) => {
       return res.status(400).json({ message: 'Already registered for this contest' });
     }
 
-    // Check wallet balance
+    // Check minimum wallet balance rule (₹10)
+    if (req.user.walletBalance < 10) {
+      return res.status(400).json({ message: 'Minimum wallet balance required is ₹10' });
+    }
+    // Check wallet balance for entry fee
     if (req.user.walletBalance < contest.entryFee) {
       return res.status(400).json({ message: 'Insufficient wallet balance' });
     }
@@ -162,11 +168,15 @@ router.post('/:id/join', authenticate, async (req, res) => {
       return res.status(400).json({ message: 'Contest is full' });
     }
 
-    // Deduct entry fee
-    await User.findByIdAndUpdate(req.user._id, {
-      $inc: { walletBalance: -contest.entryFee },
-      $addToSet: { contestsParticipated: contestId }
-    });
+    // Deduct entry fee and get updated balance
+    const updatedUser = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        $inc: { walletBalance: -contest.entryFee },
+        $addToSet: { contestsParticipated: contestId }
+      },
+      { new: true }
+    );
 
     // Add participant to contest
     contest.participants.push({
@@ -185,8 +195,12 @@ router.post('/:id/join', authenticate, async (req, res) => {
       user: req.user._id,
       type: 'contest_entry',
       amount: -contest.entryFee,
+      currency: 'INR',
       description: `Entry fee for ${contest.title}`,
       status: 'completed',
+      fee: 0,
+      netAmount: -contest.entryFee,
+      balanceAfter: updatedUser?.walletBalance ?? 0,
       contest: contestId
     });
 
@@ -225,6 +239,97 @@ router.get('/:id/leaderboard', async (req, res) => {
   } catch (error) {
     console.error('Leaderboard error:', error);
     res.status(500).json({ message: 'Failed to fetch leaderboard' });
+  }
+});
+
+// Settle a contest: credit winners and admin remainder
+router.post('/:id/settle', authenticate, admin, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const contestId = req.params.id;
+    const contest = await Contest.findById(contestId).session(session);
+    if (!contest) {
+      return res.status(404).json({ message: 'Contest not found' });
+    }
+
+    // Ensure contest is completed
+    if (contest.status !== 'completed') {
+      contest.status = 'completed';
+      await contest.save({ session });
+    }
+
+    // Compute totals
+    const participants = contest.participants || [];
+    const totalCollected = Number(contest.entryFee || 0) * participants.length;
+
+    // If prizes not distributed yet, compute via prizeDistribution
+    if (!participants.some(p => p.prize > 0) && contest.prizePool > 0) {
+      contest.updateRankings();
+      contest.distributePrizes();
+      await contest.save({ session });
+    }
+
+    const winners = participants.filter(p => (p.prize || 0) > 0);
+    const totalPrizes = winners.reduce((sum, p) => sum + Number(p.prize || 0), 0);
+    const remainder = Math.max(0, totalCollected - totalPrizes);
+
+    // Credit winners
+    for (const w of winners) {
+      const prize = Number(w.prize || 0);
+      if (prize <= 0) continue;
+      const user = await User.findById(w.user).session(session);
+      if (!user) continue;
+      user.walletBalance = parseFloat((user.walletBalance + prize).toFixed(2));
+      await user.save({ session });
+      const txn = new Transaction({
+        user: user._id,
+        type: 'contest_prize',
+        amount: prize,
+        currency: 'INR',
+        description: `Prize for contest ${contest.title}`,
+        status: 'completed',
+        fee: 0,
+        netAmount: prize,
+        balanceAfter: user.walletBalance,
+        contest: contest._id
+      });
+      await txn.save({ session });
+    }
+
+    // Credit admin with remainder
+    if (remainder > 0) {
+      const adminUser = await User.findOne({ isAdmin: true }).session(session);
+      if (adminUser) {
+        adminUser.walletBalance = parseFloat((adminUser.walletBalance + remainder).toFixed(2));
+        await adminUser.save({ session });
+        const adminTxn = new Transaction({
+          user: adminUser._id,
+          type: 'adjustment',
+          amount: remainder,
+          currency: 'INR',
+          description: `Contest remainder for ${contest.title}`,
+          status: 'completed',
+          fee: 0,
+          netAmount: remainder,
+          balanceAfter: adminUser.walletBalance,
+          contest: contest._id
+        });
+        await adminTxn.save({ session });
+      }
+    }
+
+    await session.commitTransaction();
+    session.endSession();
+    return res.json({
+      message: 'Contest settled successfully',
+      totals: { totalCollected, totalPrizes, remainder }
+    });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Settle contest error:', error);
+    return res.status(500).json({ message: 'Failed to settle contest' });
   }
 });
 
