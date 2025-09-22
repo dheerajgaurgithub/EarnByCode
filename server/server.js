@@ -17,6 +17,15 @@ import xss from 'xss-clean';
 import hpp from 'hpp';
 import fs from 'fs';
 
+// Simple HTML entity unescape for code payloads that may be sanitized by xss middleware
+const unescapeHtml = (str = '') =>
+  String(str)
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'");
+
 // Safe fetch helper for Node < 18 compatibility
 const getFetch = async () => {
   if (typeof fetch !== 'undefined') return fetch;
@@ -110,6 +119,7 @@ app.post('/api/code/run', async (req, res) => {
     if (typeof payload.code === 'string') source = payload.code;
     else if (typeof payload.sourceCode === 'string') source = payload.sourceCode;
     else if (Array.isArray(payload.files) && payload.files[0]?.content) source = payload.files[0].content;
+    source = unescapeHtml(source);
 
     // Allow Java and C++ here as well so their handlers below are reachable
     if (!source || !['javascript', 'typescript', 'java', 'cpp'].includes(language)) {
@@ -149,7 +159,7 @@ app.post('/api/code/run', async (req, res) => {
         const child = spawn(java, ['-cp', tmpDir, 'Solution'], { stdio: ['pipe', 'pipe', 'pipe'] });
         const stdoutChunks = [];
         const stderrChunks = [];
-        const stdinStr = typeof payload.stdin === 'string' ? payload.stdin : '';
+        const stdinStr = typeof payload.stdin === 'string' ? unescapeHtml(payload.stdin) : '';
         if (stdinStr) child.stdin.write(stdinStr);
         child.stdin.end();
 
@@ -254,7 +264,7 @@ app.post('/api/code/run', async (req, res) => {
 
     const stdout = [];
     const stderr = [];
-    const stdin = typeof payload.stdin === 'string' ? payload.stdin : '';
+    const stdin = typeof payload.stdin === 'string' ? unescapeHtml(payload.stdin) : '';
     const inputLines = stdin.split(/\r?\n/);
     let inputIndex = 0;
     const sandbox = {
@@ -466,9 +476,9 @@ app.post('/compile', async (req, res) => {
       // Execute with Node.js
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-js-'));
       const filePath = path.join(tmpDir, 'main.js');
-      fs.writeFileSync(filePath, code, 'utf8');
+      fs.writeFileSync(filePath, unescapeHtml(code), 'utf8');
       const child = spawn(process.execPath, [filePath], { stdio: ['pipe', 'pipe', 'pipe'] });
-      if (input) child.stdin.write(String(input));
+      if (input) child.stdin.write(String(unescapeHtml(input)));
       child.stdin.end();
       let out = '', err = '';
       let killed = false;
@@ -486,7 +496,7 @@ app.post('/compile', async (req, res) => {
 
     if (lang === 'Python') {
       const tmpFile = path.join(os.tmpdir(), `algobucks-${Date.now()}-${Math.random().toString(36).slice(2)}.py`);
-      fs.writeFileSync(tmpFile, code, 'utf8');
+      fs.writeFileSync(tmpFile, unescapeHtml(code), 'utf8');
       const pythonBin = process.env.PYTHON_BIN || 'python';
       const child = spawn(pythonBin, [tmpFile], { stdio: ['pipe', 'pipe', 'pipe'] });
       if (input) child.stdin.write(String(input));
@@ -508,7 +518,7 @@ app.post('/compile', async (req, res) => {
     if (lang === 'Java') {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-java-'));
       const srcFile = path.join(tmpDir, 'Main.java');
-      fs.writeFileSync(srcFile, code, 'utf8');
+      fs.writeFileSync(srcFile, unescapeHtml(code), 'utf8');
       const javac = process.env.JAVAC_BIN || 'javac';
       const java = process.env.JAVA_BIN || 'java';
       const compile = spawn(javac, ['-d', tmpDir, srcFile]);
@@ -521,7 +531,7 @@ app.post('/compile', async (req, res) => {
           return done(err || 'Compilation failed', 1);
         }
         const child = spawn(java, ['-cp', tmpDir, 'Main'], { stdio: ['pipe', 'pipe', 'pipe'] });
-        if (input) child.stdin.write(String(input));
+        if (input) child.stdin.write(String(unescapeHtml(input)));
         child.stdin.end();
         let out = '', err = '';
         let killed = false;
@@ -542,7 +552,7 @@ app.post('/compile', async (req, res) => {
       const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-cpp-'));
       const srcFile = path.join(tmpDir, 'main.cpp');
       const exeFile = path.join(tmpDir, process.platform === 'win32' ? 'a.exe' : 'a.out');
-      fs.writeFileSync(srcFile, code, 'utf8');
+      fs.writeFileSync(srcFile, unescapeHtml(code), 'utf8');
       const gxx = process.env.GXX_BIN || 'g++';
       const compile = spawn(gxx, ['-std=c++17', '-O2', srcFile, '-o', exeFile]);
       const compileErr = [];
@@ -680,7 +690,8 @@ app.post('/api/execute', async (req, res) => {
     const payload = req.body || {};
     const language = (payload.language || '').toString().toLowerCase();
     const files = Array.isArray(payload.files) ? payload.files : [];
-    const source = files[0]?.content ?? '';
+    let source = files[0]?.content ?? '';
+    source = unescapeHtml(source);
 
     if (!source || !['javascript', 'typescript', 'python', 'java', 'cpp'].includes(language)) {
       return res.status(400).json({
@@ -700,10 +711,12 @@ app.post('/api/execute', async (req, res) => {
         const defaultVersions = {
           javascript: '18.15.0',
           typescript: '5.0.3',
-          python: '3.11.2',
+          // Leave Python empty to trigger runtime discovery
+          python: '',
           // Leave Java empty to trigger runtime discovery on the target Piston instance
           java: '',
-          cpp: '10.2.0',
+          // Leave C++ empty to trigger runtime discovery
+          cpp: '',
         };
         let version = (typeof payload.version === 'string' && payload.version) || defaultVersions[pistonLang] || '';
         if (!version) {
@@ -723,6 +736,10 @@ app.post('/api/execute', async (req, res) => {
 
         if (pistonLang === 'java') {
           console.log(`[Piston] Selected Java runtime version: ${version || '(auto-discovery failed)'}`);
+        } else if (pistonLang === 'python') {
+          console.log(`[Piston] Selected Python runtime version: ${version || '(auto-discovery failed)'}`);
+        } else if (pistonLang === 'cpp') {
+          console.log(`[Piston] Selected C++ runtime version: ${version || '(auto-discovery failed)'}`);
         }
 
         const pistonReq = {
