@@ -4,6 +4,7 @@ import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle, Trophy, Award, BookOpen, MessageCircle, Play, AlertCircle } from 'lucide-react';
 import api from '@/lib/api';
+import { useI18n } from '@/context/I18nContext';
 
 // Build normalized API bases
 const getApiBase = () => {
@@ -193,6 +194,7 @@ int main(){
 const ProblemDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user, refreshUser } = useAuth();
+  const { t } = useI18n();
   const editorTheme = useMemo(() => {
     const t = (user as any)?.preferences?.editor?.theme;
     return t === 'vs-dark' ? 'vs-dark' : 'light';
@@ -618,7 +620,7 @@ const ProblemDetail: React.FC = () => {
       <div className="min-h-screen bg-blue-50 flex items-center justify-center p-4">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-4 border-blue-200 border-t-blue-600 mx-auto mb-3"></div>
-          <p className="text-blue-700 font-medium text-sm">Loading problem...</p>
+          <p className="text-blue-700 font-medium text-sm">{t('problem.loading')}</p>
         </div>
       </div>
     );
@@ -638,21 +640,21 @@ const ProblemDetail: React.FC = () => {
   const renderLoginPrompt = () => (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl p-5 max-w-md w-full shadow-xl border-2 border-blue-200">
-        <h3 className="text-lg font-bold mb-3 text-blue-900">Sign In Required</h3>
-        <p className="mb-5 text-blue-700 text-sm">You need to be signed in to submit or run code. Please log in or create an account.</p>
+        <h3 className="text-lg font-bold mb-3 text-blue-900">{t('login.required.title')}</h3>
+        <p className="mb-5 text-blue-700 text-sm">{t('login.required.desc')}</p>
         <div className="flex flex-col sm:flex-row justify-end space-y-2 sm:space-y-0 sm:space-x-3">
           <button
             onClick={() => setShowLoginPrompt(false)}
             className="px-3 py-2 text-sm font-medium text-blue-700 hover:bg-blue-50 rounded-lg border border-blue-300 transition-colors"
           >
-            Cancel
+            {t('login.required.cancel')}
           </button>
           <Link
             to="/login"
             state={{ from: window.location.pathname }}
             className="px-3 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors text-center"
           >
-            Log In
+            {t('login.required.login')}
           </Link>
         </div>
       </div>
@@ -686,15 +688,15 @@ const ProblemDetail: React.FC = () => {
               <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 text-xs text-blue-700">
                 <div className="flex items-center">
                   <CheckCircle className="h-3 w-3 mr-1 text-green-600 flex-shrink-0" />
-                  <span>{problem.acceptance || 0}% Accepted</span>
+                  <span>{t('problem.accepted').replace('{p}', String(problem.acceptance || 0))}</span>
                 </div>
                 <div className="flex items-center">
                   <Trophy className="h-3 w-3 mr-1 text-blue-600 flex-shrink-0" />
-                  <a href="/submissions" className="text-blue-600 hover:underline"><span>{problem.submissions || 0} Submissions</span></a> 
+                  <a href="/submissions" className="text-blue-600 hover:underline"><span>{t('problem.submissions_chip').replace('{n}', String(problem.submissions || 0))}</span></a> 
                 </div>
                 <div className="flex items-center">
                   <Award className="h-3 w-3 mr-1 text-yellow-600 flex-shrink-0" />
-                  <span>1 Codecoin</span>
+                  <span>{t('problem.codecoin')}</span>
                 </div>
               </div>
 
@@ -709,7 +711,7 @@ const ProblemDetail: React.FC = () => {
                   }`}
                 >
                   <BookOpen className="h-3 w-3 mr-1" />
-                  Description
+                  {t('problem.tab.description')}
                 </button>
                 <button
                   onClick={() => setActiveTab('editorial')}
@@ -719,7 +721,7 @@ const ProblemDetail: React.FC = () => {
                       : 'border-transparent text-blue-600 hover:text-blue-800 hover:bg-blue-50'
                   }`}
                 >
-                  Editorial
+                  {t('problem.tab.editorial')}
                 </button>
                 <button
                   onClick={() => setActiveTab('discuss')}
@@ -730,7 +732,7 @@ const ProblemDetail: React.FC = () => {
                   }`}
                 >
                   <MessageCircle className="h-3 w-3 mr-1" />
-                  Discuss
+                  {t('problem.tab.discuss')}
                 </button>
               </div>
 
@@ -745,27 +747,27 @@ const ProblemDetail: React.FC = () => {
 
                   {problem.examples && problem.examples.length > 0 && (
                     <div>
-                      <h3 className="text-sm font-semibold text-blue-900 mb-3">Examples</h3>
+                      <h3 className="text-sm font-semibold text-blue-900 mb-3">{t('problem.examples')}</h3>
                       <div className="space-y-3">
                         {problem.examples.map((example, index) => (
                           <div key={index} className="bg-blue-100 rounded-xl p-3 border-2 border-blue-200">
-                            <p className="text-blue-900 font-medium mb-2 text-xs">Example {index + 1}:</p>
+                            <p className="text-blue-900 font-medium mb-2 text-xs">{t('problem.example_n').replace('{i}', String(index + 1))}</p>
                             <div className="space-y-1.5 text-xs">
                               <div>
-                                <span className="text-blue-700 font-medium">Input: </span>
+                                <span className="text-blue-700 font-medium">{t('problem.input')}</span>
                                 <code className="text-blue-800 bg-white px-1.5 py-0.5 rounded border border-blue-200">
                                   {example.input}
                                 </code>
                               </div>
                               <div>
-                                <span className="text-blue-700 font-medium">Output: </span>
+                                <span className="text-blue-700 font-medium">{t('problem.output')}</span>
                                 <code className="text-green-800 bg-green-50 px-1.5 py-0.5 rounded border border-green-200">
                                   {example.output}
                                 </code>
                               </div>
                               {example.explanation && (
                                 <div>
-                                  <span className="text-blue-700 font-medium">Explanation: </span>
+                                  <span className="text-blue-700 font-medium">{t('problem.explanation')}</span>
                                   <span className="text-blue-800">{example.explanation}</span>
                                 </div>
                               )}
@@ -778,7 +780,7 @@ const ProblemDetail: React.FC = () => {
 
                   {problem.constraints && problem.constraints.length > 0 && (
                     <div>
-                      <h3 className="text-sm font-semibold text-blue-900 mb-3">Constraints</h3>
+                      <h3 className="text-sm font-semibold text-blue-900 mb-3">{t('problem.constraints')}</h3>
                       <ul className="space-y-0.5">
                         {problem.constraints.map((constraint, index) => (
                           <li key={index} className="text-blue-800 flex items-start text-xs">
@@ -797,7 +799,7 @@ const ProblemDetail: React.FC = () => {
                   <div className="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
                     <BookOpen className="h-6 w-6 text-blue-600" />
                   </div>
-                  <p className="text-blue-700 font-medium text-sm">Editorial available after solving the problem</p>
+                  <p className="text-blue-700 font-medium text-sm">{t('problem.editorial.locked')}</p>
                 </div>
               )}
 
@@ -806,7 +808,7 @@ const ProblemDetail: React.FC = () => {
                   <div className="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
                     <MessageCircle className="h-6 w-6 text-blue-600" />
                   </div>
-                  <p className="text-blue-700 font-medium text-sm">No discussions yet. Be the first to start one!</p>
+                  <p className="text-blue-700 font-medium text-sm">{t('problem.discuss.empty')}</p>
                 </div>
               )}
             </div>

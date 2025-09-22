@@ -6,6 +6,7 @@ import { Button } from '../../components/ui/button';
 import { toast } from '../../components/ui/use-toast';
 import apiService from '../../services/api';
 import { User, Mail, Lock, Eye, EyeOff, AlertCircle, UserCheck } from 'lucide-react';
+import { useI18n } from '../../context/I18nContext';
 
 export function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ export function RegisterPage() {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { t } = useI18n();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -36,17 +38,17 @@ export function RegisterPage() {
     
     // Basic validation
     if (!formData.fullName || !formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
-      setError('Please fill in all fields');
+      setError(t('register.fill_all'));
       return;
     }
 
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+      setError(t('register.passwords_no_match'));
       return;
     }
 
     if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+      setError(t('register.password_short'));
       return;
     }
 
@@ -62,7 +64,7 @@ export function RegisterPage() {
 
       // If server requires email verification via OTP, route to verify page
       if (response?.requiresVerification) {
-        toast.success('We\'ve sent a verification code to your email. Please verify to continue.');
+        toast.success(t('verify.sent'));
         navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
         return;
       }
@@ -70,7 +72,7 @@ export function RegisterPage() {
       // Otherwise, proceed with token login
       if (response?.token) {
         localStorage.setItem('token', response.token);
-        toast.success('Registration successful! Welcome to AlgoBucks.');
+        toast.success(t('register.success'));
         navigate('/dashboard');
       } else {
         throw new Error('No authentication token received');
@@ -81,9 +83,9 @@ export function RegisterPage() {
       
       // Handle specific error cases
       if (errorMessage.includes('email') || errorMessage.includes('Email')) {
-        setError('Email is already registered');
+        setError(t('register.email_exists'));
       } else if (errorMessage.includes('username') || errorMessage.includes('Username')) {
-        setError('Username is already taken');
+        setError(t('register.username_exists'));
       } else {
         setError(errorMessage);
       }
@@ -109,19 +111,20 @@ export function RegisterPage() {
             </div>
             
             <h1 className="text-xl font-bold text-gray-800 dark:text-blue-400 mb-1 tracking-tight transition-colors duration-300">
-              Join AlgoBucks
+              {t('register.title')}
             </h1>
-            <p className="text-gray-600 dark:text-gray-300 text-xs font-medium transition-colors duration-300">
-              Create your <span className="text-blue-600 dark:text-blue-400 font-bold">AlgoBucks</span> account
-            </p>
+            <p
+              className="text-gray-600 dark:text-gray-300 text-xs font-medium transition-colors duration-300"
+              dangerouslySetInnerHTML={{ __html: t('register.subtitle').replace('<b>', '<span class=\"text-blue-600 dark:text-blue-400 font-bold\">').replace('</b>', '</span>') }}
+            />
             
             <p className="mt-2 text-xs text-gray-600 dark:text-gray-300 font-medium transition-colors duration-300">
-              Already have an account?{' '}
+              {t('register.have_account')}{' '}
               <Link
                 to="/login"
                 className="font-bold text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200 underline-offset-4 hover:underline"
               >
-                Sign in here
+                {t('register.sign_in_here')}
               </Link>
             </p>
           </div>
@@ -143,11 +146,11 @@ export function RegisterPage() {
             <GoogleOAuthButton 
               isRegister={true}
               onSuccess={() => {
-                toast.success('Registration successful! Welcome to AlgoBucks.');
+                toast.success(t('register.success'));
                 navigate('/dashboard');
               }}
               onError={(error) => {
-                setError(error || 'Failed to register with Google');
+                setError(error || t('register.google_error'));
               }}
             />
           </div>
@@ -159,7 +162,7 @@ export function RegisterPage() {
             </div>
             <div className="relative flex justify-center text-xs">
               <span className="px-3 py-1 bg-white dark:bg-gray-900 text-gray-600 dark:text-gray-300 font-medium rounded-full border border-blue-200 dark:border-blue-800 shadow-sm transition-colors duration-300">
-                Or continue with email
+                {t('register.or_email')}
               </span>
             </div>
           </div>
@@ -169,7 +172,7 @@ export function RegisterPage() {
             {/* Full Name */}
             <div>
               <label htmlFor="fullName" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 tracking-wide transition-colors duration-300">
-                Full Name
+                {t('register.full_name')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
@@ -183,7 +186,7 @@ export function RegisterPage() {
                   value={formData.fullName}
                   onChange={handleChange}
                   className="w-full pl-7 pr-2 py-2 bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg text-gray-800 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-400/50 focus:border-blue-400 dark:focus:border-blue-500 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 font-medium text-xs backdrop-blur-sm"
-                  placeholder="Enter your full name"
+                  placeholder={t('register.placeholder.full_name')}
                 />
               </div>
             </div>
@@ -191,7 +194,7 @@ export function RegisterPage() {
             {/* Username */}
             <div>
               <label htmlFor="username" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 tracking-wide transition-colors duration-300">
-                Username
+                {t('register.username')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
@@ -205,7 +208,7 @@ export function RegisterPage() {
                   value={formData.username}
                   onChange={handleChange}
                   className="w-full pl-7 pr-2 py-2 bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg text-gray-800 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-400/50 focus:border-blue-400 dark:focus:border-blue-500 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 font-medium text-xs backdrop-blur-sm"
-                  placeholder="Choose a unique username"
+                  placeholder={t('register.placeholder.username')}
                 />
               </div>
             </div>
@@ -213,7 +216,7 @@ export function RegisterPage() {
             {/* Email */}
             <div>
               <label htmlFor="email" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 tracking-wide transition-colors duration-300">
-                Email Address
+                {t('register.email')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
@@ -228,7 +231,7 @@ export function RegisterPage() {
                   value={formData.email}
                   onChange={handleChange}
                   className="w-full pl-7 pr-2 py-2 bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg text-gray-800 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-400/50 focus:border-blue-400 dark:focus:border-blue-500 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 font-medium text-xs backdrop-blur-sm"
-                  placeholder="Enter your email address"
+                  placeholder={t('register.placeholder.email')}
                 />
               </div>
             </div>
@@ -236,7 +239,7 @@ export function RegisterPage() {
             {/* Password */}
             <div>
               <label htmlFor="password" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 tracking-wide transition-colors duration-300">
-                Password
+                {t('register.password')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
@@ -250,7 +253,7 @@ export function RegisterPage() {
                   value={formData.password}
                   onChange={handleChange}
                   className="w-full pl-7 pr-8 py-2 bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg text-gray-800 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-400/50 focus:border-blue-400 dark:focus:border-blue-500 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 font-medium text-xs backdrop-blur-sm"
-                  placeholder="Create a strong password (min 6 chars)"
+                  placeholder={t('register.placeholder.password')}
                 />
                 <button
                   type="button"
@@ -269,7 +272,7 @@ export function RegisterPage() {
             {/* Confirm Password */}
             <div>
               <label htmlFor="confirmPassword" className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-1 tracking-wide transition-colors duration-300">
-                Confirm Password
+                {t('register.confirm_password')}
               </label>
               <div className="relative">
                 <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
@@ -283,7 +286,7 @@ export function RegisterPage() {
                   value={formData.confirmPassword}
                   onChange={handleChange}
                   className="w-full pl-7 pr-8 py-2 bg-blue-50/50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg text-gray-800 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/50 dark:focus:ring-blue-400/50 focus:border-blue-400 dark:focus:border-blue-500 hover:border-blue-300 dark:hover:border-blue-700 transition-all duration-300 font-medium text-xs backdrop-blur-sm"
-                  placeholder="Confirm your password"
+                  placeholder={t('register.placeholder.confirm_password')}
                 />
                 <button
                   type="button"
@@ -309,10 +312,10 @@ export function RegisterPage() {
                 {isLoading ? (
                   <div className="flex items-center justify-center space-x-2">
                     <div className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span className="font-semibold text-xs">Creating your account...</span>
+                    <span className="font-semibold text-xs">{t('register.creating')}</span>
                   </div>
                 ) : (
-                  'Create AlgoBucks Account'
+                  t('register.submit')
                 )}
               </button>
             </div>
@@ -321,19 +324,19 @@ export function RegisterPage() {
           {/* Terms and Privacy */}
           <div className="mt-4 pt-3 border-t border-blue-200 dark:border-blue-800 transition-colors duration-300">
             <p className="text-xs text-gray-600 dark:text-gray-300 text-center leading-relaxed font-medium transition-colors duration-300">
-              By creating an account, you agree to our{' '}
+              {t('register.terms_prefix')}{' '}
               <a 
                 href="/terms" 
                 className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200 underline-offset-4 hover:underline font-semibold"
               >
-                Terms of Service
+                {t('register.terms')}
               </a>{' '}
               and{' '}
               <a 
                 href="/privacy" 
                 className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors duration-200 underline-offset-4 hover:underline font-semibold"
               >
-                Privacy Policy
+                {t('register.privacy')}
               </a>
             </p>
           </div>

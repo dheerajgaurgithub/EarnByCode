@@ -75,7 +75,7 @@ export default function Footer() {
                       </span>
                     </h1>
                     <p className="text-xs sm:text-sm lg:text-base text-gray-700 dark:text-gray-300 font-semibold tracking-wide transition-colors duration-300">
-                      Think smart. Code harder. Earn more.
+                      {t('brand.tagline')}
                     </p>
                   </div>
                 </div>
@@ -83,16 +83,7 @@ export default function Footer() {
                 {/* Enhanced Description */}
                 <div className="space-y-2">
                   <p className="text-gray-800 dark:text-gray-200 text-xs sm:text-sm leading-relaxed font-medium transition-colors duration-300 max-w-md">
-                    The ultimate algorithmic trading platform where elite developers
-                    <span className="text-transparent bg-gradient-to-r from-indigo-600 to-blue-600 dark:from-indigo-300 dark:to-blue-400 bg-clip-text font-bold">
-                      {' '}compete
-                    </span>, earn prestigious
-                    <span className="text-transparent bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-300 dark:to-purple-400 bg-clip-text font-bold">
-                      {' '}AlgoBucks
-                    </span>, and claim
-                    <span className="text-transparent bg-gradient-to-r from-purple-600 to-blue-600 dark:from-purple-400 dark:to-blue-300 bg-clip-text font-bold">
-                      {' '}real rewards
-                    </span> through skill-based algorithmic mastery.
+                    {t('brand.description')}
                   </p>
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { useAuth } from '@/context/AuthContext';
 import { apiService } from '@/lib/api';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Calendar, CheckCircle, X, Clock, AlertCircle, Code2 } from 'lucide-react';
+import { useI18n } from '@/context/I18nContext';
 
 type Submission = {
   _id: string;
@@ -22,6 +23,7 @@ const SubmissionDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { t } = useI18n();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submission, setSubmission] = useState<Submission | null>(null);
@@ -35,7 +37,7 @@ const SubmissionDetail: React.FC = () => {
         const s = (data as any).submission || (data as any);
         setSubmission(s);
       } catch (e: any) {
-        setError(e?.message || 'Failed to load submission');
+        setError(e?.message || t('subs.detail.not_found'));
       } finally {
         setLoading(false);
       }
@@ -80,7 +82,7 @@ const SubmissionDetail: React.FC = () => {
             }}
             className="inline-flex items-center text-blue-700 hover:text-blue-900"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back
+            <ArrowLeft className="h-4 w-4 mr-2" /> {t('subs.detail.back')}
           </button>
         </div>
 
@@ -91,20 +93,20 @@ const SubmissionDetail: React.FC = () => {
         ) : error ? (
           <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-lg">{error}</div>
         ) : !submission ? (
-          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded-lg">Submission not found</div>
+          <div className="bg-yellow-50 border border-yellow-200 text-yellow-700 p-4 rounded-lg">{t('subs.detail.not_found')}</div>
         ) : (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-xl shadow-lg border border-blue-100 overflow-hidden">
             <div className="px-4 sm:px-6 py-4 border-b border-blue-100 bg-blue-50">
               <h1 className="text-lg sm:text-xl font-semibold text-blue-900 flex items-center">
                 <Code2 className="h-5 w-5 mr-2 text-blue-600" />
-                Submission Details
+                {t('subs.detail.title')}
               </h1>
             </div>
 
             <div className="p-4 sm:p-6 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <p className="text-sm text-blue-700">Problem</p>
+                  <p className="text-sm text-blue-700">{t('subs.detail.problem')}</p>
                   <Link
                     to={`/problems/${typeof submission.problem === 'object' ? submission.problem._id : submission.problem}`}
                     className="text-blue-900 font-medium hover:text-blue-600"
@@ -113,20 +115,21 @@ const SubmissionDetail: React.FC = () => {
                       ? submission.problem.title
                       : `#${typeof submission.problem === 'object' ? submission.problem._id : submission.problem}`}
                   </Link>
+
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm text-blue-700">Submitted</p>
+                  <p className="text-sm text-blue-700">{t('subs.detail.submitted')}</p>
                   <div className="flex items-center text-blue-900">
                     <Calendar className="h-4 w-4 mr-2" />
                     {new Date(submission.createdAt).toLocaleString()}
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm text-blue-700">Language</p>
+                  <p className="text-sm text-blue-700">{t('subs.detail.language')}</p>
                   <p className="capitalize text-blue-900 font-medium">{submission.language}</p>
                 </div>
                 <div className="space-y-2">
-                  <p className="text-sm text-blue-700">Status</p>
+                  <p className="text-sm text-blue-700">{t('subs.detail.status')}</p>
                   <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-lg border ${getStatusColor(submission.status)}`}>
                     {getStatusIcon(submission.status)}
                     <span className="font-medium text-sm">{submission.status}</span>
@@ -137,19 +140,19 @@ const SubmissionDetail: React.FC = () => {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {submission.runtime && (
                   <div className="text-center">
-                    <p className="text-blue-700 text-xs">Runtime</p>
+                    <p className="text-blue-700 text-xs">{t('subs.detail.runtime')}</p>
                     <p className="text-blue-900 font-medium">{submission.runtime}</p>
                   </div>
                 )}
                 {submission.memory && (
                   <div className="text-center">
-                    <p className="text-blue-700 text-xs">Memory</p>
+                    <p className="text-blue-700 text-xs">{t('subs.detail.memory')}</p>
                     <p className="text-blue-900 font-medium">{submission.memory}</p>
                   </div>
                 )}
                 {typeof submission.testsPassed === 'number' && typeof submission.totalTests === 'number' && (
                   <div className="text-center col-span-2">
-                    <p className="text-blue-700 text-xs">Tests Passed</p>
+                    <p className="text-blue-700 text-xs">{t('subs.detail.tests_passed')}</p>
                     <p className="text-blue-900 font-medium">{submission.testsPassed}/{submission.totalTests}</p>
                   </div>
                 )}
@@ -157,7 +160,7 @@ const SubmissionDetail: React.FC = () => {
 
               {submission.code && (
                 <div>
-                  <h3 className="text-blue-900 font-semibold mb-2">Submitted Code</h3>
+                  <h3 className="text-blue-900 font-semibold mb-2">{t('subs.detail.submitted_code')}</h3>
                   <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 sm:p-4 overflow-auto">
                     <pre className="text-gray-800 text-xs sm:text-sm whitespace-pre-wrap break-words">{submission.code}</pre>
                   </div>

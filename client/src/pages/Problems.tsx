@@ -3,6 +3,7 @@ import { ProblemCard } from '../components/Problems/ProblemCard';
 import { ProblemFilters } from '../components/Problems/ProblemFilters';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Loader2, Code2, Target, Sparkles, Search } from 'lucide-react';
+import { useI18n } from '@/context/I18nContext';
 
 // Debounce hook
 const useDebounce = (value: string, delay: number) => {
@@ -22,6 +23,7 @@ const useDebounce = (value: string, delay: number) => {
 };
 
 export const Problems: React.FC = () => {
+  const { t } = useI18n();
   interface Problem {
     _id?: string;
     id?: number;
@@ -249,7 +251,7 @@ export const Problems: React.FC = () => {
               transition={{ delay: 0.3 }}
               className="text-xl md:text-2xl font-bold text-blue-900 dark:text-blue-300 mb-3 transition-colors duration-200"
             >
-              Loading Problems
+              {t('problems.loading.title')}
             </motion.h2>
             
             <motion.p 
@@ -258,7 +260,7 @@ export const Problems: React.FC = () => {
               transition={{ delay: 0.5 }}
               className="text-blue-600 dark:text-blue-400 text-sm mb-4 transition-colors duration-200"
             >
-              Preparing your coding challenges...
+              {t('problems.loading.subtitle')}
             </motion.p>
             
             <motion.div 
@@ -317,7 +319,7 @@ export const Problems: React.FC = () => {
           >
             <div className="relative inline-block mb-4">
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 dark:from-blue-400 dark:via-blue-500 dark:to-blue-600 bg-clip-text text-transparent leading-tight">
-                AlgoBucks Problems
+                {t('problems.title')}
               </h1>
               <motion.div 
                 initial={{ scale: 0, rotate: -180 }}
@@ -335,7 +337,7 @@ export const Problems: React.FC = () => {
               transition={{ delay: 0.3, duration: 0.8 }}
               className="text-sm sm:text-base text-blue-700 dark:text-blue-400 mb-6 max-w-2xl mx-auto leading-relaxed transition-colors duration-200"
             >
-              Master your coding skills with our curated collection of programming challenges
+              {t('problems.subtitle')}
             </motion.p>
             
             {/* Stats Cards */}
@@ -352,7 +354,7 @@ export const Problems: React.FC = () => {
                   </div>
                   <div className="text-left">
                     <div className="text-lg font-bold text-blue-900 dark:text-blue-300 transition-colors duration-200">{filteredProblems.length}</div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400 transition-colors duration-200">Problems</div>
+                    <div className="text-xs text-blue-600 dark:text-blue-400 transition-colors duration-200">{t('problems.stats.count')}</div>
                   </div>
                 </div>
               </div>
@@ -364,7 +366,7 @@ export const Problems: React.FC = () => {
                   </div>
                   <div className="text-left">
                     <div className="text-lg font-bold text-blue-900 dark:text-blue-300 transition-colors duration-200">∞</div>
-                    <div className="text-xs text-blue-600 dark:text-blue-400 transition-colors duration-200">Learning</div>
+                    <div className="text-xs text-blue-600 dark:text-blue-400 transition-colors duration-200">{t('problems.stats.learning')}</div>
                   </div>
                 </div>
               </div>
@@ -402,7 +404,7 @@ export const Problems: React.FC = () => {
                 <div className="flex flex-col lg:flex-row lg:items-center gap-3">
                   <div className="flex items-center text-blue-800 dark:text-blue-300 font-medium text-sm transition-colors duration-200">
                     <div className="w-1.5 h-1.5 bg-blue-500 dark:text-blue-300 rounded-full mr-2 animate-pulse transition-colors duration-200"></div>
-                    Active Filters:
+                    {t('problems.active_filters')}
                   </div>
                   
                   <div className="flex flex-wrap gap-2">
@@ -413,7 +415,7 @@ export const Problems: React.FC = () => {
                         className="bg-blue-100/80 dark:bg-gray-950/80 text-blue-800 dark:text-blue-300 px-3 py-1.5 rounded-lg flex items-center border border-blue-200/50 dark:border-gray-800/60 shadow-sm text-sm transition-colors duration-200"
                       >
                         <Search className="w-3 h-3 mr-1.5" />
-                        <span className="font-medium mr-1.5">Search:</span>
+                        <span className="font-medium mr-1.5">{t('problems.filter.search')}</span>
                         <span className="text-blue-700 dark:text-blue-400 max-w-32 truncate transition-colors duration-200">{search}</span>
                         <button 
                           onClick={() => setSearch('')}
@@ -430,7 +432,7 @@ export const Problems: React.FC = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         className="bg-blue-100/80 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 px-3 py-1.5 rounded-lg flex items-center border border-blue-200/50 dark:border-blue-700/50 shadow-sm text-sm transition-colors duration-200"
                       >
-                        <span className="font-medium mr-1.5">Level:</span>
+                        <span className="font-medium mr-1.5">{t('problems.filter.level')}</span>
                         <span className="text-blue-700 dark:text-blue-300 transition-colors duration-200">{difficulty}</span>
                         <button 
                           onClick={() => setDifficulty('All')}
@@ -447,7 +449,7 @@ export const Problems: React.FC = () => {
                         animate={{ opacity: 1, scale: 1 }}
                         className="bg-blue-100/80 dark:bg-blue-900/60 text-blue-800 dark:text-blue-200 px-3 py-1.5 rounded-lg flex items-center border border-blue-200/50 dark:border-blue-700/50 shadow-sm text-sm transition-colors duration-200"
                       >
-                        <span className="font-medium mr-1.5">Topic:</span>
+                        <span className="font-medium mr-1.5">{t('problems.filter.topic')}</span>
                         <span className="text-blue-700 dark:text-blue-300 max-w-24 truncate transition-colors duration-200">{category}</span>
                         <button 
                           onClick={() => setCategory('All')}
@@ -465,7 +467,7 @@ export const Problems: React.FC = () => {
                     onClick={clearFilters}
                     className="self-start lg:self-center text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-all duration-300 px-3 py-1.5 rounded-lg hover:bg-blue-100/50 dark:hover:bg-blue-900/50 border border-transparent hover:border-blue-200/50 dark:hover:border-blue-700/50 text-sm"
                   >
-                    Clear All
+                    {t('problems.clear_all')}
                   </motion.button>
                 </div>
               </motion.div>
@@ -484,7 +486,7 @@ export const Problems: React.FC = () => {
                   <Loader2 className="h-8 w-8 animate-spin text-blue-500 dark:text-blue-400 mx-auto transition-colors duration-200" />
                   <div className="absolute inset-0 h-8 w-8 mx-auto border-2 border-blue-200 dark:border-gray-700 rounded-full animate-pulse transition-colors duration-200"></div>
                 </div>
-                <p className="text-blue-600 dark:text-blue-300 text-sm font-medium transition-colors duration-200">Searching challenges...</p>
+                <p className="text-blue-600 dark:text-blue-300 text-sm font-medium transition-colors duration-200">{t('problems.searching')}</p>
               </motion.div>
             </div>
           ) : (
@@ -544,11 +546,8 @@ export const Problems: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.4 }}
                 >
-                  <h3 className="text-xl lg:text-2xl font-bold text-blue-900 dark:text-blue-100 mb-3 transition-colors duration-200">No Problems Found</h3>
-                  <p className="text-blue-600 dark:text-blue-300 mb-6 text-sm leading-relaxed max-w-lg mx-auto transition-colors duration-200">
-                    We couldn't find any problems matching your current filters. 
-                    Try adjusting your search criteria to discover more challenges.
-                  </p>
+                  <h3 className="text-xl lg:text-2xl font-bold text-blue-900 dark:text-blue-100 mb-3 transition-colors duration-200">{t('problems.empty.title')}</h3>
+                  <p className="text-blue-600 dark:text-blue-300 mb-6 text-sm leading-relaxed max-w-lg mx-auto transition-colors duration-200" dangerouslySetInnerHTML={{ __html: t('problems.empty.desc').replace('\n', '<br/>') }} />
                   
                   <motion.button
                     initial={{ opacity: 0, scale: 0.8 }}
@@ -559,7 +558,7 @@ export const Problems: React.FC = () => {
                     onClick={clearFilters}
                     className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-blue-500 dark:to-blue-600 text-white font-medium rounded-xl hover:shadow-xl hover:shadow-blue-200/40 dark:hover:shadow-blue-900/40 transition-all duration-300 text-sm border border-blue-500/30 dark:border-blue-400/30"
                   >
-                    Reset All Filters
+                    {t('problems.empty.reset')}
                   </motion.button>
                 </motion.div>
               </div>
