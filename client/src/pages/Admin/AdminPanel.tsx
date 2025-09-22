@@ -1,6 +1,6 @@
 import React, { useState, useEffect, Fragment, useCallback } from 'react';
 import { useAuth } from '../../context/AuthContext';
-import { Navigate } from 'react-router-dom';
+import { Navigate, Link } from 'react-router-dom';
 import { 
   Lock, Unlock, Search, Shield, Users, Code, Trophy, 
   Plus, Edit, Trash2, Loader2, Calendar, Clock, Tag, Check, X, AlertCircle
@@ -33,6 +33,8 @@ type BlockHistoryItem = {
 interface ExtendedUser extends User {
   blockHistory?: BlockHistoryItem[];
   displayName?: string;
+  // Server may return isEmailVerified in addition to isVerified in User type
+  isEmailVerified?: boolean;
 }
 
 interface Pagination {
@@ -1669,18 +1671,32 @@ const AdminPanel: React.FC = () => {
                           <tr key={user._id} className="hover:bg-blue-25">
                             <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center">
-                                <UserAvatar 
-                                  username={user.username} 
-                                />
+                                {user.avatarUrl ? (
+                                  <img
+                                    src={user.avatarUrl}
+                                    alt={user.username}
+                                    className="h-8 w-8 sm:h-10 sm:w-10 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0"
+                                  />
+                                ) : (
+                                  <UserAvatar username={user.username} />
+                                )}
                                 <div className="ml-3 min-w-0 flex-1">
-                                  <p className="text-blue-900 font-medium text-sm sm:text-base truncate">{user.username}</p>
+                                  <p className="text-blue-900 font-medium text-sm sm:text-base truncate">
+                                    <Link to={`/u/${user.username}`} className="hover:underline">{user.username}</Link>
+                                  </p>
                                   <p className="text-blue-600 text-xs sm:text-sm truncate sm:hidden">{user.email}</p>
                                 </div>
                               </div>
                             </td>
                             <td className="px-3 sm:px-6 py-4 whitespace-nowrap hidden sm:table-cell">
                               <div className="text-sm text-blue-900 truncate max-w-xs">{user.email}</div>
-                              <div className="text-xs text-blue-600">{user.isVerified ? 'Verified' : 'Unverified'}</div>
+                              <div className="text-xs">
+                                {((user as any).isEmailVerified ?? user.isVerified) ? (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-semibold">Verified</span>
+                                ) : (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">Unverified</span>
+                                )}
+                              </div>
                             </td>
                             <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                               <span className={`px-2 sm:px-3 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${
@@ -1698,9 +1714,9 @@ const AdminPanel: React.FC = () => {
                               )}
                             </td>
                             <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
-                              {!user.isAdmin && user.rank ? (
+                              {!user.isAdmin && (user.ranking || (user as any).rank) ? (
                                 <span className="px-2 py-1 text-xs font-medium text-blue-800 bg-blue-100 rounded-full">
-                                  #{user.rank}
+                                  #{user.ranking || (user as any).rank}
                                 </span>
                               ) : (
                                 <span className="text-xs text-gray-500">-</span>

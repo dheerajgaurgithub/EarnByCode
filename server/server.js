@@ -701,7 +701,8 @@ app.post('/api/execute', async (req, res) => {
           javascript: '18.15.0',
           typescript: '5.0.3',
           python: '3.11.2',
-          java: '17.0.1',
+          // Leave Java empty to trigger runtime discovery on the target Piston instance
+          java: '',
           cpp: '10.2.0',
         };
         let version = (typeof payload.version === 'string' && payload.version) || defaultVersions[pistonLang] || '';
@@ -718,6 +719,10 @@ app.post('/api/execute', async (req, res) => {
           } catch (e) {
             // ignore discovery errors, will attempt request and report error if needed
           }
+        }
+
+        if (pistonLang === 'java') {
+          console.log(`[Piston] Selected Java runtime version: ${version || '(auto-discovery failed)'}`);
         }
 
         const pistonReq = {
