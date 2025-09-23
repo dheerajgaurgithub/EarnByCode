@@ -267,7 +267,7 @@ router.post('/withdraw', authenticate, async (req, res) => {
   session.startTransaction();
   
   try {
-    const { amount, bankAccountId } = req.body;
+    const { amount, bankAccountId, upiId } = req.body || {};
     const amt = Number(amount);
 
     // Validation
@@ -288,6 +288,11 @@ router.post('/withdraw', authenticate, async (req, res) => {
     // Compute new balance (before persisting) for balanceAfter
     const newBalance = parseFloat((req.user.walletBalance - amt).toFixed(2));
 
+    // Require a payout destination
+    if (!upiId && !bankAccountId) {
+      return res.status(400).json({ success: false, message: 'Provide a UPI ID or bank account to receive payout' });
+    }
+
     // Create withdrawal transaction (include required fields)
     const transaction = new Transaction({
       user: req.user._id,
@@ -299,7 +304,7 @@ router.post('/withdraw', authenticate, async (req, res) => {
       fee: 0,
       netAmount: amt,
       balanceAfter: newBalance,
-      metadata: { bankAccountId }
+      metadata: { bankAccountId, upiId }
     });
 
     await transaction.save({ session });
@@ -311,26 +316,15 @@ router.post('/withdraw', authenticate, async (req, res) => {
       { session, new: true }
     );
 
-    // In a real app, initiate bank transfer here using Stripe Connect
-    // For demo, we'll simulate bank transfer
-    setTimeout(async () => {
-      try {
-        transaction.status = 'completed';
-        await transaction.save();
-        console.log(`Withdrawal completed for user ${req.user._id}: ₹${amt}`);
-      } catch (error) {
-        console.error('Failed to update withdrawal status:', error);
-      }
-    }, 5000);
-
     await session.commitTransaction();
     session.endSession();
 
     res.json({ 
       success: true,
-      message: 'Withdrawal request submitted successfully',
+      message: 'Withdrawal request submitted successfully and is pending manual payout',
       transactionId: transaction._id,
-      balance: updatedUser?.walletBalance ?? (req.user.walletBalance - amt)
+      balance: updatedUser?.walletBalance ?? (req.user.walletBalance - amt),
+      status: transaction.status
     });
   } catch (error) {
     await session.abortTransaction();

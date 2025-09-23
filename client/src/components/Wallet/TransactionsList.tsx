@@ -27,7 +27,14 @@ export const TransactionsList: React.FC<TransactionsListProps> = ({
     }
   };
   const formatDate = (dateString: string) => {
-    return formatDistanceToNow(new Date(dateString), { addSuffix: true });
+    const d = new Date(dateString);
+    // Show exact local date-time with timezone abbreviation where available
+    const exact = d.toLocaleString(undefined, {
+      year: 'numeric', month: 'short', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit'
+    });
+    const rel = formatDistanceToNow(d, { addSuffix: true });
+    return `${exact} (${rel})`;
   };
 
   const getTransactionIcon = (type: string) => {
@@ -154,14 +161,21 @@ export const TransactionsList: React.FC<TransactionsListProps> = ({
             </div>
             <div className="text-right">
               <div className={`font-semibold ${
-                transaction.amount > 0 ? 'text-green-600' : 'text-gray-900'
+                ['withdrawal','contest_entry','purchase'].includes(transaction.type)
+                  ? 'text-rose-600'
+                  : 'text-emerald-600'
               }`}>
-                {transaction.amount > 0 ? '+' : ''}
+                {['withdrawal','contest_entry','purchase'].includes(transaction.type) ? '-' : '+'}
                 {transaction.amount.toFixed(2)} {transaction.currency}
               </div>
               <Badge variant="outline" className={`mt-1 ${getStatusVariant(transaction.status)}`}>
                 {transaction.status.charAt(0).toUpperCase() + transaction.status.slice(1)}
               </Badge>
+              {transaction.status === 'pending' && (
+                <div className="text-[11px] text-yellow-700 mt-1">
+                  Awaiting manual payout processing.
+                </div>
+              )}
             </div>
           </div>
         ))}

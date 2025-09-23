@@ -88,9 +88,10 @@ export const TransactionDetails = () => {
     fetchTransaction();
   }, [id, toast]);
 
-  const formatCurrency = (amount: number, currencyCode: string = 'USD') => {
+  const formatCurrency = (amount: number, currencyCode: string = 'INR') => {
     try {
-      return new Intl.NumberFormat('en-US', {
+      const locale = currencyCode === 'INR' ? 'en-IN' : 'en-US';
+      return new Intl.NumberFormat(locale, {
         style: 'currency',
         currency: currencyCode,
         minimumFractionDigits: 2,
@@ -98,9 +99,10 @@ export const TransactionDetails = () => {
       }).format(amount);
     } catch (error) {
       console.error('Error formatting currency:', error);
-      return new Intl.NumberFormat('en-US', {
+      const locale = 'en-IN';
+      return new Intl.NumberFormat(locale, {
         style: 'currency',
-        currency: 'USD',
+        currency: 'INR',
       }).format(amount);
     }
   };
@@ -175,19 +177,20 @@ export const TransactionDetails = () => {
             <div className="space-y-2">
               <h3 className="text-sm font-medium text-muted-foreground">Amount</h3>
               <p className={`text-2xl font-bold ${
-                transaction.amount >= 0 ? 'text-green-600' : 'text-red-600'
+                ['withdrawal','contest_entry','purchase'].includes(transaction.type)
+                  ? 'text-red-600' : 'text-green-600'
               }`}>
-                {transaction.amount >= 0 ? '+' : ''}
-                {formatCurrency(transaction.amount, transaction.currency)}
+                {['withdrawal','contest_entry','purchase'].includes(transaction.type) ? '-' : '+'}
+                {formatCurrency(transaction.amount, transaction.currency || 'INR')}
               </p>
               {transaction.fee > 0 && (
                 <p className="text-sm text-muted-foreground">
-                  Fee: {formatCurrency(transaction.fee, transaction.currency)}
+                  Fee: {formatCurrency(transaction.fee, transaction.currency || 'INR')}
                 </p>
               )}
               {transaction.netAmount !== undefined && transaction.netAmount !== transaction.amount && (
                 <p className="text-sm text-muted-foreground">
-                  Net: {formatCurrency(transaction.netAmount, transaction.currency)}
+                  Net: {formatCurrency(transaction.netAmount, transaction.currency || 'INR')}
                 </p>
               )}
             </div>
