@@ -38,6 +38,54 @@ router.get('/stats', async (req, res) => {
   }
 });
 
+// Get a single user's bank details (sanitized)
+router.get('/users/:id/bank-details', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id)
+      .select('username email fullName bankDetails createdAt updatedAt')
+      .lean();
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Optional: simple access audit log
+    try {
+      console.info('[ADMIN] Bank details accessed', {
+        adminId: req.user?._id,
+        adminEmail: req.user?.email,
+        targetUserId: user._id,
+        at: new Date().toISOString()
+      });
+    } catch {}
+
+    const bd = user.bankDetails || {};
+    const payload = {
+      success: true,
+      user: {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        fullName: user.fullName,
+      },
+      bankDetails: {
+        bankAccountName: bd.bankAccountName || '',
+        bankAccountNumberLast4: bd.bankAccountNumberLast4 || '',
+        // Never expose encrypted full account number
+        ifsc: bd.ifsc || '',
+        bankName: bd.bankName || '',
+        upiId: bd.upiId || '',
+        verified: !!bd.verified,
+        lastUpdatedAt: bd.lastUpdatedAt || null,
+      }
+    };
+    return res.json(payload);
+  } catch (error) {
+    console.error('Admin get bank details error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch bank details' });
+  }
+});
+
 // Create new problem
 router.post('/problems', async (req, res) => {
   try {
@@ -461,6 +509,196 @@ router.get('/users', async (req, res) => {
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ message: 'Failed to fetch users' });
+  }
+});
+
+// List users' bank details (searchable & sortable)
+router.get('/users/bank-details', async (req, res) => {
+  try {
+    const {
+      page = 1,
+      limit = 20,
+      search = '',
+      sort = 'lastUpdatedAt',
+      order = 'desc',
+      missing
+    } = req.query;
+
+    const p = Math.max(1, parseInt(page));
+    const lim = Math.min(100, Math.max(1, parseInt(limit)));
+    const skip = (p - 1) * lim;
+
+    const query = {};
+    const or = [];
+    if (search) {
+      const rx = { $regex: search, $options: 'i' };
+      or.push(
+        { username: rx },
+        { email: rx },
+        { fullName: rx },
+        { 'bankDetails.bankAccountName': rx },
+        { 'bankDetails.bankName': rx },
+        { 'bankDetails.ifsc': rx },
+        { 'bankDetails.upiId': rx },
+        { 'bankDetails.bankAccountNumberLast4': rx }
+      );
+    }
+    if (or.length) query.$or = or;
+
+    // Missing filter: users without sufficient bank details
+    if (String(missing) === 'true') {
+      query.$and = [
+        {
+          $or: [
+            { bankDetails: { $exists: false } },
+            { 'bankDetails.bankAccountName': { $in: [null, ''] } },
+            // Neither UPI nor Account last4 available
+            { $and: [
+              { $or: [ { 'bankDetails.upiId': { $in: [null, ''] } }, { 'bankDetails.upiId': { $exists: false } } ] },
+              { $or: [ { 'bankDetails.bankAccountNumberLast4': { $in: [null, ''] } }, { 'bankDetails.bankAccountNumberLast4': { $exists: false } } ] }
+            ]}
+          ]
+        }
+      ];
+    }
+
+    const sortMap = {
+      lastUpdatedAt: { 'bankDetails.lastUpdatedAt': order === 'asc' ? 1 : -1 },
+      accountName: { 'bankDetails.bankAccountName': order === 'asc' ? 1 : -1 },
+      bankName: { 'bankDetails.bankName': order === 'asc' ? 1 : -1 },
+      ifsc: { 'bankDetails.ifsc': order === 'asc' ? 1 : -1 },
+      createdAt: { createdAt: order === 'asc' ? 1 : -1 }
+    };
+    const sortSpec = sortMap[sort] || sortMap.lastUpdatedAt;
+
+    const [users, total] = await Promise.all([
+      User.find(query)
+        .select('username email fullName bankDetails createdAt updatedAt')
+        .sort(sortSpec)
+        .skip(skip)
+        .limit(lim)
+        .lean(),
+      User.countDocuments(query)
+    ]);
+
+    // Do not expose encrypted account numbers
+    const sanitized = users.map(u => ({
+      _id: u._id,
+      username: u.username,
+      email: u.email,
+      fullName: u.fullName,
+      bankDetails: {
+        bankAccountName: u.bankDetails?.bankAccountName || '',
+        bankAccountNumberLast4: u.bankDetails?.bankAccountNumberLast4 || '',
+        ifsc: u.bankDetails?.ifsc || '',
+        bankName: u.bankDetails?.bankName || '',
+        upiId: u.bankDetails?.upiId || '',
+        verified: !!u.bankDetails?.verified,
+        lastUpdatedAt: u.bankDetails?.lastUpdatedAt || null
+      },
+      createdAt: u.createdAt,
+      updatedAt: u.updatedAt
+    }));
+
+    res.json({
+      success: true,
+      page: p,
+      limit: lim,
+      total,
+      pages: Math.ceil(total / lim),
+      users: sanitized
+    });
+  } catch (error) {
+    console.error('Admin list bank details error:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch bank details' });
+  }
+});
+
+// Export users' bank details as CSV (supports same filters)
+router.get('/users/bank-details/export', async (req, res) => {
+  try {
+    const { search = '', sort = 'lastUpdatedAt', order = 'desc', missing, format = 'csv', limit = 10000 } = req.query;
+
+    const query = {};
+    const or = [];
+    if (search) {
+      const rx = { $regex: search, $options: 'i' };
+      or.push(
+        { username: rx },
+        { email: rx },
+        { fullName: rx },
+        { 'bankDetails.bankAccountName': rx },
+        { 'bankDetails.bankName': rx },
+        { 'bankDetails.ifsc': rx },
+        { 'bankDetails.upiId': rx },
+        { 'bankDetails.bankAccountNumberLast4': rx }
+      );
+    }
+    if (or.length) query.$or = or;
+
+    if (String(missing) === 'true') {
+      query.$and = [
+        {
+          $or: [
+            { bankDetails: { $exists: false } },
+            { 'bankDetails.bankAccountName': { $in: [null, ''] } },
+            { $and: [
+              { $or: [ { 'bankDetails.upiId': { $in: [null, ''] } }, { 'bankDetails.upiId': { $exists: false } } ] },
+              { $or: [ { 'bankDetails.bankAccountNumberLast4': { $in: [null, ''] } }, { 'bankDetails.bankAccountNumberLast4': { $exists: false } } ] }
+            ]}
+          ]
+        }
+      ];
+    }
+
+    const sortMap = {
+      lastUpdatedAt: { 'bankDetails.lastUpdatedAt': order === 'asc' ? 1 : -1 },
+      accountName: { 'bankDetails.bankAccountName': order === 'asc' ? 1 : -1 },
+      bankName: { 'bankDetails.bankName': order === 'asc' ? 1 : -1 },
+      ifsc: { 'bankDetails.ifsc': order === 'asc' ? 1 : -1 },
+      createdAt: { createdAt: order === 'asc' ? 1 : -1 }
+    };
+    const sortSpec = sortMap[sort] || sortMap.lastUpdatedAt;
+
+    const lim = Math.min(50000, Math.max(1, parseInt(limit)));
+    const users = await User.find(query)
+      .select('username email fullName bankDetails createdAt updatedAt')
+      .sort(sortSpec)
+      .limit(lim)
+      .lean();
+
+    // CSV export (Excel-friendly)
+    const header = ['Username','Email','Full Name','Account Name','Bank Name','IFSC','UPI ID','Last 4','Verified','Last Updated'];
+    const rows = users.map(u => [
+      u.username || '',
+      u.email || '',
+      u.fullName || '',
+      u.bankDetails?.bankAccountName || '',
+      u.bankDetails?.bankName || '',
+      u.bankDetails?.ifsc || '',
+      u.bankDetails?.upiId || '',
+      u.bankDetails?.bankAccountNumberLast4 || '',
+      u.bankDetails?.verified ? 'Yes' : 'No',
+      u.bankDetails?.lastUpdatedAt ? new Date(u.bankDetails.lastUpdatedAt).toISOString() : ''
+    ]);
+
+    // Simple CSV generator with escaping
+    const escapeCsv = (val) => {
+      const s = String(val ?? '');
+      if (/[",\n]/.test(s)) {
+        return '"' + s.replace(/"/g, '""') + '"';
+      }
+      return s;
+    };
+    const csv = [header, ...rows].map(r => r.map(escapeCsv).join(',')).join('\n');
+
+    const fileName = `bank-details-${Date.now()}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
+    return res.status(200).send('\uFEFF' + csv); // BOM for Excel UTF-8
+  } catch (error) {
+    console.error('Admin export bank details error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to export bank details' });
   }
 });
 
