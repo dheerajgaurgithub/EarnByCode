@@ -360,6 +360,11 @@ app.use(cors(corsOptions));
 
 // Handle preflight requests
 app.options('*', cors(corsOptions));
+
+// Important: Razorpay webhook needs raw body for signature verification
+app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*' }));
+
+// General parsers
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 

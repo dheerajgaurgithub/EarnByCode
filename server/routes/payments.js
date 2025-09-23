@@ -9,8 +9,9 @@ const router = express.Router();
 const paymentsMode = (process.env.PAYMENTS_MODE || '').toLowerCase(); // 'mock' to bypass live gateways
 const razorpayKeyId = process.env.RAZORPAY_KEY_ID || '';
 const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || '';
+const razorpayWebhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
-async function createRazorpayOrder(amountInRupees) {
+async function createRazorpayOrder(amountInRupees, userId) {
   const amountPaise = Math.round(Number(amountInRupees) * 100);
   if (!razorpayKeyId || !razorpayKeySecret) {
     // Mock order when keys not present
@@ -24,7 +25,12 @@ async function createRazorpayOrder(amountInRupees) {
   try {
     const { default: Razorpay } = await import('razorpay');
     const instance = new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
-    const order = await instance.orders.create({ amount: amountPaise, currency: 'INR' });
+    const order = await instance.orders.create({ 
+      amount: amountPaise, 
+      currency: 'INR',
+      receipt: `wallet_${userId}_${Date.now()}`,
+      notes: { userId: String(userId) }
+    });
     return order;
   } catch (e) {
     console.error('Razorpay order error:', e);
@@ -49,7 +55,7 @@ router.post('/razorpay/order', authenticate, async (req, res) => {
     if (!amount || isNaN(amount) || amount < 1) {
       return res.status(400).json({ success: false, message: 'Minimum deposit amount is ₹1' });
     }
-    const order = await createRazorpayOrder(amount);
+    const order = await createRazorpayOrder(amount, req.user._id);
     return res.json({
       success: true,
       orderId: order.id,
@@ -85,6 +91,14 @@ router.post('/razorpay/verify', authenticate, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid payment signature' });
     }
 
+    // Idempotency: if we already have a completed txn for this payment_id, return success
+    const existing = await Transaction.findOne({ 'metadata.payment_id': razorpay_payment_id, user: req.user._id });
+    if (existing && existing.status === 'completed') {
+      await session.abortTransaction();
+      session.endSession();
+      return res.json({ success: true, balance: existing.balanceAfter, transactionId: existing._id });
+    }
+
     // Credit wallet and record transaction
     const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
@@ -95,7 +109,7 @@ router.post('/razorpay/verify', authenticate, async (req, res) => {
     const amtNum = Number(amount);
     const fee = 0;
     const netAmount = amtNum - fee;
-    const transaction = await Transaction.create([
+    const [txn] = await Transaction.create([
       {
         user: req.user._id,
         type: 'deposit',
@@ -117,7 +131,7 @@ router.post('/razorpay/verify', authenticate, async (req, res) => {
     await session.commitTransaction();
     session.endSession();
 
-    res.json({ success: true, balance: updatedUser.walletBalance, transactionId: transaction[0]._id });
+    res.json({ success: true, balance: updatedUser.walletBalance, transactionId: txn._id });
   } catch (error) {
     await session.abortTransaction();
     session.endSession();
@@ -351,6 +365,86 @@ router.get('/transactions/:id', authenticate, async (req, res) => {
       success: false,
       message: 'Failed to fetch transaction'
     });
+  }
+});
+
+// Razorpay webhook endpoint (redundant credit path)
+router.post('/razorpay/webhook', async (req, res) => {
+  try {
+    // Verify webhook signature
+    const signature = req.headers['x-razorpay-signature'];
+    if (!razorpayWebhookSecret) {
+      return res.status(400).json({ success: false, message: 'Webhook secret not configured' });
+    }
+    const body = req.body instanceof Buffer ? req.body : Buffer.from(JSON.stringify(req.body));
+    const expected = crypto.createHmac('sha256', razorpayWebhookSecret).update(body).digest('hex');
+    if (signature !== expected) {
+      return res.status(400).json({ success: false, message: 'Invalid webhook signature' });
+    }
+
+    const event = JSON.parse(body.toString('utf8'));
+    if (event?.event !== 'payment.captured') {
+      return res.status(200).json({ success: true });
+    }
+
+    const entity = event.payload?.payment?.entity || {};
+    const paymentId = entity.id;
+    const orderId = entity.order_id;
+    const notes = entity.notes || {};
+    const amountPaise = Number(entity.amount || 0);
+    const userId = notes.userId;
+    if (!paymentId || !orderId || !userId) {
+      return res.status(400).json({ success: false, message: 'Missing fields' });
+    }
+
+    // Idempotent upsert of transaction, then credit user
+    const session = await mongoose.startSession();
+    session.startTransaction();
+    try {
+      const amt = Math.round(amountPaise / 100);
+      const existing = await Transaction.findOne({ 'metadata.payment_id': paymentId, user: userId }).session(session);
+      if (existing && existing.status === 'completed') {
+        await session.abortTransaction();
+        session.endSession();
+        return res.status(200).json({ success: true });
+      }
+
+      // Create txn if missing
+      let txn = existing;
+      if (!txn) {
+        const [created] = await Transaction.create([
+          {
+            user: userId,
+            type: 'deposit',
+            amount: amt,
+            currency: 'INR',
+            description: `Wallet deposit via Razorpay (webhook)`,
+            status: 'completed',
+            fee: 0,
+            netAmount: amt,
+            metadata: { gateway: 'razorpay', order_id: orderId, payment_id: paymentId },
+          },
+        ], { session });
+        txn = created;
+      } else {
+        txn.status = 'completed';
+        await txn.save({ session });
+      }
+
+      // Credit user
+      const user = await User.findByIdAndUpdate(userId, { $inc: { walletBalance: amt } }, { new: true, session });
+      await session.commitTransaction();
+      session.endSession();
+      return res.status(200).json({ success: true, balance: user?.walletBalance });
+    } catch (e) {
+      await session.abortTransaction();
+      session.endSession();
+      console.error('Webhook credit error:', e);
+      return res.status(500).json({ success: false });
+    }
+  } catch (error) {
+    console.error('Razorpay webhook error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to process Razorpay webhook' });
   }
 });
 

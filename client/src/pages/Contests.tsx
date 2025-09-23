@@ -58,6 +58,49 @@ export const Contests: React.FC = () => {
     }
   };
 
+  // Lazy load Razorpay checkout script
+  const loadRazorpayScript = (): Promise<boolean> => {
+    return new Promise((resolve) => {
+      if ((window as any).Razorpay) return resolve(true);
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.async = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleTopUpWithRazorpay = async (required: number, onSuccess: () => Promise<void>) => {
+    const ok = await loadRazorpayScript();
+    if (!ok) {
+      alert('Unable to load Razorpay');
+      return;
+    }
+    // Create order for the shortfall
+    const order = await walletService.createRazorpayOrder(required);
+    const options: any = {
+      key: order.keyId,
+      amount: order.amount,
+      currency: order.currency,
+      name: 'AlgoBucks',
+      description: 'Contest entry top-up',
+      order_id: order.orderId,
+      handler: async (response: any) => {
+        await walletService.verifyRazorpayPayment({
+          razorpay_order_id: response.razorpay_order_id,
+          razorpay_payment_id: response.razorpay_payment_id,
+          razorpay_signature: response.razorpay_signature,
+          amount: required,
+        });
+        await onSuccess();
+      },
+      theme: { color: '#2563eb' },
+    };
+    const rzp = new (window as any).Razorpay(options);
+    rzp.open();
+  };
+
   const handleJoinContest = async (contestId: string) => {
     if (!user) return;
 
@@ -77,16 +120,24 @@ export const Contests: React.FC = () => {
     if (latestBalance < contest.entryFee) {
       const balance = latestBalance;
       const shortfall = Math.max(0, contest.entryFee - balance);
-      // Show a clear message with the required top-up amount and offer navigation to wallet
-      const goToWallet = window.confirm(
+      // Offer Razorpay top-up inline
+      const viaRzp = window.confirm(
         `Insufficient wallet balance.\n\n` +
-        `Entry fee: ${contest.entryFee}\n` +
-        `Your balance: ${balance}\n` +
-        `You need to add: ${shortfall} more to join this contest.\n\n` +
-        `Would you like to go to your wallet to add funds now?`
+        `Entry fee: ₹${contest.entryFee}\n` +
+        `Your balance: ₹${balance}\n` +
+        `You need to add: ₹${shortfall}.\n\n` +
+        `Click OK to pay now with Razorpay, or Cancel to open your Wallet.`
       );
-      if (goToWallet) {
-        // Navigate to wallet page. Optionally pass suggested top-up in query params
+      if (viaRzp) {
+        await handleTopUpWithRazorpay(shortfall, async () => {
+          // refresh user and try joining again
+          try { await refreshUser(); } catch {}
+          await apiService.joinContest(contestId);
+          await refreshUser();
+          await fetchContests();
+          alert('Successfully registered for the contest!');
+        });
+      } else {
         navigate(`/wallet?topup=${shortfall}`);
       }
       return;

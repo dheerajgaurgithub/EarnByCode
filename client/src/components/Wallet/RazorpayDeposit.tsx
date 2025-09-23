@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { walletService } from '@/services/walletService';
 import { Button } from '@/components/ui/button';
 import { useI18n } from '@/context/I18nContext';
+import { useToast } from '@/components/ui/use-toast';
 
 declare global {
   interface Window {
@@ -25,6 +26,7 @@ export const RazorpayDeposit: React.FC<{ onSuccess?: () => void } > = ({ onSucce
   const [amount, setAmount] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const { t } = useI18n();
+  const toast = useToast();
 
   const handleDeposit = async () => {
     const amt = Number(amount);
@@ -46,13 +48,14 @@ export const RazorpayDeposit: React.FC<{ onSuccess?: () => void } > = ({ onSucce
         order_id: order.orderId,
         handler: async function (response: any) {
           // Verify on server and credit wallet
-          await walletService.verifyRazorpayPayment({
+          const result = await walletService.verifyRazorpayPayment({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
             amount: amt,
           });
           setAmount('');
+          try { toast.success('Deposit successful'); } catch {}
           onSuccess?.();
         },
         prefill: {},
@@ -61,8 +64,9 @@ export const RazorpayDeposit: React.FC<{ onSuccess?: () => void } > = ({ onSucce
 
       const rzp = new window.Razorpay(options);
       rzp.open();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      try { toast.error(e?.message || 'Deposit failed'); } catch {}
     } finally {
       setLoading(false);
     }
