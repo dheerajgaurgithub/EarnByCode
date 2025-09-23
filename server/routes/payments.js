@@ -292,12 +292,12 @@ router.post('/withdraw', authenticate, async (req, res) => {
     const transaction = new Transaction({
       user: req.user._id,
       type: 'withdrawal',
-      amount: -amt,
+      amount: amt,
       currency: 'INR',
       description: `Withdrawal of ₹${amt.toFixed(2)}`,
       status: 'pending',
       fee: 0,
-      netAmount: -amt,
+      netAmount: amt,
       balanceAfter: newBalance,
       metadata: { bankAccountId }
     });
