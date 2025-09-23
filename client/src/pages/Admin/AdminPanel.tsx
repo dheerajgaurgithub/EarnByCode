@@ -8,6 +8,7 @@ import {
 import { Switch } from '@headlessui/react';
 import { Dialog, Transition } from '@headlessui/react';
 import apiService from '../../services/api';
+import { walletService } from '../../services/walletService';
 import type { User } from '../../types';
 import ContestProblemManager from '../../components/Admin/ContestProblemManager';
 import JobsList from '@/components/Admin/Jobs/JobsList';
@@ -1240,7 +1241,7 @@ const AdminPanel: React.FC = () => {
                   </div>
                   <div>
                     <label htmlFor="entryFee" className="block text-sm font-medium text-blue-700 mb-2">
-                      Entry Fee (coins)
+                      Entry Fee (₹ INR)
                     </label>
                     <input
                       type="number"
@@ -1255,7 +1256,7 @@ const AdminPanel: React.FC = () => {
                   </div>
                   <div>
                     <label htmlFor="prizePool" className="block text-sm font-medium text-blue-700 mb-2">
-                      Prize Pool (coins)
+                      Prize Pool (₹ INR)
                     </label>
                     <input
                       type="number"
@@ -2114,7 +2115,7 @@ const AdminPanel: React.FC = () => {
                                 <div>{contest.problems?.length || 0} problems</div>
                                 <div>{contest.participants?.length || 0}/{contest.maxParticipants} participants</div>
                                 <div className="text-xs text-gray-500">
-                                  Fee: {contest.entryFee} • Prize: {contest.prizePool}
+                                  Fee: {walletService.formatCurrency(contest.entryFee, 'INR')} • Prize: {walletService.formatCurrency(contest.prizePool, 'INR')}
                                 </div>
                               </div>
                             </td>

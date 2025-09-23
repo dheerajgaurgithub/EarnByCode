@@ -332,7 +332,7 @@ export const Contests: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Fee</p>
-                          <p className="text-xs font-semibold text-gray-900 dark:text-white">${contest.entryFee}</p>
+                          <p className="text-xs font-semibold text-gray-900 dark:text-white">{walletService.formatCurrency(contest.entryFee, 'INR')}</p>
                         </div>
                       </div>
                       
@@ -342,7 +342,7 @@ export const Contests: React.FC = () => {
                         </div>
                         <div>
                           <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">Prize</p>
-                          <p className="text-xs font-semibold text-gray-900 dark:text-white">${contest.prizePool}</p>
+                          <p className="text-xs font-semibold text-gray-900 dark:text-white">{walletService.formatCurrency(contest.prizePool, 'INR')}</p>
                         </div>
                       </div>
                     </div>

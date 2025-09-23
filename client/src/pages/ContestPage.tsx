@@ -64,7 +64,8 @@ interface TestResults {
 }
 
 const ContestPage = () => {
-  const { id } = useParams<{ id: string }>();
+  const { contestId } = useParams<{ contestId: string }>();
+  const id = contestId; // keep existing references working
   const navigate = useNavigate();
   const { user } = useAuth();
   
