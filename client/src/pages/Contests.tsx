@@ -1,12 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { Trophy, Clock, Users, DollarSign, Calendar, Award, AlertCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import apiService, { type IContest } from '../services/api';
+import { walletService } from '../services/walletService';
 
 export const Contests: React.FC = () => {
   const { user, refreshUser } = useAuth();
+  const navigate = useNavigate();
   const [contests, setContests] = useState<IContest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'all' | 'upcoming' | 'live' | 'ended'>('all');
@@ -62,8 +64,31 @@ export const Contests: React.FC = () => {
     const contest = contests.find(c => c._id === contestId);
     if (!contest) return;
 
-    if ((user.walletBalance ?? 0) < contest.entryFee) {
-      alert('Insufficient wallet balance! Please add funds to your wallet.');
+    // Fetch latest wallet balance to avoid stale client values
+    let latestBalance = user.walletBalance ?? 0;
+    try {
+      const balanceData = await walletService.getBalance();
+      latestBalance = balanceData.balance ?? latestBalance;
+    } catch (e) {
+      // Non-blocking: fall back to local state if API fails
+      console.warn('Could not refresh wallet balance, using cached value.', e);
+    }
+
+    if (latestBalance < contest.entryFee) {
+      const balance = latestBalance;
+      const shortfall = Math.max(0, contest.entryFee - balance);
+      // Show a clear message with the required top-up amount and offer navigation to wallet
+      const goToWallet = window.confirm(
+        `Insufficient wallet balance.\n\n` +
+        `Entry fee: ${contest.entryFee}\n` +
+        `Your balance: ${balance}\n` +
+        `You need to add: ${shortfall} more to join this contest.\n\n` +
+        `Would you like to go to your wallet to add funds now?`
+      );
+      if (goToWallet) {
+        // Navigate to wallet page. Optionally pass suggested top-up in query params
+        navigate(`/wallet?topup=${shortfall}`);
+      }
       return;
     }
 
@@ -73,7 +98,27 @@ export const Contests: React.FC = () => {
       await fetchContests();
       alert('Successfully registered for the contest!');
     } catch (error: any) {
-      alert(error.message || 'Failed to join contest');
+      const msg = String(error?.message || 'Failed to join contest');
+      // Heuristic: if server enforces balance and returns an error, guide the user
+      if (/insufficient|low balance|not enough|wallet/i.test(msg)) {
+        // If we still have the contest record, compute shortfall again
+        const current = contests.find(c => c._id === contestId);
+        const balance = user.walletBalance ?? 0;
+        const fee = current?.entryFee ?? 0;
+        const shortfall = Math.max(0, fee - balance);
+        const goToWallet = window.confirm(
+          `${msg}\n\n` +
+          (fee > 0
+            ? `Entry fee: ${fee}\nYour balance: ${balance}\nYou need to add: ${shortfall}.\n\n`
+            : '') +
+          `Would you like to go to your wallet to add funds now?`
+        );
+        if (goToWallet) {
+          navigate(`/wallet?topup=${shortfall || ''}`);
+        }
+      } else {
+        alert(msg);
+      }
     }
   };
 
