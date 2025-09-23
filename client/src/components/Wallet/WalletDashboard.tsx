@@ -204,8 +204,8 @@ export const WalletDashboard = () => {
 
   const onWithdraw = async () => {
     const amt = parseFloat(withdrawAmount);
-    if (!amt || amt < 10) {
-      toast.error('Minimum withdrawal amount is ₹10');
+    if (!amt || amt < 5) {
+      toast.error('Minimum withdrawal amount is ₹5');
       return;
     }
     if (amt > balance) {
@@ -257,9 +257,31 @@ export const WalletDashboard = () => {
                   Withdraw
                 </h3>
                 <div className="flex flex-col items-stretch gap-2 sm:gap-3 w-full">
+                  {/* Withdraw amount input with inline validation */}
+                  <Input
+                    type="number"
+                    min={5}
+                    step={1}
+                    value={withdrawAmount}
+                    onChange={(e) => setWithdrawAmount(e.target.value)}
+                    placeholder="Enter amount (min ₹5)"
+                    aria-label="Withdraw amount"
+                  />
+                  {withdrawAmount && Number(withdrawAmount) < 5 && (
+                    <span className="text-xs text-rose-600 dark:text-rose-400">Minimum withdrawal is ₹5</span>
+                  )}
+                  {withdrawAmount && Number(withdrawAmount) > balance && (
+                    <span className="text-xs text-rose-600 dark:text-rose-400">Insufficient balance</span>
+                  )}
                   <Button 
                     className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 dark:from-rose-600 dark:to-rose-700 dark:hover:from-rose-700 dark:hover:to-rose-800 text-white py-2 sm:py-3 rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl dark:shadow-rose-900/30 dark:hover:shadow-rose-800/40 transition-all duration-500 transform hover:-translate-y-0.5 font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
-                    disabled={balance <= 0 || actionLoading.withdraw} 
+                    disabled={
+                      balance <= 0 ||
+                      actionLoading.withdraw ||
+                      !withdrawAmount ||
+                      Number(withdrawAmount) < 5 ||
+                      Number(withdrawAmount) > balance
+                    } 
                     onClick={onWithdraw}
                   >
                     {actionLoading.withdraw ? (
