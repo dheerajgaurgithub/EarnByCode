@@ -6,6 +6,7 @@ import { Icons } from '../icons';
 import RazorpayDeposit from './RazorpayDeposit';
 import { useAuth } from '@/context/AuthContext';
 import config from '@/lib/config';
+import { formatInr } from '@/lib/currency';
 
 // UI Components
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -62,9 +63,7 @@ export const WalletDashboard = () => {
   // Action state
   const [depositAmount, setDepositAmount] = useState<string>('');
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
-  const [withdrawAmount, setWithdrawAmount] = useState<string>('');
-  const [bankAccountId, setBankAccountId] = useState<string>('');
-  const [actionLoading, setActionLoading] = useState<{ deposit: boolean; withdraw: boolean }>({ deposit: false, withdraw: false });
+  const [actionLoading, setActionLoading] = useState<{ deposit: boolean }>({ deposit: false });
   const isStripeConfigured = false;
   // Admin-only: contest pool stats
   const [contestPool, setContestPool] = useState<{ totalAmount: number; totalParticipants: number } | null>(null);
@@ -89,7 +88,7 @@ export const WalletDashboard = () => {
       const transactionsData = await walletService.getTransactionHistory(1, 10);
       const formattedTransactions = transactionsData.transactions.map(tx => ({
         ...tx,
-        formattedAmount: walletService.formatCurrency(Math.abs(tx.amount), currency),
+        formattedAmount: formatInr(Math.abs(tx.amount)),
         formattedDate: format(new Date(tx.createdAt), 'MMM d, yyyy')
       }));
       setTransactions(formattedTransactions);
@@ -131,14 +130,7 @@ export const WalletDashboard = () => {
     }
   }, [timeRange]);
 
-  const formatCurrency = (amount: number) => {
-    const cur = (user?.preferredCurrency as any) || currency || 'INR';
-    const locale = cur === 'INR' ? 'en-IN' : 'en-US';
-    return new Intl.NumberFormat(locale, {
-      style: 'currency',
-      currency: cur,
-    }).format(amount);
-  };
+  const formatCurrency = (amount: number) => formatInr(amount);
 
   const formatTransactionType = (type: string) => {
     return type
@@ -202,29 +194,7 @@ export const WalletDashboard = () => {
     }
   };
 
-  const onWithdraw = async () => {
-    const amt = parseFloat(withdrawAmount);
-    if (!amt || amt < 5) {
-      toast.error('Minimum withdrawal amount is ₹5');
-      return;
-    }
-    if (amt > balance) {
-      toast.error('Insufficient balance');
-      return;
-    }
-    try {
-      setActionLoading((s) => ({ ...s, withdraw: true }));
-      await walletService.withdraw(amt, bankAccountId || 'mock');
-      toast.success('Withdrawal requested');
-      setWithdrawAmount('');
-      await refreshAll();
-      setActiveTab('overview');
-    } catch (e: any) {
-      toast.error(e?.message || 'Withdrawal failed');
-    } finally {
-      setActionLoading((s) => ({ ...s, withdraw: false }));
-    }
-  };
+  // Withdrawals are disabled in the new flow.
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-black dark:via-gray-950 dark:to-black p-2 sm:p-4 md:p-6 lg:p-8 transition-all duration-500">
@@ -251,56 +221,7 @@ export const WalletDashboard = () => {
                 </p>
               </div>
             )}
-            {!user?.isAdmin && (
-              <div className="flex-1 lg:flex-none lg:min-w-[300px] bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl border border-blue-100 dark:border-gray-700 p-3 sm:p-4 space-y-2 sm:space-y-3 transition-all duration-500">
-                <h3 className="text-base sm:text-lg font-semibold text-blue-900 dark:text-blue-300 transition-colors duration-500">
-                  Withdraw
-                </h3>
-                <div className="flex flex-col items-stretch gap-2 sm:gap-3 w-full">
-                  {/* Withdraw amount input with inline validation */}
-                  <Input
-                    type="number"
-                    min={5}
-                    step={1}
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    placeholder="Enter amount (min ₹5)"
-                    aria-label="Withdraw amount"
-                  />
-                  {withdrawAmount && Number(withdrawAmount) < 5 && (
-                    <span className="text-xs text-rose-600 dark:text-rose-400">Minimum withdrawal is ₹5</span>
-                  )}
-                  {withdrawAmount && Number(withdrawAmount) > balance && (
-                    <span className="text-xs text-rose-600 dark:text-rose-400">Insufficient balance</span>
-                  )}
-                  <Button 
-                    className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 dark:from-rose-600 dark:to-rose-700 dark:hover:from-rose-700 dark:hover:to-rose-800 text-white py-2 sm:py-3 rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl dark:shadow-rose-900/30 dark:hover:shadow-rose-800/40 transition-all duration-500 transform hover:-translate-y-0.5 font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
-                    disabled={
-                      balance <= 0 ||
-                      actionLoading.withdraw ||
-                      !withdrawAmount ||
-                      Number(withdrawAmount) < 5 ||
-                      Number(withdrawAmount) > balance
-                    } 
-                    onClick={onWithdraw}
-                  >
-                    {actionLoading.withdraw ? (
-                      <>
-                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
-                        Submitting...
-                      </>
-                    ) : (
-                      'Withdraw Funds'
-                    )}
-                  </Button>
-                  <div className="bg-blue-50 dark:bg-gray-700/50 border border-blue-200 dark:border-gray-600 rounded-lg sm:rounded-xl p-3 sm:p-4 transition-all duration-500">
-                    <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed transition-colors duration-500">
-                      💳 <strong>Available Balance:</strong> {formatCurrency(balance)} • Minimum withdrawal: ₹5
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
+            {/* Withdraw UI removed per new policy */}
           </div>
         </div>
 
@@ -324,10 +245,71 @@ export const WalletDashboard = () => {
                 </div>
               )}
               <p className="text-xs sm:text-sm text-blue-500 dark:text-blue-400 mt-1 transition-colors duration-500">
-                Available for contests and withdrawals
+                Available for contests
               </p>
             </CardContent>
           </Card>
+
+        {/* Winnings / Earnings */}
+        <Card className="bg-white dark:bg-gray-900 border border-emerald-100 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-xl sm:rounded-2xl transition-all duration-500">
+          <CardHeader className="pb-4 sm:pb-6 pt-4 sm:pt-6 px-4 sm:px-6">
+            <CardTitle className="text-xl sm:text-2xl font-semibold text-emerald-800 dark:text-emerald-400 transition-colors duration-500">
+              Winnings / Earnings
+            </CardTitle>
+            <CardDescription className="text-sm text-emerald-700 dark:text-emerald-400 transition-colors duration-500">
+              Contest prizes credited to your wallet
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+            {loading.transactions ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center space-x-2">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-emerald-500 dark:border-emerald-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span className="text-emerald-600 dark:text-emerald-400 text-sm sm:text-base">Loading winnings...</span>
+                </div>
+              </div>
+            ) : (
+              (() => {
+                const winnings = transactions.filter(t => t.type === 'contest_prize');
+                if (winnings.length === 0) {
+                  return (
+                    <div className="text-center py-8">
+                      <p className="text-emerald-700 dark:text-emerald-400 text-sm sm:text-base">No winnings yet. Join contests to win prizes!</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="space-y-3">
+                    {winnings.map(win => (
+                      <div key={win._id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 border border-emerald-100 dark:border-gray-700 rounded-lg sm:rounded-xl">
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">Contest Prize</div>
+                          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">{win.formattedDate}</div>
+                          <div className="text-[11px] sm:text-xs text-emerald-700 dark:text-emerald-300 mt-1">
+                            You have to submit your bank account details in your profile card.
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-semibold text-emerald-600 dark:text-emerald-400">{formatInr(win.amount)}</div>
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-[11px] font-medium mt-1 ${
+                            win.status === 'completed' ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400' :
+                            win.status === 'pending' ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400' :
+                            'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                          }`}>
+                            {win.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    <div className="flex justify-center pt-2">
+                      <a href="/settings" className="text-sm text-emerald-700 dark:text-emerald-400 underline">Go to Profile to add bank details</a>
+                    </div>
+                  </div>
+                );
+              })()
+            )}
+          </CardContent>
+        </Card>
 
           <Card className="bg-white dark:bg-gray-900 border border-emerald-100 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-xl sm:rounded-2xl transition-all duration-500">
             <CardHeader className="pb-2 sm:pb-4 pt-4 sm:pt-6 px-4 sm:px-6">
@@ -352,28 +334,7 @@ export const WalletDashboard = () => {
             </CardContent>
           </Card>
 
-          <Card className="bg-white dark:bg-gray-900 border border-rose-100 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-xl sm:rounded-2xl transition-all duration-500">
-            <CardHeader className="pb-2 sm:pb-4 pt-4 sm:pt-6 px-4 sm:px-6">
-              <CardTitle className="text-lg sm:text-xl font-semibold text-rose-700 dark:text-rose-400 transition-colors duration-500">
-                Total Withdrawals
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
-              {loading.stats ? (
-                <div className="flex items-center space-x-2">
-                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-rose-500 dark:border-rose-400 border-t-transparent rounded-full animate-spin transition-colors duration-500"></div>
-                  <span className="text-rose-500 dark:text-rose-400 text-sm sm:text-base transition-colors duration-500">Loading...</span>
-                </div>
-              ) : (
-                <div className="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400 transition-colors duration-500">
-                  {formatCurrency(stats.totalWithdrawals)}
-                </div>
-              )}
-              <p className="text-xs sm:text-sm text-rose-500 dark:text-rose-400 mt-1 transition-colors duration-500">
-                {stats.withdrawalCount} transactions
-              </p>
-            </CardContent>
-          </Card>
+          {/* Total Withdrawals card removed per new policy */}
         </div>
 
         {/* Recent Transactions */}
