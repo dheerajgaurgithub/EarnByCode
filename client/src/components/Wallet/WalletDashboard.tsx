@@ -13,11 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-// Enhanced Input component with blue theme
+// Enhanced Input component with blue theme and dark mode support
 interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {}
 const Input = ({ className = '', ...props }: InputProps) => (
   <input
-    className={`flex h-12 w-full rounded-xl border-2 border-blue-100 bg-white px-4 py-3 text-sm font-medium shadow-sm transition-all duration-200 placeholder:text-blue-300 hover:border-blue-200 focus:outline-none focus:ring-4 focus:ring-blue-100 focus:border-blue-400 ${className}`}
+    className={`flex h-10 sm:h-12 w-full rounded-lg sm:rounded-xl border-2 border-blue-100 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 sm:px-4 py-2 sm:py-3 text-sm font-medium shadow-sm transition-all duration-500 placeholder:text-blue-300 dark:placeholder:text-blue-400 hover:border-blue-200 dark:hover:border-gray-500 focus:outline-none focus:ring-4 focus:ring-blue-100 dark:focus:ring-blue-900/50 focus:border-blue-400 dark:focus:border-blue-400 text-gray-900 dark:text-blue-300 ${className}`}
     {...props}
   />
 );
@@ -149,9 +149,9 @@ export const WalletDashboard = () => {
 
   const getTransactionVariant = (type: string) => {
     if (['deposit', 'contest_prize', 'refund'].includes(type)) {
-      return 'text-emerald-600 font-semibold';
+      return 'text-emerald-600 dark:text-emerald-400 font-semibold';
     }
-    return 'text-rose-600 font-semibold';
+    return 'text-rose-600 dark:text-rose-400 font-semibold';
   };
 
   // Helpers to refresh and perform actions
@@ -227,44 +227,52 @@ export const WalletDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-4 sm:p-6 lg:p-8">
-      <div className="max-w-7xl mx-auto space-y-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 dark:from-black dark:via-gray-950 dark:to-black p-2 sm:p-4 md:p-6 lg:p-8 transition-all duration-500">
+      <div className="max-w-7xl mx-auto space-y-6 sm:space-y-8">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-6 bg-white rounded-2xl shadow-xl border border-blue-100">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 sm:p-6 bg-white dark:bg-gray-900 rounded-xl sm:rounded-2xl shadow-xl dark:shadow-gray-900/50 border border-blue-100 dark:border-gray-800 transition-all duration-500">
           <div>
-            <h2 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent transition-all duration-500">
               My Wallet
             </h2>
-            <p className="text-blue-500 mt-2 text-sm sm:text-base">Manage your funds with ease</p>
+            <p className="text-blue-500 dark:text-blue-400 mt-1 sm:mt-2 text-xs sm:text-sm md:text-base transition-colors duration-500">
+              Manage your funds with ease
+            </p>
           </div>
-          <div className="flex flex-col lg:flex-row gap-4 w-full">
+          <div className="flex flex-col lg:flex-row gap-3 sm:gap-4 w-full lg:w-auto">
             {!user?.isAdmin && (
-              <div className="flex-1 bg-white rounded-2xl border border-blue-100 p-4 space-y-3">
-                <h3 className="text-lg font-semibold text-blue-900">Add Funds</h3>
+              <div className="flex-1 lg:flex-none lg:min-w-[300px] bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl border border-blue-100 dark:border-gray-700 p-3 sm:p-4 space-y-2 sm:space-y-3 transition-all duration-500">
+                <h3 className="text-base sm:text-lg font-semibold text-blue-900 dark:text-blue-300 transition-colors duration-500">
+                  Add Funds
+                </h3>
                 <RazorpayDeposit onSuccess={refreshAll} />
-                <p className="text-xs text-blue-600">Minimum deposit: ₹1</p>
+                <p className="text-xs text-blue-600 dark:text-blue-400 transition-colors duration-500">
+                  Minimum deposit: ₹1
+                </p>
               </div>
             )}
             {!user?.isAdmin && (
-              <div className="flex-1 bg-white rounded-2xl border border-blue-100 p-4 space-y-3">
-                <h3 className="text-lg font-semibold text-blue-900">Withdraw</h3>
-                <div className="flex flex-col items-stretch gap-3 w-full">
+              <div className="flex-1 lg:flex-none lg:min-w-[300px] bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl border border-blue-100 dark:border-gray-700 p-3 sm:p-4 space-y-2 sm:space-y-3 transition-all duration-500">
+                <h3 className="text-base sm:text-lg font-semibold text-blue-900 dark:text-blue-300 transition-colors duration-500">
+                  Withdraw
+                </h3>
+                <div className="flex flex-col items-stretch gap-2 sm:gap-3 w-full">
                   <Button 
-                    className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 text-white py-3 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-0.5 font-semibold text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
+                    className="w-full bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-600 hover:to-rose-700 dark:from-rose-600 dark:to-rose-700 dark:hover:from-rose-700 dark:hover:to-rose-800 text-white py-2 sm:py-3 rounded-lg sm:rounded-xl shadow-lg hover:shadow-xl dark:shadow-rose-900/30 dark:hover:shadow-rose-800/40 transition-all duration-500 transform hover:-translate-y-0.5 font-semibold text-sm sm:text-base disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none" 
                     disabled={balance <= 0 || actionLoading.withdraw} 
                     onClick={onWithdraw}
                   >
                     {actionLoading.withdraw ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                        <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
                         Submitting...
                       </>
                     ) : (
                       'Withdraw Funds'
                     )}
                   </Button>
-                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-                    <p className="text-xs text-blue-600 leading-relaxed">
+                  <div className="bg-blue-50 dark:bg-gray-700/50 border border-blue-200 dark:border-gray-600 rounded-lg sm:rounded-xl p-3 sm:p-4 transition-all duration-500">
+                    <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed transition-colors duration-500">
                       💳 <strong>Available Balance:</strong> {formatCurrency(balance)} • Minimum withdrawal: ₹10
                     </p>
                   </div>
@@ -273,10 +281,186 @@ export const WalletDashboard = () => {
             )}
           </div>
         </div>
+
+        {/* Balance Overview Card */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          <Card className="bg-white dark:bg-gray-900 border border-blue-100 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-xl sm:rounded-2xl transition-all duration-500">
+            <CardHeader className="pb-2 sm:pb-4 pt-4 sm:pt-6 px-4 sm:px-6">
+              <CardTitle className="text-lg sm:text-xl font-semibold text-blue-900 dark:text-blue-300 transition-colors duration-500">
+                Current Balance
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+              {loading.balance ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin transition-colors duration-500"></div>
+                  <span className="text-blue-500 dark:text-blue-400 text-sm sm:text-base transition-colors duration-500">Loading...</span>
+                </div>
+              ) : (
+                <div className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent transition-all duration-500">
+                  {formatCurrency(balance)}
+                </div>
+              )}
+              <p className="text-xs sm:text-sm text-blue-500 dark:text-blue-400 mt-1 transition-colors duration-500">
+                Available for contests and withdrawals
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-900 border border-emerald-100 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-xl sm:rounded-2xl transition-all duration-500">
+            <CardHeader className="pb-2 sm:pb-4 pt-4 sm:pt-6 px-4 sm:px-6">
+              <CardTitle className="text-lg sm:text-xl font-semibold text-emerald-700 dark:text-emerald-400 transition-colors duration-500">
+                Total Deposits
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+              {loading.stats ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-emerald-500 dark:border-emerald-400 border-t-transparent rounded-full animate-spin transition-colors duration-500"></div>
+                  <span className="text-emerald-500 dark:text-emerald-400 text-sm sm:text-base transition-colors duration-500">Loading...</span>
+                </div>
+              ) : (
+                <div className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 transition-colors duration-500">
+                  {formatCurrency(stats.totalDeposits)}
+                </div>
+              )}
+              <p className="text-xs sm:text-sm text-emerald-500 dark:text-emerald-400 mt-1 transition-colors duration-500">
+                {stats.depositCount} transactions
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-white dark:bg-gray-900 border border-rose-100 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-xl sm:rounded-2xl transition-all duration-500">
+            <CardHeader className="pb-2 sm:pb-4 pt-4 sm:pt-6 px-4 sm:px-6">
+              <CardTitle className="text-lg sm:text-xl font-semibold text-rose-700 dark:text-rose-400 transition-colors duration-500">
+                Total Withdrawals
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+              {loading.stats ? (
+                <div className="flex items-center space-x-2">
+                  <div className="w-4 h-4 sm:w-5 sm:h-5 border-2 border-rose-500 dark:border-rose-400 border-t-transparent rounded-full animate-spin transition-colors duration-500"></div>
+                  <span className="text-rose-500 dark:text-rose-400 text-sm sm:text-base transition-colors duration-500">Loading...</span>
+                </div>
+              ) : (
+                <div className="text-2xl sm:text-3xl font-bold text-rose-600 dark:text-rose-400 transition-colors duration-500">
+                  {formatCurrency(stats.totalWithdrawals)}
+                </div>
+              )}
+              <p className="text-xs sm:text-sm text-rose-500 dark:text-rose-400 mt-1 transition-colors duration-500">
+                {stats.withdrawalCount} transactions
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Recent Transactions */}
+        <Card className="bg-white dark:bg-gray-900 border border-blue-100 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-xl sm:rounded-2xl transition-all duration-500">
+          <CardHeader className="pb-4 sm:pb-6 pt-4 sm:pt-6 px-4 sm:px-6">
+            <CardTitle className="text-xl sm:text-2xl font-semibold text-blue-900 dark:text-blue-300 transition-colors duration-500">
+              Recent Transactions
+            </CardTitle>
+            <CardDescription className="text-sm text-blue-600 dark:text-blue-400 transition-colors duration-500">
+              Your latest wallet activity
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+            {loading.transactions ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="flex items-center space-x-2">
+                  <div className="w-5 h-5 sm:w-6 sm:h-6 border-2 border-blue-500 dark:border-blue-400 border-t-transparent rounded-full animate-spin transition-colors duration-500"></div>
+                  <span className="text-blue-500 dark:text-blue-400 text-sm sm:text-base transition-colors duration-500">Loading transactions...</span>
+                </div>
+              </div>
+            ) : transactions.length === 0 ? (
+              <div className="text-center py-8">
+                <p className="text-blue-500 dark:text-blue-400 text-sm sm:text-base transition-colors duration-500">
+                  No transactions yet. Start by adding funds to your wallet.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="border-blue-100 dark:border-gray-700 hover:bg-blue-50/50 dark:hover:bg-gray-800/50 transition-all duration-300">
+                      <TableHead className="text-blue-700 dark:text-blue-300 font-semibold text-xs sm:text-sm transition-colors duration-500">Type</TableHead>
+                      <TableHead className="text-blue-700 dark:text-blue-300 font-semibold text-xs sm:text-sm transition-colors duration-500">Amount</TableHead>
+                      <TableHead className="text-blue-700 dark:text-blue-300 font-semibold text-xs sm:text-sm transition-colors duration-500">Date</TableHead>
+                      <TableHead className="text-blue-700 dark:text-blue-300 font-semibold text-xs sm:text-sm transition-colors duration-500">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {transactions.map((transaction) => (
+                      <TableRow 
+                        key={transaction._id} 
+                        className="border-blue-50 dark:border-gray-800 hover:bg-blue-25 dark:hover:bg-gray-800/30 transition-all duration-300"
+                      >
+                        <TableCell className="text-xs sm:text-sm font-medium text-gray-900 dark:text-gray-200 transition-colors duration-500">
+                          {formatTransactionType(transaction.type)}
+                        </TableCell>
+                        <TableCell className={`text-xs sm:text-sm transition-colors duration-500 ${getTransactionVariant(transaction.type)}`}>
+                          {['deposit', 'contest_prize', 'refund'].includes(transaction.type) ? '+' : '-'}
+                          {transaction.formattedAmount}
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 transition-colors duration-500">
+                          {transaction.formattedDate}
+                        </TableCell>
+                        <TableCell className="text-xs sm:text-sm transition-colors duration-500">
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium transition-colors duration-500 ${
+                            transaction.status === 'completed' 
+                              ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-400' 
+                              : transaction.status === 'pending'
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-400'
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                          }`}>
+                            {transaction.status}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Admin Contest Pool Stats */}
+        {user?.isAdmin && contestPool && (
+          <Card className="bg-white dark:bg-gray-900 border border-purple-100 dark:border-gray-800 shadow-lg dark:shadow-gray-900/50 rounded-xl sm:rounded-2xl transition-all duration-500">
+            <CardHeader className="pb-4 sm:pb-6 pt-4 sm:pt-6 px-4 sm:px-6">
+              <CardTitle className="text-xl sm:text-2xl font-semibold text-purple-700 dark:text-purple-400 transition-colors duration-500">
+                Contest Pool Overview
+              </CardTitle>
+              <CardDescription className="text-sm text-purple-600 dark:text-purple-400 transition-colors duration-500">
+                Active contest participation summary
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="px-4 sm:px-6 pb-4 sm:pb-6">
+              <div className="grid grid-cols-2 gap-4 sm:gap-6">
+                <div>
+                  <div className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400 transition-colors duration-500">
+                    {formatCurrency(contestPool.totalAmount)}
+                  </div>
+                  <p className="text-xs sm:text-sm text-purple-500 dark:text-purple-400 mt-1 transition-colors duration-500">
+                    Total Pool Amount
+                  </p>
+                </div>
+                <div>
+                  <div className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400 transition-colors duration-500">
+                    {contestPool.totalParticipants}
+                  </div>
+                  <p className="text-xs sm:text-sm text-purple-500 dark:text-purple-400 mt-1 transition-colors duration-500">
+                    Active Participants
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );
 };
 
 export default WalletDashboard;
-
