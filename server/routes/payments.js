@@ -268,16 +268,17 @@ router.post('/withdraw', authenticate, async (req, res) => {
   
   try {
     const { amount, bankAccountId } = req.body;
+    const amt = Number(amount);
 
     // Validation
-    if (!amount || isNaN(amount) || amount < 10) {
+    if (!Number.isFinite(amt) || amt < 10) {
       return res.status(400).json({ 
         success: false, 
         message: 'Minimum withdrawal amount is ₹10' 
       });
     }
 
-    if (amount > req.user.walletBalance) {
+    if (amt > req.user.walletBalance) {
       return res.status(400).json({ 
         success: false, 
         message: 'Insufficient balance' 
@@ -288,9 +289,9 @@ router.post('/withdraw', authenticate, async (req, res) => {
     const transaction = new Transaction({
       user: req.user._id,
       type: 'withdrawal',
-      amount: -amount,
+      amount: -amt,
       currency: 'INR',
-      description: `Withdrawal of ₹${amount.toFixed(2)}`,
+      description: `Withdrawal of ₹${amt.toFixed(2)}`,
       status: 'pending',
       metadata: { bankAccountId }
     });
@@ -298,9 +299,9 @@ router.post('/withdraw', authenticate, async (req, res) => {
     await transaction.save({ session });
 
     // Deduct from wallet balance
-    await User.findByIdAndUpdate(
+    const updatedUser = await User.findByIdAndUpdate(
       req.user._id,
-      { $inc: { walletBalance: -amount } },
+      { $inc: { walletBalance: -amt } },
       { session, new: true }
     );
 
@@ -323,7 +324,7 @@ router.post('/withdraw', authenticate, async (req, res) => {
       success: true,
       message: 'Withdrawal request submitted successfully',
       transactionId: transaction._id,
-      balance: req.user.walletBalance - amount
+      balance: updatedUser?.walletBalance ?? (req.user.walletBalance - amt)
     });
   } catch (error) {
     await session.abortTransaction();
