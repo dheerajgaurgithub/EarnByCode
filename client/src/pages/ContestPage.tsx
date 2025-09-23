@@ -205,7 +205,7 @@ const ContestPage = () => {
       return;
     }
     
-    if (contest && contest.problems.length > 0) {
+    if (contest && (contest.problems?.length ?? 0) > 0) {
       setPhase('problems');
       setCurrentProblemIndex(0);
     } else {
@@ -214,16 +214,17 @@ const ContestPage = () => {
   }, [hasAgreedToGuidelines, contest]);
 
   const handleProblemSelect = useCallback((index: number) => {
-    if (contest && index >= 0 && index < contest.problems.length) {
+    const total = contest?.problems?.length ?? 0;
+    if (contest && index >= 0 && index < total) {
       setCurrentProblemIndex(index);
-      setCurrentProblem(contest.problems[index]);
+      setCurrentProblem(contest.problems![index]);
     }
   }, [contest]);
 
   const handleCodeChange = useCallback((value: string) => {
     if (!contest) return;
 
-    const currentProblemData = contest.problems[currentProblemIndex];
+    const currentProblemData = contest.problems?.[currentProblemIndex];
     if (currentProblemData) {
       setUserCode((prev) => ({
         ...prev,
@@ -401,12 +402,24 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
             </CardHeader>
             <CardContent className="p-4 sm:p-6">
               <div className="prose max-w-none mb-6 text-gray-700">
-                <div dangerouslySetInnerHTML={{ __html: contest.guidelines || '' }} />
+                <h2 className="text-xl font-semibold text-blue-800 mb-3">General Guidelines</h2>
+                <ul className="list-disc pl-6 space-y-2">
+                  <li>Open to all registered users with a verified account. One account per participant.</li>
+                  <li>Contest problems will range from Easy to Hard difficulty.</li>
+                  <li>All code must be original — plagiarism or copying is strictly prohibited.</li>
+                  <li>Collaboration is not allowed unless it’s a team-based contest.</li>
+                  <li>Submissions must be made in allowed programming languages only.</li>
+                  <li>Multiple submissions are allowed; the last correct one will be considered.</li>
+                  <li>Points are awarded based on problem difficulty and test case coverage.</li>
+                  <li>Leaderboard ties are broken by earliest correct submission.</li>
+                  <li>Cheating, hacking, or multiple accounts may result in disqualification.</li>
+                  <li>Winners will be announced after plagiarism checks are completed.</li>
+                </ul>
               </div>
-              
+  
               {contest.rules && contest.rules.length > 0 && (
                 <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-                  <h2 className="text-xl font-semibold mb-3 text-blue-800">Contest Rules:</h2>
+                  <h2 className="text-xl font-semibold mb-3 text-blue-800">Additional Contest Rules:</h2>
                   <ul className="list-disc pl-6 space-y-2">
                     {contest.rules.map((rule, index) => (
                       <li key={index} className="text-gray-700">{rule}</li>
@@ -414,7 +427,7 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
                   </ul>
                 </div>
               )}
-              
+  
               <div className="flex items-start mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
                 <input
                   type="checkbox"
@@ -427,7 +440,7 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
                   I have read and agree to the contest guidelines and rules. I understand that any violation may result in disqualification.
                 </label>
               </div>
-              
+  
               <div className="flex justify-center">
                 <Button
                   onClick={handleStartContest}
@@ -443,7 +456,7 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
         </div>
       </div>
     );
-  }
+  }  
 
   // Problems Phase
   if (phase === 'problems') {
