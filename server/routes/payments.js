@@ -26,10 +26,14 @@ async function createRazorpayOrder(amountInRupees, userId) {
   try {
     const { default: Razorpay } = await import('razorpay');
     const instance = new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
+    // Razorpay receipt must be <= 40 chars. Use compact, deterministic format.
+    const uid = String(userId || '').slice(-8);
+    const ts = Date.now().toString().slice(-10);
+    const receipt = `wal_${uid}_${ts}`.slice(0, 40);
     const order = await instance.orders.create({ 
       amount: amountPaise, 
       currency: 'INR',
-      receipt: `wallet_${userId}_${Date.now()}`,
+      receipt,
       notes: { userId: String(userId) }
     });
     return order;
