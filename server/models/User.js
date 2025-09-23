@@ -172,6 +172,17 @@ const userSchema = new mongoose.Schema({
       highContrast: { type: Boolean, default: false }
     }
   },
+  // Bank details for contest winnings payouts (store sensitive parts encrypted elsewhere if needed)
+  bankDetails: {
+    bankAccountName: { type: String, trim: true },
+    bankAccountNumberEnc: { type: String, default: '' }, // encrypted account number
+    bankAccountNumberLast4: { type: String, default: '' }, // last 4 for display
+    ifsc: { type: String, trim: true },
+    bankName: { type: String, trim: true },
+    upiId: { type: String, trim: true },
+    verified: { type: Boolean, default: false },
+    lastUpdatedAt: { type: Date }
+  },
   isAdmin: {
     type: Boolean,
     default: false

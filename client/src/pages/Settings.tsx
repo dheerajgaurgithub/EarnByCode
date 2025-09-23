@@ -643,7 +643,7 @@ export const Settings: React.FC = () => {
                             <p className="text-xs adaptive-text-muted">We will send a one-time code to the new email to confirm this change.</p>
                           </div>
                         )}
-
+                      </div>
                       {/* Avatar management */}
                       <div className="mt-6">
                         <label className="block text-sm font-medium adaptive-text mb-2">
@@ -708,39 +708,9 @@ export const Settings: React.FC = () => {
                         </div>
                       </div>
 
-                      <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">
-                          Preferred Currency
-                        </label>
-                        <div className="flex items-center space-x-3">
-                          <select
-                            value={preferences.preferredCurrency}
-                            onChange={async (e) => {
-                              const next = e.target.value as 'INR' | 'USD' | 'EUR' | 'GBP';
-                              setPreferences((p) => ({ ...p, preferredCurrency: next }));
-                              try {
-                                setSavingCurrency(true);
-                                await updatePreferences({ preferredCurrency: next });
-                              } catch (err) {
-                                alert((err as Error)?.message || 'Failed to update currency');
-                              } finally {
-                                setSavingCurrency(false);
-                              }
-                            }}
-                            className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
-                          >
-                            <option value="INR">INR (₹)</option>
-                            <option value="USD">USD ($)</option>
-                            <option value="EUR">EUR (€)</option>
-                            <option value="GBP">GBP (£)</option>
-                          </select>
-                          {savingCurrency && (
-                            <span className="text-xs adaptive-icon-primary">Saving…</span>
-                          )}
-                        </div>
-                        <p className="text-xs adaptive-text-muted mt-1">Affects how amounts are displayed in the UI.</p>
-                      </div>
-                      </div>
+                      {/* Currency selection removed: App locked to INR */}
+                      <p className="text-xs adaptive-text-muted mt-1">Affects how amounts are displayed in the UI.</p>
+                      
 
                       <div className="border-t adaptive-border pt-6">
                         <h3 className="text-lg font-medium adaptive-text mb-4">Change Password</h3>
@@ -1206,3 +1176,4 @@ export const Settings: React.FC = () => {
     </>
   );
 };
+

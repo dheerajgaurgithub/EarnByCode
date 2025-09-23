@@ -135,7 +135,7 @@ export default function JobManagement() {
       requirements: [],
       responsibilities: [],
       experience: '',
-      salary: { min: 0, max: 0, currency: 'USD', period: 'year' },
+      salary: { min: 0, max: 0, currency: 'INR', period: 'year' },
       isActive: true,
       applicationDeadline: '',
     });
@@ -168,7 +168,7 @@ export default function JobManagement() {
                   {job.location} • {job.experience}
                 </p>
                 <p className="text-sm mt-2">
-                  {job.salary?.currency}{job.salary?.min.toLocaleString()} - {job.salary?.currency}{job.salary?.max.toLocaleString()} per {job.salary?.period}
+                  ₹{job.salary?.min.toLocaleString('en-IN')} - ₹{job.salary?.max.toLocaleString('en-IN')} per {job.salary?.period}
                 </p>
               </div>
               <div className="flex space-x-2">
@@ -363,25 +363,8 @@ export default function JobManagement() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="currency">Currency</Label>
-                <select
-                  id="currency"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={currentJob?.salary?.currency || 'USD'}
-                  onChange={(e) => setCurrentJob({
-                    ...currentJob!,
-                    salary: {
-                      ...currentJob?.salary!,
-                      currency: e.target.value
-                    }
-                  })}
-                  required
-                >
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
-                  <option value="GBP">GBP</option>
-                  <option value="INR">INR</option>
-                </select>
+                <Label>Currency</Label>
+                <div className="h-10 flex items-center px-3 border rounded-md bg-muted/30">INR (₹)</div>
               </div>
             </div>
 

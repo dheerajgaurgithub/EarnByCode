@@ -263,79 +263,10 @@ router.post('/deposit', authenticate, async (req, res) => {
 
 // Withdraw funds
 router.post('/withdraw', authenticate, async (req, res) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
-  try {
-    const { amount, bankAccountId, upiId } = req.body || {};
-    const amt = Number(amount);
-
-    // Validation
-    if (!Number.isFinite(amt) || amt < 5) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Minimum withdrawal amount is ₹5' 
-      });
-    }
-
-    if (amt > req.user.walletBalance) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Insufficient balance' 
-      });
-    }
-
-    // Compute new balance (before persisting) for balanceAfter
-    const newBalance = parseFloat((req.user.walletBalance - amt).toFixed(2));
-
-    // Require a payout destination
-    if (!upiId && !bankAccountId) {
-      return res.status(400).json({ success: false, message: 'Provide a UPI ID or bank account to receive payout' });
-    }
-
-    // Create withdrawal transaction (include required fields)
-    const transaction = new Transaction({
-      user: req.user._id,
-      type: 'withdrawal',
-      amount: amt,
-      currency: 'INR',
-      description: `Withdrawal of ₹${amt.toFixed(2)}`,
-      status: 'pending',
-      fee: 0,
-      netAmount: amt,
-      balanceAfter: newBalance,
-      metadata: { bankAccountId, upiId }
-    });
-
-    await transaction.save({ session });
-
-    // Deduct from wallet balance
-    const updatedUser = await User.findByIdAndUpdate(
-      req.user._id,
-      { $inc: { walletBalance: -amt } },
-      { session, new: true }
-    );
-
-    await session.commitTransaction();
-    session.endSession();
-
-    res.json({ 
-      success: true,
-      message: 'Withdrawal request submitted successfully and is pending manual payout',
-      transactionId: transaction._id,
-      balance: updatedUser?.walletBalance ?? (req.user.walletBalance - amt),
-      status: transaction.status
-    });
-  } catch (error) {
-    await session.abortTransaction();
-    session.endSession();
-    
-    console.error('Withdrawal error:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Failed to process withdrawal' 
-    });
-  }
+  return res.status(403).json({
+    success: false,
+    message: 'Withdrawals are disabled. Winnings are paid to your saved bank/UPI details in your profile.'
+  });
 });
 
 // Get transaction history with pagination

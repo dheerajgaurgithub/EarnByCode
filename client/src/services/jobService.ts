@@ -89,7 +89,7 @@ const prepareJobData = (jobData: Partial<JobType>): Partial<JobType> => {
            typeof data.salary.min === 'string' ? Number(data.salary.min) || 0 : 0,
       max: typeof data.salary.max === 'number' ? data.salary.max : 
            typeof data.salary.max === 'string' ? Number(data.salary.max) || 0 : 0,
-      currency: data.salary.currency || 'USD',
+      currency: data.salary.currency || 'INR',
       period: (data.salary.period === 'year' || 
               data.salary.period === 'month' || 
               data.salary.period === 'hour') ? 

@@ -40,7 +40,7 @@ const formSchema = z.object({
   salary: z.object({
     min: z.number().optional(),
     max: z.number().optional(),
-    currency: z.string().default('USD').optional(),
+    currency: z.string().default('INR').optional(),
     isDisclosed: z.boolean().default(false).optional()
   }).optional(),
   isActive: z.boolean().default(true).optional(),
@@ -111,7 +111,7 @@ export const CareerForm: React.FC = () => {
       skills: [],
       experience: { min: 0, max: 5 },
       salary: {
-        currency: 'USD',
+        currency: 'INR',
         isDisclosed: false,
         min: undefined,
         max: undefined
@@ -144,7 +144,7 @@ export const CareerForm: React.FC = () => {
         salary: career.salary || {
           min: undefined,
           max: undefined,
-          currency: 'USD',
+          currency: 'INR',
           isDisclosed: false
         }
       };

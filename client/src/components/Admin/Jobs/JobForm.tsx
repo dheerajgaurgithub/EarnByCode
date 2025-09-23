@@ -21,7 +21,7 @@ const jobSchema = z.object({
   salary: z.object({
     min: z.number().min(0, 'Minimum salary must be a positive number'),
     max: z.number().min(0, 'Maximum salary must be a positive number'),
-    currency: z.string().min(1, 'Currency is required').default('USD'),
+    currency: z.string().min(1, 'Currency is required').default('INR'),
     period: z.enum(['year', 'month', 'hour']).default('year')
   }),
   isActive: z.boolean().default(true),
@@ -92,7 +92,7 @@ export const JobForm = ({ job, onSuccess, onCancel }: JobFormProps) => {
     salary: {
       min: typeof job?.salary?.min === 'number' ? job.salary.min : 0,
       max: typeof job?.salary?.max === 'number' ? job.salary.max : 0,
-      currency: job?.salary?.currency || 'USD',
+      currency: job?.salary?.currency || 'INR',
       period: (job?.salary?.period as 'year' | 'month' | 'hour') || 'year',
     },
     isActive: job?.status === 'open' || false,
@@ -163,7 +163,7 @@ export const JobForm = ({ job, onSuccess, onCancel }: JobFormProps) => {
       // Prepare salary data with proper number conversion
       const salaryMin = Number(formData.salary?.min) || 0;
       const salaryMax = Number(formData.salary?.max) || 0;
-      const salaryCurrency = (formData.salary?.currency || 'USD').toUpperCase();
+      const salaryCurrency = 'INR';
       const salaryPeriod = (formData.salary?.period?.toLowerCase() as 'year' | 'month' | 'hour') || 'year';
       
       console.log('Form salary data:', {

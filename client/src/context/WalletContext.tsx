@@ -44,7 +44,7 @@ const WalletContext = createContext<WalletContextType | undefined>(undefined);
 export const WalletProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Wallet state
   const [balance, setBalance] = useState<number>(0);
-  const [currency, setCurrency] = useState<string>('USD');
+  const [currency, setCurrency] = useState<string>('INR');
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [error, setError] = useState<WalletError | null>(null);
