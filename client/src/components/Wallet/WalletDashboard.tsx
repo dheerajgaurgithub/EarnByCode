@@ -273,7 +273,7 @@ export const WalletDashboard = () => {
                   </Button>
                   <div className="bg-blue-50 dark:bg-gray-700/50 border border-blue-200 dark:border-gray-600 rounded-lg sm:rounded-xl p-3 sm:p-4 transition-all duration-500">
                     <p className="text-xs text-blue-600 dark:text-blue-300 leading-relaxed transition-colors duration-500">
-                      💳 <strong>Available Balance:</strong> {formatCurrency(balance)} • Minimum withdrawal: ₹10
+                      💳 <strong>Available Balance:</strong> {formatCurrency(balance)} • Minimum withdrawal: ₹5
                     </p>
                   </div>
                 </div>

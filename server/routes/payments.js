@@ -271,10 +271,10 @@ router.post('/withdraw', authenticate, async (req, res) => {
     const amt = Number(amount);
 
     // Validation
-    if (!Number.isFinite(amt) || amt < 10) {
+    if (!Number.isFinite(amt) || amt < 5) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Minimum withdrawal amount is ₹10' 
+        message: 'Minimum withdrawal amount is ₹5' 
       });
     }
 
