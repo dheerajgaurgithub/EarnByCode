@@ -285,7 +285,10 @@ router.post('/withdraw', authenticate, async (req, res) => {
       });
     }
 
-    // Create withdrawal transaction
+    // Compute new balance (before persisting) for balanceAfter
+    const newBalance = parseFloat((req.user.walletBalance - amt).toFixed(2));
+
+    // Create withdrawal transaction (include required fields)
     const transaction = new Transaction({
       user: req.user._id,
       type: 'withdrawal',
@@ -293,6 +296,9 @@ router.post('/withdraw', authenticate, async (req, res) => {
       currency: 'INR',
       description: `Withdrawal of ₹${amt.toFixed(2)}`,
       status: 'pending',
+      fee: 0,
+      netAmount: -amt,
+      balanceAfter: newBalance,
       metadata: { bankAccountId }
     });
 
@@ -311,7 +317,7 @@ router.post('/withdraw', authenticate, async (req, res) => {
       try {
         transaction.status = 'completed';
         await transaction.save();
-        console.log(`Withdrawal completed for user ${req.user._id}: ₹${amount}`);
+        console.log(`Withdrawal completed for user ${req.user._id}: ₹${amt}`);
       } catch (error) {
         console.error('Failed to update withdrawal status:', error);
       }

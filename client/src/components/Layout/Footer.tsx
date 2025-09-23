@@ -6,6 +6,7 @@ import { useI18n } from '@/context/I18nContext';
 export default function Footer() {
   const navigate = useNavigate();
   const { t } = useI18n();
+  const buildTime = (import.meta as any)?.env?.VITE_BUILD_TIME as string | undefined;
   const handleNavigation = (path: string) => {
     if (/^https?:\/\//i.test(path)) {
       window.open(path, '_blank', 'noopener,noreferrer');
@@ -228,6 +229,17 @@ export default function Footer() {
           </div>
         </div>
       </div>
+      {buildTime && (
+        <div className="absolute bottom-1 right-2 sm:bottom-2 sm:right-3 z-30">
+          <span
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-medium border bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-blue-200 dark:border-gray-700 text-blue-700 dark:text-blue-300 shadow-sm"
+            title={`Build time: ${buildTime}`}
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            Build: {buildTime}
+          </span>
+        </div>
+      )}
     </footer>
   );
 }
