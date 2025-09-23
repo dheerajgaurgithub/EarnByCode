@@ -217,22 +217,33 @@ router.delete('/contests/:id', async (req, res) => {
 
     // Refund participants if contest hasn't started
     if (contest.status === 'upcoming') {
-      for (const participant of contest.participants) {
-        await User.findByIdAndUpdate(participant.user, {
-          $inc: { walletBalance: contest.entryFee }
-        });
+      const list = Array.isArray(contest.participants) ? contest.participants : [];
+      for (const participant of list) {
+        try {
+          // Support both shapes: ObjectId or { user: ObjectId }
+          const participantId = (participant && typeof participant === 'object' && 'user' in participant)
+            ? participant.user
+            : participant;
+          if (!participantId) continue;
 
-        // Create refund transaction
-        const transaction = new Transaction({
-          user: participant.user,
-          type: 'contest_refund',
-          amount: contest.entryFee,
-          description: `Refund for cancelled contest: ${contest.title}`,
-          status: 'completed',
-          contest: contest._id
-        });
+          await User.findByIdAndUpdate(participantId, {
+            $inc: { walletBalance: contest.entryFee }
+          });
 
-        await transaction.save();
+          // Create refund transaction (best-effort)
+          const transaction = new Transaction({
+            user: participantId,
+            type: 'contest_refund',
+            amount: contest.entryFee,
+            description: `Refund for cancelled contest: ${contest.title}`,
+            status: 'completed',
+            contest: contest._id
+          });
+          await transaction.save().catch(() => {});
+        } catch (e) {
+          // Continue refunding others even if one fails
+          console.warn('Refund participant failed:', e?.message || e);
+        }
       }
     }
 

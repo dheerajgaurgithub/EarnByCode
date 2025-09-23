@@ -12,6 +12,7 @@ import Home from './pages/Home';
 import { Problems } from './pages/Problems';
 import ProblemDetail from './pages/ProblemDetail';
 import { Contests } from './pages/Contests';
+import ContestProblemDetails from './pages/ContestProblemDetails';
 import Wallet from './app/wallet/page';
 import { Profile } from './pages/Profile';
 import AdminPanel from './pages/Admin/AdminPanel';
@@ -237,6 +238,14 @@ function App() {
               <Route path="/problems" element={<Problems />} />
               <Route path="/problems/:id" element={<ProblemDetail />} />
               <Route path="/contests" element={<Contests />} />
+              <Route
+                path="/contests/:contestId/problems/:problemId"
+                element={
+                  <ProtectedRoute>
+                    <ContestProblemDetails />
+                  </ProtectedRoute>
+                }
+              />
               
               <Route 
                 path="/contests/:contestId"

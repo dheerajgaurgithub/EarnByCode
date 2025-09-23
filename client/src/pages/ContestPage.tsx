@@ -195,14 +195,24 @@ const ContestPage = () => {
           setCurrentProblem(normalized[0]);
         }
         
+        // If user completed contest via problem details page, show completion view
+        try {
+          const key = `contestComplete:${id}`;
+          if (localStorage.getItem(key) === '1') {
+            setPhase('completed');
+            localStorage.removeItem(key);
+          }
+        } catch {}
+
         // Calculate time left
         const now = new Date();
         const startTime = new Date(contestData.startTime);
         const endTime = new Date(contestData.endTime);
         
         if (now >= endTime) {
+          // Contest has ended; mark ended but do not auto-navigate to completed page.
+          // Let the user see guidelines and a disabled Start button.
           setContestEnded(true);
-          setPhase('completed');
           setTimeLeft(0);
         } else if (now >= startTime) {
           setContestHasStarted(true);
@@ -254,6 +264,10 @@ const ContestPage = () => {
       toast.error('Please agree to the guidelines first');
       return;
     }
+    if (contestEnded) {
+      toast.error('This contest has ended. You cannot start it now.');
+      return;
+    }
     
     // Prefer the local problems state; if it's empty, try a fallback refetch of the populated contest
     let list = problems;
@@ -268,16 +282,16 @@ const ContestPage = () => {
 
     if (list && list.length > 0) {
       console.debug('[Contest] Starting contest with', list.length, 'problems');
-      setPhase('problems');
-      setCurrentProblemIndex(0);
-      setCurrentProblem(list[0]);
-      setCurrentProblemCode('');
+      const firstId = String(getProblemId(list[0]));
       toast.success('Contest started!');
+      // Navigate to standalone problem details page for contests
+      navigate(`/contests/${id}/problems/${firstId}`);
+      return;
     } else {
       toast.error('No problems available in this contest');
       window.alert('No problems available in this contest. Please contact the contest admin or try again later.');
     }
-  }, [hasAgreedToGuidelines, problems, contest]);
+  }, [hasAgreedToGuidelines, problems, contest, navigate, id, getProblemId]);
 
   const handleProblemSelect = useCallback((index: number) => {
     const total = problems?.length ?? 0;
