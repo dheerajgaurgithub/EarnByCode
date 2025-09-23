@@ -7,7 +7,7 @@ import { TestCaseResult } from '@/types/codeExecution';
 import { RunTestResponse } from '@/types/contest';
 import { Problem } from '../types';
 import ContestFeedback from '@/components/Contest/ContestFeedback';
-import { toast } from 'react-toastify';
+import { toast } from 'react-hot-toast';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
@@ -97,6 +97,57 @@ const ContestPage = () => {
   const [error, setError] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
 
+  // Helper to normalize problem identifier (_id preferred, fallback to id)
+  const getProblemId = useCallback((p: Partial<Problem> | { _id?: unknown; id?: unknown } | null | undefined): string | undefined => {
+    if (!p) return undefined;
+    const maybe: any = p as any;
+    if (typeof maybe._id === 'string' && maybe._id) return maybe._id;
+    if (typeof maybe.id === 'string' && maybe.id) return maybe.id;
+    if (typeof maybe.id === 'number') return String(maybe.id);
+    return undefined;
+  }, []);
+
+  // Determine if a problem object appears populated (has title/description)
+  const isPopulatedProblem = (p: any) => p && (typeof p.title === 'string' || typeof p.description === 'string');
+
+  // Normalizes a mixed array of problem refs or full problems into full Problem objects
+  const normalizeProblems = useCallback(async (items: any[]): Promise<Problem[]> => {
+    if (!Array.isArray(items) || items.length === 0) return [];
+    // If already populated, return as-is (cast)
+    if (isPopulatedProblem(items[0])) return items as Problem[];
+    // Otherwise fetch each by id
+    const ids = items.map((it) => {
+      if (typeof it === 'string') return it;
+      if (it && typeof it._id === 'string') return it._id;
+      if (it && typeof it.id === 'string') return it.id;
+      if (it && typeof it.id === 'number') return String(it.id);
+      return undefined;
+    }).filter(Boolean) as string[];
+    const fetched = await Promise.all(ids.map((pid) => apiService.get<Problem>(`/problems/${pid}`)));
+    return fetched.filter(Boolean) as Problem[];
+  }, []);
+
+  // Load problems for a contest with multiple fallback strategies
+  const loadContestProblems = useCallback(async (contestId: string): Promise<Problem[]> => {
+    try {
+      const data = await apiService.get<ContestWithProblems>(`/contests/${contestId}?populate=problems`);
+      const arr = data?.problems || [];
+      const normalized = await normalizeProblems(arr as any[]);
+      if (normalized.length > 0) return normalized;
+    } catch (e) {
+      // ignore and try next
+    }
+    try {
+      // Fallback endpoint used elsewhere in app (ContestProblemManager)
+      const res = await apiService.get<{ problems?: Problem[] }>(`/contest-problems/${contestId}`);
+      const arr = res?.problems || [];
+      const normalized = await normalizeProblems(arr as any[]);
+      return normalized;
+    } catch (e) {
+      return [];
+    }
+  }, [normalizeProblems]);
+
   // Helper function to get difficulty color class
   const getDifficultyColor = (difficulty: string) => {
     const lowerCaseDiff = difficulty.toLowerCase();
@@ -135,14 +186,13 @@ const ContestPage = () => {
         
         // Fetch contest data with problems populated
         const contestData = await apiService.get<ContestWithProblems>(`/contests/${id}?populate=problems`);
-        
-        // Update contest with problems
         setContest(contestData);
-        const contestProblems = contestData.problems || [];
-        setProblems(contestProblems);
+        // Normalize problems to ensure we have full objects, not just ObjectIds
+        const normalized = await loadContestProblems(id);
+        setProblems(normalized);
         
-        if (contestProblems.length > 0) {
-          setCurrentProblem(contestProblems[0]);
+        if (normalized.length > 0) {
+          setCurrentProblem(normalized[0]);
         }
         
         // Calculate time left
@@ -199,49 +249,64 @@ const ContestPage = () => {
   }, [contest]);
   
   // Handle contest phase changes
-  const handleStartContest = useCallback(() => {
+  const handleStartContest = useCallback(async () => {
     if (!hasAgreedToGuidelines) {
       toast.error('Please agree to the guidelines first');
       return;
     }
     
-    if (contest && (contest.problems?.length ?? 0) > 0) {
+    // Prefer the local problems state; if it's empty, try a fallback refetch of the populated contest
+    let list = problems;
+    if (!list || list.length === 0) {
+      try {
+        list = await loadContestProblems(id!);
+        setProblems(list);
+      } catch (e) {
+        // ignore; we'll handle below
+      }
+    }
+
+    if (list && list.length > 0) {
+      console.debug('[Contest] Starting contest with', list.length, 'problems');
       setPhase('problems');
       setCurrentProblemIndex(0);
+      setCurrentProblem(list[0]);
+      setCurrentProblemCode('');
+      toast.success('Contest started!');
     } else {
       toast.error('No problems available in this contest');
+      window.alert('No problems available in this contest. Please contact the contest admin or try again later.');
     }
-  }, [hasAgreedToGuidelines, contest]);
+  }, [hasAgreedToGuidelines, problems, contest]);
 
   const handleProblemSelect = useCallback((index: number) => {
-    const total = contest?.problems?.length ?? 0;
-    if (contest && index >= 0 && index < total) {
+    const total = problems?.length ?? 0;
+    if (index >= 0 && index < total) {
       setCurrentProblemIndex(index);
-      setCurrentProblem(contest.problems![index]);
+      setCurrentProblem(problems[index]);
     }
-  }, [contest]);
+  }, [problems]);
 
   const handleCodeChange = useCallback((value: string) => {
-    if (!contest) return;
-
-    const currentProblemData = contest.problems?.[currentProblemIndex];
+    const currentProblemData = problems?.[currentProblemIndex];
     if (currentProblemData) {
       setUserCode((prev) => ({
         ...prev,
-        [currentProblemData.id]: value,
+        [String(getProblemId(currentProblemData))]: value,
       }));
     }
     setCurrentProblemCode(value);
-  }, [contest, currentProblemIndex]);
+  }, [problems, currentProblemIndex, getProblemId]);
 
   const handleRunTests = useCallback(async (problemId?: string) => {
-    const targetProblem = problemId ? problems.find(p => p.id.toString() === problemId) : currentProblem;
+    const targetProblem = problemId ? problems.find(p => String(getProblemId(p)) === problemId) : currentProblem;
     if (!targetProblem) return;
     
     setIsSubmitting(true);
     try {
-      const response = await apiService.post<RunTestResponse>(`/problems/${targetProblem.id}/run`, {
-        code: userCode[targetProblem.id.toString()] || '',
+      const targetId = String(getProblemId(targetProblem));
+      const response = await apiService.post<RunTestResponse>(`/problems/${targetId}/run`, {
+        code: userCode[targetId] || '',
         language
       });
       
@@ -265,7 +330,7 @@ const ContestPage = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [problems, currentProblem, userCode, language, id]);
+  }, [problems, currentProblem, userCode, language, id, getProblemId]);
 
   const handleSubmitProblem = useCallback(async () => {
     if (!currentProblem) {
@@ -281,8 +346,9 @@ const ContestPage = () => {
         // Add other expected response fields here
       }
 
-      const response = await apiService.post<SubmitResponse>(`/problems/${currentProblem.id}/submit`, {
-        code: userCode[currentProblem.id.toString()] || '',
+      const currId = String(getProblemId(currentProblem));
+      const response = await apiService.post<SubmitResponse>(`/problems/${currId}/submit`, {
+        code: userCode[currId] || '',
         language,
         contestId: id
       });
@@ -305,7 +371,7 @@ const ContestPage = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [currentProblem, userCode, language, id, currentProblemIndex, problems]);
+  }, [currentProblem, userCode, language, id, currentProblemIndex, problems, getProblemId]);
 
   const handleSubmitFeedback = useCallback(async () => {
     if (!feedback.trim()) {
@@ -331,9 +397,10 @@ const ContestPage = () => {
     if (problems.length > 0 && currentProblemIndex >= 0 && currentProblemIndex < problems.length) {
       const problem = problems[currentProblemIndex];
       setCurrentProblem(problem);
-setCurrentProblemCode(userCode[problem.id.toString()] || '');
+      const pid = String(getProblemId(problem));
+      setCurrentProblemCode(userCode[pid] || '');
     }
-  }, [currentProblemIndex, problems, userCode]);
+  }, [currentProblemIndex, problems, userCode, getProblemId]);
 
   const isContestCompleted = contestEnded || phase === 'completed';
 
@@ -479,8 +546,8 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
           
           {/* Problems Tabs */}
           <Card className="shadow-lg border-blue-200">
-            <Tabs value={currentProblem?.id.toString()} onValueChange={(value) => {
-              const index = problems.findIndex(p => p.id.toString() === value);
+            <Tabs value={currentProblem ? String(getProblemId(currentProblem)) : undefined} onValueChange={(value) => {
+              const index = problems.findIndex(p => String(getProblemId(p)) === value);
               if (index >= 0) {
                 setCurrentProblemIndex(index);
                 setCurrentProblem(problems[index]);
@@ -489,8 +556,8 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
               <TabsList className="w-full bg-blue-100 p-1 h-auto flex-wrap gap-1">
                 {problems.map((problem, index) => (
                   <TabsTrigger 
-                    key={problem.id.toString()} 
-                    value={problem.id.toString()}
+                    key={String(getProblemId(problem))}
+                    value={String(getProblemId(problem))}
                     className="flex-1 min-w-[120px] py-2 px-3 text-sm sm:text-base data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                   >
                     Problem {index + 1}
@@ -499,7 +566,7 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
               </TabsList>
               
               {problems.map((problem) => (
-                <TabsContent key={problem.id.toString()} value={problem.id.toString()} className="p-0">
+                <TabsContent key={String(getProblemId(problem))} value={String(getProblemId(problem))} className="p-0">
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 sm:p-6">
                     {/* Problem Description */}
                     <div className="space-y-4">
@@ -516,10 +583,10 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
                         </div>
                       </div>
                       
-                      {problem.examples && problem.examples.length > 0 && (
+                      {Array.isArray((problem as any).examples) && (problem as any).examples.length > 0 && (
                         <div className="space-y-4">
                           <h3 className="font-semibold text-lg text-gray-800">Examples:</h3>
-                          {problem.examples?.map((example: { input: string; output: string; explanation?: string }, i: number) => (
+                          {(problem as any).examples?.map((example: { input: string; output: string; explanation?: string }, i: number) => (
                             <div key={i} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                               <div className="space-y-2">
                                 <div>
@@ -632,7 +699,7 @@ setCurrentProblemCode(userCode[problem.id.toString()] || '');
                             if (currentProblem) {
                               setUserCode(prev => ({
                                 ...prev,
-                                [currentProblem.id.toString()]: (currentProblem.starterCode as any)?.[language] || ''
+                                [String(getProblemId(currentProblem))]: (currentProblem.starterCode as any)?.[language] || ''
                               }));
                               setCurrentProblemCode((currentProblem.starterCode as any)?.[language] || '');
                             }
