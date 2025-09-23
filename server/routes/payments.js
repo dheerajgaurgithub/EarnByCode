@@ -3,6 +3,7 @@ import mongoose from 'mongoose';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
 import { authenticate } from '../middleware/auth.js';
+import admin from '../middleware/admin.js';
 import crypto from 'crypto';
 
 const router = express.Router();
@@ -137,6 +138,29 @@ router.post('/razorpay/verify', authenticate, async (req, res) => {
     session.endSession();
     console.error('Razorpay verify error:', error);
     res.status(500).json({ success: false, message: 'Failed to verify payment' });
+  }
+});
+
+// Lightweight health endpoint to check payments configuration (no secrets exposed)
+router.get('/health', authenticate, admin, async (req, res) => {
+  try {
+    const mode = paymentsMode || (razorpayKeyId && razorpayKeySecret ? 'live' : 'mock');
+    const keyIdMasked = razorpayKeyId
+      ? razorpayKeyId.slice(0, 7) + '…' + razorpayKeyId.slice(-4)
+      : '';
+    return res.json({
+      ok: true,
+      mode,
+      razorpay: {
+        configured: Boolean(razorpayKeyId && razorpayKeySecret),
+        keyIdPresent: Boolean(razorpayKeyId),
+        webhookSecretPresent: Boolean(razorpayWebhookSecret),
+        keyIdPreview: keyIdMasked,
+      },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 
