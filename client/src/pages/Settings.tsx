@@ -9,6 +9,7 @@ import { motion } from 'framer-motion';
 import { useTheme } from '@/context/ThemeContext';
 import { useI18n } from '@/context/I18nContext';
 import { useToast } from '@/components/ui/use-toast';
+import api from '@/lib/api';
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
@@ -81,6 +82,18 @@ export const Settings: React.FC = () => {
   const [savingNotifications, setSavingNotifications] = useState(false);
   const [avatarUploading, setAvatarUploading] = useState(false);
   const [avatarRemoving, setAvatarRemoving] = useState(false);
+
+  // Bank details state
+  const [bankForm, setBankForm] = useState({
+    bankAccountName: '',
+    bankAccountNumber: '',
+    ifsc: '',
+    bankName: '',
+    upiId: ''
+  });
+  const [bankVerified, setBankVerified] = useState<boolean>(false);
+  const [bankLastUpdated, setBankLastUpdated] = useState<string | null>(null);
+  const [savingBank, setSavingBank] = useState(false);
 
   const languageOptions = useMemo(() => {
     try {
@@ -172,6 +185,65 @@ export const Settings: React.FC = () => {
     // Apply app language from user preference
     try { setLanguage((user?.preferences?.language as any) || 'en'); } catch {}
   }, [user]);
+
+  // Load bank details
+  useEffect(() => {
+    const loadBankDetails = async () => {
+      try {
+        const resp = await api.get('/users/me/bank-details');
+        const data = (resp as any)?.data || resp;
+        if (data?.bankDetails) {
+          setBankForm({
+            bankAccountName: data.bankDetails.bankAccountName || '',
+            bankAccountNumber: '', // do not prefill sensitive number
+            ifsc: data.bankDetails.ifsc || '',
+            bankName: data.bankDetails.bankName || '',
+            upiId: data.bankDetails.upiId || ''
+          });
+          setBankVerified(!!data.bankDetails.verified);
+          setBankLastUpdated(data.bankDetails.lastUpdatedAt || null);
+        }
+      } catch (e) {
+        // Silently ignore if endpoint not ready
+      }
+    };
+    loadBankDetails();
+  }, []);
+
+  const saveBankDetails = async () => {
+    // Basic IFSC validation
+    const ifscOk = /^[A-Z]{4}0[A-Z0-9]{6}$/i.test(bankForm.ifsc.trim());
+    if (!ifscOk) {
+      toast.error('Please enter a valid IFSC (e.g., HDFC0001234)');
+      return;
+    }
+    if (!bankForm.bankAccountName) {
+      toast.error('Account holder name is required');
+      return;
+    }
+    if (!bankForm.bankAccountNumber && !bankForm.upiId) {
+      toast.error('Provide either bank account number or UPI ID');
+      return;
+    }
+    try {
+      setSavingBank(true);
+      const payload = {
+        bankAccountName: bankForm.bankAccountName.trim(),
+        bankAccountNumber: bankForm.bankAccountNumber.trim() || undefined,
+        ifsc: bankForm.ifsc.trim().toUpperCase(),
+        bankName: bankForm.bankName.trim() || undefined,
+        upiId: bankForm.upiId.trim() || undefined
+      };
+      await api.patch('/users/me/bank-details', payload);
+      toast.success('Bank details saved');
+      setBankForm((p) => ({ ...p, bankAccountNumber: '' }));
+      setBankLastUpdated(new Date().toISOString());
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to save bank details');
+    } finally {
+      setSavingBank(false);
+    }
+  };
 
   const handleAccountUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -710,7 +782,81 @@ export const Settings: React.FC = () => {
 
                       {/* Currency selection removed: App locked to INR */}
                       <p className="text-xs adaptive-text-muted mt-1">Affects how amounts are displayed in the UI.</p>
-                      
+
+                      {/* Bank Details for Winnings */}
+                      <div className="mt-6 border-t adaptive-border pt-6">
+                        <h3 className="text-lg font-medium adaptive-text mb-2">Bank Details (for Winnings)</h3>
+                        <p className="text-xs adaptive-text-muted mb-4">We will pay your contest winnings to these details.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium adaptive-text mb-2">Account Holder Name</label>
+                            <input
+                              type="text"
+                              value={bankForm.bankAccountName}
+                              onChange={(e) => setBankForm({ ...bankForm, bankAccountName: e.target.value })}
+                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              placeholder="e.g., Rahul Sharma"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium adaptive-text mb-2">IFSC Code</label>
+                            <input
+                              type="text"
+                              value={bankForm.ifsc}
+                              onChange={(e) => setBankForm({ ...bankForm, ifsc: e.target.value })}
+                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              placeholder="e.g., HDFC0001234"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium adaptive-text mb-2">Bank Name (optional)</label>
+                            <input
+                              type="text"
+                              value={bankForm.bankName}
+                              onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
+                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              placeholder="e.g., HDFC Bank"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium adaptive-text mb-2">UPI ID (optional)</label>
+                            <input
+                              type="text"
+                              value={bankForm.upiId}
+                              onChange={(e) => setBankForm({ ...bankForm, upiId: e.target.value })}
+                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              placeholder="e.g., rahul@okhdfcbank"
+                            />
+                          </div>
+                          <div className="sm:col-span-2">
+                            <label className="block text-sm font-medium adaptive-text mb-2">Bank Account Number (optional if UPI provided)</label>
+                            <input
+                              type="password"
+                              value={bankForm.bankAccountNumber}
+                              onChange={(e) => setBankForm({ ...bankForm, bankAccountNumber: e.target.value })}
+                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              placeholder="Enter or update account number"
+                            />
+                            <p className="text-[11px] adaptive-text-muted mt-1">We don't display saved numbers. Enter again to update.</p>
+                          </div>
+                        </div>
+                        <div className="mt-4 flex items-center gap-3">
+                          <button
+                            type="button"
+                            onClick={saveBankDetails}
+                            disabled={savingBank}
+                            className="px-4 py-2 adaptive-button text-white rounded-lg disabled:opacity-60"
+                          >
+                            {savingBank ? 'Saving…' : 'Save Bank Details'}
+                          </button>
+                          {bankVerified && (
+                            <span className="text-xs text-emerald-600">Verified</span>
+                          )}
+                          {bankLastUpdated && (
+                            <span className="text-xs adaptive-text-muted">Last updated: {new Date(bankLastUpdated).toLocaleString()}</span>
+                          )}
+                        </div>
+                      </div>
 
                       <div className="border-t adaptive-border pt-6">
                         <h3 className="text-lg font-medium adaptive-text mb-4">Change Password</h3>
