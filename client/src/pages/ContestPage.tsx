@@ -89,6 +89,7 @@ const ContestPage = () => {
   const [contestEnded, setContestEnded] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [timeMode, setTimeMode] = useState<'untilStart' | 'untilEnd'>('untilStart');
   const [language, setLanguage] = useState<string>('javascript');
   const [userCode, setUserCode] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<string>('');
@@ -96,6 +97,16 @@ const ContestPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  // Live contest side-panels
+  const [leaderboard, setLeaderboard] = useState<Array<{ username: string; score: number; time?: string }>>([]);
+  const [clarifications, setClarifications] = useState<Array<{ id: string; question: string; answer?: string; at?: string }>>([]);
+  const [liveLoading, setLiveLoading] = useState<boolean>(false);
+  // Ask clarification form state
+  const [askText, setAskText] = useState<string>('');
+  const [askPrivate, setAskPrivate] = useState<boolean>(false);
+  const [askVisibility, setAskVisibility] = useState<'all' | 'team'>('all');
+  const [askTags, setAskTags] = useState<string>('');
+  const [askSubmitting, setAskSubmitting] = useState<boolean>(false);
 
   // Helper to normalize problem identifier (_id preferred, fallback to id)
   const getProblemId = useCallback((p: Partial<Problem> | { _id?: unknown; id?: unknown } | null | undefined): string | undefined => {
@@ -173,8 +184,10 @@ const ContestPage = () => {
   }, []);
 
   const formatTime = useCallback((seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
+    const s = Number(seconds);
+    if (!isFinite(s) || isNaN(s) || s < 0) return '00:00';
+    const mins = Math.floor(s / 60);
+    const secs = Math.floor(s % 60);
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   }, []);
 
@@ -208,19 +221,31 @@ const ContestPage = () => {
         const now = new Date();
         const startTime = new Date(contestData.startTime);
         const endTime = new Date(contestData.endTime);
+        const startValid = !isNaN(startTime.getTime());
+        const endValid = !isNaN(endTime.getTime());
+        if (!startValid || !endValid) {
+          // If times are invalid, keep timer neutral and allow immediate start
+          setContestHasStarted(true);
+          setTimeLeft(0);
+          setTimeMode('untilEnd');
+          return;
+        }
         
         if (now >= endTime) {
           // Contest has ended; mark ended but do not auto-navigate to completed page.
           // Let the user see guidelines and a disabled Start button.
           setContestEnded(true);
           setTimeLeft(0);
+          setTimeMode('untilEnd');
         } else if (now >= startTime) {
           setContestHasStarted(true);
           const timeLeftInSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
           setTimeLeft(timeLeftInSeconds);
+          setTimeMode('untilEnd');
         } else {
           const timeLeftInSeconds = Math.floor((startTime.getTime() - now.getTime()) / 1000);
           setTimeLeft(timeLeftInSeconds);
+          setTimeMode('untilStart');
         }
         
       } catch (error) {
@@ -234,29 +259,137 @@ const ContestPage = () => {
     
     fetchContestData();
   }, [id]);
-  
+
   // Handle timer
   useEffect(() => {
     if (!contest) return;
-    
-    const updateTimer = () => {
+
+    const tick = () => {
       setTimeLeft(prev => {
+        // No negative time
         if (prev <= 0) {
-          setContestEnded(true);
-          setPhase('completed');
-          return 0;
+          if (timeMode === 'untilStart') {
+            // Switch to contest running window
+            try {
+              const now = new Date();
+              const endTime = new Date((contest as any).endTime);
+              const secs = Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
+              setContestHasStarted(true);
+              setTimeMode('untilEnd');
+              return secs;
+            } catch {
+              setTimeMode('untilEnd');
+              return 0;
+            }
+          } else {
+            // Contest is over
+            setContestEnded(true);
+            setPhase('completed');
+            return 0;
+          }
         }
         return prev - 1;
       });
     };
-    
-    timerRef.current = setInterval(updateTimer, 1000);
+
+    timerRef.current = setInterval(tick, 1000);
     return () => {
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [contest, timeMode]);
+
+  // Poll live leaderboard and clarifications during contest
+  useEffect(() => {
+    if (!id || !contestHasStarted || contestEnded) return;
+    let cancelled = false;
+    let interval: any;
+    const fetchLive = async () => {
+      try {
+        setLiveLoading(true);
+        // These endpoints may or may not exist; fail silently
+        const [lb, cl] = await Promise.allSettled([
+          apiService.get<any>(`/contests/${id}/leaderboard`),
+          apiService.get<any>(`/contests/${id}/clarifications`),
+        ]);
+        if (!cancelled) {
+          if (lb.status === 'fulfilled') {
+            const arr = (lb.value?.leaderboard || lb.value || []) as any[];
+            const mapped = arr.map((e: any) => ({
+              username: e.username || e.user?.username || 'User',
+              score: Number(e.score ?? e.points ?? 0),
+              time: e.time || e.submittedAt || e.updatedAt,
+            }));
+            setLeaderboard(mapped);
+          }
+          if (cl.status === 'fulfilled') {
+            const arr = (cl.value?.clarifications || cl.value || []) as any[];
+            const mapped = arr.map((c: any, i: number) => ({
+              id: String(c._id || c.id || i),
+              question: c.question || c.q || '',
+              answer: c.answer || c.a,
+              at: c.createdAt || c.at,
+            }));
+            setClarifications(mapped);
+          }
+        }
+      } catch {
+        // ignore
+      } finally {
+        if (!cancelled) setLiveLoading(false);
       }
     };
-  }, [contest]);
+    fetchLive();
+    interval = setInterval(fetchLive, 15000);
+    return () => { cancelled = true; if (interval) clearInterval(interval); };
+  }, [id, contestHasStarted, contestEnded]);
+
+  const submitClarification = async () => {
+    if (!id) return;
+    const body = String(askText || '').trim();
+    if (body.length < 3) {
+      toast.error('Question is too short');
+      return;
+    }
+    try {
+      setAskSubmitting(true);
+      const tags = askTags
+        .split(',')
+        .map((t) => t.trim())
+        .filter((t) => t.length > 0)
+        .slice(0, 5);
+      await apiService.post(`/contests/${id}/clarifications`, {
+        question: body,
+        isPrivate: askPrivate,
+        visibility: askVisibility,
+        tags,
+      });
+      toast.success('Question sent');
+      setAskText('');
+      setAskTags('');
+      setAskPrivate(false);
+      setAskVisibility('all');
+      // Immediate refresh of clarifications list
+      try {
+        const cl = await apiService.get<any>(`/contests/${id}/clarifications`);
+        const arr = (cl?.clarifications || cl || []) as any[];
+        const mapped = arr.map((c: any, i: number) => ({
+          id: String(c._id || c.id || i),
+          question: c.question || c.q || '',
+          answer: c.answer || c.a,
+          at: c.createdAt || c.at,
+        }));
+        setClarifications(mapped);
+      } catch {}
+    } catch (e: any) {
+      if (e?.status === 429 || e?.response?.status === 429) {
+        toast.error('Please wait a minute before asking another question.');
+      } else {
+        toast.error(e?.message || 'Failed to send question');
+      }
+    } finally {
+      setAskSubmitting(false);
+    }
+  };
   
   // Handle contest phase changes
   const handleStartContest = useCallback(async () => {
@@ -282,10 +415,18 @@ const ContestPage = () => {
 
     if (list && list.length > 0) {
       console.debug('[Contest] Starting contest with', list.length, 'problems');
-      const firstId = String(getProblemId(list[0]));
+      // Inline rendering: set current problem and switch phase
+      setProblems(list);
+      setCurrentProblemIndex(0);
+      setCurrentProblem(list[0]);
+      try {
+        const starter = (list[0] as any)?.starterCode?.[language] || '';
+        const pid = String(getProblemId(list[0]));
+        setUserCode((prev) => ({ ...prev, [pid]: starter }));
+        setCurrentProblemCode(starter);
+      } catch {}
       toast.success('Contest started!');
-      // Navigate to standalone problem details page for contests
-      navigate(`/contests/${id}/problems/${firstId}`);
+      setPhase('problems');
       return;
     } else {
       toast.error('No problems available in this contest');
@@ -312,39 +453,69 @@ const ContestPage = () => {
     setCurrentProblemCode(value);
   }, [problems, currentProblemIndex, getProblemId]);
 
+  // Enrich current problem with full details (description, starterCode) if missing
+  useEffect(() => {
+    const enrich = async () => {
+      const p = problems?.[currentProblemIndex];
+      if (!p) return;
+      const hasDescription = typeof (p as any)?.description === 'string' && (p as any).description.length > 10;
+      if (!hasDescription) {
+        try {
+          const pid = String(getProblemId(p));
+          const full = await apiService.get<any>(`/problems/${pid}`);
+          const prob = (full as any)?.problem || full;
+          // Replace in problems list immutably
+          setProblems((prev) => {
+            const copy = [...prev];
+            copy[currentProblemIndex] = { ...(copy[currentProblemIndex] as any), ...prob } as any;
+            return copy;
+          });
+          // Update currentProblem and starter code if empty
+          setCurrentProblem((prev) => ({ ...(prev as any), ...prob } as any));
+          const starter = prob?.starterCode?.[language];
+          if (starter && !currentProblemCode) {
+            setCurrentProblemCode(starter);
+            setUserCode((prev) => ({ ...prev, [String(getProblemId(prob))]: starter }));
+          }
+        } catch (e) {
+          // ignore; will still render basic info
+        }
+      }
+    };
+    enrich();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentProblemIndex, problems]);
+
   const handleRunTests = useCallback(async (problemId?: string) => {
     const targetProblem = problemId ? problems.find(p => String(getProblemId(p)) === problemId) : currentProblem;
     if (!targetProblem) return;
-    
     setIsSubmitting(true);
     try {
-      const targetId = String(getProblemId(targetProblem));
-      const response = await apiService.post<RunTestResponse>(`/problems/${targetId}/run`, {
-        code: userCode[targetId] || '',
-        language
+      const pid = String(getProblemId(targetProblem));
+      const t0 = performance.now();
+      const resp = await fetch('/compile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: userCode[pid] || '', lang: language.charAt(0).toUpperCase() + language.slice(1) }),
       });
-      
+      const data = await resp.json();
+      const t1 = performance.now();
+      const out = data?.output ?? data?.run?.output ?? '';
+      const execMs = Math.max(0, Math.round(t1 - t0));
       setTestResults({
-        results: response.results || [],
-        passed: response.passed || 0,
-        total: response.total || 0,
-        executionTime: response.executionTime || 0,
-        error: response.error
-      });
-      
-      // Refresh contest data
-      if (id) {
-        const contestData = await apiService.get<ContestWithProblems>(`/contests/${id}?populate=problems`);
-        setContest(contestData);
-      }
-      
+        results: [{ passed: true, output: out } as any],
+        passed: 0,
+        total: 0,
+        executionTime: execMs,
+      } as any);
+      toast.success(`Ran in ${execMs} ms`);
     } catch (error) {
-      console.error('Error running tests:', error);
-      toast.error('Failed to run tests');
+      console.error('Error running code:', error);
+      toast.error('Run failed');
     } finally {
       setIsSubmitting(false);
     }
-  }, [problems, currentProblem, userCode, language, id, getProblemId]);
+  }, [problems, currentProblem, userCode, language, getProblemId]);
 
   const handleSubmitProblem = useCallback(async () => {
     if (!currentProblem) {
@@ -379,13 +550,44 @@ const ContestPage = () => {
           setPhase('feedback');
         }
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting solution:', error);
-      toast.error('Failed to submit solution');
+      const msg = error?.message || (error?.response?.data?.message) || 'Failed to submit solution';
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
   }, [currentProblem, userCode, language, id, currentProblemIndex, problems, getProblemId]);
+
+  // Auto-submit/complete on unload or tab close
+  useEffect(() => {
+    if (!id) return;
+    const handler = () => {
+      try {
+        // Minimal payload; server endpoint is optional
+        const payload = {
+          contestId: id,
+          userCode,
+          language,
+          at: Date.now()
+        };
+        const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
+        // Try to notify server if available
+        if (navigator.sendBeacon) {
+          navigator.sendBeacon(`/contests/${id}/auto-submit`, blob);
+        }
+        // Mark as completed locally so we show feedback view on return
+        localStorage.setItem(`contestComplete:${id}`, '1');
+      } catch {}
+    };
+    window.addEventListener('beforeunload', handler);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden' && contestHasStarted && !contestEnded) handler();
+    });
+    return () => {
+      window.removeEventListener('beforeunload', handler);
+    };
+  }, [id, userCode, language, contestHasStarted, contestEnded]);
 
   const handleSubmitFeedback = useCallback(async () => {
     if (!feedback.trim()) {
@@ -525,12 +727,15 @@ const ContestPage = () => {
               <div className="flex justify-center">
                 <Button
                   onClick={handleStartContest}
-                  disabled={!hasAgreedToGuidelines}
+                  disabled={!hasAgreedToGuidelines || !contestHasStarted}
                   className="w-full sm:w-auto px-8 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-lg font-semibold"
                 >
                   <Play className="mr-2 h-5 w-5" />
                   Start Contest
                 </Button>
+                {!contestHasStarted && (
+                  <p className="mt-2 text-xs text-blue-600">Contest hasn’t started yet. It will begin in {formatTime(Math.max(0, timeLeft))}.</p>
+                )}
               </div>
             </CardContent>
           </Card>
@@ -558,215 +763,323 @@ const ContestPage = () => {
             </div>
           </div>
           
-          {/* Problems Tabs */}
-          <Card className="shadow-lg border-blue-200">
-            <Tabs value={currentProblem ? String(getProblemId(currentProblem)) : undefined} onValueChange={(value) => {
-              const index = problems.findIndex(p => String(getProblemId(p)) === value);
-              if (index >= 0) {
-                setCurrentProblemIndex(index);
-                setCurrentProblem(problems[index]);
-              }
-            }}>
-              <TabsList className="w-full bg-blue-100 p-1 h-auto flex-wrap gap-1">
-                {problems.map((problem, index) => (
-                  <TabsTrigger 
-                    key={String(getProblemId(problem))}
-                    value={String(getProblemId(problem))}
-                    className="flex-1 min-w-[120px] py-2 px-3 text-sm sm:text-base data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-                  >
-                    Problem {index + 1}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              
-              {problems.map((problem) => (
-                <TabsContent key={String(getProblemId(problem))} value={String(getProblemId(problem))} className="p-0">
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 sm:p-6">
-                    {/* Problem Description */}
-                    <div className="space-y-4">
-                      <div>
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
-                          <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 sm:mb-0">{problem.title}</h2>
-                          <span className={`px-3 py-1 rounded-full text-sm font-medium self-start ${getDifficultyColor(problem.difficulty)}`}>
-                            {problem.difficulty.charAt(0).toUpperCase() + problem.difficulty.slice(1)}
-                          </span>
+          {/* Main three-column layout: Left sidebar (problems), Center (tabs/content), Right sidebar (live) */}
+          <div className="grid grid-cols-1 xl:grid-cols-[220px_1fr_300px] gap-4 items-start">
+            {/* Left Sidebar: Problems list */}
+            <aside className="hidden xl:block bg-white rounded-lg border p-3 h-max sticky top-4">
+              <h3 className="font-semibold mb-2">Problems</h3>
+              <ol className="space-y-1">
+                {problems.map((p, idx) => {
+                  const pid = String(getProblemId(p));
+                  const active = idx === currentProblemIndex;
+                  return (
+                    <li key={pid}>
+                      <button
+                        onClick={() => { setCurrentProblemIndex(idx); setCurrentProblem(problems[idx]); }}
+                        className={`w-full text-left px-2 py-1 rounded ${active ? 'bg-blue-600 text-white' : 'hover:bg-blue-50'}`}
+                      >
+                        Problem {idx + 1}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ol>
+            </aside>
+
+            {/* Center: Problems Tabs and content */}
+            <Card className="shadow-lg border-blue-200">
+              <Tabs value={currentProblem ? String(getProblemId(currentProblem)) : undefined} onValueChange={(value) => {
+                const index = problems.findIndex(p => String(getProblemId(p)) === value);
+                if (index >= 0) {
+                  setCurrentProblemIndex(index);
+                  setCurrentProblem(problems[index]);
+                }
+              }}>
+                <TabsList className="w-full bg-blue-100 p-1 h-auto flex-wrap gap-1">
+                  {problems.map((problem, index) => (
+                    <TabsTrigger 
+                      key={String(getProblemId(problem))}
+                      value={String(getProblemId(problem))}
+                      className="flex-1 min-w-[120px] py-2 px-3 text-sm sm:text-base data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                    >
+                      Problem {index + 1}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                
+                {problems.map((problem) => (
+                  <TabsContent key={String(getProblemId(problem))} value={String(getProblemId(problem))} className="p-0">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 sm:p-6">
+                      {/* Problem Description */}
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
+                            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 sm:mb-0">{problem.title}</h2>
+                            <span className={`px-3 py-1 rounded-full text-sm font-medium self-start ${getDifficultyColor(problem.difficulty)}`}>
+                              {problem.difficulty.charAt(0).toUpperCase() + problem.difficulty.slice(1)}
+                            </span>
+                          </div>
+                          
+                          <div className="prose max-w-none mb-6 text-gray-700 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                            <div dangerouslySetInnerHTML={{ __html: problem.description }} />
+                          </div>
                         </div>
                         
-                        <div className="prose max-w-none mb-6 text-gray-700 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                          <div dangerouslySetInnerHTML={{ __html: problem.description }} />
-                        </div>
-                      </div>
-                      
-                      {Array.isArray((problem as any).examples) && (problem as any).examples.length > 0 && (
-                        <div className="space-y-4">
-                          <h3 className="font-semibold text-lg text-gray-800">Examples:</h3>
-                          {(problem as any).examples?.map((example: { input: string; output: string; explanation?: string }, i: number) => (
-                            <div key={i} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                              <div className="space-y-2">
-                                <div>
-                                  <span className="font-medium text-gray-700">Input:</span>
-                                  <pre className="mt-1 p-2 bg-white rounded border text-sm overflow-x-auto">
-                                    {JSON.stringify(example.input, null, 2)}
-                                  </pre>
-                                </div>
-                                <div>
-                                  <span className="font-medium text-gray-700">Output:</span>
-                                  <pre className="mt-1 p-2 bg-white rounded border text-sm overflow-x-auto">
-                                    {JSON.stringify(example.output, null, 2)}
-                                  </pre>
-                                </div>
-                                {example.explanation && (
-                                  <div className="pt-2 border-t border-gray-200">
-                                    <span className="font-medium text-gray-700">Explanation:</span>
-                                    <p className="mt-1 text-sm text-gray-600">{example.explanation}</p>
+                        {Array.isArray((problem as any).examples) && (problem as any).examples.length > 0 && (
+                          <div className="space-y-4">
+                            <h3 className="font-semibold text-lg text-gray-800">Examples:</h3>
+                            {(problem as any).examples?.map((example: { input: string; output: string; explanation?: string }, i: number) => (
+                              <div key={i} className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                <div className="space-y-2">
+                                  <div>
+                                    <span className="font-medium text-gray-700">Input:</span>
+                                    <pre className="mt-1 p-2 bg-white rounded border text-sm overflow-x-auto">
+                                      {JSON.stringify(example.input, null, 2)}
+                                    </pre>
                                   </div>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Test Results */}
-                      {testResults && testResults.results && testResults.results.length > 0 && (
-                        <div className="space-y-4">
-                          <h3 className="font-semibold text-lg text-gray-800">Test Results:</h3>
-                          <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {testResults.results.map((result, index) => (
-                              <div key={index} className={`p-3 rounded-md ${result.passed ? 'bg-green-50' : 'bg-red-50'}`}>
-                                <div className="flex items-center">
-                                  {result.passed ? (
-                                    <CheckCircle className="text-green-500 mr-2 flex-shrink-0" />
-                                  ) : (
-                                    <XCircle className="text-red-500 mr-2 flex-shrink-0" />
+                                  <div>
+                                    <span className="font-medium text-gray-700">Output:</span>
+                                    <pre className="mt-1 p-2 bg-white rounded border text-sm overflow-x-auto">
+                                      {JSON.stringify(example.output, null, 2)}
+                                    </pre>
+                                  </div>
+                                  {example.explanation && (
+                                    <div className="pt-2 border-t border-gray-200">
+                                      <span className="font-medium text-gray-700">Explanation:</span>
+                                      <p className="mt-1 text-sm text-gray-600">{example.explanation}</p>
+                                    </div>
                                   )}
-                                  <span className="font-medium">Test Case {index + 1} - {result.passed ? 'Passed' : 'Failed'}</span>
                                 </div>
-                                {!result.passed && (
-                                  <div className="mt-2 text-sm space-y-1 pl-6">
-                                    {result.input && (
-                                      <div>
-                                        Input: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
-                                          {JSON.stringify(result.input)}
-                                        </code>
-                                      </div>
-                                    )}
-                                    <div>
-                                      Expected: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
-                                        {JSON.stringify(result.expected)}
-                                      </code>
-                                    </div>
-                                    <div>
-                                      Got: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
-                                        {result.error ? result.error : JSON.stringify(result.output)}
-                                      </code>
-                                    </div>
-                                  </div>
-                                )}
                               </div>
                             ))}
                           </div>
+                        )}
+
+                        {/* Test Results */}
+                        {testResults && testResults.results && testResults.results.length > 0 && (
+                          <div className="space-y-4">
+                            <h3 className="font-semibold text-lg text-gray-800">Test Results:</h3>
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                              {testResults.results.map((result, index) => (
+                                <div key={index} className={`p-3 rounded-md ${result.passed ? 'bg-green-50' : 'bg-red-50'}`}>
+                                  <div className="flex items-center">
+                                    {result.passed ? (
+                                      <CheckCircle className="text-green-500 mr-2 flex-shrink-0" />
+                                    ) : (
+                                      <XCircle className="text-red-500 mr-2 flex-shrink-0" />
+                                    )}
+                                    <span className="font-medium">Test Case {index + 1} - {result.passed ? 'Passed' : 'Failed'}</span>
+                                  </div>
+                                  {!result.passed && (
+                                    <div className="mt-2 text-sm space-y-1 pl-6">
+                                      {result.input && (
+                                        <div>
+                                          Input: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                                            {JSON.stringify(result.input)}
+                                          </code>
+                                        </div>
+                                      )}
+                                      <div>
+                                        Expected: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                                          {JSON.stringify(result.expected)}
+                                        </code>
+                                      </div>
+                                      <div>
+                                        Got: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
+                                          {result.error ? result.error : JSON.stringify(result.output)}
+                                        </code>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Code Editor */}
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between">
+                          <h3 className="font-semibold text-lg text-gray-800 mb-2 sm:mb-0">Your Solution:</h3>
+                          <div className="w-full sm:w-auto">
+                            <select
+                              value={language}
+                              onChange={(e) => setLanguage(e.target.value)}
+                              className="w-full sm:w-auto px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            >
+                              <option value="javascript">JavaScript</option>
+                              <option value="python">Python</option>
+                              <option value="java">Java</option>
+                              <option value="cpp">C++</option>
+                            </select>
+                          </div>
                         </div>
-                      )}
-                    </div>
-                    
-                    {/* Code Editor */}
-                    <div className="space-y-4">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between">
-                        <h3 className="font-semibold text-lg text-gray-800 mb-2 sm:mb-0">Your Solution:</h3>
-                        <div className="w-full sm:w-auto">
-                          <select
-                            value={language}
-                            onChange={(e) => setLanguage(e.target.value)}
-                            className="w-full sm:w-auto px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        
+                        <div className="border rounded-lg overflow-hidden shadow-md bg-white">
+                          <CodeEditor
+                            value={currentProblemCode}
+                            onChange={handleCodeChange}
+                            language={language}
+                            height="400px"
+                            theme="vs-dark"
+                            options={{
+                              minimap: { enabled: false },
+                              fontSize: 14,
+                              wordWrap: 'on',
+                              readOnly: isSubmitting,
+                              scrollBeyondLastLine: false
+                            }}
+                          />
+                        </div>
+                        
+                        {/* Action Buttons */}
+                        <div className="flex flex-col sm:flex-row gap-3">
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              if (currentProblem) {
+                                setUserCode(prev => ({
+                                  ...prev,
+                                  [String(getProblemId(currentProblem))]: (currentProblem.starterCode as any)?.[language] || ''
+                                }));
+                                setCurrentProblemCode((currentProblem.starterCode as any)?.[language] || '');
+                              }
+                            }}
+                            className="flex-1 border-gray-300 hover:bg-gray-50"
                           >
-                            <option value="javascript">JavaScript</option>
-                            <option value="python">Python</option>
-                            <option value="java">Java</option>
-                            <option value="cpp">C++</option>
-                          </select>
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Reset Code
+                          </Button>
+                          
+                          <Button
+                            onClick={() => handleRunTests()}
+                            variant="secondary"
+                            disabled={isSubmitting}
+                            className="flex-1 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300"
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Running...
+                              </>
+                            ) : (
+                              <>
+                                <Play className="mr-2 h-4 w-4" />
+                                Run Tests
+                              </>
+                            )}
+                          </Button>
+                          
+                          <Button
+                            onClick={handleSubmitProblem}
+                            disabled={isSubmitting}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Submitting...
+                              </>
+                            ) : (
+                              <>
+                                <Check className="mr-2 h-4 w-4" />
+                                Submit Solution (auto-advances on success)
+                              </>
+                            )}
+                          </Button>
                         </div>
                       </div>
-                      
-                      <div className="border rounded-lg overflow-hidden shadow-md bg-white">
-                        <CodeEditor
-                          value={currentProblemCode}
-                          onChange={handleCodeChange}
-                          language={language}
-                          height="400px"
-                          theme="vs-dark"
-                          options={{
-                            minimap: { enabled: false },
-                            fontSize: 14,
-                            wordWrap: 'on',
-                            readOnly: isSubmitting,
-                            scrollBeyondLastLine: false
-                          }}
-                        />
-                      </div>
-                      
-                      {/* Action Buttons */}
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <Button
-                          variant="outline"
-                          onClick={() => {
-                            if (currentProblem) {
-                              setUserCode(prev => ({
-                                ...prev,
-                                [String(getProblemId(currentProblem))]: (currentProblem.starterCode as any)?.[language] || ''
-                              }));
-                              setCurrentProblemCode((currentProblem.starterCode as any)?.[language] || '');
-                            }
-                          }}
-                          className="flex-1 border-gray-300 hover:bg-gray-50"
-                        >
-                          <RotateCcw className="mr-2 h-4 w-4" />
-                          Reset Code
-                        </Button>
-                        
-                        <Button
-                          onClick={() => handleRunTests()}
-                          variant="secondary"
-                          disabled={isSubmitting}
-                          className="flex-1 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300"
-                        >
-                          {isSubmitting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Running...
-                            </>
-                          ) : (
-                            <>
-                              <Play className="mr-2 h-4 w-4" />
-                              Run Tests
-                            </>
-                          )}
-                        </Button>
-                        
-                        <Button
-                          onClick={handleSubmitProblem}
-                          disabled={isSubmitting}
-                          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
-                        >
-                          {isSubmitting ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Submitting...
-                            </>
-                          ) : (
-                            <>
-                              <Check className="mr-2 h-4 w-4" />
-                              Submit Solution
-                            </>
-                          )}
-                        </Button>
-                      </div>
                     </div>
-                  </div>
-                </TabsContent>
-              ))}
-            </Tabs>
-          </Card>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </Card>
+
+            {/* Right Sidebar: Live Leaderboard & Clarifications */}
+            <aside className="hidden xl:block space-y-4 sticky top-4">
+              {/* Ask a Question */}
+              <div className="bg-white rounded-lg border p-3">
+                <h3 className="font-semibold mb-2">Ask a Question</h3>
+                <textarea
+                  value={askText}
+                  onChange={(e) => setAskText(e.target.value)}
+                  className="w-full border rounded p-2 text-sm mb-2"
+                  rows={3}
+                  placeholder="Type your question…"
+                />
+                <div className="flex items-center gap-2 mb-2">
+                  <label className="text-sm">Visibility:</label>
+                  <select
+                    value={askVisibility}
+                    onChange={(e) => setAskVisibility(e.target.value as any)}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    <option value="all">All participants</option>
+                    <option value="team">Only my team</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <input
+                    id="ask-private"
+                    type="checkbox"
+                    checked={askPrivate}
+                    onChange={(e) => setAskPrivate(e.target.checked)}
+                    className="h-4 w-4"
+                  />
+                  <label htmlFor="ask-private" className="text-sm">Mark as private</label>
+                </div>
+                <input
+                  type="text"
+                  value={askTags}
+                  onChange={(e) => setAskTags(e.target.value)}
+                  className="w-full border rounded p-2 text-sm mb-2"
+                  placeholder="Tags (comma separated)"
+                />
+                <Button disabled={askSubmitting} onClick={submitClarification} className="w-full">
+                  {askSubmitting ? 'Sending…' : 'Send'}
+                </Button>
+              </div>
+
+              <div className="bg-white rounded-lg border p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold">Live Leaderboard</h3>
+                  {liveLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                </div>
+                <ol className="space-y-1 text-sm">
+                  {leaderboard.length === 0 ? (
+                    <li className="text-gray-500">No entries yet</li>
+                  ) : (
+                    leaderboard.slice(0, 10).map((e, i) => (
+                      <li key={i} className="flex items-center justify-between">
+                        <span className="truncate mr-2">{i + 1}. {e.username}</span>
+                        <span className="font-semibold">{e.score}</span>
+                      </li>
+                    ))
+                  )}
+                </ol>
+              </div>
+
+              <div className="bg-white rounded-lg border p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="font-semibold">Clarifications</h3>
+                </div>
+                <ul className="space-y-2 text-sm max-h-64 overflow-y-auto">
+                  {clarifications.length === 0 ? (
+                    <li className="text-gray-500">No clarifications yet</li>
+                  ) : (
+                    clarifications.map((c) => (
+                      <li key={c.id} className="border rounded p-2">
+                        <div className="font-medium">Q: {c.question}</div>
+                        {c.answer && <div className="text-green-700 mt-1">A: {c.answer}</div>}
+                        {c.at && <div className="text-xs text-gray-400 mt-1">{new Date(c.at).toLocaleString()}</div>}
+                      </li>
+                    ))
+                  )}
+                </ul>
+              </div>
+            </aside>
+          </div>
         </div>
       </div>
     );

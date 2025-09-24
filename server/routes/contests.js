@@ -2,7 +2,8 @@ import express from 'express';
 import Contest from '../models/Contest.js';
 import User from '../models/User.js';
 import Transaction from '../models/Transaction.js';
-import { authenticate } from '../middleware/auth.js';
+import Clarification from '../models/Clarification.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 import admin from '../middleware/admin.js';
 import mongoose from 'mongoose';
 
@@ -330,6 +331,112 @@ router.post('/:id/settle', authenticate, admin, async (req, res) => {
     session.endSession();
     console.error('Settle contest error:', error);
     return res.status(500).json({ message: 'Failed to settle contest' });
+  }
+});
+
+// Auto-submit (called on unload). Marks participant as exited/autoSubmitted.
+router.post('/:id/auto-submit', authenticate, async (req, res) => {
+  try {
+    const contestId = req.params.id;
+    const contest = await Contest.findById(contestId);
+    if (!contest) {
+      return res.status(404).json({ success: false, message: 'Contest not found' });
+    }
+    // Update participant flags (non-destructive; adds fields if missing)
+    await Contest.updateOne(
+      { _id: contestId, 'participants.user': req.user._id },
+      {
+        $set: {
+          'participants.$.autoSubmitted': true,
+          'participants.$.exitedAt': new Date(),
+        }
+      }
+    );
+    return res.json({ success: true });
+  } catch (error) {
+    console.error('Auto-submit error:', error);
+    return res.status(200).json({ success: true }); // best-effort, never block unload
+  }
+});
+
+// Clarifications placeholder to prevent 500 if feature not wired
+// List clarifications (public to participants; admin can see all)
+router.get('/:id/clarifications', authenticate, async (req, res) => {
+  try {
+    const contestId = req.params.id;
+    const isAdmin = req.user?.isAdmin === true || req.user?.role === 'admin';
+    const query = { contest: contestId };
+    // If not admin, hide private clarifications not by the user
+    if (!isAdmin) {
+      query.$or = [
+        { isPrivate: false },
+        { user: req.user._id },
+      ];
+    }
+    const list = await Clarification.find(query)
+      .sort({ createdAt: -1 })
+      .populate('user', 'username')
+      .populate('answeredBy', 'username')
+      .lean();
+    return res.json({ clarifications: list });
+  } catch (error) {
+    console.error('List clarifications error:', error);
+    return res.status(500).json({ message: 'Failed to fetch clarifications' });
+  }
+});
+
+// Ask a clarification (must be a participant of the contest)
+router.post('/:id/clarifications', authenticate, async (req, res) => {
+  try {
+    const contestId = req.params.id;
+    const { question, isPrivate, visibility = 'all', tags = [] } = req.body || {};
+    if (!question || String(question).trim().length < 3) {
+      return res.status(400).json({ message: 'Question is too short' });
+    }
+    const contest = await Contest.findById(contestId).select('participants status');
+    if (!contest) return res.status(404).json({ message: 'Contest not found' });
+    // Must be participant
+    const isParticipant = (contest.participants || []).some((p) => String(p?.user || p) === String(req.user._id));
+    if (!isParticipant) return res.status(403).json({ message: 'Only participants can ask clarifications' });
+    // Rate limit: 1 per minute per user per contest
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+    const recent = await Clarification.findOne({
+      contest: contestId,
+      user: req.user._id,
+      createdAt: { $gte: oneMinuteAgo },
+    }).select('_id');
+    if (recent) return res.status(429).json({ message: 'Please wait a minute before asking another question.' });
+    const clar = await Clarification.create({
+      contest: contestId,
+      user: req.user._id,
+      question: String(question).trim(),
+      isPrivate: !!isPrivate,
+      visibility: visibility === 'team' ? 'team' : 'all',
+      tags: Array.isArray(tags) ? tags.slice(0, 5).map(String) : [],
+    });
+    return res.status(201).json({ clarification: clar });
+  } catch (error) {
+    console.error('Create clarification error:', error);
+    return res.status(500).json({ message: 'Failed to create clarification' });
+  }
+});
+
+// Answer a clarification (admin only)
+router.post('/:id/clarifications/:clarId/answer', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { id, clarId } = req.params;
+    const { answer } = req.body || {};
+    if (!answer || String(answer).trim().length < 1) return res.status(400).json({ message: 'Answer is required' });
+    const clar = await Clarification.findOne({ _id: clarId, contest: id });
+    if (!clar) return res.status(404).json({ message: 'Clarification not found' });
+    clar.answer = String(answer).trim();
+    clar.answeredBy = req.user._id;
+    clar.answeredAt = new Date();
+    await clar.save();
+    return res.json({ clarification: clar });
+  } catch (error) {
+    console.error('Answer clarification error:', error);
+    return res.status(500).json({ message: 'Failed to answer clarification' });
   }
 });
 
