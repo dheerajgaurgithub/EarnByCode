@@ -15,6 +15,41 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Get current user's leaderboard rank (server-computed)
+// Query params:
+// - region: 'all' | any string (matched against user.location, case-insensitive)
+// - timeframe: 'all_time' | 'monthly' | 'weekly' (currently only all_time supported)
+router.get('/me/leaderboard-rank', authenticate, async (req, res) => {
+  try {
+    const { region = 'all', timeframe = 'all_time' } = req.query;
+    const me = await User.findById(req.user.id).select('points location isAdmin');
+    if (!me) return res.status(404).json({ success: false, message: 'User not found' });
+    if (me.isAdmin) return res.json({ success: true, rank: null, total: 0, region: String(region), timeframe: String(timeframe), note: 'Admins are excluded from leaderboard' });
+
+    // Build base filter: exclude admins
+    const filter = { isAdmin: false };
+    if (region && String(region).toLowerCase() !== 'all') {
+      filter.location = { $regex: new RegExp(String(region).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') };
+    }
+
+    // Timeframe support (placeholder): currently ranks by all_time points
+    // If you later track points by timeframe, compute using transactions/activities here.
+
+    // Total users in this scope
+    const total = await User.countDocuments(filter);
+
+    // Users with strictly higher points than me (ties share same rank)
+    const higher = await User.countDocuments({ ...filter, points: { $gt: me.points || 0 } });
+    const rank = total > 0 ? higher + 1 : null;
+
+    return res.json({ success: true, rank, total, region: String(region), timeframe: String(timeframe) });
+  } catch (error) {
+    console.error('Get leaderboard rank error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to compute rank' });
+  }
+});
+
+
 // Initialize router BEFORE any route definitions
 const router = express.Router();
 

@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import AvatarCropperModal from '@/components/Profile/AvatarCropperModal';
 import ClampText from '@/components/common/ClampText';
 import { apiService } from '@/lib/api';
+import leaderboardApi from '../services/api';
 
 interface EditFormData {
   fullName: string;
@@ -89,6 +90,8 @@ export const Profile: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [showCropper, setShowCropper] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  // Leaderboard current rank
+  const [currentRank, setCurrentRank] = useState<number | null>(null);
 
   const onChooseAvatar = () => setShowCropper(true);
   const onAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -144,6 +147,22 @@ export const Profile: React.FC = () => {
       });
     }
   }, [user]);
+
+  // Fetch current leaderboard rank for the profile user
+  useEffect(() => {
+    const fetchRank = async () => {
+      try {
+        if (!user?._id) { setCurrentRank(null); return; }
+        const { data } = await leaderboardApi.getUsersLeaderboard({ sortBy: 'points', limit: 1000, include: 'profile,solved' });
+        if (!Array.isArray(data)) { setCurrentRank(null); return; }
+        const idx = data.findIndex((u: any) => String(u?._id) === String(user._id));
+        setCurrentRank(idx >= 0 ? idx + 1 : null);
+      } catch {
+        setCurrentRank(null);
+      }
+    };
+    fetchRank();
+  }, [user?._id]);
 
   if (isAuthLoading) {
     return (
@@ -619,9 +638,9 @@ export const Profile: React.FC = () => {
               </div>
               <div className="text-center bg-purple-50 dark:bg-purple-900/20 p-2.5 sm:p-4 rounded-lg border border-purple-200 dark:border-purple-800 transition-colors duration-300">
                 <p className="text-xl sm:text-2xl font-bold text-purple-600 dark:text-purple-400">
-                  {typeof user.ranking === 'number' && user.ranking > 0 ? `#${user.ranking}` : 'N/A'}
+                  {typeof currentRank === 'number' ? `#${currentRank}` : 'N/A'}
                 </p>
-                <p className="text-purple-500 dark:text-purple-400 text-xs sm:text-sm">Global Rank</p>
+                <p className="text-purple-500 dark:text-purple-400 text-xs sm:text-sm">Leaderboard Rank</p>
               </div>
             </div>
           )}
