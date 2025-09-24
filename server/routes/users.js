@@ -19,6 +19,91 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Streaks: current and max streak based on accepted submissions
+router.get('/me/streaks', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    // Pull accepted submissions, only need createdAt
+    const subs = await Submission.find({ user: userId, status: 'Accepted' })
+      .select('createdAt')
+      .sort({ createdAt: 1 })
+      .lean();
+
+    // Map to unique UTC date strings (YYYY-MM-DD)
+    const toUTCDateStr = (d) => {
+      const dt = new Date(d);
+      const yyyy = dt.getUTCFullYear();
+      const mm = String(dt.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(dt.getUTCDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    const uniqueDays = Array.from(new Set(subs.map(s => toUTCDateStr(s.createdAt)))).sort();
+
+    // Compute max streak over all unique days
+    let maxStreak = 0;
+    let cur = 0;
+    let prev = null;
+    for (const ds of uniqueDays) {
+      const d = new Date(ds + 'T00:00:00Z');
+      if (prev) {
+        const prevD = new Date(prev + 'T00:00:00Z');
+        const diffDays = Math.round((d.getTime() - prevD.getTime()) / (24 * 60 * 60 * 1000));
+        cur = (diffDays === 1) ? (cur + 1) : 1;
+      } else {
+        cur = 1;
+      }
+      if (cur > maxStreak) maxStreak = cur;
+      prev = ds;
+    }
+
+    // Compute current streak up to today
+    const todayUTC = new Date();
+    const todayStr = toUTCDateStr(todayUTC);
+    const daySet = new Set(uniqueDays);
+    let currentStreak = 0;
+    // If there is activity today or yesterday, walk backwards
+    // Count consecutive days ending today (or yesterday if today is empty)
+    let cursor = daySet.has(todayStr)
+      ? new Date(todayStr + 'T00:00:00Z')
+      : new Date(new Date(todayStr + 'T00:00:00Z').getTime() - 24 * 60 * 60 * 1000);
+    while (true) {
+      const cstr = toUTCDateStr(cursor);
+      if (daySet.has(cstr)) {
+        currentStreak += 1;
+        cursor = new Date(cursor.getTime() - 24 * 60 * 60 * 1000);
+      } else {
+        break;
+      }
+    }
+
+    const milestones = {
+      d100: maxStreak >= 100,
+      d500: maxStreak >= 500,
+      d1000: maxStreak >= 1000,
+    };
+
+    // Mark reward eligibility for 1000-day streak (best-effort, no email here)
+    if (milestones.d1000) {
+      try {
+        const me = await User.findById(userId).select('rewards');
+        if (me) {
+          me.rewards = me.rewards || {};
+          me.rewards.streak1000 = me.rewards.streak1000 || {};
+          if (!me.rewards.streak1000.eligibleAt) {
+            me.rewards.streak1000.eligibleAt = new Date();
+            await me.save();
+          }
+        }
+      } catch {}
+    }
+
+    return res.json({ success: true, currentStreak, maxStreak, milestones });
+  } catch (error) {
+    console.error('Get streaks error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to compute streaks' });
+  }
+});
+
 // Daily activity heatmap: accepted submissions per day
 router.get('/me/activity', authenticate, async (req, res) => {
   try {
