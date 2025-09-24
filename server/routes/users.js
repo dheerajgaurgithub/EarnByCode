@@ -19,6 +19,39 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Get current user's daily problem (today in UTC)
+router.get('/me/daily-problem', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('dailyProblem');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    return res.json({ success: true, dailyProblem: user.dailyProblem || null });
+  } catch (error) {
+    console.error('Get daily problem error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to get daily problem' });
+  }
+});
+
+// Set today's daily problem (per-user). Body: { problemId }
+router.post('/me/daily-problem', authenticate, async (req, res) => {
+  try {
+    const { problemId } = req.body || {};
+    if (!problemId) return res.status(400).json({ success: false, message: 'problemId is required' });
+    const user = await User.findById(req.user.id).select('dailyProblem');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const today = new Date();
+    const yyyy = today.getUTCFullYear();
+    const mm = String(today.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(today.getUTCDate()).padStart(2, '0');
+    const dateStr = `${yyyy}-${mm}-${dd}`;
+    user.dailyProblem = { date: dateStr, problemId: String(problemId) };
+    await user.save();
+    return res.json({ success: true, dailyProblem: user.dailyProblem });
+  } catch (error) {
+    console.error('Set daily problem error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to set daily problem' });
+  }
+});
+
 // Streaks: current and max streak based on accepted submissions
 router.get('/me/streaks', authenticate, async (req, res) => {
   try {

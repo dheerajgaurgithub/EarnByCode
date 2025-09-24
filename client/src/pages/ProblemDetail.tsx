@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Editor } from '@monaco-editor/react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircle, Trophy, Award, BookOpen, MessageCircle, Play, AlertCircle } from 'lucide-react';
+import { CheckCircle, Trophy, Award, BookOpen, MessageCircle, Play, AlertCircle, Clock3, Settings, Bot, Flame, Check } from 'lucide-react';
 import api from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
 
@@ -223,6 +223,13 @@ const ProblemDetail: React.FC = () => {
     totalTests: 0,
     isSubmission: false
   });
+  // Toolbar UI state
+  const [showTimer, setShowTimer] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState<number>(0);
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [showChat, setShowChat] = useState(false);
+  // Daily problem state
+  const [dailyProblem, setDailyProblem] = useState<{ date: string; problemId: string } | null>(null);
   
   // Track if user is trying to submit without being logged in
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -571,6 +578,41 @@ const ProblemDetail: React.FC = () => {
     }
   }, [id, fetchProblem]);
 
+  // Fetch user's daily problem
+  useEffect(() => {
+    const loadDaily = async () => {
+      try {
+        const resp = await api.get<{ dailyProblem: { date: string; problemId: string } | null }>(`/users/me/daily-problem`);
+        const payload = (resp as any).data || resp;
+        setDailyProblem(payload.dailyProblem || null);
+      } catch {}
+    };
+    if (user) loadDaily();
+  }, [user]);
+
+  const isTodaysProblem = useMemo(() => {
+    if (!problem || !dailyProblem) return false;
+    return String(dailyProblem.problemId) === String(problem._id);
+  }, [problem, dailyProblem]);
+
+  const setAsTodaysProblem = useCallback(async () => {
+    if (!user || !problem) return;
+    try {
+      const resp = await api.post(`/users/me/daily-problem`, { problemId: problem._id });
+      const payload = (resp as any).data || resp;
+      setDailyProblem(payload.dailyProblem || { date: '', problemId: String(problem._id) });
+    } catch (e) {
+      console.warn('Failed to set daily problem');
+    }
+  }, [user, problem]);
+
+  // Timer tick
+  useEffect(() => {
+    if (!timerRunning || timerSeconds <= 0) return;
+    const t = setInterval(() => setTimerSeconds(s => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [timerRunning, timerSeconds]);
+
   // Update code when language changes
   useEffect(() => {
     if (problem) {
@@ -679,6 +721,11 @@ const ProblemDetail: React.FC = () => {
                     {problem.title}
                   </h1>
                   {isSolved && <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />}
+                  {isTodaysProblem && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-green-50 text-green-700 border border-green-200">
+                      <Flame className="w-3 h-3 mr-1 text-orange-500" /> Today's Problem
+                    </span>
+                  )}
                 </div>
                 <span className={`px-2 py-1 rounded-lg text-xs font-medium border-2 ${getDifficultyColor(problem.difficulty)} self-start sm:self-auto`}>
                   {problem.difficulty}
@@ -697,6 +744,44 @@ const ProblemDetail: React.FC = () => {
                 <div className="flex items-center">
                   <Award className="h-3 w-3 mr-1 text-yellow-600 flex-shrink-0" />
                   <span>{t('problem.codecoin')}</span>
+                </div>
+              </div>
+
+              {/* Action bar: set today's problem, timer, chat */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  {!isTodaysProblem && (
+                    <button onClick={setAsTodaysProblem} className="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100">
+                      <Flame className="w-3 h-3 mr-1" /> Set as Today's Problem
+                    </button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {/* Timer */}
+                  <div className="relative">
+                    <button onClick={() => setShowTimer(v => !v)} className="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100">
+                      <Clock3 className="w-3 h-3 mr-1" /> {timerSeconds > 0 ? `${Math.floor(timerSeconds/60)}:${String(timerSeconds%60).padStart(2,'0')}` : 'Timer'}
+                    </button>
+                    {showTimer && (
+                      <div className="absolute right-0 mt-1 w-56 bg-white border border-blue-200 rounded-lg shadow-lg p-2 z-20">
+                        <div className="text-xs text-blue-800 mb-1 font-medium">Set Timer</div>
+                        <div className="flex flex-wrap gap-1 mb-2">
+                          {[10,15,25,30,45,60].map(m => (
+                            <button key={m} onClick={() => { setTimerSeconds(m*60); setTimerRunning(false); }} className="px-2 py-1 text-xs border border-blue-200 rounded hover:bg-blue-50">{m}m</button>
+                          ))}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => setTimerRunning(true)} className="px-2 py-1 text-xs bg-green-600 text-white rounded">Start</button>
+                          <button onClick={() => setTimerRunning(false)} className="px-2 py-1 text-xs bg-yellow-500 text-white rounded">Pause</button>
+                          <button onClick={() => { setTimerRunning(false); setTimerSeconds(0); }} className="px-2 py-1 text-xs bg-red-600 text-white rounded">Reset</button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  {/* Chat toggle */}
+                  <button onClick={() => setShowChat(v => !v)} className={`inline-flex items-center px-2 py-1 text-xs rounded-lg border ${showChat ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}>
+                    <Bot className="w-3 h-3 mr-1" /> {showChat ? 'Hide' : 'Chat'}
+                  </button>
                 </div>
               </div>
 

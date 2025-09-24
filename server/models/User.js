@@ -241,6 +241,11 @@ const userSchema = new mongoose.Schema({
         shippedAt: { type: Date, default: null }
       }
     }
+  },
+  // Per-user 'today's daily problem'
+  dailyProblem: {
+    date: { type: String, default: null }, // YYYY-MM-DD (UTC)
+    problemId: { type: String, default: null }
   }
 }, {
   timestamps: true
