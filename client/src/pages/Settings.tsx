@@ -406,157 +406,32 @@ export const Settings: React.FC = () => {
 
   return (
     <>
-      <style>
-        {`
-          @media (prefers-color-scheme: light) {
-            .adaptive-bg {
-              background: linear-gradient(to bottom right, #dbeafe, #ffffff, #dbeafe);
-            }
-            .adaptive-card {
-              background: #ffffff;
-              color: #000000;
-              border: 1px solid #dbeafe;
-              box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            }
-            .adaptive-text {
-              color: #000000;
-            }
-            .adaptive-text-secondary {
-              color: #4b5563;
-            }
-            .adaptive-text-muted {
-              color: #6b7280;
-            }
-            .adaptive-input {
-              background: #dbeafe;
-              border: 1px solid #dbeafe;
-              color: #000000;
-            }
-            .adaptive-input:focus {
-              border-color: #2563eb;
-              box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
-            }
-            .adaptive-accent {
-              background: #dbeafe;
-              border: 1px solid #dbeafe;
-            }
-            .adaptive-button {
-              background: #2563eb;
-            }
-            .adaptive-button:hover {
-              background: #1d4ed8;
-            }
-            .tab-active {
-              background: #2563eb !important;
-              color: white !important;
-            }
-            .tab-inactive {
-              color: #4b5563;
-            }
-            .tab-inactive:hover {
-              color: #2563eb;
-              background: #dbeafe;
-            }
-            .adaptive-border {
-              border-color: #dbeafe;
-            }
-            .adaptive-icon-muted {
-              color: #6b7280;
-            }
-            .adaptive-icon-primary {
-              color: #2563eb;
-            }
-          }
-          
-          @media (prefers-color-scheme: dark) {
-            .adaptive-bg {
-              background: #000000;
-            }
-            .adaptive-card {
-              background: #1a1a1a;
-              color: #1E90FF;
-              border: 1px solid #333333;
-              box-shadow: 0 10px 15px -3px rgba(30, 144, 255, 0.1);
-            }
-            .adaptive-text {
-              color: #1E90FF;
-            }
-            .adaptive-text-secondary {
-              color: #87ceeb;
-            }
-            .adaptive-text-muted {
-              color: #5f9ea0;
-            }
-            .adaptive-input {
-              background: #1a1a1a;
-              border: 1px solid #333333;
-              color: #1E90FF;
-            }
-            .adaptive-input:focus {
-              border-color: #1E90FF;
-              box-shadow: 0 0 0 2px rgba(30, 144, 255, 0.2);
-            }
-            .adaptive-accent {
-              background: #2a2a2a;
-              border: 1px solid #333333;
-            }
-            .adaptive-button {
-              background: #1E90FF;
-            }
-            .adaptive-button:hover {
-              background: #4169E1;
-            }
-            .tab-active {
-              background: #1E90FF !important;
-              color: white !important;
-            }
-            .tab-inactive {
-              color: #87ceeb;
-            }
-            .tab-inactive:hover {
-              color: #1E90FF;
-              background: #2a2a2a;
-            }
-            .adaptive-border {
-              border-color: #333333;
-            }
-            .adaptive-icon-muted {
-              color: #5f9ea0;
-            }
-            .adaptive-icon-primary {
-              color: #1E90FF;
-            }
-          }
-          
-          .adaptive-transition {
-            transition: all 0.3s ease;
-          }
-        `}
-      </style>
-      
-      <div className="min-h-screen py-4 sm:py-8 adaptive-bg adaptive-transition">
+      <div className="min-h-screen py-6 sm:py-8 bg-gradient-to-br from-slate-50 to-sky-50 dark:from-gray-900 dark:to-gray-800 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-6 sm:mb-8">
-            <h1 className="text-2xl sm:text-3xl font-bold adaptive-text mb-2 flex items-center">
-              <SettingsIcon className="h-6 w-6 sm:h-8 sm:w-8 adaptive-icon-primary mr-2 sm:mr-3" />
-              {t('settings.title')}
-            </h1>
-            <p className="adaptive-text-secondary text-sm sm:text-base">{t('settings.subtitle')}</p>
+          {/* Header */}
+          <div className="mb-8 sm:mb-12">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 p-6 sm:p-8">
+              <h1 className="text-2xl sm:text-4xl font-bold text-gray-800 dark:text-white mb-3 flex items-center">
+                <SettingsIcon className="h-7 w-7 sm:h-10 sm:w-10 text-sky-600 dark:text-emerald-400 mr-3 sm:mr-4" />
+                {t('settings.title')}
+              </h1>
+              <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-lg">{t('settings.subtitle')}</p>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6 lg:gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 sm:gap-8">
             {/* Sidebar */}
             <div className="lg:col-span-1">
-              <div className="adaptive-card rounded-xl p-4 sm:p-6 sticky top-4 adaptive-transition">
-                <nav className="space-y-1 sm:space-y-2">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 p-4 sm:p-6 sticky top-4 transition-all duration-300">
+                <nav className="space-y-2 sm:space-y-3">
                   {tabs.map((tab) => (
                     <button
                       key={tab.key}
                       onClick={() => setActiveTab(tab.key as any)}
-                      className={`w-full flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 text-left rounded-lg transition-all duration-200 text-sm sm:text-base font-medium ${
+                      className={`w-full flex items-center space-x-3 sm:space-x-4 px-4 sm:px-5 py-3 sm:py-4 text-left rounded-xl transition-all duration-200 text-sm sm:text-base font-medium ${
                         activeTab === tab.key
-                          ? 'tab-active shadow-md transform scale-105'
-                          : 'tab-inactive'
+                          ? 'bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white shadow-lg transform scale-105'
+                          : 'text-gray-700 dark:text-gray-200 hover:bg-sky-50 dark:hover:bg-gray-700 hover:text-sky-700 dark:hover:text-emerald-300'
                       }`}
                     >
                       <tab.icon className="h-4 w-4 sm:h-5 sm:w-5 flex-shrink-0" />
@@ -569,38 +444,38 @@ export const Settings: React.FC = () => {
 
             {/* Content */}
             <div className="lg:col-span-3">
-              <div className="adaptive-card rounded-xl p-4 sm:p-6 adaptive-transition">
+              <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 p-6 sm:p-8 transition-all duration-300">
                 {activeTab === 'account' && (
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
+                    className="space-y-8"
                   >
-                    <h2 className="text-xl sm:text-2xl font-semibold adaptive-text border-b adaptive-border pb-4">
+                    <h2 className="text-xl sm:text-3xl font-bold text-gray-800 dark:text-white border-b border-slate-200 dark:border-gray-600 pb-4">
                       Account Settings
                     </h2>
                     
-                    <form onSubmit={handleAccountUpdate} className="space-y-6">
+                    <form onSubmit={handleAccountUpdate} className="space-y-8">
                       <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">
                           Email Address
                         </label>
                         <div className="relative">
-                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 adaptive-icon-muted" />
+                          <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                           <input
                             type="email"
                             value={accountForm.email}
                             onChange={(e) => setAccountForm({ ...accountForm, email: e.target.value })}
-                            className="pl-10 w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                            className="pl-12 w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                           />
                         </div>
                         {emailUpdated && (
-                          <p className="text-green-600 text-xs mt-1 inline-flex items-center gap-1">
-                            <CheckCircle className="h-3 w-3" /> Email updated
+                          <p className="text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm mt-2 inline-flex items-center gap-2">
+                            <CheckCircle className="h-4 w-4" /> Email updated
                           </p>
                         )}
                         {accountForm.email !== user.email && (
-                          <div className="mt-2 flex flex-col sm:flex-row gap-2">
+                          <div className="mt-4 flex flex-col sm:flex-row gap-3">
                             {!emailOtpSent ? (
                               <button
                                 type="button"
@@ -614,7 +489,6 @@ export const Settings: React.FC = () => {
                                     setOtpError(null);
                                   } catch (err) {
                                     const msg = (err as Error)?.message || '';
-                                    // Fallback: if endpoint not found, update email directly
                                     if (/endpoint not found/i.test(msg)) {
                                       try {
                                         await updateUser({ email: accountForm.email });
@@ -634,13 +508,13 @@ export const Settings: React.FC = () => {
                                     }
                                   }
                                 }}
-                                className="px-4 py-2 adaptive-button text-white rounded-lg disabled:opacity-60"
+                                className="px-6 py-3 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl disabled:opacity-60 font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-lg"
                                 disabled={resendCooldown > 0 || verifyingOtp}
                               >
                                 {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Send OTP'}
                               </button>
                             ) : (
-                              <div className="w-full flex flex-col sm:flex-row gap-2">
+                              <div className="w-full flex flex-col sm:flex-row gap-3">
                                 <input
                                   type="text"
                                   value={emailOtp}
@@ -649,7 +523,7 @@ export const Settings: React.FC = () => {
                                     if (otpError) setOtpError(null);
                                   }}
                                   placeholder="Enter OTP"
-                                  className="w-full sm:w-48 px-3 py-2 adaptive-input rounded-lg"
+                                  className="w-full sm:w-48 px-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                 />
                                 <button
                                   type="button"
@@ -678,7 +552,7 @@ export const Settings: React.FC = () => {
                                       }
                                     }
                                   }}
-                                  className="px-4 py-2 adaptive-button text-white rounded-lg inline-flex items-center gap-2 disabled:opacity-60"
+                                  className="px-6 py-3 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl inline-flex items-center gap-2 disabled:opacity-60 font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-lg"
                                   disabled={verifyingOtp || !emailOtp}
                                 >
                                   {verifyingOtp ? (
@@ -691,16 +565,16 @@ export const Settings: React.FC = () => {
                                   )}
                                 </button>
                                 {otpVerified && (
-                                  <span className="inline-flex items-center gap-1 text-green-600 text-xs mt-1 sm:mt-0">
+                                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm mt-1 sm:mt-0">
                                     <CheckCircle className="h-4 w-4" /> Verified
                                   </span>
                                 )}
                                 {otpError && (
                                   <div className="flex items-center gap-2 mt-1 sm:mt-0 sm:ml-2">
-                                    <p className="text-rose-600 text-xs">{otpError}</p>
+                                    <p className="text-rose-600 dark:text-rose-400 text-xs sm:text-sm">{otpError}</p>
                                     <button
                                       type="button"
-                                      className="text-xs text-rose-600 hover:text-rose-700 underline"
+                                      className="text-xs sm:text-sm text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 underline"
                                       onClick={() => setOtpError(null)}
                                     >
                                       Clear
@@ -710,27 +584,28 @@ export const Settings: React.FC = () => {
                               </div>
                             )}
                             {emailOtpSent && pendingEmail && (
-                              <p className="text-xs text-slate-600 dark:text-gray-300 mt-1">Code sent to <span className="font-medium">{pendingEmail}</span></p>
+                              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-2">Code sent to <span className="font-medium">{pendingEmail}</span></p>
                             )}
-                            <p className="text-xs adaptive-text-muted">We will send a one-time code to the new email to confirm this change.</p>
+                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">We will send a one-time code to the new email to confirm this change.</p>
                           </div>
                         )}
                       </div>
+
                       {/* Avatar management */}
-                      <div className="mt-6">
-                        <label className="block text-sm font-medium adaptive-text mb-2">
+                      <div className="mt-8">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-4">
                           Profile Avatar
                         </label>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-6">
                           {user?.avatarUrl ? (
-                            <img src={user.avatarUrl} alt="Avatar" className="w-16 h-16 rounded-full border adaptive-border object-cover" />
+                            <img src={user.avatarUrl} alt="Avatar" className="w-20 h-20 rounded-full border-2 border-sky-200 dark:border-emerald-200 object-cover shadow-lg" />
                           ) : (
-                            <div className="w-16 h-16 rounded-full border border-dashed adaptive-border flex items-center justify-center adaptive-text-secondary text-xs">
+                            <div className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs sm:text-sm">
                               No Avatar
                             </div>
                           )}
                           <div className="flex flex-col sm:flex-row gap-3">
-                            <label className="inline-flex items-center px-4 py-2 adaptive-button text-white rounded-lg hover:adaptive-button cursor-pointer text-sm adaptive-transition">
+                            <label className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl hover:shadow-lg cursor-pointer font-medium text-sm sm:text-base transition-all duration-200">
                               <input
                                 type="file"
                                 accept="image/*"
@@ -771,7 +646,7 @@ export const Settings: React.FC = () => {
                                     setAvatarRemoving(false);
                                   }
                                 }}
-                                className="px-4 py-2 bg-rose-600 text-white rounded-lg hover:bg-rose-700 text-sm disabled:opacity-50 adaptive-transition"
+                                className="px-6 py-3 bg-rose-500 hover:bg-rose-600 text-white rounded-xl font-medium text-sm sm:text-base disabled:opacity-50 transition-all duration-200 hover:shadow-lg"
                               >
                                 {avatarRemoving ? 'Removing…' : 'Remove'}
                               </button>
@@ -780,127 +655,126 @@ export const Settings: React.FC = () => {
                         </div>
                       </div>
 
-                      {/* Currency selection removed: App locked to INR */}
-                      <p className="text-xs adaptive-text-muted mt-1">Affects how amounts are displayed in the UI.</p>
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2">Affects how amounts are displayed in the UI.</p>
 
                       {/* Bank Details for Winnings */}
-                      <div className="mt-6 border-t adaptive-border pt-6">
-                        <h3 className="text-lg font-medium adaptive-text mb-2">Bank Details (for Winnings)</h3>
-                        <p className="text-xs adaptive-text-muted mb-4">We will pay your contest winnings to these details.</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="mt-8 border-t border-slate-200 dark:border-gray-600 pt-8">
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-3">Bank Details (for Winnings)</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-6">We will pay your contest winnings to these details.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                           <div>
-                            <label className="block text-sm font-medium adaptive-text mb-2">Account Holder Name</label>
+                            <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Account Holder Name</label>
                             <input
                               type="text"
                               value={bankForm.bankAccountName}
                               onChange={(e) => setBankForm({ ...bankForm, bankAccountName: e.target.value })}
-                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                               placeholder="e.g., Rahul Sharma"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium adaptive-text mb-2">IFSC Code</label>
+                            <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">IFSC Code</label>
                             <input
                               type="text"
                               value={bankForm.ifsc}
                               onChange={(e) => setBankForm({ ...bankForm, ifsc: e.target.value })}
-                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                               placeholder="e.g., HDFC0001234"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium adaptive-text mb-2">Bank Name (optional)</label>
+                            <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Bank Name (optional)</label>
                             <input
                               type="text"
                               value={bankForm.bankName}
                               onChange={(e) => setBankForm({ ...bankForm, bankName: e.target.value })}
-                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                               placeholder="e.g., HDFC Bank"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium adaptive-text mb-2">UPI ID (optional)</label>
+                            <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">UPI ID (optional)</label>
                             <input
                               type="text"
                               value={bankForm.upiId}
                               onChange={(e) => setBankForm({ ...bankForm, upiId: e.target.value })}
-                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                               placeholder="e.g., rahul@okhdfcbank"
                             />
                           </div>
                           <div className="sm:col-span-2">
-                            <label className="block text-sm font-medium adaptive-text mb-2">Bank Account Number (optional if UPI provided)</label>
+                            <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Bank Account Number (optional if UPI provided)</label>
                             <input
                               type="password"
                               value={bankForm.bankAccountNumber}
                               onChange={(e) => setBankForm({ ...bankForm, bankAccountNumber: e.target.value })}
-                              className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                              className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                               placeholder="Enter or update account number"
                             />
-                            <p className="text-[11px] adaptive-text-muted mt-1">We don't display saved numbers. Enter again to update.</p>
+                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2">We don't display saved numbers. Enter again to update.</p>
                           </div>
                         </div>
-                        <div className="mt-4 flex items-center gap-3">
+                        <div className="mt-6 flex items-center gap-4">
                           <button
                             type="button"
                             onClick={saveBankDetails}
                             disabled={savingBank}
-                            className="px-4 py-2 adaptive-button text-white rounded-lg disabled:opacity-60"
+                            className="px-6 py-3 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl disabled:opacity-60 font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-lg"
                           >
                             {savingBank ? 'Saving…' : 'Save Bank Details'}
                           </button>
                           {bankVerified && (
-                            <span className="text-xs text-emerald-600">Verified</span>
+                            <span className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 font-medium">Verified</span>
                           )}
                           {bankLastUpdated && (
-                            <span className="text-xs adaptive-text-muted">Last updated: {new Date(bankLastUpdated).toLocaleString()}</span>
+                            <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Last updated: {new Date(bankLastUpdated).toLocaleString()}</span>
                           )}
                         </div>
                       </div>
 
-                      <div className="border-t adaptive-border pt-6">
-                        <h3 className="text-lg font-medium adaptive-text mb-4">Change Password</h3>
+                      <div className="border-t border-slate-200 dark:border-gray-600 pt-8">
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-6">Change Password</h3>
                         
-                        <div className="space-y-4">
+                        <div className="space-y-6">
                           <div>
-                            <label className="block text-sm font-medium adaptive-text mb-2">
+                            <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">
                               Current Password
                             </label>
                             <div className="relative">
-                              <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 adaptive-icon-muted" />
+                              <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400 dark:text-gray-500" />
                               <input
                                 type="password"
                                 value={accountForm.currentPassword}
                                 onChange={(e) => setAccountForm({ ...accountForm, currentPassword: e.target.value })}
-                                className="pl-10 w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                                className="pl-12 w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                 placeholder="Enter current password"
                               />
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                             <div>
-                              <label className="block text-sm font-medium adaptive-text mb-2">
+                              <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">
                                 New Password
                               </label>
                               <input
                                 type="password"
                                 value={accountForm.newPassword}
                                 onChange={(e) => setAccountForm({ ...accountForm, newPassword: e.target.value })}
-                                className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                                className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                 placeholder="Enter new password"
                               />
                             </div>
 
                             <div>
-                              <label className="block text-sm font-medium adaptive-text mb-2">
+                              <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">
                                 Confirm New Password
                               </label>
                               <input
                                 type="password"
                                 value={accountForm.confirmPassword}
                                 onChange={(e) => setAccountForm({ ...accountForm, confirmPassword: e.target.value })}
-                                className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                                className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                                 placeholder="Confirm new password"
                               />
                             </div>
@@ -911,35 +785,35 @@ export const Settings: React.FC = () => {
                       <button
                         type="submit"
                         disabled={isLoading}
-                        className="flex items-center justify-center space-x-2 w-full sm:w-auto px-6 py-3 adaptive-button text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-md adaptive-transition"
+                        className="flex items-center justify-center space-x-3 w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-xl"
                       >
-                        <Save className="h-4 w-4" />
+                        <Save className="h-5 w-5" />
                         <span>{isLoading ? 'Saving...' : 'Save Changes'}</span>
                       </button>
                     </form>
 
                     {/* Danger Zone */}
-                    <div className="mt-8 border-t adaptive-border pt-6">
-                      <h3 className="text-lg font-semibold text-rose-600 flex items-center gap-2">
-                        <ShieldAlert className="h-5 w-5" /> Danger Zone
+                    <div className="mt-12 border-t border-slate-200 dark:border-gray-600 pt-8">
+                      <h3 className="text-lg sm:text-xl font-bold text-rose-600 dark:text-rose-400 flex items-center gap-3">
+                        <ShieldAlert className="h-6 w-6" /> Danger Zone
                       </h3>
-                      <div className="mt-4 p-4 rounded-lg border adaptive-border bg-red-50/50">
-                        <h4 className="text-sm font-medium text-rose-700 mb-2">Delete My Account</h4>
-                        <p className="text-xs text-rose-700 mb-3">This will permanently delete your AlgoBucks account and all associated data. This action cannot be undone.</p>
-                        <label className="block text-xs font-medium text-rose-700 mb-1">Type "delete AlgoBucks account" to confirm:</label>
+                      <div className="mt-6 p-6 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-900/20">
+                        <h4 className="text-sm sm:text-base font-bold text-rose-700 dark:text-rose-300 mb-3">Delete My Account</h4>
+                        <p className="text-xs sm:text-sm text-rose-700 dark:text-rose-300 mb-4">This will permanently delete your AlgoBucks account and all associated data. This action cannot be undone.</p>
+                        <label className="block text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-300 mb-2">Type "delete AlgoBucks account" to confirm:</label>
                         <input
                           type="text"
                           value={deleteText}
                           onChange={(e) => setDeleteText(e.target.value)}
-                          className="w-full sm:w-96 px-3 py-2 rounded-lg border adaptive-border"
+                          className="w-full sm:w-96 px-4 py-3 rounded-xl border border-rose-300 dark:border-rose-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                           placeholder="delete AlgoBucks account"
                         />
-                        <div className="mt-3">
+                        <div className="mt-4">
                           <button
                             type="button"
                             onClick={onDeleteAccount}
                             disabled={deleting || deleteText.trim().toLowerCase() !== 'delete algobucks account'}
-                            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-rose-600 text-white hover:bg-rose-700 disabled:opacity-50"
+                            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 font-medium text-sm sm:text-base transition-all duration-200"
                           >
                             <Trash2 className="h-4 w-4" /> {deleting ? 'Deleting…' : 'Delete Account'}
                           </button>
@@ -953,20 +827,20 @@ export const Settings: React.FC = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
+                    className="space-y-8"
                   >
-                    <h2 className="text-xl sm:text-2xl font-semibold adaptive-text border-b adaptive-border pb-4">
+                    <h2 className="text-xl sm:text-3xl font-bold text-gray-800 dark:text-white border-b border-slate-200 dark:border-gray-600 pb-4">
                       Notification Settings
                     </h2>
                     
-                    <div className="space-y-4">
+                    <div className="space-y-6">
                       {(['emailNotifications','contestReminders','submissionResults','weeklyDigest','marketingEmails'] as const).map((key) => (
-                        <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 adaptive-accent rounded-lg space-y-3 sm:space-y-0 adaptive-transition">
+                        <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-slate-50 dark:bg-gray-700 rounded-xl space-y-4 sm:space-y-0 transition-all duration-200 hover:bg-slate-100 dark:hover:bg-gray-600">
                           <div className="flex-1">
-                            <h3 className="adaptive-text font-medium capitalize text-sm sm:text-base">
+                            <h3 className="text-gray-800 dark:text-white font-semibold capitalize text-sm sm:text-base">
                               {key.replace(/([A-Z])/g, ' $1').trim()}
                             </h3>
-                            <p className="adaptive-text-secondary text-xs sm:text-sm">
+                            <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm mt-1">
                               {key === 'emailNotifications' && 'Receive email notifications for important updates'}
                               {key === 'contestReminders' && 'Get reminded about upcoming contests'}
                               {key === 'submissionResults' && 'Notifications when your submissions are judged'}
@@ -981,18 +855,18 @@ export const Settings: React.FC = () => {
                               onChange={(e) => setNotifications({ ...notifications, [key]: e.target.checked })}
                               className="sr-only peer"
                             />
-                            <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                            <div className="w-14 h-7 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300 dark:peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-sky-600 dark:peer-checked:bg-emerald-600"></div>
                           </label>
                         </div>
                       ))}
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div>
-                          <label className="block text-sm font-medium adaptive-text mb-2">Notification Frequency</label>
+                          <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Notification Frequency</label>
                           <select
                             value={notifications.frequency}
                             onChange={(e) => setNotifications({ ...notifications, frequency: e.target.value })}
-                            className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                            className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base"
                           >
                             <option value="immediate">Immediate</option>
                             <option value="daily">Daily</option>
@@ -1001,14 +875,14 @@ export const Settings: React.FC = () => {
                           </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium adaptive-text mb-2">Digest Time (HH:MM)</label>
+                          <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Digest Time (HH:MM)</label>
                           <input
                             type="time"
                             value={notifications.digestTime}
                             onChange={(e) => setNotifications({ ...notifications, digestTime: e.target.value })}
-                            className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                            className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base"
                           />
-                          <p className="text-xs adaptive-text-muted mt-1">Applied in your timezone: {preferences.timezone}</p>
+                          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2">Applied in your timezone: {preferences.timezone}</p>
                         </div>
                       </div>
                     </div>
@@ -1016,9 +890,9 @@ export const Settings: React.FC = () => {
                     <button
                       onClick={handleNotificationUpdate}
                       disabled={savingNotifications}
-                      className="flex items-center justify-center space-x-2 w-full sm:w-auto px-6 py-3 adaptive-button text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md adaptive-transition"
+                      className="flex items-center justify-center space-x-3 w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:ring-offset-2 shadow-lg font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-xl"
                     >
-                      <Save className="h-4 w-4" />
+                      <Save className="h-5 w-5" />
                       <span>{savingNotifications ? 'Saving…' : 'Save Notification Settings'}</span>
                     </button>
                   </motion.div>
@@ -1028,24 +902,24 @@ export const Settings: React.FC = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
+                    className="space-y-8"
                   >
-                    <h2 className="text-xl sm:text-2xl font-semibold adaptive-text border-b adaptive-border pb-4">
+                    <h2 className="text-xl sm:text-3xl font-bold text-gray-800 dark:text-white border-b border-slate-200 dark:border-gray-600 pb-4">
                       Privacy Settings
                     </h2>
                     
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                       <div>
-                        <label className="flex items-center gap-2 text-sm font-medium adaptive-text mb-2">
+                        <label className="flex items-center gap-3 text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">
                           <span>Profile Visibility</span>
                           <span title="Control who can view your profile: Public (anyone), Registered users only, or Private (only you).">
-                            <Info className="w-4 h-4 adaptive-icon-muted" />
+                            <Info className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400 dark:text-gray-500" />
                           </span>
                         </label>
                         <select
                           value={privacy.profileVisibility}
                           onChange={(e) => setPrivacy({ ...privacy, profileVisibility: e.target.value as 'public' | 'registered' | 'private' })}
-                          className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                          className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base"
                         >
                           <option value="public">Public - Anyone can view</option>
                           <option value="registered">Registered Users Only</option>
@@ -1053,14 +927,14 @@ export const Settings: React.FC = () => {
                         </select>
                       </div>
 
-                      <div className="space-y-4">
-                        <h3 className="text-lg font-medium adaptive-text">Profile Information</h3>
+                      <div className="space-y-6">
+                        <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white">Profile Information</h3>
                         
                         {Object.entries(privacy).slice(1).map(([key, value]) => (
-                          <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 adaptive-accent rounded-lg space-y-3 sm:space-y-0 adaptive-transition">
+                          <div key={key} className="flex flex-col sm:flex-row sm:items-center justify-between p-6 bg-slate-50 dark:bg-gray-700 rounded-xl space-y-4 sm:space-y-0 transition-all duration-200 hover:bg-slate-100 dark:hover:bg-gray-600">
                             <div className="flex-1">
-                              <div className="flex items-center gap-2">
-                                <h4 className="adaptive-text font-medium capitalize text-sm sm:text-base">
+                              <div className="flex items-center gap-3">
+                                <h4 className="text-gray-800 dark:text-white font-semibold capitalize text-sm sm:text-base">
                                   {key.replace(/([A-Z])/g, ' $1').trim()}
                                 </h4>
                                 <span
@@ -1078,10 +952,10 @@ export const Settings: React.FC = () => {
                                       : ''
                                   }
                                 >
-                                  <Info className="w-4 h-4 adaptive-icon-muted" />
+                                  <Info className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                                 </span>
                               </div>
-                              <p className="adaptive-text-secondary text-xs sm:text-sm">
+                              <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm mt-1">
                                 {key === 'showEmail' && 'Display email address on profile'}
                                 {key === 'showSolvedProblems' && 'Show solved problems count'}
                                 {key === 'showContestHistory' && 'Display contest participation history'}
@@ -1096,7 +970,7 @@ export const Settings: React.FC = () => {
                                 onChange={(e) => setPrivacy({ ...privacy, [key]: e.target.checked })}
                                 className="sr-only peer"
                               />
-                              <div className="w-11 h-6 bg-gray-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                              <div className="w-14 h-7 bg-gray-300 dark:bg-gray-600 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-sky-300 dark:peer-focus:ring-emerald-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-sky-600 dark:peer-checked:bg-emerald-600"></div>
                             </label>
                           </div>
                         ))}
@@ -1106,9 +980,9 @@ export const Settings: React.FC = () => {
                     <button
                       onClick={handlePrivacyUpdate}
                       disabled={savingPrivacy}
-                      className="flex items-center justify-center space-x-2 w-full sm:w-auto px-6 py-3 adaptive-button text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md adaptive-transition"
+                      className="flex items-center justify-center space-x-3 w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:ring-offset-2 shadow-lg font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-xl"
                     >
-                      <Save className="h-4 w-4" />
+                      <Save className="h-5 w-5" />
                       <span>{savingPrivacy ? 'Saving…' : 'Save Privacy Settings'}</span>
                     </button>
                   </motion.div>
@@ -1118,15 +992,15 @@ export const Settings: React.FC = () => {
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="space-y-6"
+                    className="space-y-8"
                   >
-                    <h2 className="text-xl sm:text-2xl font-semibold adaptive-text border-b adaptive-border pb-4">
+                    <h2 className="text-xl sm:text-3xl font-bold text-gray-800 dark:text-white border-b border-slate-200 dark:border-gray-600 pb-4">
                       Preferences
                     </h2>
                     
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-8">
                       <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">
                           Theme
                         </label>
                         <select
@@ -1134,11 +1008,10 @@ export const Settings: React.FC = () => {
                           onChange={(e) => {
                             const next = e.target.value as 'light' | 'dark' | 'auto';
                             setPreferences({ ...preferences, theme: next });
-                            // Apply UI theme immediately for instant preview
                             const uiTheme = next === 'auto' ? 'system' : next;
                             try { setUiTheme(uiTheme as any); } catch {}
                           }}
-                          className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                          className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base"
                         >
                           <option value="light">Light Theme</option>
                           <option value="dark">Dark Theme</option>
@@ -1147,13 +1020,13 @@ export const Settings: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">
                           Default Code Language
                         </label>
                         <select
                           value={preferences.defaultCodeLanguage}
                           onChange={(e) => setPreferences({ ...preferences, defaultCodeLanguage: e.target.value })}
-                          className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                          className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base"
                         >
                           <option value="javascript">JavaScript</option>
                           <option value="python">Python</option>
@@ -1163,11 +1036,11 @@ export const Settings: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">Editor Font Size</label>
-                        <div className="flex items-center gap-2">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Editor Font Size</label>
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
-                            className="px-3 py-2 rounded-lg adaptive-accent hover:opacity-90"
+                            className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-gray-600 hover:bg-slate-200 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 transition-all duration-200"
                             disabled={(editorPrefs.fontSize ?? 14) <= 10}
                             onClick={() =>
                               setEditorPrefs((p) => ({ ...p, fontSize: Math.max(10, (p.fontSize ?? 14) - 1) }))
@@ -1181,11 +1054,11 @@ export const Settings: React.FC = () => {
                             max={24}
                             value={editorPrefs.fontSize}
                             onChange={(e) => setEditorPrefs({ ...editorPrefs, fontSize: Number(e.target.value) })}
-                            className="w-24 px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition text-center"
+                            className="w-24 px-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-center text-gray-900 dark:text-white text-sm sm:text-base"
                           />
                           <button
                             type="button"
-                            className="px-3 py-2 rounded-lg adaptive-accent hover:opacity-90"
+                            className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-gray-600 hover:bg-slate-200 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 transition-all duration-200"
                             disabled={(editorPrefs.fontSize ?? 14) >= 24}
                             onClick={() =>
                               setEditorPrefs((p) => ({ ...p, fontSize: Math.min(24, (p.fontSize ?? 14) + 1) }))
@@ -1195,12 +1068,13 @@ export const Settings: React.FC = () => {
                           </button>
                         </div>
                       </div>
+
                       <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">Editor Tab Size</label>
-                        <div className="flex items-center gap-2">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Editor Tab Size</label>
+                        <div className="flex items-center gap-3">
                           <button
                             type="button"
-                            className="px-3 py-2 rounded-lg adaptive-accent hover:opacity-90"
+                            className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-gray-600 hover:bg-slate-200 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 transition-all duration-200"
                             disabled={[2,4,8].indexOf(editorPrefs.tabSize) <= 0}
                             onClick={() => {
                               const steps = [2, 4, 8];
@@ -1217,11 +1091,11 @@ export const Settings: React.FC = () => {
                             step={1}
                             value={editorPrefs.tabSize}
                             onChange={(e) => setEditorPrefs({ ...editorPrefs, tabSize: Math.min(8, Math.max(1, Number(e.target.value))) })}
-                            className="w-24 px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition text-center"
+                            className="w-24 px-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-center text-gray-900 dark:text-white text-sm sm:text-base"
                           />
                           <button
                             type="button"
-                            className="px-3 py-2 rounded-lg adaptive-accent hover:opacity-90"
+                            className="px-4 py-3 rounded-xl bg-slate-100 dark:bg-gray-600 hover:bg-slate-200 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 transition-all duration-200"
                             disabled={[2,4,8].indexOf(editorPrefs.tabSize) >= 2}
                             onClick={() => {
                               const steps = [2, 4, 8];
@@ -1233,12 +1107,13 @@ export const Settings: React.FC = () => {
                           </button>
                         </div>
                       </div>
+
                       <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">Editor Theme</label>
+                        <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Editor Theme</label>
                         <select
                           value={editorPrefs.theme}
                           onChange={(e) => setEditorPrefs({ ...editorPrefs, theme: e.target.value as any })}
-                          className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                          className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base"
                         >
                           <option value="light">Light</option>
                           <option value="vs-dark">Dark</option>
@@ -1246,18 +1121,16 @@ export const Settings: React.FC = () => {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">
                           Language
                         </label>
                         <select
                           value={preferences.language}
                           onChange={(e) => {
                             const next = e.target.value as any;
-                            // Only update the selected language in local state so the displayed name updates.
-                            // Do NOT apply app-wide language or persist yet; that will happen on Save Preferences.
                             setPreferences({ ...preferences, language: next });
                           }}
-                          className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                          className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base"
                         >
                           {languageOptions.map((opt) => (
                             <option key={opt.code} value={opt.code}>
@@ -1267,16 +1140,14 @@ export const Settings: React.FC = () => {
                         </select>
                       </div>
 
-                      {/* Timezone */}
-                      <div>
-                        <label className="block text-sm font-medium adaptive-text mb-2">Timezone</label>
-                        <div className="flex flex-col sm:flex-row gap-2">
+                      <div className="sm:col-span-2">
+                        <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Timezone</label>
+                        <div className="flex flex-col sm:flex-row gap-3">
                           <select
                             value={preferences.timezone}
                             onChange={(e) => setPreferences({ ...preferences, timezone: e.target.value })}
-                            className="w-full px-3 py-3 adaptive-input rounded-lg focus:outline-none adaptive-transition"
+                            className="flex-1 px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base"
                           >
-                            {/* Ensure current value is present */}
                             {!timezoneOptions.includes(preferences.timezone) && (
                               <option value={preferences.timezone}>{preferences.timezone}</option>
                             )}
@@ -1288,7 +1159,7 @@ export const Settings: React.FC = () => {
                           </select>
                           <button
                             type="button"
-                            className="px-4 py-3 adaptive-accent rounded-lg"
+                            className="px-6 py-4 bg-slate-100 dark:bg-gray-600 hover:bg-slate-200 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 rounded-xl transition-all duration-200 font-medium text-sm sm:text-base"
                             title="Detect from your system"
                             onClick={() => {
                               try {
@@ -1300,16 +1171,16 @@ export const Settings: React.FC = () => {
                             Detect
                           </button>
                         </div>
-                        <p className="text-xs adaptive-text-muted mt-1">Used for digests and date displays.</p>
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2">Used for digests and date displays.</p>
                       </div>
                     </div>
 
                     <button
                       onClick={handlePreferenceUpdate}
                       disabled={savingPrefs}
-                      className="flex items-center justify-center space-x-2 w-full sm:w-auto px-6 py-3 adaptive-button text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 shadow-md adaptive-transition"
+                      className="flex items-center justify-center space-x-3 w-full sm:w-auto px-8 py-4 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:ring-offset-2 shadow-lg font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-xl"
                     >
-                      <Save className="h-4 w-4" />
+                      <Save className="h-5 w-5" />
                       <span>{savingPrefs ? 'Saving…' : 'Save Preferences'}</span>
                     </button>
                   </motion.div>
@@ -1321,5 +1192,4 @@ export const Settings: React.FC = () => {
       </div>
     </>
   );
-};
-
+}

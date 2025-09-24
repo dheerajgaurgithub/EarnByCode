@@ -129,130 +129,164 @@ export const Submissions: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 py-4 sm:py-8">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-sky-50 dark:from-gray-900 dark:to-gray-800 py-6 sm:py-8 transition-all duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-800 mb-2 flex items-center">
-            <Code className="h-6 w-6 sm:h-8 sm:w-8 text-blue-600 mr-2 sm:mr-3" />
-            {t('subs.title')}
-          </h1>
-          <p className="text-gray-600 text-sm sm:text-base">
-            {t('subs.subtitle')}
-          </p>
+        {/* Header */}
+        <div className="mb-8 sm:mb-12">
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 p-6 sm:p-8">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-800 dark:text-white mb-3 flex items-center">
+              <Code className="h-7 w-7 sm:h-8 sm:w-8 lg:h-10 lg:w-10 text-sky-600 dark:text-emerald-400 mr-3 sm:mr-4" />
+              {t('subs.title')}
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300 text-sm sm:text-base lg:text-lg">
+              {t('subs.subtitle')}
+            </p>
+          </div>
         </div>
 
         {/* Filter + Sorting + Pagination */}
-        <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-4 lg:space-y-0 lg:space-x-4 mb-6">
-          <div className="relative w-full sm:w-auto">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-10 pr-8 py-2 w-full sm:w-auto bg-white border border-blue-200 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm appearance-none"
-            >
-              <option value="all">{t('subs.filter.all')}</option>
-              <option value="accepted">{t('subs.filter.accepted')}</option>
-              <option value="wrong_answer">{t('subs.filter.wrong_answer')}</option>
-              <option value="time_limit_exceeded">{t('subs.filter.tle')}</option>
-              <option value="runtime_error">{t('subs.filter.runtime_error')}</option>
-              <option value="compilation_error">{t('subs.filter.compilation_error')}</option>
-            </select>
-          </div>
-          <div className="flex items-center space-x-2">
-            <label className="text-sm text-gray-600">{t('subs.sort.label')}</label>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value)}
-              className="py-2 px-2 bg-white border border-blue-200 rounded-lg text-sm"
-            >
-              <option value="date_desc">{t('subs.sort.date_desc')}</option>
-              <option value="date_asc">{t('subs.sort.date_asc')}</option>
-              <option value="status_asc">{t('subs.sort.status_asc')}</option>
-              <option value="status_desc">{t('subs.sort.status_desc')}</option>
-              <option value="lang_asc">{t('subs.sort.lang_asc')}</option>
-              <option value="lang_desc">{t('subs.sort.lang_desc')}</option>
-            </select>
-          </div>
-          <div className="flex items-center space-x-2">
-            <button
-              className="px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm disabled:opacity-50"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1 || loading}
-            >
-              {t('subs.pagination.prev')}
-            </button>
-            <div className="text-sm text-gray-700">{t('subs.pagination.page_of').replace('{p}', String(page)).replace('{t}', String(totalPages))}</div>
-            <button
-              className="px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm disabled:opacity-50"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages || loading}
-            >
-              {t('subs.pagination.next')}
-            </button>
-            <select
-              value={limit}
-              onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value, 10)); }}
-              className="ml-2 py-2 px-2 bg-white border border-blue-200 rounded-lg text-sm"
-            >
-              <option value={10}>{t('subs.pagination.per_page').replace('{n}', '10')}</option>
-              <option value={20}>{t('subs.pagination.per_page').replace('{n}', '20')}</option>
-              <option value={50}>{t('subs.pagination.per_page').replace('{n}', '50')}</option>
-            </select>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-slate-200 dark:border-gray-700 p-6 mb-8 transition-all duration-300">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center gap-6">
+            {/* Status Filter */}
+            <div className="relative w-full sm:w-auto min-w-[200px]">
+              <Filter className="absolute left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400 dark:text-gray-500" />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="pl-12 pr-4 py-3 w-full bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent shadow-sm appearance-none text-sm sm:text-base transition-all duration-200"
+              >
+                <option value="all">{t('subs.filter.all')}</option>
+                <option value="accepted">{t('subs.filter.accepted')}</option>
+                <option value="wrong_answer">{t('subs.filter.wrong_answer')}</option>
+                <option value="time_limit_exceeded">{t('subs.filter.tle')}</option>
+                <option value="runtime_error">{t('subs.filter.runtime_error')}</option>
+                <option value="compilation_error">{t('subs.filter.compilation_error')}</option>
+              </select>
+            </div>
+
+            {/* Sort Options */}
+            <div className="flex items-center gap-3">
+              <label className="text-sm sm:text-base font-medium text-gray-700 dark:text-gray-200">{t('subs.sort.label')}</label>
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="py-3 px-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-sm sm:text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 transition-all duration-200"
+              >
+                <option value="date_desc">{t('subs.sort.date_desc')}</option>
+                <option value="date_asc">{t('subs.sort.date_asc')}</option>
+                <option value="status_asc">{t('subs.sort.status_asc')}</option>
+                <option value="status_desc">{t('subs.sort.status_desc')}</option>
+                <option value="lang_asc">{t('subs.sort.lang_asc')}</option>
+                <option value="lang_desc">{t('subs.sort.lang_desc')}</option>
+              </select>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="flex flex-wrap items-center gap-3 ml-auto">
+              <button
+                className="px-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-sm sm:text-base font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50 hover:bg-slate-100 dark:hover:bg-gray-600 transition-all duration-200"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1 || loading}
+              >
+                {t('subs.pagination.prev')}
+              </button>
+              <div className="text-sm sm:text-base text-gray-600 dark:text-gray-300 px-3">
+                {t('subs.pagination.page_of').replace('{p}', String(page)).replace('{t}', String(totalPages))}
+              </div>
+              <button
+                className="px-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-sm sm:text-base font-medium text-gray-700 dark:text-gray-200 disabled:opacity-50 hover:bg-slate-100 dark:hover:bg-gray-600 transition-all duration-200"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages || loading}
+              >
+                {t('subs.pagination.next')}
+              </button>
+              <select
+                value={limit}
+                onChange={(e) => { setPage(1); setLimit(parseInt(e.target.value, 10)); }}
+                className="py-3 px-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-sm sm:text-base text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 transition-all duration-200"
+              >
+                <option value={10}>{t('subs.pagination.per_page').replace('{n}', '10')}</option>
+                <option value={20}>{t('subs.pagination.per_page').replace('{n}', '20')}</option>
+                <option value={50}>{t('subs.pagination.per_page').replace('{n}', '50')}</option>
+              </select>
+            </div>
           </div>
         </div>
 
         {/* Submissions List */}
-        <div className="bg-white rounded-xl shadow-lg border border-blue-100 overflow-hidden">
-          <div className="px-4 sm:px-6 py-4 border-b border-blue-100 bg-blue-50 flex items-center justify-between">
-            <h2 className="text-lg sm:text-xl font-semibold text-gray-800">{t('subs.list.title')}</h2>
-            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">{t('subs.list.total').replace('{n}', String(total))}</span>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-xl border border-slate-200 dark:border-gray-700 overflow-hidden transition-all duration-300">
+          {/* Header */}
+          <div className="px-6 sm:px-8 py-6 border-b border-slate-200 dark:border-gray-600 bg-gradient-to-r from-sky-50 to-sky-100 dark:from-gray-700 dark:to-gray-600 flex items-center justify-between">
+            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 dark:text-white">{t('subs.list.title')}</h2>
+            <span className="inline-flex items-center px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-sky-100 dark:bg-emerald-100 text-sky-700 dark:text-emerald-700 border border-sky-200 dark:border-emerald-200">
+              {t('subs.list.total').replace('{n}', String(total))}
+            </span>
           </div>
 
-          <div className="divide-y divide-blue-100">
+          {/* Submissions */}
+          <div className="divide-y divide-slate-100 dark:divide-gray-700">
             {submissions.map((submission, index) => (
               <motion.div
                 key={submission._id}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
-                className="p-4 sm:p-6 hover:bg-blue-50/50 transition-colors cursor-pointer"
+                className="p-6 sm:p-8 hover:bg-slate-50 dark:hover:bg-gray-700 transition-all duration-200 cursor-pointer group"
                 onClick={() => setSelectedSubmission(submission)}
               >
-                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
-                  <div className="flex flex-col sm:flex-row sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
-                    <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-lg border ${getStatusColor(submission.status)} w-fit`}>
+                <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-6">
+                    {/* Status Badge */}
+                    <div className={`inline-flex items-center gap-3 px-4 py-2 rounded-xl border font-semibold text-sm sm:text-base w-fit ${getStatusColor(submission.status)}`}>
                       {getStatusIcon(submission.status)}
-                      <span className="font-medium text-xs sm:text-sm">{submission.status}</span>
+                      <span>{submission.status}</span>
                     </div>
                     
-                    <div className="flex-1">
+                    {/* Problem Info */}
+                    <div className="flex-1 space-y-3">
                       <Link
                         to={`/problems/${(submission.problem?._id) || submission.problem}`}
-                        className="text-gray-800 font-medium hover:text-blue-600 transition-colors text-sm sm:text-base"
+                        className="text-gray-800 dark:text-gray-200 font-semibold hover:text-sky-700 dark:hover:text-emerald-300 transition-colors text-base sm:text-lg block group-hover:text-sky-600 dark:group-hover:text-emerald-400"
                       >
                         {submission.problem?.title || `#${(submission.problem?._id) || submission.problem}`}
                       </Link>
-                      <div className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 mt-1 text-xs sm:text-sm text-gray-600 space-y-1 sm:space-y-0">
-                        <span className="capitalize font-medium">{submission.language}</span>
-                        <span>{submission.testsPassed}/{submission.totalTests} {t('subs.card.tests_passed')}</span>
-                        <div className="flex items-center">
-                          <Calendar className="h-3 w-3 mr-1" />
-                          <span>{new Date(submission.createdAt).toLocaleDateString()}</span>
+                      
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Language:</span>
+                          <span className="capitalize font-semibold text-sky-700 dark:text-emerald-300 text-sm sm:text-base">{submission.language}</span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-300">Tests:</span>
+                          <span className="font-semibold text-gray-800 dark:text-gray-200 text-sm sm:text-base">
+                            {submission.testsPassed}/{submission.totalTests}
+                          </span>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 text-gray-600 dark:text-gray-300">
+                          <Calendar className="h-4 w-4" />
+                          <span className="text-xs sm:text-sm">{new Date(submission.createdAt).toLocaleDateString()}</span>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-left lg:text-right">
+                  {/* Performance Metrics */}
+                  <div className="flex flex-col sm:flex-row lg:flex-col gap-3 lg:text-right lg:min-w-[120px]">
                     {submission.runtime && (
-                      <div className="text-xs sm:text-sm text-gray-600 space-y-1">
-                        <div className="flex lg:justify-end">
-                          <span className="font-medium text-blue-600">{t('subs.card.runtime')}</span>
-                          <span className="ml-2">{submission.runtime}</span>
+                      <div className="bg-slate-50 dark:bg-gray-700 rounded-lg px-3 py-2 border border-slate-200 dark:border-gray-600">
+                        <div className="flex justify-between lg:justify-end items-center gap-2">
+                          <span className="font-medium text-sky-600 dark:text-emerald-400 text-xs sm:text-sm">{t('subs.card.runtime')}</span>
+                          <span className="font-bold text-gray-800 dark:text-gray-200 text-sm sm:text-base">{submission.runtime}</span>
                         </div>
-                        <div className="flex lg:justify-end">
-                          <span className="font-medium text-blue-600">{t('subs.card.memory')}</span>
-                          <span className="ml-2">{submission.memory}</span>
+                      </div>
+                    )}
+                    {submission.memory && (
+                      <div className="bg-slate-50 dark:bg-gray-700 rounded-lg px-3 py-2 border border-slate-200 dark:border-gray-600">
+                        <div className="flex justify-between lg:justify-end items-center gap-2">
+                          <span className="font-medium text-sky-600 dark:text-emerald-400 text-xs sm:text-sm">{t('subs.card.memory')}</span>
+                          <span className="font-bold text-gray-800 dark:text-gray-200 text-sm sm:text-base">{submission.memory}</span>
                         </div>
                       </div>
                     )}
@@ -262,14 +296,15 @@ export const Submissions: React.FC = () => {
             ))}
           </div>
 
+          {/* Empty State */}
           {submissions.length === 0 && (
-            <div className="text-center py-16 px-4">
-              <Code className="h-12 sm:h-16 w-12 sm:w-16 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-600 text-base sm:text-lg font-medium">{t('subs.empty.title')}</p>
-              <p className="text-gray-500 text-sm sm:text-base mt-1">{t('subs.empty.subtitle')}</p>
+            <div className="text-center py-20 px-6">
+              <Code className="h-16 w-16 sm:h-20 sm:w-20 text-gray-400 dark:text-gray-500 mx-auto mb-6" />
+              <p className="text-gray-700 dark:text-gray-200 text-lg sm:text-xl font-semibold mb-2">{t('subs.empty.title')}</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base mb-8">{t('subs.empty.subtitle')}</p>
               <Link
                 to="/problems"
-                className="inline-block mt-6 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-md text-sm sm:text-base"
+                className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 shadow-md font-medium text-sm sm:text-base"
               >
                 {t('subs.empty.cta')}
               </Link>
@@ -279,70 +314,91 @@ export const Submissions: React.FC = () => {
 
         {/* Submission Detail Modal */}
         {selectedSubmission && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <motion.div
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="bg-white rounded-xl shadow-2xl border border-blue-100 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+              className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl border border-slate-200 dark:border-gray-700 w-full max-w-5xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="flex items-center justify-between p-4 sm:p-6 border-b border-blue-100 bg-blue-50">
-                <h3 className="text-lg sm:text-xl font-semibold text-gray-800 truncate pr-4">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between p-6 sm:p-8 border-b border-slate-200 dark:border-gray-600 bg-gradient-to-r from-sky-50 to-sky-100 dark:from-gray-700 dark:to-gray-600">
+                <h3 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 dark:text-white truncate pr-4">
                   {t('subs.modal.title').replace('{title}', selectedSubmission.problem.title)}
                 </h3>
                 <button
                   onClick={() => setSelectedSubmission(null)}
-                  className="text-gray-500 hover:text-gray-700 transition-colors p-1 rounded-full hover:bg-blue-100"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors p-2 rounded-xl hover:bg-white/50 dark:hover:bg-gray-600/50"
                 >
-                  <X className="h-5 w-5 sm:h-6 sm:w-6" />
+                  <X className="h-6 w-6" />
                 </button>
               </div>
 
-              <div className="p-4 sm:p-6 space-y-6">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <p className="text-gray-600 text-xs sm:text-sm mb-2">{t('subs.modal.status')}</p>
-                    <div className={`inline-flex items-center space-x-2 px-3 py-1 rounded-lg border ${getStatusColor(selectedSubmission.status)}`}>
+              <div className="p-6 sm:p-8 space-y-8">
+                {/* Status and Metrics Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className="text-center bg-slate-50 dark:bg-gray-700 rounded-xl p-4 border border-slate-200 dark:border-gray-600">
+                    <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm font-medium mb-3">{t('subs.modal.status')}</p>
+                    <div className={`inline-flex items-center gap-2 px-3 py-2 rounded-lg border font-medium text-xs sm:text-sm ${getStatusColor(selectedSubmission.status)}`}>
                       {getStatusIcon(selectedSubmission.status)}
-                      <span className="font-medium text-xs sm:text-sm">{selectedSubmission.status}</span>
+                      <span>{selectedSubmission.status}</span>
                     </div>
                   </div>
-                  <div className="text-center">
-                    <p className="text-gray-600 text-xs sm:text-sm mb-2">{t('subs.modal.language')}</p>
-                    <p className="text-gray-800 font-medium capitalize text-sm sm:text-base">{selectedSubmission.language}</p>
+
+                  <div className="text-center bg-slate-50 dark:bg-gray-700 rounded-xl p-4 border border-slate-200 dark:border-gray-600">
+                    <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm font-medium mb-3">{t('subs.modal.language')}</p>
+                    <p className="text-gray-800 dark:text-gray-200 font-bold capitalize text-sm sm:text-base">{selectedSubmission.language}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-gray-600 text-xs sm:text-sm mb-2">{t('subs.modal.runtime')}</p>
-                    <p className="text-gray-800 font-medium text-sm sm:text-base">{selectedSubmission.runtime}</p>
+
+                  <div className="text-center bg-slate-50 dark:bg-gray-700 rounded-xl p-4 border border-slate-200 dark:border-gray-600">
+                    <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm font-medium mb-3">{t('subs.modal.runtime')}</p>
+                    <p className="text-gray-800 dark:text-gray-200 font-bold text-sm sm:text-base">{selectedSubmission.runtime}</p>
                   </div>
-                  <div className="text-center">
-                    <p className="text-gray-600 text-xs sm:text-sm mb-2">{t('subs.modal.memory')}</p>
-                    <p className="text-gray-800 font-medium text-sm sm:text-base">{selectedSubmission.memory}</p>
+
+                  <div className="text-center bg-slate-50 dark:bg-gray-700 rounded-xl p-4 border border-slate-200 dark:border-gray-600">
+                    <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm font-medium mb-3">{t('subs.modal.memory')}</p>
+                    <p className="text-gray-800 dark:text-gray-200 font-bold text-sm sm:text-base">{selectedSubmission.memory}</p>
                   </div>
                 </div>
 
-                <div className="border-t border-blue-100 pt-6">
-                  <h4 className="text-gray-800 font-medium mb-3 text-sm sm:text-base">{t('subs.modal.submitted_code')}</h4>
-                  <div className="bg-gray-50 rounded-lg border border-gray-200 p-3 sm:p-4">
-                    <pre className="text-gray-700 font-mono text-xs sm:text-sm overflow-x-auto whitespace-pre-wrap break-words">
-                      {selectedSubmission.code}
-                    </pre>
+                {/* Submitted Code */}
+                <div className="border-t border-slate-200 dark:border-gray-600 pt-8">
+                  <h4 className="text-gray-800 dark:text-gray-200 font-bold mb-4 text-base sm:text-lg flex items-center">
+                    <Code className="h-5 w-5 sm:h-6 sm:w-6 mr-3 text-sky-600 dark:text-emerald-400" />
+                    {t('subs.modal.submitted_code')}
+                  </h4>
+                  <div className="bg-slate-50 dark:bg-gray-900 rounded-xl border border-slate-200 dark:border-gray-600 overflow-hidden">
+                    <div className="bg-slate-100 dark:bg-gray-800 px-4 py-3 border-b border-slate-200 dark:border-gray-600">
+                      <div className="flex items-center gap-3">
+                        <div className="flex gap-2">
+                          <div className="w-3 h-3 bg-red-400 rounded-full"></div>
+                          <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
+                          <div className="w-3 h-3 bg-green-400 rounded-full"></div>
+                        </div>
+                        <span className="text-gray-600 dark:text-gray-300 text-sm font-medium">{selectedSubmission.language}</span>
+                      </div>
+                    </div>
+                    <div className="p-4 sm:p-6 max-h-80 overflow-auto">
+                      <pre className="text-gray-800 dark:text-gray-200 font-mono text-xs sm:text-sm lg:text-base leading-relaxed whitespace-pre-wrap break-words">
+                        {selectedSubmission.code}
+                      </pre>
+                    </div>
                   </div>
                 </div>
 
                 {/* Test Results Summary */}
-                <div className="border-t border-blue-100 pt-6">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-gray-800 font-medium text-sm sm:text-base">{t('subs.modal.test_results')}</h4>
+                <div className="border-t border-slate-200 dark:border-gray-600 pt-8">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-gray-800 dark:text-gray-200 font-bold text-base sm:text-lg">{t('subs.modal.test_results')}</h4>
                     <div className="text-right">
-                      <span className="text-blue-600 font-medium text-sm sm:text-base">
+                      <span className="text-sky-600 dark:text-emerald-400 font-bold text-base sm:text-lg">
                         {selectedSubmission.testsPassed}/{selectedSubmission.totalTests}
                       </span>
-                      <span className="text-gray-600 text-xs sm:text-sm ml-2">{t('subs.modal.tests_passed')}</span>
+                      <span className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm ml-2">{t('subs.modal.tests_passed')}</span>
                     </div>
                   </div>
-                  <div className="mt-2 bg-gray-200 rounded-full h-2">
+                  <div className="bg-gray-200 dark:bg-gray-600 rounded-full h-3">
                     <div 
-                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      className="bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 h-3 rounded-full transition-all duration-500"
                       style={{ 
                         width: `${(selectedSubmission.testsPassed / selectedSubmission.totalTests) * 100}%` 
                       }}
@@ -350,10 +406,11 @@ export const Submissions: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-end pt-4 border-t border-blue-100">
+                {/* Modal Actions */}
+                <div className="flex justify-end pt-6 border-t border-slate-200 dark:border-gray-600">
                   <button
                     onClick={() => setSelectedSubmission(null)}
-                    className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all shadow-md text-sm sm:text-base"
+                    className="px-8 py-4 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:ring-offset-2 transition-all duration-200 shadow-md font-medium text-sm sm:text-base"
                   >
                     {t('subs.modal.close')}
                   </button>

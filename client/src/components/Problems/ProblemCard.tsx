@@ -39,44 +39,44 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, index }) => {
         damping: 30
       }}
       whileHover={{ 
-        y: -4,
-        scale: 1.02,
+        y: -2,
+        scale: 1.01,
         transition: { duration: 0.2 }
       }}
-      className="relative bg-gradient-to-br from-white via-blue-50/50 to-white dark:from-black dark:via-gray-950/50 dark:to-black rounded-lg border border-blue-200/60 dark:border-blue-800/60 hover:border-blue-400/80 dark:hover:border-blue-600/80 hover:shadow-lg hover:shadow-blue-100/50 dark:hover:shadow-blue-900/20 transition-all duration-300 overflow-hidden group cursor-pointer backdrop-blur-sm"
+      className="relative bg-gradient-to-br from-white via-sky-50/60 to-white dark:from-black dark:via-gray-950/60 dark:to-black rounded-lg sm:rounded-xl border border-sky-200/70 dark:border-emerald-800/70 hover:border-sky-400/90 dark:hover:border-emerald-600/90 hover:shadow-lg hover:shadow-sky-100/60 dark:hover:shadow-emerald-900/30 transition-all duration-300 overflow-hidden group cursor-pointer backdrop-blur-sm"
     >
       {/* Gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 dark:from-blue-400/10 dark:via-transparent dark:to-blue-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+      <div className="absolute inset-0 bg-gradient-to-br from-sky-500/8 via-transparent to-sky-600/8 dark:from-emerald-400/12 dark:via-transparent dark:to-emerald-500/12 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
       
       {/* Animated border glow */}
-      <div className="absolute inset-0 rounded-lg bg-gradient-to-r from-blue-400/20 via-blue-500/20 to-blue-400/20 dark:from-blue-600/30 dark:via-blue-500/30 dark:to-blue-600/30 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300 -z-10" />
-
-      <div className="relative p-3 sm:p-4">
+      <div className="absolute inset-0 rounded-lg sm:rounded-xl bg-gradient-to-r from-sky-400/25 via-sky-500/25 to-sky-400/25 dark:from-emerald-600/35 dark:via-emerald-500/35 dark:to-emerald-600/35 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300 -z-10" />
+  
+      <div className="relative p-2.5 sm:p-3 md:p-4">
         {/* Header Section */}
-        <div className="flex items-start justify-between mb-2 sm:mb-3">
-          <div className="flex items-center space-x-2.5 min-w-0 flex-1">
+        <div className="flex items-start justify-between mb-1.5 sm:mb-2 md:mb-3">
+          <div className="flex items-center space-x-2 sm:space-x-2.5 min-w-0 flex-1">
             {isSolved ? (
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ type: "spring", stiffness: 500, delay: 0.2 }}
               >
-                <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 flex-shrink-0 drop-shadow-sm" />
+                <CheckCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-500 dark:text-emerald-400 flex-shrink-0 drop-shadow-sm" />
               </motion.div>
             ) : (
-              <div className="h-4 w-4 rounded-full border-2 border-gray-300 dark:border-gray-600 flex-shrink-0 group-hover:border-blue-400 dark:group-hover:border-blue-500 transition-colors duration-200" />
+              <div className="h-3.5 w-3.5 sm:h-4 sm:w-4 rounded-full border-2 border-gray-300 dark:border-gray-600 flex-shrink-0 group-hover:border-sky-400 dark:group-hover:border-emerald-500 transition-colors duration-200" />
             )}
             
             <div className="min-w-0 flex-1">
               <Link
                 to={`/problems/${problem._id}`}
-                className="block text-gray-800 dark:text-blue-400 font-medium text-sm hover:text-blue-600 dark:hover:text-blue-300 transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-300 duration-200 truncate"
+                className="block text-gray-800 dark:text-emerald-300 font-medium text-xs sm:text-sm md:text-base hover:text-sky-600 dark:hover:text-emerald-200 transition-colors group-hover:text-sky-600 dark:group-hover:text-emerald-200 duration-200 truncate leading-tight"
               >
                 {problem.title}
               </Link>
               
-              <div className="flex items-center space-x-1.5 mt-1 flex-wrap gap-y-1">
-                <span className={`px-1.5 py-0.5 rounded text-xs font-medium border backdrop-blur-sm ${getDifficultyColor(problem.difficulty)} transition-all duration-200`}>
+              <div className="flex items-center space-x-1 sm:space-x-1.5 mt-0.5 sm:mt-1 flex-wrap gap-y-0.5 sm:gap-y-1">
+                <span className={`px-1 sm:px-1.5 py-0.5 rounded text-xs font-medium border backdrop-blur-sm ${getDifficultyColor(problem.difficulty)} transition-all duration-200`}>
                   {problem.difficulty}
                 </span>
                 <span className="text-gray-500 dark:text-gray-400 text-xs hidden sm:inline">
@@ -86,55 +86,55 @@ export const ProblemCard: React.FC<ProblemCardProps> = ({ problem, index }) => {
             </div>
           </div>
         </div>
-
+  
         {/* Tags Section */}
         {problem.tags && problem.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1 sm:gap-1.5 mb-2 sm:mb-3">
+          <div className="flex flex-wrap gap-1 sm:gap-1.5 mb-1.5 sm:mb-2 md:mb-3">
             {problem.tags?.slice(0, 3).map((tag: string) => (
               <motion.span
                 key={tag}
                 whileHover={{ scale: 1.05 }}
-                className="px-1.5 py-0.5 bg-blue-50 dark:bg-blue-950/50 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-700 dark:text-blue-300 text-xs rounded border border-blue-200 dark:border-blue-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 backdrop-blur-sm"
+                className="px-1 sm:px-1.5 py-0.5 bg-sky-50 dark:bg-emerald-950/60 hover:bg-sky-100 dark:hover:bg-emerald-900/60 text-sky-700 dark:text-emerald-300 text-xs rounded border border-sky-200 dark:border-emerald-700 hover:border-sky-300 dark:hover:border-emerald-600 transition-all duration-200 backdrop-blur-sm"
               >
                 {tag}
               </motion.span>
             ))}
             {problem.tags?.length > 3 && (
-              <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800/50 text-gray-600 dark:text-gray-300 text-xs rounded border border-gray-200 dark:border-gray-700 backdrop-blur-sm">
+              <span className="px-1 sm:px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800/60 text-gray-600 dark:text-gray-300 text-xs rounded border border-gray-200 dark:border-gray-700 backdrop-blur-sm">
                 +{problem.tags.length - 3}
               </span>
             )}
           </div>
         )}
-
+  
         {/* Description */}
-        <p className="text-gray-600 dark:text-gray-300 text-xs leading-relaxed line-clamp-2 mb-2 sm:mb-3">
+        <p className="text-gray-600 dark:text-emerald-200/80 text-xs sm:text-sm leading-relaxed line-clamp-2 mb-1.5 sm:mb-2 md:mb-3">
           {problem.description?.split('\n')[0]}
         </p>
-
+  
         {/* Footer Stats */}
-        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-gray-400 border-t border-blue-200/50 dark:border-blue-800/50 pt-2">
+        <div className="flex items-center justify-between text-xs text-gray-500 dark:text-emerald-300/70 border-t border-sky-200/60 dark:border-emerald-800/60 pt-1.5 sm:pt-2">
           <span className="flex items-center space-x-1">
-            <span className="w-1 h-1 bg-blue-400 dark:bg-blue-500 rounded-full"></span>
+            <span className="w-1 h-1 bg-sky-400 dark:bg-emerald-500 rounded-full"></span>
             <span>{problem.submissions || 0} submissions</span>
           </span>
           <span className="text-right truncate ml-2">
             {problem.category}
           </span>
         </div>
-
+  
         {/* Mobile acceptance rate */}
-        <div className="sm:hidden mt-1.5 text-xs text-gray-500 dark:text-gray-400">
+        <div className="sm:hidden mt-1 text-xs text-gray-500 dark:text-emerald-300/70">
           {problem.acceptance}% Acceptance Rate
         </div>
       </div>
-
+  
       {/* Solved indicator overlay */}
       {isSolved && (
         <div className="absolute top-2 right-2">
-          <div className="w-1.5 h-1.5 bg-green-500 dark:bg-green-400 rounded-full animate-pulse shadow-sm"></div>
+          <div className="w-1.5 h-1.5 bg-emerald-500 dark:bg-emerald-400 rounded-full animate-pulse shadow-sm"></div>
         </div>
       )}
     </motion.div>
   );
-};
+}

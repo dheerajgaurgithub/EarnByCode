@@ -123,42 +123,99 @@ const SubmissionCalendar: React.FC<SubmissionCalendarProps> = ({ days = 365, thr
   }
 
   return (
-    <div className="bg-white dark:bg-gray-900 rounded-xl shadow-lg border border-blue-200 dark:border-gray-700 p-3 sm:p-6 transition-colors duration-300">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-base sm:text-lg font-semibold text-blue-900 dark:text-blue-400">Activity</h3>
-        <div className="hidden sm:flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400">
-          <span>Less</span>
-          <span className={classNames('w-3 h-3 rounded', shades.zero[0])}></span>
-          <span className={classNames('w-3 h-3 rounded', shades.green[0])}></span>
-          <span className={classNames('w-3 h-3 rounded', shades.green[1])}></span>
-          <span className={classNames('w-3 h-3 rounded', shades.green[2])}></span>
-          <span className={classNames('w-3 h-3 rounded', shades.green[3])}></span>
-          <span>More</span>
+    <div className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-2xl shadow-xl border border-sky-100 dark:border-green-700 p-4 sm:p-6 transition-all duration-300">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+        <h3 className="text-base sm:text-lg font-semibold text-sky-900 dark:text-green-300 flex items-center">
+          <svg className="w-5 h-5 mr-2 text-sky-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          Activity Heatmap
+        </h3>
+        <div className="flex items-center gap-2 text-[10px] sm:text-xs text-sky-600 dark:text-green-400 bg-sky-50 dark:bg-gray-800 px-3 py-1.5 rounded-lg border border-sky-200 dark:border-green-600">
+          <span className="font-medium">Less</span>
+          <div className="flex items-center gap-1">
+            <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded ${shades.zero[0]}`}></span>
+            <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded ${shades.green[0]}`}></span>
+            <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded ${shades.green[1]}`}></span>
+            <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded ${shades.green[2]}`}></span>
+            <span className={`w-2.5 h-2.5 sm:w-3 sm:h-3 rounded ${shades.green[3]}`}></span>
+          </div>
+          <span className="font-medium">More</span>
         </div>
       </div>
-      <div className="overflow-x-auto">
-        {/* Month labels row */}
-        <div className="flex gap-1 ml-0 mb-1 pl-px select-none">
-          {monthLabels.map((lbl, i) => (
-            <div key={i} className="w-3 sm:w-3.5 text-[10px] sm:text-[11px] text-blue-500 dark:text-blue-400">
-              {lbl}
-            </div>
-          ))}
-        </div>
-        <div className="flex gap-1">
-          {weeks.map((week, i) => (
-            <div key={i} className="flex flex-col gap-1">
-              {week.map((d, j) => (
-                <div key={j} className={classNames('w-3 h-3 sm:w-3.5 sm:h-3.5 rounded',
-                  d.count === -1 ? 'bg-transparent' : colorFor(d.count, thresholds)
-                )} title={d.date ? formatLabel(d.date, d.count) : ''}></div>
+      
+      <div className="bg-gradient-to-br from-sky-50 to-sky-100 dark:from-gray-800 dark:to-gray-700 rounded-xl p-3 sm:p-4 border border-sky-200 dark:border-green-600 shadow-inner">
+        <div className="overflow-x-auto scrollbar-thin scrollbar-thumb-sky-300 dark:scrollbar-thumb-green-600 scrollbar-track-transparent">
+          <div className="min-w-max">
+            {/* Month labels row */}
+            <div className="flex gap-0.5 sm:gap-1 ml-0 mb-2 pl-px select-none">
+              {monthLabels.map((lbl, i) => (
+                <div 
+                  key={i} 
+                  className="w-2.5 sm:w-3 md:w-3.5 text-[9px] sm:text-[10px] md:text-[11px] font-medium text-sky-600 dark:text-green-400 text-center"
+                >
+                  {lbl}
+                </div>
               ))}
             </div>
-          ))}
+            
+            {/* Calendar grid */}
+            <div className="flex gap-0.5 sm:gap-1">
+              {weeks.map((week, i) => (
+                <div key={i} className="flex flex-col gap-0.5 sm:gap-1">
+                  {week.map((d, j) => (
+                    <div 
+                      key={j} 
+                      className={`w-2.5 h-2.5 sm:w-3 sm:h-3 md:w-3.5 md:h-3.5 rounded transition-all duration-200 hover:scale-110 hover:shadow-md cursor-pointer ${
+                        d.count === -1 
+                          ? 'bg-transparent' 
+                          : `${colorFor(d.count, thresholds)} hover:ring-2 hover:ring-sky-400 dark:hover:ring-green-500 hover:ring-opacity-50`
+                      }`}
+                      title={d.date ? formatLabel(d.date, d.count) : ''}
+                    ></div>
+                  ))}
+                </div>
+              ))}
+            </div>
+            
+            {/* Week day labels (mobile only) */}
+            <div className="sm:hidden mt-3 flex justify-between text-[9px] text-sky-600 dark:text-green-400 font-medium">
+              <span>S</span>
+              <span>M</span>
+              <span>T</span>
+              <span>W</span>
+              <span>T</span>
+              <span>F</span>
+              <span>S</span>
+            </div>
+          </div>
+        </div>
+        
+        {/* Summary stats */}
+        <div className="mt-4 pt-3 border-t border-sky-200 dark:border-green-600">
+          <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-2 border border-sky-200 dark:border-green-600">
+              <p className="text-xs sm:text-sm font-bold text-sky-800 dark:text-green-300">
+                {weeks.flat().filter(d => d.count > 0).length}
+              </p>
+              <p className="text-[10px] sm:text-xs text-sky-600 dark:text-green-400 font-medium">Active Days</p>
+            </div>
+            <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-2 border border-sky-200 dark:border-green-600">
+              <p className="text-xs sm:text-sm font-bold text-sky-800 dark:text-green-300">
+                {Math.max(...weeks.flat().map(d => d.count).filter(c => c > 0), 0)}
+              </p>
+              <p className="text-[10px] sm:text-xs text-sky-600 dark:text-green-400 font-medium">Best Day</p>
+            </div>
+            <div className="bg-white/60 dark:bg-gray-800/60 rounded-lg p-2 border border-sky-200 dark:border-green-600">
+              <p className="text-xs sm:text-sm font-bold text-sky-800 dark:text-green-300">
+                {weeks.flat().reduce((sum, d) => sum + Math.max(0, d.count), 0)}
+              </p>
+              <p className="text-[10px] sm:text-xs text-sky-600 dark:text-green-400 font-medium">Total</p>
+            </div>
+          </div>
         </div>
       </div>
     </div>
   );
-};
-
+}
 export default SubmissionCalendar;

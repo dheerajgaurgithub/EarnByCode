@@ -228,8 +228,18 @@ const ProblemDetail: React.FC = () => {
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [showChat, setShowChat] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   // Daily problem state
   const [dailyProblem, setDailyProblem] = useState<{ date: string; problemId: string } | null>(null);
+  // Chat state (simple stub)
+  const [chatMessages, setChatMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([]);
+  const [chatInput, setChatInput] = useState('');
+  // Preferences (persisted)
+  const [prefs, setPrefs] = useState<{ autoStartTimer: boolean; defaultTimerMin: number; openChatByDefault: boolean }>({
+    autoStartTimer: false,
+    defaultTimerMin: 25,
+    openChatByDefault: false,
+  });
   
   // Track if user is trying to submit without being logged in
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -578,6 +588,19 @@ const ProblemDetail: React.FC = () => {
     }
   }, [id, fetchProblem]);
 
+  // Load preferences from localStorage
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('pd:prefs');
+      if (raw) setPrefs(prev => ({ ...prev, ...JSON.parse(raw) }));
+    } catch {}
+  }, []);
+
+  // Persist preferences on change
+  useEffect(() => {
+    try { localStorage.setItem('pd:prefs', JSON.stringify(prefs)); } catch {}
+  }, [prefs]);
+
   // Fetch user's daily problem
   useEffect(() => {
     const loadDaily = async () => {
@@ -612,6 +635,32 @@ const ProblemDetail: React.FC = () => {
     const t = setInterval(() => setTimerSeconds(s => (s > 0 ? s - 1 : 0)), 1000);
     return () => clearInterval(t);
   }, [timerRunning, timerSeconds]);
+
+  // Load per-problem timer state and maybe autostart
+  useEffect(() => {
+    if (!problem) return;
+    const key = `pd:timer:${problem._id}`;
+    try {
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        setTimerSeconds(typeof saved.seconds === 'number' ? saved.seconds : 0);
+        setTimerRunning(!!saved.running);
+      } else if (prefs.autoStartTimer && prefs.defaultTimerMin > 0) {
+        setTimerSeconds(prefs.defaultTimerMin * 60);
+        setTimerRunning(true);
+      }
+    } catch {}
+    // Open chat by default if preference
+    if (prefs.openChatByDefault) setShowChat(true);
+  }, [problem?._id, prefs.autoStartTimer, prefs.defaultTimerMin, prefs.openChatByDefault]);
+
+  // Persist per-problem timer state
+  useEffect(() => {
+    if (!problem) return;
+    const key = `pd:timer:${problem._id}`;
+    try { localStorage.setItem(key, JSON.stringify({ seconds: timerSeconds, running: timerRunning })); } catch {}
+  }, [problem, timerSeconds, timerRunning]);
 
   // Update code when language changes
   useEffect(() => {
@@ -709,211 +758,164 @@ const ProblemDetail: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-blue-50 text-blue-900">
-      <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6">
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
+    <div className="min-h-screen bg-gradient-to-br from-white via-sky-50 to-slate-100 dark:bg-gradient-to-br dark:from-black dark:via-gray-900 dark:to-green-950 text-slate-800 dark:text-green-100 transition-all duration-300">
+      <div className="container mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8">
           {/* Left Panel - Problem Description */}
-          <div className="space-y-3">
-            <div className="bg-white rounded-xl border-2 border-blue-200 p-3 sm:p-4 shadow-lg">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 space-y-2 sm:space-y-0">
-                <div className="flex items-center space-x-2">
-                  <h1 className="text-lg sm:text-xl font-bold text-blue-900">
+          <div className="space-y-6">
+            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl border-2 border-sky-200 dark:border-green-800 p-6 lg:p-8 shadow-xl shadow-sky-200/50 dark:shadow-green-900/30">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-6 space-y-4 lg:space-y-0">
+                <div className="flex items-center space-x-3">
+                  <h1 className="text-lg lg:text-xl xl:text-2xl font-black text-slate-900 dark:text-green-100 leading-tight">
                     {problem.title}
                   </h1>
-                  {isSolved && <CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0" />}
+                  {isSolved && <CheckCircle className="h-5 w-5 lg:h-6 lg:w-6 text-emerald-600 dark:text-green-400 flex-shrink-0" />}
                   {isTodaysProblem && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-medium bg-green-50 text-green-700 border border-green-200">
-                      <Flame className="w-3 h-3 mr-1 text-orange-500" /> Today's Problem
+                    <span className="inline-flex items-center px-2 py-1 rounded-xl text-xs font-bold bg-gradient-to-r from-orange-100 to-amber-100 dark:from-green-900/50 dark:to-green-800/50 text-orange-700 dark:text-green-300 border-2 border-orange-200 dark:border-green-700">
+                      <Flame className="w-3 h-3 mr-1 text-orange-500 dark:text-green-400" /> Today's Problem
                     </span>
                   )}
                 </div>
-                <span className={`px-2 py-1 rounded-lg text-xs font-medium border-2 ${getDifficultyColor(problem.difficulty)} self-start sm:self-auto`}>
+                <span className={`px-3 py-1 rounded-xl text-xs font-bold border-2 shadow-md ${getDifficultyColor(problem.difficulty)} self-start lg:self-auto`}>
                   {problem.difficulty}
                 </span>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3 sm:gap-4 mb-4 text-xs text-blue-700">
-                <div className="flex items-center">
-                  <CheckCircle className="h-3 w-3 mr-1 text-green-600 flex-shrink-0" />
-                  <span>{t('problem.accepted').replace('{p}', String(problem.acceptance || 0))}</span>
+              <div className="flex flex-wrap items-center gap-4 lg:gap-6 mb-6 text-xs text-slate-600 dark:text-green-300">
+                <div className="flex items-center space-x-2">
+                  <CheckCircle className="h-3 w-3 text-emerald-600 dark:text-green-400 flex-shrink-0" />
+                  <span className="font-medium">{t('problem.accepted').replace('{p}', String(problem.acceptance || 0))}</span>
                 </div>
-                <div className="flex items-center">
-                  <Trophy className="h-3 w-3 mr-1 text-blue-600 flex-shrink-0" />
-                  <a href="/submissions" className="text-blue-600 hover:underline"><span>{t('problem.submissions_chip').replace('{n}', String(problem.submissions || 0))}</span></a> 
+                <div className="flex items-center space-x-2">
+                  <Trophy className="h-3 w-3 text-sky-600 dark:text-green-400 flex-shrink-0" />
+                  <a href="/submissions" className="text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 font-medium hover:underline transition-colors">
+                    <span>{t('problem.submissions_chip').replace('{n}', String(problem.submissions || 0))}</span>
+                  </a> 
                 </div>
-                <div className="flex items-center">
-                  <Award className="h-3 w-3 mr-1 text-yellow-600 flex-shrink-0" />
-                  <span>{t('problem.codecoin')}</span>
+                <div className="flex items-center space-x-2">
+                  <Award className="h-3 w-3 text-amber-600 dark:text-green-400 flex-shrink-0" />
+                  <span className="font-medium">{t('problem.codecoin')}</span>
                 </div>
               </div>
 
               {/* Action bar: set today's problem, timer, chat */}
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
+                <div className="flex items-center gap-3">
                   {!isTodaysProblem && (
-                    <button onClick={setAsTodaysProblem} className="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-orange-50 border border-orange-200 text-orange-700 hover:bg-orange-100">
+                    <button onClick={setAsTodaysProblem} className="inline-flex items-center px-3 py-2 text-xs font-semibold rounded-xl bg-gradient-to-r from-orange-100 to-amber-100 dark:from-green-900/50 dark:to-green-800/50 border-2 border-orange-200 dark:border-green-700 text-orange-700 dark:text-green-300 hover:from-orange-200 hover:to-amber-200 dark:hover:from-green-800/70 dark:hover:to-green-700/70 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105">
                       <Flame className="w-3 h-3 mr-1" /> Set as Today's Problem
                     </button>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-3">
                   {/* Timer */}
                   <div className="relative">
-                    <button onClick={() => setShowTimer(v => !v)} className="inline-flex items-center px-2 py-1 text-xs rounded-lg bg-blue-50 border border-blue-200 text-blue-700 hover:bg-blue-100">
+                    <button onClick={() => setShowTimer(v => !v)} className="inline-flex items-center px-3 py-2 text-xs font-semibold rounded-xl bg-sky-100 dark:bg-green-900/50 border-2 border-sky-200 dark:border-green-700 text-sky-700 dark:text-green-300 hover:bg-sky-200 dark:hover:bg-green-800/70 transition-all duration-200 shadow-md hover:shadow-lg">
                       <Clock3 className="w-3 h-3 mr-1" /> {timerSeconds > 0 ? `${Math.floor(timerSeconds/60)}:${String(timerSeconds%60).padStart(2,'0')}` : 'Timer'}
                     </button>
                     {showTimer && (
-                      <div className="absolute right-0 mt-1 w-56 bg-white border border-blue-200 rounded-lg shadow-lg p-2 z-20">
-                        <div className="text-xs text-blue-800 mb-1 font-medium">Set Timer</div>
-                        <div className="flex flex-wrap gap-1 mb-2">
+                      <div className="absolute right-0 mt-2 w-72 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm border-2 border-sky-200 dark:border-green-800 rounded-2xl shadow-2xl p-4 z-20">
+                        <div className="text-xs text-slate-800 dark:text-green-100 mb-3 font-bold">Set Timer</div>
+                        <div className="flex flex-wrap gap-2 mb-4">
                           {[10,15,25,30,45,60].map(m => (
-                            <button key={m} onClick={() => { setTimerSeconds(m*60); setTimerRunning(false); }} className="px-2 py-1 text-xs border border-blue-200 rounded hover:bg-blue-50">{m}m</button>
+                            <button key={m} onClick={() => { setTimerSeconds(m*60); setTimerRunning(false); }} className="px-2 py-1 text-xs font-medium border-2 border-sky-200 dark:border-green-800 rounded-xl hover:bg-sky-100 dark:hover:bg-green-900/50 text-slate-700 dark:text-green-300 transition-all duration-200">{m}m</button>
                           ))}
                         </div>
                         <div className="flex items-center gap-2">
-                          <button onClick={() => setTimerRunning(true)} className="px-2 py-1 text-xs bg-green-600 text-white rounded">Start</button>
-                          <button onClick={() => setTimerRunning(false)} className="px-2 py-1 text-xs bg-yellow-500 text-white rounded">Pause</button>
-                          <button onClick={() => { setTimerRunning(false); setTimerSeconds(0); }} className="px-2 py-1 text-xs bg-red-600 text-white rounded">Reset</button>
+                          <button onClick={() => setTimerRunning(true)} className="px-3 py-1 text-xs font-bold bg-emerald-600 dark:bg-green-600 text-white rounded-xl hover:bg-emerald-700 dark:hover:bg-green-700 transition-colors shadow-md">Start</button>
+                          <button onClick={() => setTimerRunning(false)} className="px-3 py-1 text-xs font-bold bg-amber-500 dark:bg-green-600 text-white rounded-xl hover:bg-amber-600 dark:hover:bg-green-700 transition-colors shadow-md">Pause</button>
+                          <button onClick={() => { setTimerRunning(false); setTimerSeconds(0); }} className="px-3 py-1 text-xs font-bold bg-red-600 dark:bg-green-600 text-white rounded-xl hover:bg-red-700 dark:hover:bg-green-700 transition-colors shadow-md">Reset</button>
                         </div>
                       </div>
                     )}
                   </div>
                   {/* Chat toggle */}
-                  <button onClick={() => setShowChat(v => !v)} className={`inline-flex items-center px-2 py-1 text-xs rounded-lg border ${showChat ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100'}`}>
+                  <button onClick={() => setShowChat(v => !v)} className={`inline-flex items-center px-3 py-2 text-xs font-semibold rounded-xl border-2 transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 ${showChat ? 'bg-purple-600 dark:bg-green-600 text-white border-purple-600 dark:border-green-600' : 'bg-purple-100 dark:bg-green-900/50 text-purple-700 dark:text-green-300 border-purple-200 dark:border-green-700 hover:bg-purple-200 dark:hover:bg-green-800/70'}`}>
                     <Bot className="w-3 h-3 mr-1" /> {showChat ? 'Hide' : 'Chat'}
+                  </button>
+                  {/* Settings */}
+                  <button onClick={() => setShowSettings(true)} className="inline-flex items-center px-3 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-green-900/50 border-2 border-slate-200 dark:border-green-700 text-slate-700 dark:text-green-300 hover:bg-slate-200 dark:hover:bg-green-800/70 transition-all duration-200 shadow-md hover:shadow-lg">
+                    <Settings className="w-3 h-3 mr-1" /> Settings
                   </button>
                 </div>
               </div>
 
-              {/* Tabs */}
-              <div className="flex space-x-1 mb-4 border-b-2 border-blue-200 overflow-x-auto">
-                <button
-                  onClick={() => setActiveTab('description')}
-                  className={`px-2 sm:px-3 py-1.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex items-center ${
-                    activeTab === 'description'
-                      ? 'border-blue-500 text-blue-600 bg-blue-50'
-                      : 'border-transparent text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-                  }`}
-                >
-                  <BookOpen className="h-3 w-3 mr-1" />
-                  {t('problem.tab.description')}
-                </button>
-                <button
-                  onClick={() => setActiveTab('editorial')}
-                  className={`px-2 sm:px-3 py-1.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap ${
-                    activeTab === 'editorial'
-                      ? 'border-blue-500 text-blue-600 bg-blue-50'
-                      : 'border-transparent text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-                  }`}
-                >
-                  {t('problem.tab.editorial')}
-                </button>
-                <button
-                  onClick={() => setActiveTab('discuss')}
-                  className={`px-2 sm:px-3 py-1.5 text-xs font-medium border-b-2 transition-colors whitespace-nowrap flex items-center ${
-                    activeTab === 'discuss'
-                      ? 'border-blue-500 text-blue-600 bg-blue-50'
-                      : 'border-transparent text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-                  }`}
-                >
-                  <MessageCircle className="h-3 w-3 mr-1" />
-                  {t('problem.tab.discuss')}
-                </button>
-              </div>
+              {/* Problem Description */}
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900 dark:text-green-100 mb-2">Description</h3>
+                  <p className="text-sm leading-relaxed text-slate-800 dark:text-green-200 whitespace-pre-line">
+                    {problem.description}
+                  </p>
+                </div>
 
-              {/* Tab Content */}
-              {activeTab === 'description' && (
-                <div className="space-y-4">
+                {/* Examples */}
+                {problem.examples && problem.examples.length > 0 && (
                   <div>
-                    <p className="text-blue-800 leading-relaxed whitespace-pre-line text-xs sm:text-sm">
-                      {problem.description}
-                    </p>
-                  </div>
-
-                  {problem.examples && problem.examples.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-blue-900 mb-3">{t('problem.examples')}</h3>
-                      <div className="space-y-3">
-                        {problem.examples.map((example, index) => (
-                          <div key={index} className="bg-blue-100 rounded-xl p-3 border-2 border-blue-200">
-                            <p className="text-blue-900 font-medium mb-2 text-xs">{t('problem.example_n').replace('{i}', String(index + 1))}</p>
-                            <div className="space-y-1.5 text-xs">
-                              <div>
-                                <span className="text-blue-700 font-medium">{t('problem.input')}</span>
-                                <code className="text-blue-800 bg-white px-1.5 py-0.5 rounded border border-blue-200">
-                                  {example.input}
-                                </code>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-green-100 mb-3">{t('problem.examples')}</h3>
+                    <div className="space-y-3">
+                      {problem.examples.map((example, index) => (
+                        <div key={index} className="bg-sky-50 dark:bg-green-900/30 rounded-2xl p-4 border-2 border-sky-200 dark:border-green-800">
+                          <p className="text-slate-900 dark:text-green-100 font-bold mb-2 text-xs">{t('problem.example_n').replace('{i}', String(index + 1))}</p>
+                          <div className="space-y-2 text-xs">
+                            <div>
+                              <span className="text-sky-700 dark:text-green-300 font-bold">{t('problem.input')}</span>
+                              <div className="mt-1 bg-white/60 dark:bg-gray-900/40 rounded-xl border border-sky-200 dark:border-green-800 p-2">
+                                <code className="text-slate-800 dark:text-green-200 break-all">{example.input}</code>
                               </div>
-                              <div>
-                                <span className="text-blue-700 font-medium">{t('problem.output')}</span>
-                                <code className="text-green-800 bg-green-50 px-1.5 py-0.5 rounded border border-green-200">
-                                  {example.output}
-                                </code>
-                              </div>
-                              {example.explanation && (
-                                <div>
-                                  <span className="text-blue-700 font-medium">{t('problem.explanation')}</span>
-                                  <span className="text-blue-800">{example.explanation}</span>
-                                </div>
-                              )}
                             </div>
+                            <div>
+                              <span className="text-sky-700 dark:text-green-300 font-bold">{t('problem.output')}</span>
+                              <div className="mt-1 bg-emerald-50/70 dark:bg-green-900/40 rounded-xl border border-emerald-200 dark:border-green-800 p-2">
+                                <code className="text-emerald-800 dark:text-green-200 break-all">{example.output}</code>
+                              </div>
+                            </div>
+                            {example.explanation && (
+                              <div>
+                                <span className="text-sky-700 dark:text-green-300 font-bold">{t('problem.explanation')}</span>
+                                <div className="mt-1 text-slate-800 dark:text-green-200">{example.explanation}</div>
+                              </div>
+                            )}
                           </div>
-                        ))}
-                      </div>
+                        </div>
+                      ))}
                     </div>
-                  )}
-
-                  {problem.constraints && problem.constraints.length > 0 && (
-                    <div>
-                      <h3 className="text-sm font-semibold text-blue-900 mb-3">{t('problem.constraints')}</h3>
-                      <ul className="space-y-0.5">
-                        {problem.constraints.map((constraint, index) => (
-                          <li key={index} className="text-blue-800 flex items-start text-xs">
-                            <span className="text-blue-600 mr-1.5 font-bold">•</span>
-                            <span>{constraint}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {activeTab === 'editorial' && (
-                <div className="text-center py-8">
-                  <div className="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                    <BookOpen className="h-6 w-6 text-blue-600" />
                   </div>
-                  <p className="text-blue-700 font-medium text-sm">{t('problem.editorial.locked')}</p>
-                </div>
-              )}
+                )}
 
-              {activeTab === 'discuss' && (
-                <div className="text-center py-8">
-                  <div className="bg-blue-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                    <MessageCircle className="h-6 w-6 text-blue-600" />
+                {/* Constraints */}
+                {problem.constraints && problem.constraints.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-black text-slate-900 dark:text-green-100 mb-2">{t('problem.constraints')}</h3>
+                    <ul className="space-y-1">
+                      {problem.constraints.map((constraint, index) => (
+                        <li key={index} className="text-slate-800 dark:text-green-200 flex items-start text-xs">
+                          <span className="text-sky-600 dark:text-green-400 mr-2 font-bold">•</span>
+                          <span>{constraint}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <p className="text-blue-700 font-medium text-sm">{t('problem.discuss.empty')}</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
 
           {/* Right Panel - Code Editor */}
-          <div className="space-y-3">
-            <div className="bg-white rounded-xl border-2 border-blue-200 shadow-lg overflow-hidden">
-              <div className="border-b-2 border-blue-200">
+          <div className="space-y-6">
+            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl border-2 border-sky-200 dark:border-green-800 shadow-2xl shadow-sky-200/50 dark:shadow-green-900/40 overflow-hidden">
+              <div className="border-b-2 border-sky-200 dark:border-green-800">
                 {/* Language Tabs */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between px-3 py-2 bg-blue-50 space-y-2 sm:space-y-0">
-                  <div className="flex flex-wrap gap-1 w-full sm:w-auto">
+                <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between px-6 py-4 bg-gradient-to-r from-sky-50 to-slate-100 dark:from-green-950/50 dark:to-gray-900/80 space-y-3 lg:space-y-0">
+                  <div className="flex flex-wrap gap-2 w-full lg:w-auto">
                     {(['javascript', 'typescript', 'python', 'java', 'cpp'] as Language[]).map((lang) => (
                       <button
                         key={lang}
                         onClick={() => setSelectedLanguage(lang)}
-                        className={`px-2 py-1 text-xs font-medium rounded-lg transition-colors ${
+                        className={`px-3 py-2 text-xs font-bold rounded-xl transition-all duration-200 shadow-md hover:shadow-lg transform hover:scale-105 ${
                           selectedLanguage === lang
-                            ? 'bg-blue-600 text-white shadow-md'
-                            : 'text-blue-700 hover:text-blue-900 hover:bg-white border border-blue-200'
+                            ? 'bg-sky-600 dark:bg-green-600 text-white shadow-sky-300 dark:shadow-green-900/50'
+                            : 'text-slate-700 dark:text-green-300 hover:text-slate-900 dark:hover:text-green-100 bg-white dark:bg-gray-800 hover:bg-sky-100 dark:hover:bg-green-900/50 border-2 border-sky-200 dark:border-green-800'
                         }`}
                       >
                         {lang.charAt(0).toUpperCase() + lang.slice(1)}
@@ -921,13 +923,13 @@ const ProblemDetail: React.FC = () => {
                     ))}
                   </div>
                   
-                  <div className="flex items-center space-x-1.5 w-full sm:w-auto justify-end">
+                  <div className="flex items-center space-x-3 w-full lg:w-auto justify-end">
                     <button
                       onClick={handleResetCode}
-                      className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors"
+                      className="p-2 text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 hover:bg-sky-100 dark:hover:bg-green-900/50 rounded-xl transition-all duration-200 shadow-md hover:shadow-lg"
                       title="Reset code"
                     >
-                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                       </svg>
                     </button>
@@ -935,7 +937,7 @@ const ProblemDetail: React.FC = () => {
                     <button
                       onClick={handleRunCode}
                       disabled={isRunning}
-                      className="flex items-center space-x-1 px-2 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center space-x-2 px-3 py-2 bg-emerald-600 dark:bg-green-600 hover:bg-emerald-700 dark:hover:bg-green-700 text-white rounded-xl text-xs font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
                       <Play className="h-3 w-3" />
                       <span>{isRunning ? 'Running...' : 'Run'}</span>
@@ -943,15 +945,15 @@ const ProblemDetail: React.FC = () => {
                     <button
                       onClick={handleRunAll}
                       disabled={isRunning || !problem?.testCases?.length}
-                      className="flex items-center space-x-1 px-2 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center space-x-2 px-3 py-2 bg-teal-600 dark:bg-green-600 hover:bg-teal-700 dark:hover:bg-green-700 text-white rounded-xl text-xs font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
-                      <span>{isRunning ? 'Running...' : 'Run All Testcases'}</span>
+                      <span>{isRunning ? 'Running...' : 'Run All Tests'}</span>
                     </button>
                     
                     <button
                       onClick={handleSubmitCode}
                       disabled={isSubmitting}
-                      className="flex items-center space-x-1 px-2 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="flex items-center space-x-2 px-3 py-2 bg-sky-600 dark:bg-green-600 hover:bg-sky-700 dark:hover:bg-green-700 text-white rounded-xl text-xs font-bold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
                     >
                       <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -988,57 +990,57 @@ const ProblemDetail: React.FC = () => {
               </div>
               
               {/* Status Bar */}
-              <div className="bg-blue-100 px-3 py-1.5 text-xs text-blue-700 border-t-2 border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between space-y-0.5 sm:space-y-0">
-                <div className="flex items-center space-x-3">
-                  <span className="font-medium">{selectedLanguage.toUpperCase()}</span>
-                  <span>{code.length} characters</span>
+              <div className="bg-gradient-to-r from-sky-100 to-slate-200 dark:from-green-950/60 dark:to-gray-900/80 px-6 py-3 text-xs text-slate-700 dark:text-green-300 border-t-2 border-sky-200 dark:border-green-800 flex flex-col lg:flex-row lg:items-center justify-between space-y-2 lg:space-y-0">
+                <div className="flex items-center space-x-6">
+                  <span className="font-bold text-sky-700 dark:text-green-200">{selectedLanguage.toUpperCase()}</span>
+                  <span className="font-medium">{code.length} characters</span>
                 </div>
-                <span className="font-medium">{getCurrentTime()}</span>
+                <span className="font-bold text-sky-700 dark:text-green-200">{getCurrentTime()}</span>
               </div>
             </div>
 
             {/* Test Results */}
             {(testResults.status !== 'idle' || isRunning || isSubmitting) && (
-              <div className="bg-white rounded-xl border-2 border-blue-200 shadow-lg overflow-hidden">
-                <div className="bg-blue-100 px-3 py-2 border-b-2 border-blue-200">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between space-y-1 sm:space-y-0">
-                    <h3 className="font-medium text-blue-900 text-sm">
+              <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl border-2 border-sky-200 dark:border-green-800 shadow-2xl shadow-sky-200/50 dark:shadow-green-900/40 overflow-hidden">
+                <div className="bg-gradient-to-r from-sky-100 to-slate-200 dark:from-green-950/60 dark:to-gray-900/80 px-6 py-4 border-b-2 border-sky-200 dark:border-green-800">
+                  <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-2 lg:space-y-0">
+                    <h3 className="font-black text-slate-900 dark:text-green-100 text-base">
                       {testResults.isSubmission ? 'Submission Results' : 'Test Results'}
                     </h3>
-                    <div className="flex items-center gap-3 text-xs text-blue-700">
-                      <span><span className="font-medium">Runtime:</span> {formatRuntime(testResults.runtimeMs)}</span>
-                      <span><span className="font-medium">Memory:</span> {formatMemory(testResults.memoryKb)}</span>
+                    <div className="flex items-center gap-6 text-xs text-slate-700 dark:text-green-300">
+                      <span><span className="font-bold">Runtime:</span> {formatRuntime(testResults.runtimeMs)}</span>
+                      <span><span className="font-bold">Memory:</span> {formatMemory(testResults.memoryKb)}</span>
                     </div>
                   </div>
                 </div>
                 
-                <div className="p-3">
+                <div className="p-6">
                   {(isRunning || isSubmitting) ? (
-                    <div className="flex items-center justify-center py-8">
-                      <div className="animate-spin rounded-full h-6 w-6 border-4 border-blue-200 border-t-blue-600 mr-2"></div>
-                      <span className="text-blue-700 font-medium text-sm">
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-6 w-6 border-4 border-sky-200 dark:border-green-800 border-t-sky-600 dark:border-t-green-400 mr-4"></div>
+                      <span className="text-slate-700 dark:text-green-300 font-bold text-base">
                         {isSubmitting ? 'Submitting solution...' : 'Running code...'}
                       </span>
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-6">
                       {/* Summary */}
-                      <div className={`p-3 rounded-xl border-2 ${
+                      <div className={`p-5 rounded-2xl border-2 shadow-lg ${
                         testResults.status === 'accepted' 
-                          ? 'bg-green-50 border-green-300' 
-                          : 'bg-red-50 border-red-300'
+                          ? 'bg-gradient-to-r from-emerald-50 to-green-100 dark:from-green-950/50 dark:to-green-900/50 border-emerald-300 dark:border-green-700' 
+                          : 'bg-gradient-to-r from-red-50 to-rose-100 dark:from-red-950/50 dark:to-red-900/50 border-red-300 dark:border-red-700'
                       }`}>
                         <div className="flex items-center">
                           {testResults.status === 'accepted' ? (
-                            <CheckCircle className="h-4 w-4 text-green-600 mr-2 flex-shrink-0" />
+                            <CheckCircle className="h-5 w-5 text-emerald-600 dark:text-green-400 mr-3 flex-shrink-0" />
                           ) : (
-                            <AlertCircle className="h-4 w-4 text-red-600 mr-2 flex-shrink-0" />
+                            <AlertCircle className="h-5 w-5 text-red-600 dark:text-red-400 mr-3 flex-shrink-0" />
                           )}
                           <div>
-                            <h4 className="text-xs font-medium text-gray-900">
+                            <h4 className="text-sm font-bold text-slate-900 dark:text-green-100">
                               {testResults.status === 'accepted' ? 'Solution Accepted!' : 'Solution Failed'}
                             </h4>
-                            <p className="text-xs text-gray-600">
+                            <p className="text-xs text-slate-700 dark:text-green-300 font-medium">
                               Tests passed: {testResults.testsPassed}/{testResults.totalTests}
                             </p>
                           </div>
@@ -1047,12 +1049,12 @@ const ProblemDetail: React.FC = () => {
 
                       {/* Codecoin Reward */}
                       {testResults.earnedCodecoin && (
-                        <div className="p-3 bg-yellow-50 border-2 border-yellow-300 rounded-xl">
+                        <div className="p-5 bg-gradient-to-r from-amber-50 to-yellow-100 dark:from-green-950/50 dark:to-green-900/50 border-2 border-amber-300 dark:border-green-700 rounded-2xl shadow-lg">
                           <div className="flex items-center">
-                            <Award className="h-4 w-4 text-yellow-600 mr-2 flex-shrink-0" />
+                            <Award className="h-5 w-5 text-amber-600 dark:text-green-400 mr-3 flex-shrink-0" />
                             <div>
-                              <p className="text-xs font-medium text-yellow-800">Codecoin Earned!</p>
-                              <p className="text-xs text-yellow-700">You've earned 1 Codecoin for solving this problem.</p>
+                              <p className="text-sm font-bold text-amber-800 dark:text-green-200">Codecoin Earned!</p>
+                              <p className="text-xs text-amber-700 dark:text-green-300 font-medium">You've earned 1 Codecoin for solving this problem.</p>
                             </div>
                           </div>
                         </div>
@@ -1060,65 +1062,69 @@ const ProblemDetail: React.FC = () => {
 
                       {/* Error Display */}
                       {testResults.error && (
-                        <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3">
-                          <p className="text-red-800 text-xs font-medium mb-1">Error:</p>
-                          <p className="text-red-700 text-xs font-mono break-all">{testResults.error}</p>
+                        <div className="bg-gradient-to-r from-red-50 to-rose-100 dark:from-red-950/50 dark:to-red-900/50 border-2 border-red-300 dark:border-red-700 rounded-2xl p-5 shadow-lg">
+                          <p className="text-red-800 dark:text-red-300 text-sm font-bold mb-2">Error:</p>
+                          <p className="text-red-700 dark:text-red-400 text-xs font-mono break-all bg-red-100 dark:bg-red-900/30 p-3 rounded-xl">{testResults.error}</p>
                         </div>
                       )}
 
                       {/* Test Case Results */}
                       {testResults.results && testResults.results.length > 0 && (
-                        <div className="space-y-2">
-                          <h4 className="font-medium text-blue-900 text-sm">Test Cases:</h4>
-                          <div className="space-y-2 max-h-48 sm:max-h-64 overflow-y-auto">
+                        <div className="space-y-4">
+                          <h4 className="font-black text-slate-900 dark:text-green-100 text-base">Test Cases:</h4>
+                          <div className="space-y-4 max-h-64 lg:max-h-80 overflow-y-auto pr-2">
                             {testResults.results.map((result: TestCaseResult, index: number) => {
-                              const bgClass = result.passed ? 'bg-green-50 border-green-300' : 'bg-red-50 border-red-300';
-                              const textClass = result.passed ? 'text-green-800' : 'text-red-800';
+                              const bgClass = result.passed 
+                                ? 'bg-gradient-to-r from-emerald-50 to-green-100 dark:from-green-950/50 dark:to-green-900/50 border-emerald-300 dark:border-green-700' 
+                                : 'bg-gradient-to-r from-red-50 to-rose-100 dark:from-red-950/50 dark:to-red-900/50 border-red-300 dark:border-red-700';
+                              const textClass = result.passed 
+                                ? 'text-emerald-800 dark:text-green-200' 
+                                : 'text-red-800 dark:text-red-200';
                               return (
-                                <div key={index} className={`p-3 rounded-xl border-2 ${bgClass}`}>
-                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-2 space-y-0.5 sm:space-y-0">
-                                    <span className={`text-xs font-medium ${textClass}`}>
+                                <div key={index} className={`p-5 rounded-2xl border-2 shadow-md ${bgClass}`}>
+                                  <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-3 space-y-2 lg:space-y-0">
+                                    <span className={`text-xs font-black ${textClass}`}>
                                       Test {index + 1} - {result.passed ? 'PASSED' : 'FAILED'}
                                     </span>
                                     {result.runtime && (
-                                      <span className="text-xs text-gray-600 font-medium">
+                                      <span className="text-xs text-slate-600 dark:text-green-300 font-bold">
                                         {result.runtime} ms
                                       </span>
                                     )}
                                   </div>
                                   
-                                  <div className="space-y-2 text-xs">
+                                  <div className="space-y-3 text-xs">
                                     <div>
-                                      <span className="text-blue-700 font-medium">Input:</span>
-                                      <div className="bg-blue-100 p-2 rounded-lg mt-1 border border-blue-200">
-                                        <code className="text-blue-800 break-all">
+                                      <span className="text-sky-700 dark:text-green-300 font-bold text-sm">Input:</span>
+                                      <div className="bg-sky-100 dark:bg-green-900/40 p-3 rounded-xl mt-2 border-2 border-sky-200 dark:border-green-800">
+                                        <code className="text-sky-800 dark:text-green-200 break-all font-mono text-xs">
                                           {JSON.stringify(result.input, null, 2)}
                                         </code>
                                       </div>
                                     </div>
                                     
                                     <div>
-                                      <span className="text-blue-700 font-medium">Expected:</span>
-                                      <div className="bg-green-100 p-2 rounded-lg mt-1 border border-green-200">
-                                        <code className="text-green-800 break-all">
+                                      <span className="text-sky-700 dark:text-green-300 font-bold text-sm">Expected:</span>
+                                      <div className="bg-emerald-100 dark:bg-green-900/40 p-3 rounded-xl mt-2 border-2 border-emerald-200 dark:border-green-800">
+                                        <code className="text-emerald-800 dark:text-green-200 break-all font-mono text-xs">
                                           {JSON.stringify(result.expectedOutput, null, 2)}
                                         </code>
                                       </div>
                                     </div>
 
                                     <div>
-                                      <span className="text-blue-700 font-medium">Output:</span>
-                                      <div className={`p-2 rounded-lg mt-1 border-2 ${result.passed ? 'bg-green-100 border-green-200' : 'bg-red-100 border-red-200'}`}>
-                                        <code className={`break-all ${result.passed ? 'text-green-800' : 'text-red-800'}`}>
+                                      <span className="text-sky-700 dark:text-green-300 font-bold text-sm">Output:</span>
+                                      <div className={`p-3 rounded-xl mt-2 border-2 ${result.passed ? 'bg-emerald-100 dark:bg-green-900/40 border-emerald-200 dark:border-green-800' : 'bg-red-100 dark:bg-red-900/40 border-red-200 dark:border-red-700'}`}>
+                                        <code className={`break-all font-mono text-xs ${result.passed ? 'text-emerald-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'}`}>
                                           {JSON.stringify(result.actualOutput, null, 2)}
                                         </code>
                                       </div>
                                     </div>
                                     
                                     {!result.passed && result.error && (
-                                      <div className="mt-2 text-red-700 bg-red-100 p-2 rounded-lg border border-red-200">
-                                        <span className="font-medium">Error: </span>
-                                        <span className="break-all">{result.error}</span>
+                                      <div className="mt-3 text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 p-3 rounded-xl border-2 border-red-200 dark:border-red-700">
+                                        <span className="font-bold">Error: </span>
+                                        <span className="break-all font-mono text-xs">{result.error}</span>
                                       </div>
                                     )}
                                   </div>
@@ -1130,24 +1136,24 @@ const ProblemDetail: React.FC = () => {
                       )}
 
                       {/* Stats */}
-                      <div className="grid grid-cols-3 gap-3 pt-3 border-t-2 border-blue-200">
-                        <div className="text-center">
-                          <div className="text-sm font-semibold text-blue-900">
+                      <div className="grid grid-cols-3 gap-6 pt-6 border-t-2 border-sky-200 dark:border-green-800">
+                        <div className="text-center bg-sky-50 dark:bg-green-900/30 rounded-xl p-3 border-2 border-sky-200 dark:border-green-800">
+                          <div className="text-lg font-black text-slate-900 dark:text-green-100">
                             {testResults.testsPassed}/{testResults.totalTests}
                           </div>
-                          <div className="text-xs text-blue-600 font-medium">Tests Passed</div>
+                          <div className="text-xs text-sky-600 dark:text-green-300 font-bold">Tests Passed</div>
                         </div>
-                        <div className="text-center">
-                          <div className="text-sm font-semibold text-blue-900">
+                        <div className="text-center bg-sky-50 dark:bg-green-900/30 rounded-xl p-3 border-2 border-sky-200 dark:border-green-800">
+                          <div className="text-lg font-black text-slate-900 dark:text-green-100">
                             {testResults.runtimeMs ? `${testResults.runtimeMs}ms` : '--'}
                           </div>
-                          <div className="text-xs text-blue-600 font-medium">Runtime</div>
+                          <div className="text-xs text-sky-600 dark:text-green-300 font-bold">Runtime</div>
                         </div>
-                        <div className="text-center">
-                          <div className="text-sm font-semibold text-blue-900">
+                        <div className="text-center bg-sky-50 dark:bg-green-900/30 rounded-xl p-3 border-2 border-sky-200 dark:border-green-800">
+                          <div className="text-lg font-black text-slate-900 dark:text-green-100">
                             {testResults.memoryKb ? `${Math.round(testResults.memoryKb / 1024 * 10) / 10} MB` : '--'}
                           </div>
-                          <div className="text-xs text-blue-600 font-medium">Memory</div>
+                          <div className="text-xs text-sky-600 dark:text-green-300 font-bold">Memory</div>
                         </div>
                       </div>
                     </div>
@@ -1160,6 +1166,6 @@ const ProblemDetail: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default ProblemDetail;

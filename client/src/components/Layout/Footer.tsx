@@ -16,116 +16,115 @@ export default function Footer() {
   };
 
   return (
-    <footer className="bg-gray-100 dark:bg-gray-950 border-t border-blue-200 dark:border-gray-800 py-4 sm:py-6 lg:py-8 relative overflow-hidden transition-colors duration-300">
-      {/* Enhanced Background Effects for Darker Theme */}
+    <footer className="bg-white dark:bg-gray-950 border-t border-sky-100 dark:border-green-900 py-3 sm:py-4 md:py-6 lg:py-8 relative overflow-hidden transition-colors duration-300">
+      {/* Background Effects */}
       <div className="absolute inset-0 pointer-events-none">
-        {/* Primary glow orbs - more visible on dark background */}
-        <div className="absolute top-10 left-[5%] w-40 sm:w-64 lg:w-80 h-40 sm:h-64 lg:h-80 bg-gradient-to-br from-blue-600/30 via-indigo-500/20 to-purple-600/25 dark:from-blue-400/20 dark:via-indigo-400/15 dark:to-purple-500/20 rounded-full blur-3xl animate-pulse"></div>
-        <div className="absolute bottom-10 right-[5%] w-48 sm:w-72 lg:w-96 h-48 sm:h-72 lg:h-96 bg-gradient-to-tl from-indigo-600/25 via-blue-500/20 to-cyan-600/30 dark:from-indigo-400/15 dark:via-blue-400/12 dark:to-cyan-400/18 rounded-full blur-3xl animate-pulse delay-1000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-56 sm:w-80 lg:w-[28rem] h-56 sm:h-80 lg:h-[28rem] bg-gradient-to-r from-blue-500/15 via-indigo-500/10 to-purple-500/20 dark:from-blue-400/10 dark:via-indigo-400/8 dark:to-purple-400/12 rounded-full blur-3xl animate-pulse delay-700"></div>
+        {/* Primary glow orbs */}
+        <div className="absolute top-8 left-[5%] w-24 sm:w-32 md:w-48 lg:w-64 h-24 sm:h-32 md:h-48 lg:h-64 bg-gradient-to-br from-sky-200/40 via-sky-100/30 to-blue-200/35 dark:from-green-400/20 dark:via-green-300/15 dark:to-emerald-400/20 rounded-full blur-2xl animate-pulse"></div>
+        <div className="absolute bottom-8 right-[5%] w-28 sm:w-36 md:w-52 lg:w-72 h-28 sm:h-36 md:h-52 lg:h-72 bg-gradient-to-tl from-blue-200/35 via-sky-100/25 to-cyan-200/40 dark:from-emerald-400/15 dark:via-green-300/12 dark:to-green-400/18 rounded-full blur-2xl animate-pulse delay-1000"></div>
+        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-32 sm:w-44 md:w-60 lg:w-80 h-32 sm:h-44 md:h-60 lg:h-80 bg-gradient-to-r from-sky-100/25 via-blue-100/20 to-cyan-100/30 dark:from-green-300/10 dark:via-emerald-300/8 dark:to-green-400/12 rounded-full blur-2xl animate-pulse delay-700"></div>
 
-        {/* Enhanced floating particles */}
-        <div className="absolute top-[15%] right-[20%] w-2 h-2 bg-blue-500/60 dark:bg-blue-400/80 rounded-full animate-ping delay-300"></div>
-        <div className="absolute top-[70%] left-[15%] w-1.5 h-1.5 bg-indigo-500/70 dark:bg-indigo-400/90 rounded-full animate-ping delay-1000"></div>
-        <div className="absolute top-[30%] right-[35%] w-2 h-2 bg-purple-500/60 dark:bg-purple-400/80 rounded-full animate-ping delay-500"></div>
-        <div className="absolute bottom-[20%] left-[30%] w-1 h-1 bg-cyan-500/80 dark:bg-cyan-400/90 rounded-full animate-ping delay-1500"></div>
+        {/* Floating particles */}
+        <div className="absolute top-[15%] right-[20%] w-1 h-1 sm:w-1.5 sm:h-1.5 bg-sky-400/60 dark:bg-green-400/80 rounded-full animate-ping delay-300"></div>
+        <div className="absolute top-[70%] left-[15%] w-1 h-1 bg-blue-400/70 dark:bg-emerald-400/90 rounded-full animate-ping delay-1000"></div>
+        <div className="absolute top-[30%] right-[35%] w-1 h-1 sm:w-1.5 sm:h-1.5 bg-cyan-400/60 dark:bg-green-300/80 rounded-full animate-ping delay-500"></div>
+        <div className="absolute bottom-[20%] left-[30%] w-0.5 h-0.5 sm:w-1 sm:h-1 bg-sky-500/80 dark:bg-emerald-300/90 rounded-full animate-ping delay-1500"></div>
       </div>
 
-      {/* Enhanced grid overlay */}
+      {/* Grid overlay */}
       <div
-        className="absolute inset-0 opacity-[0.03] dark:opacity-[0.08] pointer-events-none"
+        className="absolute inset-0 opacity-[0.02] dark:opacity-[0.06] pointer-events-none"
         style={{
-          backgroundImage: `radial-gradient(circle at 2px 2px, rgba(59,130,246,0.4) 1px, transparent 0)`,
-          backgroundSize: '40px 40px'
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgba(14,165,233,0.3) 1px, transparent 0)`,
+          backgroundSize: '30px 30px'
         }}
       ></div>
 
-      {/* Stronger radial gradient overlay */}
-      <div className="absolute inset-0 bg-gradient-radial from-blue-100/8 via-transparent to-gray-200/15 dark:from-blue-800/10 dark:via-transparent dark:to-gray-950/30 pointer-events-none"></div>
+      {/* Radial gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-radial from-sky-50/10 via-transparent to-white/20 dark:from-green-900/10 dark:via-transparent dark:to-gray-950/30 pointer-events-none"></div>
 
-      {/* Full Width Container */}
-      <div className="w-full px-4 sm:px-6 lg:px-8 xl:px-12 relative z-20">
+      {/* Container */}
+      <div className="w-full px-3 sm:px-4 md:px-6 lg:px-8 xl:px-10 relative z-20">
         {/* Responsive Grid Layout */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-12 gap-6 lg:gap-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-12 gap-4 sm:gap-5 lg:gap-6">
           
-          {/* Brand Section - Takes more space and positioned left */}
+          {/* Brand Section */}
           <div className="sm:col-span-2 lg:col-span-2 xl:col-span-4">
-            <div className="space-y-4">
-              {/* Enhanced Logo & Brand */}
-              <div className="space-y-3">
+            <div className="space-y-3 sm:space-y-4">
+              {/* Logo & Brand */}
+              <div className="space-y-2 sm:space-y-3">
                 <div className="flex items-start space-x-2 group cursor-pointer">
                   <div className="relative flex-shrink-0">
-                    {/* Enhanced glowing backdrop */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-blue-500/40 via-indigo-600/30 to-purple-600/35 dark:from-blue-400/30 dark:via-indigo-500/25 dark:to-purple-500/30 rounded-xl blur-lg opacity-70 group-hover:opacity-100 transition-all duration-700"></div>
+                    {/* Glowing backdrop */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-sky-300/30 via-blue-400/25 to-cyan-400/35 dark:from-green-400/25 dark:via-emerald-500/20 dark:to-green-500/30 rounded-lg blur-md opacity-60 group-hover:opacity-90 transition-all duration-500"></div>
                     {/* Logo container */}
-                    <div className="relative bg-gradient-to-br from-white/90 via-blue-50/80 to-indigo-50/90 dark:from-gray-900/90 dark:via-gray-800/80 dark:to-gray-850/90 p-1.5 rounded-xl border border-blue-300/60 dark:border-gray-700/60 group-hover:border-blue-400/50 dark:group-hover:border-blue-500/50 transition-all duration-700 backdrop-blur-sm shadow-lg">
+                    <div className="relative bg-gradient-to-br from-white/95 via-sky-50/90 to-blue-50/95 dark:from-gray-900/95 dark:via-gray-850/90 dark:to-green-950/95 p-1 sm:p-1.5 rounded-lg border border-sky-200/50 dark:border-green-700/50 group-hover:border-sky-300/70 dark:group-hover:border-green-600/70 transition-all duration-500 backdrop-blur-sm shadow-md">
                       <img
                         src="/logo.png"
                         alt="Logo"
-                        className="w-8 h-8 sm:w-10 sm:h-10 lg:w-12 lg:h-12 object-contain"
+                        className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 object-contain"
                       />
                     </div>
                   </div>
-                  <div className="space-y-1 min-w-0 flex-1">
-                    <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight">
-                      <span className="bg-gradient-to-r from-gray-800 via-gray-900 to-black dark:from-gray-100 dark:via-white dark:to-gray-200 bg-clip-text text-transparent">
+                  <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
+                    <h1 className="text-lg sm:text-xl md:text-2xl lg:text-2xl xl:text-3xl font-black tracking-tight">
+                      <span className="bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 dark:from-gray-100 dark:via-white dark:to-gray-200 bg-clip-text text-transparent">
                         Algo
                       </span>
-                      <span className="bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-300 dark:via-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
+                      <span className="bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-300 bg-clip-text text-transparent">
                         Bucks
                       </span>
                     </h1>
-                    <p className="text-xs sm:text-sm lg:text-base text-gray-700 dark:text-gray-300 font-semibold tracking-wide transition-colors duration-300">
+                    <p className="text-xs sm:text-sm md:text-sm text-gray-600 dark:text-green-300 font-medium tracking-wide transition-colors duration-300">
                       {t('brand.tagline')}
                     </p>
                   </div>
                 </div>
 
-                {/* Enhanced Description */}
-                <div className="space-y-2">
-                  <p className="text-gray-800 dark:text-gray-200 text-xs sm:text-sm leading-relaxed font-medium transition-colors duration-300 max-w-md">
+                {/* Description */}
+                <div className="space-y-1 sm:space-y-2">
+                  <p className="text-gray-700 dark:text-green-200 text-xs sm:text-sm md:text-sm leading-relaxed font-medium transition-colors duration-300 max-w-md">
                     {t('brand.description')}
                   </p>
                 </div>
               </div>
 
-              {/* Enhanced Social Links */}
-              <div className="flex flex-wrap gap-2">
+              {/* Social Links */}
+              <div className="flex flex-wrap gap-1.5 sm:gap-2">
                 {[
-                  { icon: Github, href: 'https://github.com/dheerajgaurgithub', gradient: 'from-gray-600 to-gray-800', hoverGradient: 'hover:from-gray-800 hover:to-black' },
-                  { icon: Twitter, href: 'https://www.instagram.com/mahirgaur.official/?locale=pt_BR&hl=af', gradient: 'from-blue-500 to-blue-700', hoverGradient: 'hover:from-blue-400 hover:to-blue-600' },
-                  { icon: MessageCircle, href: '#', gradient: 'from-indigo-500 to-purple-600', hoverGradient: 'hover:from-indigo-400 hover:to-purple-500' },
-                  { icon: Mail, href: '#', gradient: 'from-cyan-500 to-blue-600', hoverGradient: 'hover:from-cyan-400 hover:to-blue-500' }
+                  { icon: Github, href: 'https://github.com/dheerajgaurgithub', gradient: 'from-gray-500 to-gray-700', hoverGradient: 'hover:from-gray-700 hover:to-gray-900' },
+                  { icon: Twitter, href: 'https://www.instagram.com/mahirgaur.official/?locale=pt_BR&hl=af', gradient: 'from-sky-500 to-blue-600', hoverGradient: 'hover:from-sky-400 hover:to-blue-500' },
+                  { icon: MessageCircle, href: '#', gradient: 'from-blue-500 to-cyan-600', hoverGradient: 'hover:from-blue-400 hover:to-cyan-500' },
+                  { icon: Mail, href: '#', gradient: 'from-cyan-500 to-sky-600', hoverGradient: 'hover:from-cyan-400 hover:to-sky-500' }
                 ].map((social, index) => (
                   <button
                     key={index}
                     onClick={() => handleNavigation(social.href)}
-                    className="group relative p-2 bg-gradient-to-br from-white/80 via-blue-50/60 to-indigo-50/80 dark:from-gray-800/80 dark:via-gray-750/60 dark:to-gray-800/80 rounded-xl border border-blue-200/70 dark:border-gray-600/70 hover:border-blue-300/90 dark:hover:border-blue-500/90 transition-all duration-500 backdrop-blur-sm hover:scale-110 hover:-translate-y-1 shadow-lg hover:shadow-xl"
+                    className="group relative p-1.5 sm:p-2 bg-gradient-to-br from-white/90 via-sky-50/70 to-blue-50/90 dark:from-gray-800/90 dark:via-gray-750/70 dark:to-green-900/90 rounded-lg border border-sky-200/60 dark:border-green-600/60 hover:border-sky-300/80 dark:hover:border-green-500/80 transition-all duration-400 backdrop-blur-sm hover:scale-105 hover:-translate-y-0.5 shadow-md hover:shadow-lg"
                   >
-                    <div className={`absolute inset-0 bg-gradient-to-br ${social.gradient} opacity-0 group-hover:opacity-25 rounded-xl transition-all duration-500`}></div>
-                    <social.icon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-700 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-white transition-colors duration-300 relative z-10" />
+                    <div className={`absolute inset-0 bg-gradient-to-br ${social.gradient} dark:from-green-500 dark:to-emerald-600 opacity-0 group-hover:opacity-20 rounded-lg transition-all duration-400`}></div>
+                    <social.icon className="w-3 h-3 sm:w-4 sm:h-4 text-gray-600 dark:text-green-300 group-hover:text-gray-800 dark:group-hover:text-green-100 transition-colors duration-300 relative z-10" />
                   </button>
                 ))}
               </div>
             </div>
           </div>
 
-          {/* Company Navigation - Positioned center-left */}
+          {/* Company Navigation */}
           <div className="lg:col-span-1 xl:col-span-3">
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="relative">
-                <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-blue-300 tracking-tight mb-2 transition-colors duration-300">
+                <h3 className="text-sm sm:text-base md:text-base font-bold text-gray-800 dark:text-green-300 tracking-tight mb-2 transition-colors duration-300">
                   <Link to="/company">
-                    <span className="bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 dark:from-indigo-300 dark:via-blue-400 dark:to-purple-400 bg-clip-text text-transparent cursor-pointer hover:from-indigo-500 hover:via-blue-500 hover:to-purple-500 transition-all duration-300">
+                    <span className="bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-300 bg-clip-text text-transparent cursor-pointer hover:from-sky-500 hover:via-blue-500 hover:to-cyan-500 transition-all duration-300">
                       {t('common.company')}
                     </span>
                   </Link>
                 </h3>
-                <div className="w-8 h-0.5 bg-gradient-to-r from-indigo-600 via-blue-600 to-purple-600 dark:from-indigo-300 dark:via-blue-400 dark:to-purple-400 rounded-full"></div>
+                <div className="w-6 sm:w-8 h-0.5 bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-300 rounded-full"></div>
               </div>
 
-              {/* Vertical List for better mobile layout */}
-              <ul className="space-y-2">
+              <ul className="space-y-1 sm:space-y-2">
                 {[
                   { nameKey: 'common.about', link: '/about' },
                   { nameKey: 'common.careers', link: '/careers' },
@@ -137,12 +136,12 @@ export default function Footer() {
                   <li key={item.link}>
                     <Link
                       to={item.link}
-                      className="group flex items-center gap-1 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-all duration-300 py-1 px-2 rounded-lg hover:bg-blue-50/50 dark:hover:bg-gray-800/50 border border-transparent hover:border-blue-200/50 dark:hover:border-gray-600/50"
+                      className="group flex items-center gap-1 text-gray-600 dark:text-green-300 hover:text-gray-800 dark:hover:text-green-100 transition-all duration-300 py-1 px-2 rounded-md hover:bg-sky-50/60 dark:hover:bg-green-900/30 border border-transparent hover:border-sky-200/50 dark:hover:border-green-600/50"
                     >
-                      <span className="font-semibold tracking-wide group-hover:translate-x-1 transition-transform duration-300 text-xs sm:text-sm">
+                      <span className="font-medium tracking-wide group-hover:translate-x-1 transition-transform duration-300 text-xs sm:text-sm md:text-sm">
                         {t(item.nameKey as any)}
                       </span>
-                      <ExternalLink className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-all duration-300 text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400" />
+                      <ExternalLink className="w-2.5 h-2.5 sm:w-3 sm:h-3 opacity-0 group-hover:opacity-100 transition-all duration-300 text-gray-400 dark:text-green-400 group-hover:text-sky-600 dark:group-hover:text-green-200" />
                     </Link>
                   </li>
                 ))}
@@ -150,33 +149,33 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Community Section - Positioned center-right */}
+          {/* Community Section */}
           <div className="lg:col-span-1 xl:col-span-3">
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="relative">
-                <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-purple-300 tracking-tight mb-2 transition-colors duration-300">
-                  <span className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 dark:from-purple-300 dark:via-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                <h3 className="text-sm sm:text-base md:text-base font-bold text-gray-800 dark:text-emerald-300 tracking-tight mb-2 transition-colors duration-300">
+                  <span className="bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-600 dark:from-emerald-400 dark:via-green-400 dark:to-green-300 bg-clip-text text-transparent">
                     {t('common.stay_connected')}
                   </span>
                 </h3>
-                <div className="w-8 h-0.5 bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 dark:from-purple-300 dark:via-blue-400 dark:to-indigo-400 rounded-full"></div>
+                <div className="w-6 sm:w-8 h-0.5 bg-gradient-to-r from-cyan-600 via-sky-600 to-blue-600 dark:from-emerald-400 dark:via-green-400 dark:to-green-300 rounded-full"></div>
               </div>
 
-              <div className="space-y-3">
-                <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm leading-relaxed transition-colors duration-300 font-medium">
+              <div className="space-y-2 sm:space-y-3">
+                <p className="text-gray-600 dark:text-green-300 text-xs sm:text-sm md:text-sm leading-relaxed transition-colors duration-300 font-medium">
                   {t('common.stay_connected')}
                 </p>
 
-                <div className="space-y-2">
+                <div className="space-y-1.5 sm:space-y-2">
                   <button
                     onClick={() => handleNavigation('/newsletter')}
-                    className="w-full px-3 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-500 dark:to-indigo-600 text-white rounded-lg hover:from-blue-500 hover:to-indigo-500 dark:hover:from-blue-400 dark:hover:to-indigo-500 transition-all duration-300 text-xs sm:text-sm font-semibold shadow-lg hover:shadow-xl hover:-translate-y-0.5"
+                    className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 bg-gradient-to-r from-sky-600 to-blue-600 dark:from-green-600 dark:to-emerald-600 text-white rounded-md hover:from-sky-500 hover:to-blue-500 dark:hover:from-green-500 dark:hover:to-emerald-500 transition-all duration-300 text-xs sm:text-sm md:text-sm font-medium shadow-md hover:shadow-lg hover:-translate-y-0.5"
                   >
                     {t('common.subscribe_newsletter')}
                   </button>
                   <button
                     onClick={() => handleNavigation('/community')}
-                    className="w-full px-3 py-2 border-2 border-blue-400 dark:border-blue-500 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/30 hover:border-blue-500 dark:hover:border-blue-400 transition-all duration-300 text-xs sm:text-sm font-semibold hover:-translate-y-0.5"
+                    className="w-full px-2.5 sm:px-3 py-1.5 sm:py-2 border-2 border-sky-400 dark:border-green-500 text-sky-700 dark:text-green-400 rounded-md hover:bg-sky-50 dark:hover:bg-green-900/30 hover:border-sky-500 dark:hover:border-green-400 transition-all duration-300 text-xs sm:text-sm md:text-sm font-medium hover:-translate-y-0.5"
                   >
                     {t('common.join_community')}
                   </button>
@@ -185,41 +184,41 @@ export default function Footer() {
             </div>
           </div>
 
-          {/* Legal/Copyright Section - Positioned far right */}
+          {/* Legal/Copyright Section */}
           <div className="lg:col-span-2 xl:col-span-2">
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <div className="relative">
-                <h3 className="text-sm sm:text-base font-bold text-gray-900 dark:text-cyan-300 tracking-tight mb-2 transition-colors duration-300">
-                  <span className="bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 dark:from-cyan-300 dark:via-blue-400 dark:to-indigo-400 bg-clip-text text-transparent">
+                <h3 className="text-sm sm:text-base md:text-base font-bold text-gray-800 dark:text-green-300 tracking-tight mb-2 transition-colors duration-300">
+                  <span className="bg-gradient-to-r from-blue-600 via-sky-600 to-cyan-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-300 bg-clip-text text-transparent">
                     {t('common.legal')}
                   </span>
                 </h3>
-                <div className="w-8 h-0.5 bg-gradient-to-r from-cyan-600 via-blue-600 to-indigo-600 dark:from-cyan-300 dark:via-blue-400 dark:to-indigo-400 rounded-full"></div>
+                <div className="w-6 sm:w-8 h-0.5 bg-gradient-to-r from-blue-600 via-sky-600 to-cyan-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-300 rounded-full"></div>
               </div>
 
-              <div className="space-y-3">
-                <p className="text-gray-800 dark:text-gray-200 text-xs font-semibold tracking-wide transition-colors duration-300">
+              <div className="space-y-2 sm:space-y-3">
+                <p className="text-gray-700 dark:text-green-200 text-xs sm:text-sm md:text-sm font-medium tracking-wide transition-colors duration-300">
                   © 2025
-                  <span className="text-transparent bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 dark:from-blue-300 dark:via-indigo-400 dark:to-purple-400 bg-clip-text font-bold mx-1">AlgoBucks</span>
+                  <span className="text-transparent bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-300 bg-clip-text font-bold mx-1">AlgoBucks</span>
                   {t('common.all_rights_reserved')}
                 </p>
 
-                <div className="space-y-1">
+                <div className="space-y-0.5 sm:space-y-1">
                   <Link
                     to="/terms-of-service"
-                    className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-blue-50/30 dark:hover:bg-gray-800/50 text-xs"
+                    className="block text-gray-600 dark:text-green-400 hover:text-gray-800 dark:hover:text-green-200 transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-sky-50/40 dark:hover:bg-green-900/30 text-xs sm:text-sm md:text-sm"
                   >
                     {t('common.terms')}
                   </Link>
                   <Link
                     to="/privacy-policy"
-                    className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-blue-50/30 dark:hover:bg-gray-800/50 text-xs"
+                    className="block text-gray-600 dark:text-green-400 hover:text-gray-800 dark:hover:text-green-200 transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-sky-50/40 dark:hover:bg-green-900/30 text-xs sm:text-sm md:text-sm"
                   >
                     {t('common.privacy')}
                   </Link>
                   <Link
                     to="/cookie-policy"
-                    className="block text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-blue-50/30 dark:hover:bg-gray-800/50 text-xs"
+                    className="block text-gray-600 dark:text-green-400 hover:text-gray-800 dark:hover:text-green-200 transition-colors duration-300 font-medium tracking-wide py-0.5 px-1 rounded hover:bg-sky-50/40 dark:hover:bg-green-900/30 text-xs sm:text-sm md:text-sm"
                   >
                     {t('common.cookies')}
                   </Link>
@@ -232,10 +231,10 @@ export default function Footer() {
       {buildTime && (
         <div className="absolute bottom-1 right-2 sm:bottom-2 sm:right-3 z-30">
           <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-medium border bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-blue-200 dark:border-gray-700 text-blue-700 dark:text-blue-300 shadow-sm"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] md:text-xs font-medium border bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-sky-200 dark:border-green-700 text-sky-700 dark:text-green-300 shadow-sm"
             title={`Build time: ${buildTime}`}
           >
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-sky-500 dark:bg-green-500 animate-pulse"></span>
             Build: {buildTime}
           </span>
         </div>

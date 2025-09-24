@@ -43,25 +43,27 @@ export const Leaderboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  const [sortBy, setSortBy] = useState<'points' | 'totalSolved' | 'username'>('points');
+  const [sortBy, setSortBy] = useState<'points' | 'totalSolved' | 'username' | 'codecoins'>('points');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isSearching, setIsSearching] = useState(false);
+  const [minPoints, setMinPoints] = useState<number | ''>('');
+  const [minSolved, setMinSolved] = useState<number | ''>('');
 
   // Fetch leaderboard on initial load
   useEffect(() => {
     fetchLeaderboard();
   }, []);
 
-  // Apply filters and sorting when search term, sortBy, or sortOrder changes
+  // Apply filters and sorting when inputs change
   useEffect(() => {
     filterAndSortUsers(users, debouncedSearchTerm, sortBy, sortOrder);
-  }, [debouncedSearchTerm, sortBy, sortOrder, users]);
+  }, [debouncedSearchTerm, sortBy, sortOrder, users, minPoints, minSolved]);
 
   const filterAndSortUsers = useCallback(
     (
       userList: LeaderboardUser[],
       search: string,
-      sortField: 'points' | 'totalSolved' | 'username',
+      sortField: 'points' | 'totalSolved' | 'username' | 'codecoins',
       order: 'asc' | 'desc'
     ) => {
       setIsSearching(true);
@@ -71,11 +73,28 @@ export const Leaderboard: React.FC = () => {
           let result = [...userList];
           
           if (search) {
-            const searchLower = search.trim().toLowerCase();
-            result = result.filter(user => 
-              user.username.toLowerCase().includes(searchLower) ||
-              (user.fullName?.toLowerCase().includes(searchLower) ?? false)
-            );
+            const raw = search.trim();
+            const searchLower = raw.toLowerCase();
+            const numeric = /^\d+$/.test(raw) ? Number(raw) : null;
+            result = result.filter(user => {
+              const nameHit = user.username.toLowerCase().includes(searchLower) || (user.fullName?.toLowerCase().includes(searchLower) ?? false);
+              const pointsHit = String(user.points ?? '').includes(searchLower);
+              const solvedHit = String(user.totalSolved ?? user.solvedProblems?.length ?? '').includes(searchLower);
+              const coinsHit = String(user.codecoins ?? '').includes(searchLower);
+              const numericHit = numeric != null && ((user.points ?? 0) === numeric || (user.totalSolved ?? user.solvedProblems?.length ?? 0) === numeric);
+              return nameHit || pointsHit || solvedHit || coinsHit || numericHit;
+            });
+          }
+
+          // Apply min filters
+          if (minPoints !== '' || minSolved !== '') {
+            result = result.filter(user => {
+              const pts = user.points ?? 0;
+              const solved = (user.totalSolved ?? user.solvedProblems?.length ?? 0);
+              const okPts = minPoints === '' ? true : pts >= Number(minPoints);
+              const okSolved = minSolved === '' ? true : solved >= Number(minSolved);
+              return okPts && okSolved;
+            });
           }
 
           result.sort((a, b) => {
@@ -84,7 +103,18 @@ export const Leaderboard: React.FC = () => {
             if (sortField === 'username') {
               comparison = a.username.localeCompare(b.username);
             } else {
-              comparison = (a[sortField] || 0) - (b[sortField] || 0);
+              let av = 0; let bv = 0;
+              if (sortField === 'totalSolved') {
+                av = (a.totalSolved ?? a.solvedProblems?.length ?? 0);
+                bv = (b.totalSolved ?? b.solvedProblems?.length ?? 0);
+              } else if (sortField === 'points') {
+                av = (a.points ?? 0);
+                bv = (b.points ?? 0);
+              } else if (sortField === 'codecoins') {
+                av = (a.codecoins ?? 0);
+                bv = (b.codecoins ?? 0);
+              }
+              comparison = av - bv;
             }
             
             return order === 'asc' ? comparison : -comparison;
@@ -111,7 +141,7 @@ export const Leaderboard: React.FC = () => {
     setSearchTerm('');
   };
 
-  const handleSortChange = (field: 'points' | 'totalSolved' | 'username') => {
+  const handleSortChange = (field: 'points' | 'totalSolved' | 'username' | 'codecoins') => {
     const newSortOrder = sortBy === field && sortOrder === 'desc' ? 'asc' : 'desc';
     setSortBy(field);
     setSortOrder(newSortOrder);
@@ -238,155 +268,194 @@ export const Leaderboard: React.FC = () => {
     }
   };
 
+  // Derive podium and remainder from filtered results so filters/sorts apply everywhere
+  const podium = filteredUsers.slice(0, 3);
+  const remainder = filteredUsers.length >= 3 ? filteredUsers.slice(3) : filteredUsers;
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-black flex flex-col items-center justify-center px-4 transition-colors duration-300">
+      <div className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center px-4 transition-colors duration-300">
         <div className="relative">
-          <div className="animate-spin rounded-full h-10 w-10 border-4 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400"></div>
-          <div className="absolute inset-0 animate-ping rounded-full h-10 w-10 border-4 border-blue-200 dark:border-blue-800 opacity-20"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-4 border-sky-100 dark:border-green-800 border-t-sky-500 dark:border-t-green-400"></div>
+          <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-sky-200 dark:border-green-700 opacity-30"></div>
         </div>
-        <p className="mt-4 text-gray-600 dark:text-gray-300 text-sm font-medium transition-colors duration-300">Loading leaderboard...</p>
-        <div className="mt-2 flex space-x-1">
-          <div className="w-1.5 h-1.5 bg-blue-600 dark:bg-blue-400 rounded-full animate-bounce"></div>
-          <div className="w-1.5 h-1.5 bg-blue-500 dark:bg-blue-400 rounded-full animate-bounce animation-delay-100"></div>
-          <div className="w-1.5 h-1.5 bg-blue-400 rounded-full animate-bounce animation-delay-200"></div>
+        <p className="mt-6 text-slate-600 dark:text-green-300 text-base font-medium">Loading leaderboard...</p>
+        <div className="mt-3 flex space-x-2">
+          <div className="w-2 h-2 bg-sky-500 dark:bg-green-400 rounded-full animate-bounce"></div>
+          <div className="w-2 h-2 bg-sky-400 dark:bg-green-400 rounded-full animate-bounce animation-delay-100"></div>
+          <div className="w-2 h-2 bg-sky-300 dark:bg-green-400 rounded-full animate-bounce animation-delay-200"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black py-3 sm:py-4 px-3 sm:px-4 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-white to-sky-50 dark:bg-gradient-to-br dark:from-black dark:to-gray-900 py-4 sm:py-8 px-4 sm:px-6 transition-all duration-300">
+      <div className="max-w-6xl mx-auto">
         {/* Header Section */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-6"
+          className="text-center mb-8 sm:mb-12"
         >
-          <div className="flex flex-col items-center space-y-3 mb-5">
+          <div className="flex flex-col items-center space-y-4 sm:space-y-6 mb-8">
             {/* Main Title */}
-            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
+            <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
               <div className="relative">
-                <Trophy className="h-6 w-6 text-yellow-500 dark:text-yellow-400" />
-                <Sparkles className="absolute -top-1 -right-1 h-2.5 w-2.5 text-yellow-400" />
+                <Trophy className="h-8 w-8 sm:h-10 sm:w-10 text-amber-500 dark:text-green-400" />
+                <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-amber-400 dark:text-green-300" />
               </div>
-              <h1 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 via-blue-700 to-blue-800 dark:from-blue-400 dark:via-blue-500 dark:to-blue-600 bg-clip-text text-transparent text-center">
+              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black bg-gradient-to-r from-sky-600 via-sky-700 to-sky-800 dark:from-green-400 dark:via-green-500 dark:to-green-600 bg-clip-text text-transparent text-center leading-tight">
                 {t('leaderboard.title')}
               </h1>
-              <Heart className="h-4 w-4 text-red-500 dark:text-red-400" />
+              <Heart className="h-6 w-6 sm:h-7 sm:w-7 text-rose-500 dark:text-green-400" />
             </div>
 
             {/* Search Bar */}
-            <div className="w-full max-w-lg mt-3 relative">
+            <div className="w-full max-w-2xl mt-6 relative">
               <div className="relative group">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500 group-focus-within:text-blue-600 dark:group-focus-within:text-blue-400 transition-colors duration-200" />
+                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-green-500 group-focus-within:text-sky-600 dark:group-focus-within:text-green-400 transition-colors duration-200" />
                 <input
                   type="text"
                   placeholder={t('leaderboard.search_placeholder')}
-                  className="w-full pl-9 pr-9 py-2.5 rounded-lg border border-gray-300 dark:border-blue-800 bg-white dark:bg-gray-900 text-gray-900 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-sm"
+                  className="w-full pl-12 pr-12 py-4 rounded-2xl border-2 border-sky-200 dark:border-green-800 bg-white/80 dark:bg-gray-900/80 text-slate-800 dark:text-green-100 placeholder-slate-500 dark:placeholder-green-400 focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-400/20 focus:border-sky-500 dark:focus:border-green-500 transition-all duration-200 text-base backdrop-blur-sm"
                   value={searchTerm}
                   onChange={handleSearchChange}
                 />
                 {searchTerm && (
                   <button
                     onClick={clearSearch}
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-green-500 hover:text-slate-600 dark:hover:text-green-300 transition-colors"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-5 w-5" />
                   </button>
                 )}
                 {isSearching && (
-                  <div className="absolute right-9 top-1/2 transform -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-200 dark:border-blue-800 border-t-blue-600 dark:border-t-blue-400"></div>
+                  <div className="absolute right-12 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-sky-200 dark:border-green-800 border-t-sky-600 dark:border-t-green-400"></div>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Sort Buttons */}
-            <div className="flex flex-wrap gap-2 mt-3 justify-center">
+            <div className="flex flex-wrap gap-3 mt-6 justify-center">
               <button
                 onClick={() => handleSortChange('username')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all duration-200 text-sm ${
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 text-base flex items-center space-x-2 ${
                   sortBy === 'username' 
-                    ? 'bg-blue-600 dark:bg-blue-500 text-white shadow-md' 
-                    : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-blue-50 dark:hover:bg-gray-800 border border-gray-300 dark:border-blue-800'
+                    ? 'bg-sky-600 dark:bg-green-600 text-white shadow-lg shadow-sky-200 dark:shadow-green-900/50 transform scale-105' 
+                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-sky-50 dark:hover:bg-gray-800 border-2 border-sky-200 dark:border-green-800 hover:border-sky-300 dark:hover:border-green-600'
                 }`}
               >
-                <Users className="inline h-3 w-3 mr-1" />
-                {t('leaderboard.sort_name')} <SortIndicator field="username" />
+                <Users className="h-4 w-4" />
+                <span>{t('leaderboard.sort_name')} <SortIndicator field="username" /></span>
               </button>
               <button
                 onClick={() => handleSortChange('points')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all duration-200 text-sm ${
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 text-base flex items-center space-x-2 ${
                   sortBy === 'points' 
-                    ? 'bg-yellow-500 dark:bg-yellow-600 text-white shadow-md' 
-                    : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-yellow-50 dark:hover:bg-gray-800 border border-gray-300 dark:border-blue-800'
+                    ? 'bg-amber-500 dark:bg-green-600 text-white shadow-lg shadow-amber-200 dark:shadow-green-900/50 transform scale-105' 
+                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-amber-50 dark:hover:bg-gray-800 border-2 border-sky-200 dark:border-green-800 hover:border-amber-300 dark:hover:border-green-600'
                 }`}
               >
-                <Zap className="inline h-3 w-3 mr-1" />
-                {t('stats.points')} <SortIndicator field="points" />
+                <Zap className="h-4 w-4" />
+                <span>{t('stats.points')} <SortIndicator field="points" /></span>
               </button>
               <button
                 onClick={() => handleSortChange('totalSolved')}
-                className={`px-3 py-1.5 rounded-lg font-medium transition-all duration-200 text-sm ${
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 text-base flex items-center space-x-2 ${
                   sortBy === 'totalSolved' 
-                    ? 'bg-green-600 dark:bg-green-500 text-white shadow-md' 
-                    : 'bg-white dark:bg-gray-900 text-gray-700 dark:text-gray-300 hover:bg-green-50 dark:hover:bg-gray-800 border border-gray-300 dark:border-blue-800'
+                    ? 'bg-emerald-600 dark:bg-green-600 text-white shadow-lg shadow-emerald-200 dark:shadow-green-900/50 transform scale-105' 
+                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-emerald-50 dark:hover:bg-gray-800 border-2 border-sky-200 dark:border-green-800 hover:border-emerald-300 dark:hover:border-green-600'
                 }`}
               >
-                <Trophy className="inline h-3 w-3 mr-1" />
-                {t('leaderboard.solved')} <SortIndicator field="totalSolved" />
+                <Trophy className="h-4 w-4" />
+                <span>{t('leaderboard.solved')} <SortIndicator field="totalSolved" /></span>
+              </button>
+              <button
+                onClick={() => handleSortChange('codecoins')}
+                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 text-base flex items-center space-x-2 ${
+                  sortBy === 'codecoins' 
+                    ? 'bg-violet-600 dark:bg-green-600 text-white shadow-lg shadow-violet-200 dark:shadow-green-900/50 transform scale-105' 
+                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-violet-50 dark:hover:bg-gray-800 border-2 border-sky-200 dark:border-green-800 hover:border-violet-300 dark:hover:border-green-600'
+                }`}
+              >
+                <Award className="h-4 w-4" />
+                <span>{t('stats.coins')} <SortIndicator field="codecoins" /></span>
               </button>
             </div>
 
+            {/* Min Filters */}
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-slate-700 dark:text-green-300">Min Points</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={minPoints}
+                  onChange={(e) => setMinPoints(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-28 px-3 py-2 rounded-xl border-2 border-sky-200 dark:border-green-800 bg-white/80 dark:bg-gray-900/80 text-slate-800 dark:text-green-100 focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-400/20"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <label className="text-sm text-slate-700 dark:text-green-300">Min Solved</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={minSolved}
+                  onChange={(e) => setMinSolved(e.target.value === '' ? '' : Number(e.target.value))}
+                  className="w-28 px-3 py-2 rounded-xl border-2 border-sky-200 dark:border-green-800 bg-white/80 dark:bg-gray-900/80 text-slate-800 dark:text-green-100 focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-400/20"
+                />
+              </div>
+            </div>
+
             {/* Subtitle */}
-            <div className="text-center mt-3">
-              <p className="text-gray-700 dark:text-blue-400 text-sm font-medium transition-colors duration-300">{t('leaderboard.subtitle')}</p>
-              <p className="text-gray-600 dark:text-gray-300 mt-1 text-xs transition-colors duration-300">
+            <div className="text-center mt-6">
+              <p className="text-slate-700 dark:text-green-300 text-lg sm:text-xl font-semibold">{t('leaderboard.subtitle')}</p>
+              <p className="text-slate-600 dark:text-green-400 mt-2 text-base">
                 {t('leaderboard.subtitle2')}
               </p>
             </div>
           </div>
         </motion.div>
 
-        {/* Top 3 Podium */}
-        {users.length >= 3 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+        {/* Top 3 Podium (uses filtered users) */}
+        {podium.length === 3 && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
             {/* Second Place */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white dark:bg-gray-900 border-2 border-gray-200 dark:border-gray-700 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl dark:shadow-gray-900/20 dark:hover:shadow-gray-900/40 transition-all duration-300 transform hover:scale-105"
+              className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-2 border-slate-200 dark:border-green-800 rounded-3xl p-6 text-center md:mt-6 shadow-xl shadow-slate-200/50 dark:shadow-green-900/20 hover:shadow-2xl hover:shadow-slate-300/50 dark:hover:shadow-green-900/40 transition-all duration-300 transform hover:scale-105 hover:-translate-y-2"
             >
-              <div className="relative mb-3">
-                <Link to={`/u/${users[1]?.username}`} className="block">
-                  <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-gray-200 dark:ring-gray-700 overflow-hidden bg-gray-100 dark:bg-gray-700">
-                    {users[1]?.avatarUrl ? (
-                      <img src={users[1]?.avatarUrl} alt={users[1]?.username} className="w-full h-full object-cover" />
+              <div className="relative mb-4">
+                <Link to={`/u/${podium[1]?.username}`} className="block">
+                  <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center ring-4 ring-slate-300 dark:ring-green-700 overflow-hidden bg-slate-100 dark:bg-green-900">
+                    {podium[1]?.avatarUrl ? (
+                      <img src={podium[1]?.avatarUrl} alt={podium[1]?.username} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-gray-700 dark:text-gray-300 font-bold text-sm">{users[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                      <span className="text-slate-700 dark:text-green-200 font-bold text-xl">{podium[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
                     )}
                   </div>
                 </Link>
-                <div className="absolute -top-1 -right-1 bg-gray-500 dark:bg-gray-400 rounded-full p-1 shadow-lg">
-                  <span className="text-white dark:text-gray-900 font-bold text-xs">2</span>
+                <div className="absolute -top-2 -right-2 bg-slate-500 dark:bg-green-600 rounded-full p-2 shadow-lg">
+                  <span className="text-white font-bold text-base">2</span>
                 </div>
-                <div className="absolute -bottom-1 -right-1">
-                  <Medal className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+                <div className="absolute -bottom-2 -right-2">
+                  <Medal className="h-6 w-6 text-slate-500 dark:text-green-400" />
                 </div>
               </div>
-              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">
-                <Link to={`/u/${users[1]?.username}`}>{users[1]?.fullName || users[1]?.username}</Link>
+              <h3 className="text-slate-900 dark:text-green-100 font-bold text-lg truncate mb-1">
+                <Link to={`/u/${podium[1]?.username}`}>{podium[1]?.fullName || podium[1]?.username}</Link>
               </h3>
-              <p className="text-gray-600 dark:text-gray-300 text-xs mb-2 truncate transition-colors duration-300">
-                <Link to={`/u/${users[1]?.username}`}>@{users[1]?.username}</Link>
+              <p className="text-slate-600 dark:text-green-300 text-base mb-4 truncate">
+                <Link to={`/u/${podium[1]?.username}`}>@{podium[1]?.username}</Link>
               </p>
-              <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2 border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-                <p className="text-gray-900 dark:text-blue-400 font-bold text-sm transition-colors duration-300">{users[1]?.points} points</p>
-                <p className="text-gray-600 dark:text-gray-300 text-xs transition-colors duration-300">Silver Champion</p>
+              <div className="bg-slate-50 dark:bg-green-900/30 rounded-2xl p-4 border-2 border-slate-200 dark:border-green-800">
+                <p className="text-slate-900 dark:text-green-100 font-bold text-xl">{podium[1]?.points} points</p>
+                <p className="text-slate-600 dark:text-green-300 text-base font-medium">Silver Champion</p>
               </div>
             </motion.div>
 
@@ -394,34 +463,34 @@ export const Leaderboard: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30 border-2 border-yellow-300 dark:border-yellow-600 rounded-xl p-4 text-center shadow-xl hover:shadow-2xl dark:shadow-yellow-900/20 dark:hover:shadow-yellow-900/40 transform hover:scale-105 transition-all duration-300"
+              className="bg-gradient-to-br from-amber-50 to-orange-100 dark:from-green-950 dark:to-green-900 border-3 border-amber-300 dark:border-green-600 rounded-3xl p-8 text-center shadow-2xl shadow-amber-300/50 dark:shadow-green-900/40 hover:shadow-3xl hover:shadow-amber-400/60 dark:hover:shadow-green-900/60 transform hover:scale-110 hover:-translate-y-3 transition-all duration-300"
             >
-              <div className="relative mb-3">
-                <Link to={`/u/${users[0]?.username}`} className="block">
-                  <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center ring-4 ring-yellow-300 dark:ring-yellow-600 overflow-hidden bg-yellow-100 dark:bg-yellow-700">
-                    {users[0]?.avatarUrl ? (
-                      <img src={users[0]?.avatarUrl} alt={users[0]?.username} className="w-full h-full object-cover" />
+              <div className="relative mb-6">
+                <Link to={`/u/${podium[0]?.username}`} className="block">
+                  <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center ring-4 ring-amber-300 dark:ring-green-500 overflow-hidden bg-amber-100 dark:bg-green-800">
+                    {podium[0]?.avatarUrl ? (
+                      <img src={podium[0]?.avatarUrl} alt={podium[0]?.username} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-yellow-800 dark:text-yellow-200 font-extrabold text-base">{users[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                      <span className="text-amber-800 dark:text-green-100 font-extrabold text-2xl">{podium[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
                     )}
                   </div>
                 </Link>
-                <div className="absolute -top-2 -right-2 bg-yellow-500 dark:bg-yellow-600 rounded-full p-1.5 shadow-xl">
-                  <Crown className="w-3 h-3 text-white" />
+                <div className="absolute -top-3 -right-3 bg-amber-500 dark:bg-green-600 rounded-full p-3 shadow-xl">
+                  <Crown className="w-6 h-6 text-white" />
                 </div>
-                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
-                  <Star className="h-5 w-5 text-yellow-500 dark:text-yellow-400" />
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+                  <Star className="h-8 w-8 text-amber-500 dark:text-green-400" />
                 </div>
               </div>
-              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm mb-1 truncate transition-colors duration-300">
-                <Link to={`/u/${users[0]?.username}`}>{users[0]?.fullName || users[0]?.username}</Link>
+              <h3 className="text-slate-900 dark:text-green-100 font-black text-xl mb-2 truncate">
+                <Link to={`/u/${podium[0]?.username}`}>{podium[0]?.fullName || podium[0]?.username}</Link>
               </h3>
-              <p className="text-yellow-700 dark:text-yellow-300 text-xs mb-3 truncate transition-colors duration-300">
-                <Link to={`/u/${users[0]?.username}`}>@{users[0]?.username}</Link>
+              <p className="text-amber-700 dark:text-green-300 text-lg mb-6 truncate">
+                <Link to={`/u/${podium[0]?.username}`}>@{podium[0]?.username}</Link>
               </p>
-              <div className="bg-yellow-100 dark:bg-yellow-900/50 rounded-lg p-2 border border-yellow-200 dark:border-yellow-700 transition-colors duration-300">
-                <p className="text-yellow-800 dark:text-yellow-200 font-bold text-sm transition-colors duration-300">{users[0]?.points} points</p>
-                <p className="text-yellow-700 dark:text-yellow-300 text-xs font-medium transition-colors duration-300">Champion</p>
+              <div className="bg-amber-100 dark:bg-green-900/50 rounded-2xl p-4 border-2 border-amber-200 dark:border-green-700">
+                <p className="text-amber-800 dark:text-green-100 font-black text-2xl">{podium[0]?.points} points</p>
+                <p className="text-amber-700 dark:text-green-300 text-lg font-bold">🏆 Champion</p>
               </div>
             </motion.div>
 
@@ -430,34 +499,34 @@ export const Leaderboard: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white dark:bg-gray-900 border-2 border-orange-200 dark:border-orange-700 rounded-xl p-3 sm:p-4 text-center md:mt-4 shadow-lg hover:shadow-xl dark:shadow-gray-900/20 dark:hover:shadow-gray-900/40 transition-all duration-300 transform hover:scale-105"
+              className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-2 border-orange-200 dark:border-green-800 rounded-3xl p-6 text-center md:mt-6 shadow-xl shadow-orange-200/50 dark:shadow-green-900/20 hover:shadow-2xl hover:shadow-orange-300/50 dark:hover:shadow-green-900/40 transition-all duration-300 transform hover:scale-105 hover:-translate-y-2"
             >
-              <div className="relative mb-3">
-                <Link to={`/u/${users[2]?.username}`} className="block">
-                  <div className="w-10 h-10 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200 dark:ring-orange-700 overflow-hidden bg-orange-100 dark:bg-orange-800">
-                    {users[2]?.avatarUrl ? (
-                      <img src={users[2]?.avatarUrl} alt={users[2]?.username} className="w-full h-full object-cover" />
+              <div className="relative mb-4">
+                <Link to={`/u/${podium[2]?.username}`} className="block">
+                  <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200 dark:ring-green-700 overflow-hidden bg-orange-100 dark:bg-green-900">
+                    {podium[2]?.avatarUrl ? (
+                      <img src={podium[2]?.avatarUrl} alt={podium[2]?.username} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-orange-800 dark:text-orange-200 font-bold text-sm">{users[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                      <span className="text-orange-800 dark:text-green-200 font-bold text-xl">{podium[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
                     )}
                   </div>
                 </Link>
-                <div className="absolute -top-1 -right-1 bg-orange-500 dark:bg-orange-600 rounded-full p-1 shadow-lg">
-                  <span className="text-white font-bold text-xs">3</span>
+                <div className="absolute -top-2 -right-2 bg-orange-500 dark:bg-green-600 rounded-full p-2 shadow-lg">
+                  <span className="text-white font-bold text-base">3</span>
                 </div>
-                <div className="absolute -bottom-1 -right-1">
-                  <Award className="h-4 w-4 text-orange-500 dark:text-orange-400" />
+                <div className="absolute -bottom-2 -right-2">
+                  <Award className="h-6 w-6 text-orange-500 dark:text-green-400" />
                 </div>
               </div>
-              <h3 className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">
-                <Link to={`/u/${users[2]?.username}`}>{users[2]?.fullName || users[2]?.username}</Link>
+              <h3 className="text-slate-900 dark:text-green-100 font-bold text-lg truncate mb-1">
+                <Link to={`/u/${podium[2]?.username}`}>{podium[2]?.fullName || podium[2]?.username}</Link>
               </h3>
-              <p className="text-orange-700 dark:text-orange-300 text-xs mb-2 truncate transition-colors duration-300">
-                <Link to={`/u/${users[2]?.username}`}>@{users[2]?.username}</Link>
+              <p className="text-orange-700 dark:text-green-300 text-base mb-4 truncate">
+                <Link to={`/u/${podium[2]?.username}`}>@{podium[2]?.username}</Link>
               </p>
-              <div className="bg-orange-50 dark:bg-orange-900/30 rounded-lg p-2 border border-orange-200 dark:border-orange-700 transition-colors duration-300">
-                <p className="text-orange-800 dark:text-orange-200 font-bold text-sm transition-colors duration-300">{users[2]?.points} points</p>
-                <p className="text-orange-700 dark:text-orange-300 text-xs transition-colors duration-300">Bronze Star</p>
+              <div className="bg-orange-50 dark:bg-green-900/30 rounded-2xl p-4 border-2 border-orange-200 dark:border-green-800">
+                <p className="text-orange-800 dark:text-green-100 font-bold text-xl">{podium[2]?.points} points</p>
+                <p className="text-orange-700 dark:text-green-300 text-base font-medium">Bronze Star</p>
               </div>
             </motion.div>
           </div>
@@ -468,89 +537,93 @@ export const Leaderboard: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-blue-800 overflow-hidden shadow-lg dark:shadow-gray-900/20 transition-colors duration-300"
+          className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl border-2 border-sky-200 dark:border-green-800 overflow-hidden shadow-2xl shadow-sky-200/50 dark:shadow-green-900/30"
         >
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-blue-800 bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-950/50 dark:to-blue-900/50 transition-colors duration-300">
-            <h2 className="text-sm font-bold text-gray-900 dark:text-blue-400 flex items-center transition-colors duration-300">
-              <TrendingUp className="h-4 w-4 mr-2 text-blue-600 dark:text-blue-400" />
-              <span className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-blue-400 dark:to-blue-600 bg-clip-text text-transparent">
+          <div className="px-6 py-5 border-b-2 border-sky-200 dark:border-green-800 bg-gradient-to-r from-sky-50 to-sky-100 dark:from-green-950/80 dark:to-green-900/80">
+            <h2 className="text-lg sm:text-xl font-black text-slate-800 dark:text-green-100 flex items-center">
+              <TrendingUp className="h-6 w-6 mr-3 text-sky-600 dark:text-green-400" />
+              <span className="bg-gradient-to-r from-sky-600 to-sky-800 dark:from-green-400 dark:to-green-600 bg-clip-text text-transparent">
                 {t('leaderboard.full_rankings')}
               </span>
             </h2>
           </div>
 
-          <div className="divide-y divide-gray-200 dark:divide-blue-800">
-            {filteredUsers.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="mb-3">
-                  <Search className="h-8 w-8 text-gray-400 dark:text-gray-500 mx-auto mb-3" />
+          <div className="divide-y-2 divide-sky-100 dark:divide-green-800">
+            {remainder.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="mb-6">
+                  <Search className="h-16 w-16 text-slate-400 dark:text-green-500 mx-auto mb-4" />
                 </div>
-                <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 transition-colors duration-300">{t('leaderboard.no_users')}</p>
+                <p className="text-slate-600 dark:text-green-300 text-lg mb-6">{t('leaderboard.no_users')}</p>
                 <button
                   onClick={clearSearch}
-                  className="px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg font-medium hover:bg-blue-700 dark:hover:bg-blue-600 transition-all duration-200 text-sm"
+                  className="px-8 py-4 bg-sky-600 dark:bg-green-600 text-white rounded-2xl font-bold hover:bg-sky-700 dark:hover:bg-green-700 transition-all duration-200 text-base shadow-lg"
                 >
                   {t('leaderboard.clear_search')}
                 </button>
               </div>
             ) : (
-              // Exclude top 3 (shown in podium) and list from rank 4 onward
-              filteredUsers.slice(3).map((user, idx) => {
-                const rank = idx + 4;
+              // If we showed a podium, list from rank 4; otherwise start at rank 1
+              remainder.map((user, idx) => {
+                const rank = podium.length === 3 ? idx + 4 : idx + 1;
                 return (
                 <motion.div
                   key={user._id}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.03 }}
-                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 hover:shadow-sm dark:hover:shadow-gray-800/20 transition-all duration-300 ${getRankBg(rank)} mx-1 my-1 rounded-lg`}
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 hover:bg-sky-50/50 dark:hover:bg-green-900/30 hover:shadow-lg transition-all duration-300 ${getRankBg(rank)} mx-2 my-1 rounded-2xl`}
                 >
-                  <div className="flex items-center space-x-3 mb-2 sm:mb-0">
-                    <div className="flex items-center justify-center w-6">
+                  <div className="flex items-center space-x-4 mb-3 sm:mb-0">
+                    <div className="flex items-center justify-center w-8 text-lg font-bold">
                       {getRankIcon(rank)}
                     </div>
                     
-                    <div className="flex items-center space-x-3 min-w-0 flex-1">
+                    <div className="flex items-center space-x-4 min-w-0 flex-1">
                       <div className="relative flex-shrink-0">
                         <Link to={`/u/${user.username}`} className="block">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center ring-2 ring-gray-200 dark:ring-blue-700 transition-colors duration-300 overflow-hidden bg-blue-100 dark:bg-blue-900">
+                          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ring-3 ring-sky-200 dark:ring-green-700 overflow-hidden bg-sky-100 dark:bg-green-900 hover:ring-sky-400 dark:hover:ring-green-500 transition-all duration-300">
                             {user.avatarUrl ? (
                               <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
                             ) : (
-                              <span className="text-blue-700 dark:text-blue-300 font-bold text-xs">{user.username?.[0]?.toUpperCase() || 'U'}</span>
+                              <span className="text-sky-700 dark:text-green-200 font-bold text-lg">{user.username?.[0]?.toUpperCase() || 'U'}</span>
                             )}
                           </div>
                         </Link>
                         {rank <= 10 && (
-                          <div className="absolute -top-1 -right-1 w-3 h-3 bg-blue-600 dark:bg-blue-500 rounded-full flex items-center justify-center">
-                            <Star className="w-1.5 h-1.5 text-white" />
+                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-sky-600 dark:bg-green-600 rounded-full flex items-center justify-center">
+                            <Star className="w-3 h-3 text-white" />
                           </div>
                         )}
                       </div>
                       
                       <div className="min-w-0 flex-1">
-                        <p className="text-gray-900 dark:text-blue-400 font-bold text-sm truncate transition-colors duration-300">
-                          <Link to={`/u/${user.username}`}>{user.fullName || user.username}</Link>
+                        <p className="text-slate-900 dark:text-green-100 font-bold text-base sm:text-lg truncate">
+                          <Link to={`/u/${user.username}`} className="hover:text-sky-600 dark:hover:text-green-400 transition-colors">
+                            {user.fullName || user.username}
+                          </Link>
                         </p>
-                        <p className="text-gray-600 dark:text-gray-300 text-xs truncate transition-colors duration-300">
-                          <Link to={`/u/${user.username}`}>@{user.username}</Link>
+                        <p className="text-slate-600 dark:text-green-300 text-sm sm:text-base truncate">
+                          <Link to={`/u/${user.username}`} className="hover:text-sky-600 dark:hover:text-green-400 transition-colors">
+                            @{user.username}
+                          </Link>
                         </p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end space-x-2 text-xs">
-                    <div className="text-center bg-gray-50 dark:bg-gray-800 rounded-lg p-1.5 min-w-[50px] border border-gray-200 dark:border-gray-700 transition-colors duration-300">
-                      <p className="text-gray-900 dark:text-blue-400 font-bold text-xs transition-colors duration-300">{user.points}</p>
-                      <p className="text-gray-600 dark:text-gray-300 text-xs transition-colors duration-300">{t('stats.points')}</p>
+                  <div className="flex items-center justify-between sm:justify-end space-x-3 text-sm">
+                    <div className="text-center bg-sky-50 dark:bg-green-900/40 rounded-xl p-3 min-w-[70px] border-2 border-sky-200 dark:border-green-800">
+                      <p className="text-slate-900 dark:text-green-100 font-bold text-base">{user.points}</p>
+                      <p className="text-slate-600 dark:text-green-300 text-sm">{t('stats.points')}</p>
                     </div>
-                    <div className="text-center bg-yellow-50 dark:bg-yellow-900/30 rounded-lg p-1.5 min-w-[50px] border border-yellow-200 dark:border-yellow-700 transition-colors duration-300">
-                      <p className="text-yellow-700 dark:text-yellow-300 font-bold text-xs transition-colors duration-300">{user.codecoins}</p>
-                      <p className="text-yellow-600 dark:text-yellow-400 text-xs transition-colors duration-300">{t('stats.coins')}</p>
+                    <div className="text-center bg-amber-50 dark:bg-green-900/40 rounded-xl p-3 min-w-[70px] border-2 border-amber-200 dark:border-green-800">
+                      <p className="text-amber-700 dark:text-green-200 font-bold text-base">{user.codecoins}</p>
+                      <p className="text-amber-600 dark:text-green-300 text-sm">{t('stats.coins')}</p>
                     </div>
-                    <div className="text-center bg-green-50 dark:bg-green-900/30 rounded-lg p-1.5 min-w-[50px] border border-green-200 dark:border-green-700 transition-colors duration-300">
-                      <p className="text-green-700 dark:text-green-300 font-bold text-xs transition-colors duration-300">{user.solvedProblems.length}</p>
-                      <p className="text-green-600 dark:text-green-400 text-xs transition-colors duration-300">{t('leaderboard.solved')}</p>
+                    <div className="text-center bg-emerald-50 dark:bg-green-900/40 rounded-xl p-3 min-w-[70px] border-2 border-emerald-200 dark:border-green-800">
+                      <p className="text-emerald-700 dark:text-green-200 font-bold text-base">{user.solvedProblems.length}</p>
+                      <p className="text-emerald-600 dark:text-green-300 text-sm">{t('leaderboard.solved')}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -565,15 +638,15 @@ export const Leaderboard: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-8"
+            className="text-center py-12"
           >
-            <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-blue-800 p-6 transition-colors duration-300">
-              <Trophy className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-              <p className="text-gray-600 dark:text-gray-300 text-sm transition-colors duration-300">No users found</p>
+            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl border-2 border-sky-200 dark:border-green-800 p-12 shadow-xl">
+              <Trophy className="h-20 w-20 text-slate-400 dark:text-green-500 mx-auto mb-6" />
+              <p className="text-slate-600 dark:text-green-300 text-lg">No users found</p>
             </div>
           </motion.div>
         )}
       </div>
     </div>
   );
-};
+}

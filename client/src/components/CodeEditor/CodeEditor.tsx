@@ -304,33 +304,38 @@ const CodeEditor = () => {
   };
 
   return (
-    <div className={`p-4 ${theme.container}`}>
+    <div className={`min-h-screen p-3 md:p-6 ${theme.container} transition-all duration-300`}>
       {/* Header with theme toggle */}
-      <div className={`flex justify-between items-center mb-4 p-4 rounded-lg ${theme.header}`}>
-        <div className="flex items-center gap-4">
-          <h1 className={`text-xl font-bold ${theme.text}`}>Code Editor</h1>
-          {problemId && (
-            <span className={`text-sm px-2 py-1 rounded ${theme.textMuted}`}>
-              Problem: {problemId}
-            </span>
-          )}
+      <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 p-4 md:p-6 rounded-2xl ${theme.header} shadow-lg backdrop-blur-sm border border-sky-100 dark:border-gray-700`}>
+        <div className="flex items-center gap-3 md:gap-4">
+          <div className="w-8 h-8 md:w-10 md:h-10 bg-gradient-to-br from-sky-400 to-blue-500 rounded-xl flex items-center justify-center shadow-lg">
+            <span className="text-white text-sm md:text-lg font-bold">{'</>'}</span>
+          </div>
+          <div>
+            <h1 className={`text-lg md:text-2xl font-bold ${theme.text} leading-tight`}>Code Editor</h1>
+            {problemId && (
+              <span className={`text-xs md:text-sm px-2 md:px-3 py-1 rounded-full bg-sky-100 text-sky-700 dark:bg-gray-700 dark:text-sky-300 font-medium mt-1 inline-block`}>
+                Problem: {problemId}
+              </span>
+            )}
+          </div>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
           {/* Theme Toggle */}
           <button
             onClick={() => setDarkMode(!darkMode)}
-            className={`px-3 py-2 rounded-lg ${theme.button.secondary} flex items-center gap-2`}
+            className={`px-3 md:px-4 py-2 md:py-3 rounded-xl ${theme.button.secondary} flex items-center justify-center gap-2 text-xs md:text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md`}
           >
-            {darkMode ? '☀️' : '🌙'}
-            <span>{darkMode ? 'Light' : 'Dark'}</span>
+            <span className="text-base md:text-lg">{darkMode ? '☀️' : '🌙'}</span>
+            <span className="hidden sm:inline">{darkMode ? 'Light' : 'Dark'}</span>
           </button>
           
           {/* Language Selector */}
-          <div className="flex items-center gap-2">
-            <label className={`text-sm font-medium ${theme.text}`}>Language:</label>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+            <label className={`text-xs md:text-sm font-semibold ${theme.text}`}>Language:</label>
             <select
-              className={`px-3 py-2 rounded-lg ${theme.input}`}
+              className={`px-3 md:px-4 py-2 md:py-3 rounded-xl ${theme.input} text-xs md:text-sm font-medium min-w-0 sm:min-w-[120px] shadow-sm border-0 focus:ring-2 focus:ring-sky-400`}
               value={lang}
               onChange={(e) => setLang(e.target.value as Lang)}
             >
@@ -346,16 +351,18 @@ const CodeEditor = () => {
             type="button"
             onClick={run}
             disabled={running}
-            className={`px-4 py-2 rounded-lg disabled:opacity-60 ${theme.button.success} flex items-center gap-2`}
+            className={`px-4 md:px-6 py-2 md:py-3 rounded-xl disabled:opacity-60 ${theme.button.success} flex items-center justify-center gap-2 text-xs md:text-sm font-semibold transition-all duration-200 hover:scale-105 shadow-lg min-w-[100px] md:min-w-[120px]`}
           >
             {running ? (
               <>
-                <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full"></div>
-                Running...
+                <div className="animate-spin w-3 h-3 md:w-4 md:h-4 border-2 border-white border-t-transparent rounded-full"></div>
+                <span className="hidden sm:inline">Running...</span>
+                <span className="sm:hidden">...</span>
               </>
             ) : (
               <>
-                ▶️ Run
+                <span className="text-sm md:text-base">▶️</span>
+                <span>Run</span>
               </>
             )}
           </button>
@@ -363,40 +370,52 @@ const CodeEditor = () => {
       </div>
 
       {/* Main Editor and IO Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 md:gap-6 mb-6 md:mb-8">
         {/* Code Editor */}
-        <div className={`rounded-lg overflow-hidden ${theme.panel}`}>
-          <div className={`p-3 ${theme.header}`}>
-            <h3 className={`font-semibold ${theme.text}`}>Code Editor</h3>
+        <div className={`rounded-2xl overflow-hidden ${theme.panel} shadow-xl border border-sky-100 dark:border-gray-700`}>
+          <div className={`p-3 md:p-4 ${theme.header} border-b border-sky-100 dark:border-gray-600`}>
+            <h3 className={`font-bold text-sm md:text-lg ${theme.text} flex items-center gap-2`}>
+              <span className="w-2 h-2 bg-green-400 rounded-full"></span>
+              Code Editor
+            </h3>
           </div>
-          <Editor
-            height="500px"
-            theme={darkMode ? "vs-dark" : "light"}
-            language={monacoLanguage}
-            value={code}
-            onChange={(v) => setCode(v || "")}
-            options={{ 
-              minimap: { enabled: false },
-              fontSize: 14,
-              lineNumbers: 'on',
-              scrollBeyondLastLine: false,
-              automaticLayout: true
-            }}
-            onMount={onMount}
-          />
+          <div className="relative">
+            <Editor
+              height="400px"
+              theme={darkMode ? "vs-dark" : "light"}
+              language={monacoLanguage}
+              value={code}
+              onChange={(v) => setCode(v || "")}
+              options={{ 
+                minimap: { enabled: false },
+                fontSize: 12,
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                padding: { top: 16, bottom: 16 }
+              }}
+              onMount={onMount}
+            />
+          </div>
         </div>
 
         {/* Input/Output Panel */}
-        <div className={`rounded-lg ${theme.panel}`}>
-          <div className={`p-3 ${theme.header}`}>
-            <h3 className={`font-semibold ${theme.text}`}>Input & Output</h3>
+        <div className={`rounded-2xl ${theme.panel} shadow-xl border border-sky-100 dark:border-gray-700`}>
+          <div className={`p-3 md:p-4 ${theme.header} border-b border-sky-100 dark:border-gray-600`}>
+            <h3 className={`font-bold text-sm md:text-lg ${theme.text} flex items-center gap-2`}>
+              <span className="w-2 h-2 bg-blue-400 rounded-full"></span>
+              Input & Output
+            </h3>
           </div>
-          <div className="p-3 space-y-4">
+          <div className="p-3 md:p-4 space-y-4 md:space-y-6">
             {/* Input Section */}
             <div>
-              <label className={`block text-sm font-medium mb-2 ${theme.text}`}>Input</label>
+              <label className={`block text-xs md:text-sm font-semibold mb-2 ${theme.text} flex items-center gap-2`}>
+                <span className="w-1.5 h-1.5 bg-sky-400 rounded-full"></span>
+                Input
+              </label>
               <textarea
-                className={`w-full h-32 rounded-lg p-3 text-sm resize-none ${theme.input}`}
+                className={`w-full h-24 md:h-32 rounded-xl p-3 md:p-4 text-xs md:text-sm resize-none ${theme.input} shadow-sm border-0 focus:ring-2 focus:ring-sky-400 transition-all duration-200`}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Enter your input here..."
@@ -405,48 +424,62 @@ const CodeEditor = () => {
 
             {/* Expected Output Section */}
             <div>
-              <label className={`block text-sm font-medium mb-2 ${theme.text}`}>Expected Output</label>
+              <label className={`block text-xs md:text-sm font-semibold mb-2 ${theme.text} flex items-center gap-2`}>
+                <span className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></span>
+                Expected Output
+              </label>
               <textarea
-                className={`w-full h-24 rounded-lg p-3 text-sm resize-none ${theme.input}`}
+                className={`w-full h-20 md:h-24 rounded-xl p-3 md:p-4 text-xs md:text-sm resize-none ${theme.input} shadow-sm border-0 focus:ring-2 focus:ring-sky-400 transition-all duration-200`}
                 value={expected}
                 onChange={(e) => setExpected(e.target.value)}
                 placeholder="Enter expected output for comparison..."
               />
               
               {/* Compare Options */}
-              <div className="flex items-center gap-6 mt-2">
-                <label className={`inline-flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3 md:gap-6 mt-3">
+                <label className={`inline-flex items-center gap-2 text-xs md:text-sm ${theme.textSecondary} cursor-pointer hover:${theme.text} transition-colors duration-200`}>
                   <input 
                     type="checkbox" 
                     checked={ignoreWhitespace} 
                     onChange={(e) => setIgnoreWhitespace(e.target.checked)}
-                    className="rounded"
+                    className="rounded text-sky-500 focus:ring-sky-400 w-3 h-3 md:w-4 md:h-4"
                   />
-                  Ignore whitespace
+                  <span className="font-medium">Ignore whitespace</span>
                 </label>
-                <label className={`inline-flex items-center gap-2 text-sm ${theme.textSecondary}`}>
+                <label className={`inline-flex items-center gap-2 text-xs md:text-sm ${theme.textSecondary} cursor-pointer hover:${theme.text} transition-colors duration-200`}>
                   <input 
                     type="checkbox" 
                     checked={ignoreCase} 
                     onChange={(e) => setIgnoreCase(e.target.checked)}
-                    className="rounded"
+                    className="rounded text-sky-500 focus:ring-sky-400 w-3 h-3 md:w-4 md:h-4"
                   />
-                  Ignore case
+                  <span className="font-medium">Ignore case</span>
                 </label>
               </div>
             </div>
 
             {/* Output Section */}
             <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className={`block text-sm font-medium ${theme.text}`}>Output</label>
-                <div className={`text-xs ${theme.textMuted}`}>
-                  {runtimeMs != null && <span className="mr-3">⏱️ {runtimeMs} ms</span>}
-                  {exitCode != null && <span>Exit: {exitCode}</span>}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                <label className={`block text-xs md:text-sm font-semibold ${theme.text} flex items-center gap-2`}>
+                  <span className="w-1.5 h-1.5 bg-purple-400 rounded-full"></span>
+                  Output
+                </label>
+                <div className={`text-[10px] md:text-xs ${theme.textMuted} font-medium flex items-center gap-3`}>
+                  {runtimeMs != null && (
+                    <span className="bg-sky-50 dark:bg-gray-700 px-2 py-1 rounded-lg flex items-center gap-1">
+                      <span className="text-xs">⏱️</span> {runtimeMs} ms
+                    </span>
+                  )}
+                  {exitCode != null && (
+                    <span className="bg-sky-50 dark:bg-gray-700 px-2 py-1 rounded-lg">
+                      Exit: {exitCode}
+                    </span>
+                  )}
                 </div>
               </div>
               <textarea 
-                className={`w-full h-24 rounded-lg p-3 text-sm resize-none ${theme.input}`}
+                className={`w-full h-20 md:h-24 rounded-xl p-3 md:p-4 text-xs md:text-sm resize-none ${theme.input} shadow-sm border-0`}
                 value={output} 
                 readOnly 
                 placeholder="Output will appear here..."
@@ -454,9 +487,9 @@ const CodeEditor = () => {
               
               {/* Pass/Fail Indicator */}
               {passed !== null && (
-                <div className={`mt-2 text-sm font-semibold flex items-center gap-2 ${passed ? theme.success : theme.error}`}>
-                  <span>{passed ? '✅' : '❌'}</span>
-                  {passed ? 'Test Passed!' : 'Test Failed'}
+                <div className={`mt-3 p-3 rounded-xl text-xs md:text-sm font-bold flex items-center gap-2 ${passed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800' : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'} shadow-sm`}>
+                  <span className="text-sm md:text-base">{passed ? '✅' : '❌'}</span>
+                  <span>{passed ? 'Test Passed!' : 'Test Failed'}</span>
                 </div>
               )}
             </div>
@@ -465,38 +498,45 @@ const CodeEditor = () => {
       </div>
 
       {/* Multi-testcase Panel */}
-      <div className={`rounded-lg ${theme.panel}`}>
-        <div className={`p-4 ${theme.header}`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <h3 className={`text-lg font-semibold ${theme.text}`}>Test Cases</h3>
+      <div className={`rounded-2xl ${theme.panel} shadow-xl border border-sky-100 dark:border-gray-700`}>
+        <div className={`p-4 md:p-6 ${theme.header} border-b border-sky-100 dark:border-gray-600`}>
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+            <h3 className={`text-base md:text-xl font-bold ${theme.text} flex items-center gap-3`}>
+              <span className="w-3 h-3 bg-gradient-to-r from-sky-400 to-blue-500 rounded-full"></span>
+              Test Cases
+            </h3>
             
             {/* Control Buttons */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 md:gap-3">
               <button
-                className={`px-3 py-2 rounded-lg text-sm ${theme.button.primary}`}
+                className={`px-3 md:px-4 py-2 md:py-3 rounded-xl text-xs md:text-sm font-semibold ${theme.button.primary} shadow-md hover:scale-105 transition-all duration-200 flex items-center gap-2`}
                 onClick={() => setTestcases((t) => [...t, { input: '', expected: '' }])}
               >
-                ➕ Add Test Case
+                <span className="text-sm">➕</span>
+                <span className="hidden sm:inline">Add Test</span>
               </button>
               
               <button
-                className={`px-3 py-2 rounded-lg text-sm ${theme.button.danger}`}
+                className={`px-3 md:px-4 py-2 md:py-3 rounded-xl text-xs md:text-sm font-semibold ${theme.button.danger} shadow-md hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2`}
                 onClick={resetTestcases}
                 disabled={testcases.length === 0}
               >
-                🗑️ Reset All
+                <span className="text-sm">🗑️</span>
+                <span className="hidden sm:inline">Reset</span>
               </button>
               
               <button
-                className={`px-3 py-2 rounded-lg text-sm ${theme.button.purple}`}
+                className={`px-3 md:px-4 py-2 md:py-3 rounded-xl text-xs md:text-sm font-semibold ${theme.button.purple} shadow-md hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2`}
                 onClick={exportTestcases}
                 disabled={testcases.length === 0}
               >
-                📤 Export
+                <span className="text-sm">📤</span>
+                <span className="hidden sm:inline">Export</span>
               </button>
               
-              <label className={`px-3 py-2 rounded-lg text-sm cursor-pointer ${theme.button.indigo}`}>
-                📥 Import
+              <label className={`px-3 md:px-4 py-2 md:py-3 rounded-xl text-xs md:text-sm font-semibold cursor-pointer ${theme.button.indigo} shadow-md hover:scale-105 transition-all duration-200 flex items-center gap-2`}>
+                <span className="text-sm">📥</span>
+                <span className="hidden sm:inline">Import</span>
                 <input
                   type="file"
                   accept=".json"
@@ -506,17 +546,20 @@ const CodeEditor = () => {
               </label>
               
               <button
-                className={`px-3 py-2 rounded-lg text-sm ${theme.button.emerald}`}
+                className={`px-3 md:px-4 py-2 md:py-3 rounded-xl text-xs md:text-sm font-semibold ${theme.button.emerald} shadow-md hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:hover:scale-100 flex items-center gap-2 min-w-[100px] justify-center`}
                 onClick={runAll}
                 disabled={testcases.length === 0 || running}
               >
                 {running ? (
                   <>
-                    <div className="inline-block animate-spin w-3 h-3 border border-white border-t-transparent rounded-full mr-2"></div>
-                    Running...
+                    <div className="inline-block animate-spin w-3 h-3 border border-white border-t-transparent rounded-full"></div>
+                    <span className="hidden sm:inline">Running...</span>
                   </>
                 ) : (
-                  '🚀 Run All Tests'
+                  <>
+                    <span className="text-sm">🚀</span>
+                    <span className="hidden sm:inline">Run All</span>
+                  </>
                 )}
               </button>
             </div>
@@ -524,38 +567,47 @@ const CodeEditor = () => {
         </div>
 
         {/* Test Cases Grid */}
-        <div className="p-4">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="p-4 md:p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
             {testcases.map((tc, idx) => (
-              <div key={idx} className={`rounded-lg p-4 ${theme.testcase}`}>
+              <div key={idx} className={`rounded-2xl p-4 md:p-5 ${theme.testcase} shadow-lg border border-sky-50 dark:border-gray-600 hover:shadow-xl transition-all duration-300`}>
                 {/* Test Case Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className={`text-sm font-medium ${theme.text}`}>
-                    Test Case #{idx + 1}
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`text-xs md:text-sm font-bold ${theme.text} flex items-center gap-2`}>
+                    <span className="w-6 h-6 bg-gradient-to-br from-sky-400 to-blue-500 rounded-lg flex items-center justify-center text-white text-[10px] font-bold">
+                      #{idx + 1}
+                    </span>
+                    <span>Test Case #{idx + 1}</span>
                   </div>
                   <button
-                    className={`text-xs px-2 py-1 rounded ${theme.button.danger}`}
+                    className={`text-[10px] md:text-xs px-2 md:px-3 py-1 md:py-2 rounded-lg ${theme.button.danger} font-semibold hover:scale-105 transition-all duration-200 shadow-sm`}
                     onClick={() => setTestcases((t) => t.filter((_, i) => i !== idx))}
                   >
-                    ✕ Remove
+                    ✕
                   </button>
                 </div>
 
                 {/* Input and Expected Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4">
                   <div>
-                    <label className={`block text-xs font-medium mb-1 ${theme.text}`}>Input</label>
+                    <label className={`block text-[10px] md:text-xs font-bold mb-2 ${theme.text} flex items-center gap-1`}>
+                      <span className="w-1 h-1 bg-sky-400 rounded-full"></span>
+                      Input
+                    </label>
                     <textarea
-                      className={`w-full h-20 rounded p-2 text-xs resize-none ${theme.input}`}
+                      className={`w-full h-16 md:h-20 rounded-xl p-2 md:p-3 text-[10px] md:text-xs resize-none ${theme.input} shadow-sm border-0 focus:ring-2 focus:ring-sky-400 transition-all duration-200`}
                       value={tc.input}
                       onChange={(e) => setTestcases((t) => t.map((x, i) => i === idx ? { ...x, input: e.target.value } : x))}
                       placeholder="Test input..."
                     />
                   </div>
                   <div>
-                    <label className={`block text-xs font-medium mb-1 ${theme.text}`}>Expected Output</label>
+                    <label className={`block text-[10px] md:text-xs font-bold mb-2 ${theme.text} flex items-center gap-1`}>
+                      <span className="w-1 h-1 bg-emerald-400 rounded-full"></span>
+                      Expected
+                    </label>
                     <textarea
-                      className={`w-full h-20 rounded p-2 text-xs resize-none ${theme.input}`}
+                      className={`w-full h-16 md:h-20 rounded-xl p-2 md:p-3 text-[10px] md:text-xs resize-none ${theme.input} shadow-sm border-0 focus:ring-2 focus:ring-sky-400 transition-all duration-200`}
                       value={tc.expected}
                       onChange={(e) => setTestcases((t) => t.map((x, i) => i === idx ? { ...x, expected: e.target.value } : x))}
                       placeholder="Expected output..."
@@ -566,24 +618,35 @@ const CodeEditor = () => {
                 {/* Output Section (if available) */}
                 {typeof tc.output === 'string' && (
                   <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className={`block text-xs font-medium ${theme.text}`}>Actual Output</label>
-                      <div className={`text-[10px] ${theme.textMuted}`}>
-                        {tc.runtimeMs != null && <span className="mr-2">⏱️ {tc.runtimeMs}ms</span>}
-                        {tc.exitCode != null && <span>Exit: {tc.exitCode}</span>}
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-2">
+                      <label className={`block text-[10px] md:text-xs font-bold ${theme.text} flex items-center gap-1`}>
+                        <span className="w-1 h-1 bg-purple-400 rounded-full"></span>
+                        Actual Output
+                      </label>
+                      <div className={`text-[9px] md:text-[10px] ${theme.textMuted} font-medium flex items-center gap-2`}>
+                        {tc.runtimeMs != null && (
+                          <span className="bg-sky-50 dark:bg-gray-700 px-2 py-1 rounded-md flex items-center gap-1">
+                            <span>⏱️</span> {tc.runtimeMs}ms
+                          </span>
+                        )}
+                        {tc.exitCode != null && (
+                          <span className="bg-sky-50 dark:bg-gray-700 px-2 py-1 rounded-md">
+                            Exit: {tc.exitCode}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <textarea 
-                      className={`w-full h-16 rounded p-2 text-xs resize-none ${theme.input}`}
+                      className={`w-full h-14 md:h-16 rounded-xl p-2 md:p-3 text-[10px] md:text-xs resize-none ${theme.input} shadow-sm border-0`}
                       readOnly 
                       value={tc.output} 
                     />
                     
                     {/* Pass/Fail Status */}
                     {typeof tc.passed !== 'undefined' && (
-                      <div className={`mt-2 text-xs font-semibold flex items-center gap-1 ${tc.passed ? theme.success : theme.error}`}>
-                        <span>{tc.passed ? '✅' : '❌'}</span>
-                        {tc.passed ? 'Passed' : 'Failed'}
+                      <div className={`mt-3 p-2 md:p-3 rounded-xl text-[10px] md:text-xs font-bold flex items-center gap-2 ${tc.passed ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:border-emerald-800' : 'bg-red-50 text-red-700 border border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800'} shadow-sm`}>
+                        <span className="text-xs md:text-sm">{tc.passed ? '✅' : '❌'}</span>
+                        <span>{tc.passed ? 'Passed' : 'Failed'}</span>
                       </div>
                     )}
                   </div>
@@ -594,16 +657,18 @@ const CodeEditor = () => {
 
           {/* Empty State */}
           {testcases.length === 0 && (
-            <div className={`text-center py-12 ${theme.textMuted}`}>
-              <div className="text-4xl mb-4">📝</div>
-              <p className="text-lg mb-2">No test cases yet</p>
-              <p className="text-sm">Add a test case to get started</p>
+            <div className={`text-center py-12 md:py-16 ${theme.textMuted}`}>
+              <div className="w-16 h-16 md:w-20 md:h-20 bg-gradient-to-br from-sky-100 to-blue-100 dark:from-gray-700 dark:to-gray-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl md:text-3xl">📝</span>
+              </div>
+              <p className="text-base md:text-lg font-semibold mb-2">No test cases yet</p>
+              <p className="text-xs md:text-sm">Add a test case to get started with testing</p>
             </div>
           )}
         </div>
       </div>
     </div>
   );
-};
+}
 
 export default CodeEditor;

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { getJobs, applyForJob } from '@/services/jobService';
 import { Loader2, Briefcase, Mail, MapPin, DollarSign, Clock, Users, BarChart2, RefreshCw } from 'lucide-react';
-import type { Job } from '@/services/jobService';
+import type { Job } from '@/types/job';
 import { ApplicationModal } from '@/components/Careers/ApplicationModal';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -185,33 +185,33 @@ export default function Careers() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 flex justify-center items-center">
-        <div className="text-center bg-white p-8 rounded-2xl shadow-lg border border-blue-100">
-          <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+      <div className="min-h-screen bg-white dark:bg-gray-900 flex justify-center items-center transition-colors duration-300">
+        <div className="text-center bg-white dark:bg-gray-800 p-6 lg:p-8 rounded-2xl shadow-lg border border-sky-100 dark:border-gray-700">
+          <div className="w-12 h-12 lg:w-16 lg:h-16 bg-sky-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6">
+            <Loader2 className="h-6 w-6 lg:h-8 lg:w-8 animate-spin text-sky-600 dark:text-green-500" />
           </div>
-          <h2 className="text-xl font-semibold text-slate-800 mb-2">Loading Opportunities</h2>
-          <p className="text-slate-600">Finding amazing job opportunities for you...</p>
+          <h2 className="text-lg lg:text-xl font-semibold text-gray-800 dark:text-gray-100 mb-2">Loading Opportunities</h2>
+          <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400">Finding amazing job opportunities for you...</p>
         </div>
       </div>
     );
   }
-
+  
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6">
-        <div className="container mx-auto max-w-2xl pt-20">
-          <div className="bg-white border border-red-200 text-red-700 px-6 py-8 rounded-xl shadow-lg text-center">
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <RefreshCw className="w-8 h-8 text-red-600" />
+      <div className="min-h-screen bg-white dark:bg-gray-900 p-4 lg:p-6 transition-colors duration-300">
+        <div className="container mx-auto max-w-2xl pt-16 lg:pt-20">
+          <div className="bg-white dark:bg-gray-800 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 lg:px-6 py-6 lg:py-8 rounded-xl shadow-lg text-center">
+            <div className="w-12 h-12 lg:w-16 lg:h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-3 lg:mb-4">
+              <RefreshCw className="w-6 h-6 lg:w-8 lg:h-8 text-red-600 dark:text-red-400" />
             </div>
-            <h2 className="text-xl font-semibold mb-3">Oops! Something went wrong</h2>
-            <p className="mb-6">{error}</p>
+            <h2 className="text-lg lg:text-xl font-semibold mb-2 lg:mb-3">Oops! Something went wrong</h2>
+            <p className="text-sm lg:text-base mb-4 lg:mb-6">{error}</p>
             <Button 
               onClick={fetchJobs}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors"
+              className="bg-sky-600 hover:bg-sky-700 dark:bg-green-600 dark:hover:bg-green-700 text-white px-4 lg:px-6 py-2 lg:py-2 text-sm lg:text-base rounded-lg font-medium transition-colors"
             >
-              <RefreshCw className="mr-2 h-4 w-4" />
+              <RefreshCw className="mr-2 h-3 w-3 lg:h-4 lg:w-4" />
               Try again
             </Button>
           </div>
@@ -219,31 +219,31 @@ export default function Careers() {
       </div>
     );
   }
-
+  
   if (jobs.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50 p-6">
-        <div className="container mx-auto max-w-4xl pt-20">
-          <div className="text-center bg-white p-12 rounded-2xl shadow-lg border border-blue-100">
-            <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Briefcase className="h-10 w-10 text-blue-600" />
+      <div className="min-h-screen bg-white dark:bg-gray-900 p-4 lg:p-6 transition-colors duration-300">
+        <div className="container mx-auto max-w-4xl pt-16 lg:pt-20">
+          <div className="text-center bg-white dark:bg-gray-800 p-8 lg:p-12 rounded-2xl shadow-lg border border-sky-100 dark:border-gray-700">
+            <div className="w-16 h-16 lg:w-20 lg:h-20 bg-sky-100 dark:bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-4 lg:mb-6">
+              <Briefcase className="h-8 w-8 lg:h-10 lg:w-10 text-sky-600 dark:text-green-500" />
             </div>
-            <h2 className="text-3xl font-bold text-slate-800 mb-4">No Open Positions</h2>
-            <p className="text-slate-600 text-lg mb-8 max-w-md mx-auto">
+            <h2 className="text-2xl lg:text-3xl font-bold text-gray-800 dark:text-gray-100 mb-3 lg:mb-4">No Open Positions</h2>
+            <p className="text-gray-600 dark:text-gray-400 text-base lg:text-lg mb-6 lg:mb-8 max-w-md mx-auto">
               We don't have any open positions at the moment. Please check back later!
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div className="flex flex-col sm:flex-row gap-3 lg:gap-4 justify-center">
               <Button 
                 onClick={fetchJobs} 
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                className="bg-sky-600 hover:bg-sky-700 dark:bg-green-600 dark:hover:bg-green-700 text-white px-4 lg:px-6 py-2 lg:py-3 text-sm lg:text-base rounded-lg font-medium transition-colors"
               >
-                <RefreshCw className="mr-2 h-4 w-4" /> Refresh Jobs
+                <RefreshCw className="mr-2 h-3 w-3 lg:h-4 lg:w-4" /> Refresh Jobs
               </Button>
               <Button 
                 onClick={() => window.location.href = 'mailto:careers@example.com'}
-                className="border-2 border-blue-600 text-blue-600 hover:bg-blue-50 px-6 py-3 rounded-lg font-medium transition-colors"
+                className="border-2 border-sky-600 dark:border-green-600 text-sky-600 dark:text-green-600 hover:bg-sky-50 dark:hover:bg-gray-700 px-4 lg:px-6 py-2 lg:py-3 text-sm lg:text-base rounded-lg font-medium transition-colors"
               >
-                <Mail className="mr-2 h-4 w-4" /> Contact Us
+                <Mail className="mr-2 h-3 w-3 lg:h-4 lg:w-4" /> Contact Us
               </Button>
             </div>
           </div>
@@ -253,65 +253,65 @@ export default function Careers() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
-      <div className="container mx-auto px-4 py-12">
+    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-6 lg:py-12">
         {/* Header Section */}
-        <div className="text-center mb-16">
-          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-8 sm:p-12 rounded-2xl shadow-xl mb-8">
-            <h1 className="text-4xl sm:text-5xl font-bold mb-4">Join Our Team</h1>
-            <p className="text-lg sm:text-xl text-blue-100 max-w-3xl mx-auto leading-relaxed">
+        <div className="text-center mb-8 lg:mb-12">
+          <div className="bg-gradient-to-r from-sky-500 to-sky-600 dark:from-gray-800 dark:to-green-900 text-white p-6 sm:p-8 lg:p-10 rounded-2xl shadow-xl mb-6">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold mb-2 lg:mb-4">Join Our Team</h1>
+            <p className="text-sm sm:text-base lg:text-lg text-sky-100 dark:text-green-100 max-w-2xl mx-auto leading-relaxed">
               We're looking for talented individuals who are passionate about creating amazing products and experiences.
             </p>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
+        <div className="grid lg:grid-cols-3 gap-6 lg:gap-8 max-w-7xl mx-auto">
           {/* Job Listings Sidebar */}
-          <div className="lg:col-span-1 space-y-6">
-            <div className="bg-white rounded-xl shadow-lg border border-blue-100 overflow-hidden">
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 py-4">
-                <h2 className="text-xl font-semibold text-white flex items-center">
-                  <Briefcase className="w-5 h-5 mr-2" />
+          <div className="lg:col-span-1 order-2 lg:order-1">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-sky-100 dark:border-gray-700 overflow-hidden sticky top-6">
+              <div className="bg-gradient-to-r from-sky-500 to-sky-600 dark:from-gray-700 dark:to-green-800 px-4 lg:px-6 py-3 lg:py-4">
+                <h2 className="text-base lg:text-lg font-semibold text-white flex items-center">
+                  <Briefcase className="w-4 h-4 lg:w-5 lg:h-5 mr-2" />
                   Open Positions ({jobs.length})
                 </h2>
               </div>
               
-              <div className="p-2">
+              <div className="p-2 lg:p-3 max-h-96 lg:max-h-[32rem] overflow-y-auto">
                 {jobs.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 lg:space-y-3">
                     {jobs.map((job) => (
                       <div
                         key={job._id}
-                        className={`p-4 rounded-lg cursor-pointer transition-all duration-300 ${
+                        className={`p-3 lg:p-4 rounded-lg cursor-pointer transition-all duration-300 ${
                           selectedJob?._id === job._id 
-                            ? 'bg-blue-600 text-white shadow-lg transform scale-[1.02]' 
-                            : 'bg-blue-50 hover:bg-blue-100 border border-blue-200 hover:shadow-md'
+                            ? 'bg-sky-500 dark:bg-green-700 text-white shadow-lg transform scale-[1.02]' 
+                            : 'bg-sky-50 dark:bg-gray-700 hover:bg-sky-100 dark:hover:bg-gray-600 border border-sky-200 dark:border-gray-600 hover:shadow-md'
                         }`}
                         onClick={() => setSelectedJob(job)}
                       >
-                        <h3 className={`font-semibold ${selectedJob?._id === job._id ? 'text-white' : 'text-slate-800'}`}>
+                        <h3 className={`text-sm lg:text-base font-semibold ${selectedJob?._id === job._id ? 'text-white' : 'text-gray-900 dark:text-gray-100'}`}>
                           {job.title}
                         </h3>
                         <div className="flex flex-col gap-1 mt-2">
-                          <p className={`text-sm ${selectedJob?._id === job._id ? 'text-blue-100' : 'text-slate-600'}`}>
+                          <p className={`text-xs lg:text-sm ${selectedJob?._id === job._id ? 'text-sky-100 dark:text-green-100' : 'text-gray-600 dark:text-gray-400'}`}>
                             {job.type} • {job.location}
                           </p>
-                          <p className={`text-sm font-medium ${selectedJob?._id === job._id ? 'text-blue-100' : 'text-blue-600'}`}>
-                          {job.salary ? formatSalary(job) : 'Competitive Salary'}
-                        </p>
+                          <p className={`text-xs lg:text-sm font-medium ${selectedJob?._id === job._id ? 'text-sky-100 dark:text-green-100' : 'text-sky-600 dark:text-green-500'}`}>
+                            {job.salary ? formatSalary(job) : 'Competitive Salary'}
+                          </p>
                         </div>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <div className="text-center py-12">
-                    <Briefcase className="w-16 h-16 mx-auto text-slate-300 mb-4" />
-                    <h3 className="text-lg font-medium text-slate-700 mb-2">No Open Positions</h3>
-                    <p className="text-slate-500 max-w-md mx-auto">
+                  <div className="text-center py-8 lg:py-12">
+                    <Briefcase className="w-12 h-12 lg:w-16 lg:h-16 mx-auto text-gray-300 dark:text-gray-600 mb-4" />
+                    <h3 className="text-base lg:text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">No Open Positions</h3>
+                    <p className="text-sm lg:text-base text-gray-500 dark:text-gray-400 max-w-md mx-auto">
                       We don't have any open positions at the moment, but we're always looking for talented people.
                     </p>
-                    <Button className="mt-6 bg-blue-600 hover:bg-blue-700 text-white">
-                      <Mail className="mr-2 h-4 w-4" />
+                    <Button className="mt-4 lg:mt-6 bg-sky-500 hover:bg-sky-600 dark:bg-green-600 dark:hover:bg-green-700 text-white text-sm lg:text-base">
+                      <Mail className="mr-2 h-3 w-3 lg:h-4 lg:w-4" />
                       Contact Us
                     </Button>
                   </div>
@@ -321,30 +321,30 @@ export default function Careers() {
           </div>
 
           {/* Job Details Main Content */}
-          <div className="lg:col-span-2">
+          <div className="lg:col-span-2 order-1 lg:order-2">
             {selectedJob ? (
-              <div className="bg-white rounded-xl shadow-lg border border-blue-100 overflow-hidden">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-sky-100 dark:border-gray-700 overflow-hidden">
                 {/* Job Header */}
-                <div className="bg-gradient-to-r from-blue-600 to-blue-700 px-6 sm:px-8 py-6">
+                <div className="bg-gradient-to-r from-sky-500 to-sky-600 dark:from-gray-700 dark:to-green-800 px-4 sm:px-6 lg:px-8 py-4 lg:py-6">
                   <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="text-white">
-                      <h2 className="text-2xl sm:text-3xl font-bold mb-3">{selectedJob.title}</h2>
-                      <div className="flex flex-wrap items-center gap-4 text-blue-100">
-                        <span className="flex items-center bg-blue-500/30 px-3 py-1 rounded-full text-sm font-medium">
+                      <h2 className="text-xl sm:text-2xl lg:text-3xl font-bold mb-2 lg:mb-3">{selectedJob.title}</h2>
+                      <div className="flex flex-wrap items-center gap-2 lg:gap-4 text-sky-100 dark:text-green-100">
+                        <span className="flex items-center bg-sky-400/30 dark:bg-green-600/30 px-2 lg:px-3 py-1 rounded-full text-xs lg:text-sm font-medium">
                           {selectedJob.type}
                         </span>
-                        <span className="flex items-center">
-                          <MapPin className="w-4 h-4 mr-1" />
+                        <span className="flex items-center text-xs lg:text-sm">
+                          <MapPin className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
                           {selectedJob.location}
                         </span>
-                        <span className="flex items-center">
-                          <DollarSign className="w-4 h-4 mr-1" />
+                        <span className="flex items-center text-xs lg:text-sm">
+                          <DollarSign className="w-3 h-3 lg:w-4 lg:h-4 mr-1" />
                           {selectedJob.salary ? formatSalary(selectedJob) : 'Competitive Salary'}
                         </span>
                       </div>
                     </div>
                     <Button 
-                      className="bg-white text-blue-600 hover:bg-blue-50 border border-blue-200 shadow-lg font-semibold whitespace-nowrap"
+                      className="bg-white text-sky-600 hover:bg-sky-50 dark:bg-gray-100 dark:text-green-700 dark:hover:bg-gray-200 border border-sky-200 dark:border-green-200 shadow-lg font-semibold whitespace-nowrap text-sm lg:text-base"
                       onClick={() => handleApplyClick(selectedJob)}
                     >
                       Apply Now
@@ -353,28 +353,28 @@ export default function Careers() {
                 </div>
 
                 {/* Job Content */}
-                <div className="p-6 sm:p-8 space-y-8">
+                <div className="p-4 sm:p-6 lg:p-8 space-y-6 lg:space-y-8">
                   <div>
-                    <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center">
-                      <div className="w-2 h-6 bg-blue-600 rounded mr-3"></div>
+                    <h3 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 lg:mb-4 flex items-center">
+                      <div className="w-2 h-4 lg:h-6 bg-sky-500 dark:bg-green-600 rounded mr-3"></div>
                       Job Description
                     </h3>
-                    <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-                      <p className="text-slate-700 leading-relaxed">{selectedJob.description}</p>
+                    <div className="bg-sky-50 dark:bg-gray-700 p-4 lg:p-6 rounded-lg border border-sky-200 dark:border-gray-600">
+                      <p className="text-sm lg:text-base text-gray-700 dark:text-gray-300 leading-relaxed">{selectedJob.description}</p>
                     </div>
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center">
-                      <div className="w-2 h-6 bg-blue-600 rounded mr-3"></div>
+                    <h3 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 lg:mb-4 flex items-center">
+                      <div className="w-2 h-4 lg:h-6 bg-sky-500 dark:bg-green-600 rounded mr-3"></div>
                       Requirements
                     </h3>
-                    <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-                      <ul className="space-y-3">
-                        {selectedJob.requirements.map((req, i) => (
+                    <div className="bg-sky-50 dark:bg-gray-700 p-4 lg:p-6 rounded-lg border border-sky-200 dark:border-gray-600">
+                      <ul className="space-y-2 lg:space-y-3">
+                        {selectedJob.requirements.map((req: string, i: number) => (
                           <li key={i} className="flex items-start">
-                            <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                            <span className="text-slate-700">{req}</span>
+                            <div className="w-2 h-2 bg-sky-500 dark:bg-green-600 rounded-full mt-1.5 lg:mt-2 mr-3 flex-shrink-0"></div>
+                            <span className="text-sm lg:text-base text-gray-700 dark:text-gray-300">{req}</span>
                           </li>
                         ))}
                       </ul>
@@ -382,16 +382,16 @@ export default function Careers() {
                   </div>
 
                   <div>
-                    <h3 className="text-xl font-semibold text-slate-800 mb-4 flex items-center">
-                      <div className="w-2 h-6 bg-blue-600 rounded mr-3"></div>
+                    <h3 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-3 lg:mb-4 flex items-center">
+                      <div className="w-2 h-4 lg:h-6 bg-sky-500 dark:bg-green-600 rounded mr-3"></div>
                       Responsibilities
                     </h3>
-                    <div className="bg-blue-50 p-6 rounded-lg border border-blue-200">
-                      <ul className="space-y-3">
-                        {selectedJob.responsibilities.map((resp, i) => (
+                    <div className="bg-sky-50 dark:bg-gray-700 p-4 lg:p-6 rounded-lg border border-sky-200 dark:border-gray-600">
+                      <ul className="space-y-2 lg:space-y-3">
+                        {selectedJob.responsibilities.map((resp: string, i: number) => (
                           <li key={i} className="flex items-start">
-                            <div className="w-2 h-2 bg-blue-600 rounded-full mt-2 mr-3 flex-shrink-0"></div>
-                            <span className="text-slate-700">{resp}</span>
+                            <div className="w-2 h-2 bg-sky-500 dark:bg-green-600 rounded-full mt-1.5 lg:mt-2 mr-3 flex-shrink-0"></div>
+                            <span className="text-sm lg:text-base text-gray-700 dark:text-gray-300">{resp}</span>
                           </li>
                         ))}
                       </ul>
@@ -400,30 +400,30 @@ export default function Careers() {
 
                   {/* Benefits Section */}
                   <div>
-                    <h3 className="text-xl font-semibold text-slate-800 mb-6 flex items-center">
-                      <div className="w-2 h-6 bg-blue-600 rounded mr-3"></div>
+                    <h3 className="text-lg lg:text-xl font-semibold text-gray-900 dark:text-gray-100 mb-4 lg:mb-6 flex items-center">
+                      <div className="w-2 h-4 lg:h-6 bg-sky-500 dark:bg-green-600 rounded mr-3"></div>
                       Why Join Us?
                     </h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4">
                       {benefits.map((benefit, i) => (
                         <div 
                           key={i}
-                          className="p-6 rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-blue-100 hover:shadow-lg transition-all duration-300 hover:scale-105"
+                          className="p-4 lg:p-6 rounded-lg border border-sky-200 dark:border-gray-600 bg-gradient-to-br from-sky-50 to-sky-100 dark:from-gray-700 dark:to-gray-600 hover:shadow-lg transition-all duration-300 hover:scale-105"
                         >
-                          <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mb-4 shadow-md">
-                            <span className="text-blue-600">{benefit.icon}</span>
+                          <div className="w-10 h-10 lg:w-12 lg:h-12 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center mb-3 lg:mb-4 shadow-md">
+                            <span className="text-sky-600 dark:text-green-500">{benefit.icon}</span>
                           </div>
-                          <h4 className="font-semibold text-slate-800 mb-2">{benefit.title}</h4>
-                          <p className="text-sm text-slate-600">{benefit.description}</p>
+                          <h4 className="text-sm lg:text-base font-semibold text-gray-900 dark:text-gray-100 mb-2">{benefit.title}</h4>
+                          <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-400">{benefit.description}</p>
                         </div>
                       ))}
                     </div>
                   </div>
 
                   {/* Apply Button */}
-                  <div className="pt-6 border-t border-blue-100">
+                  <div className="pt-4 lg:pt-6 border-t border-sky-100 dark:border-gray-700">
                     <Button 
-                      className="bg-blue-600 hover:bg-blue-700 text-white w-full sm:w-auto px-8 py-3 text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+                      className="bg-sky-500 hover:bg-sky-600 dark:bg-green-600 dark:hover:bg-green-700 text-white w-full sm:w-auto px-6 lg:px-8 py-2 lg:py-3 text-sm lg:text-lg font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
                       onClick={() => handleApplyClick(selectedJob)}
                     >
                       Apply for this Position
@@ -432,21 +432,20 @@ export default function Careers() {
                 </div>
               </div>
             ) : (
-              <div className="bg-white rounded-xl shadow-lg border border-blue-100 p-12 text-center h-full flex flex-col items-center justify-center min-h-[600px]">
-                <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                  <Briefcase className="w-10 h-10 text-blue-600" />
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-sky-100 dark:border-gray-700 p-8 lg:p-12 text-center h-full flex flex-col items-center justify-center min-h-[400px] lg:min-h-[600px]">
+                <div className="w-16 h-16 lg:w-20 lg:h-20 bg-sky-100 dark:bg-gray-700 rounded-full flex items-center justify-center mb-4 lg:mb-6">
+                  <Briefcase className="w-8 h-8 lg:w-10 lg:h-10 text-sky-600 dark:text-green-500" />
                 </div>
-                <h3 className="text-2xl font-semibold mb-4 text-slate-800">
+                <h3 className="text-xl lg:text-2xl font-semibold mb-3 lg:mb-4 text-gray-900 dark:text-gray-100">
                   Select a Position
                 </h3>
-                <p className="text-slate-600 max-w-md leading-relaxed">
+                <p className="text-sm lg:text-base text-gray-600 dark:text-gray-400 max-w-md leading-relaxed">
                   Choose a job opening from the list to view its details, requirements, and apply.
                 </p>
               </div>
             )}
           </div>
         </div>
-
 
         {/* Application Modal */}
         {selectedJob && (

@@ -374,307 +374,330 @@ const Discuss: React.FC = () => {
       
     }, [discussions, user]);
 
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-black py-3 sm:py-4 lg:py-6 transition-colors duration-300">
-      <div className="max-w-4xl mx-auto px-3 sm:px-4 lg:px-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 lg:mb-6 space-y-3 sm:space-y-0">
-          <div>
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900 dark:text-blue-400 mb-1 transition-colors duration-300">
-              Discussions
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300">
-              Share ideas and connect with the community
-            </p>
-          </div>
-          <button
-            onClick={handleNewDiscussionClick}
-            className="flex items-center justify-center space-x-2 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-all duration-200 font-medium shadow-sm hover:shadow-md w-full sm:w-auto text-sm"
-          >
-            {showNewDiscussion ? (
-              <>
-                <X size={16} />
-                <span>Cancel</span>
-              </>
-            ) : (
-              <>
-                <Plus size={16} />
-                <span>New Discussion</span>
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* New Discussion Form */}
-        {showNewDiscussion && (
-          <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-blue-800 rounded-lg shadow-sm mb-4 lg:mb-6 overflow-hidden transition-colors duration-300">
-            <div className="bg-blue-50 dark:bg-blue-950/50 border-b border-blue-100 dark:border-blue-800 px-3 sm:px-4 py-3 transition-colors duration-300">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-blue-400 flex items-center transition-colors duration-300">
-                <MessageCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mr-2" />
-                Start a New Discussion
-              </h2>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 transition-colors duration-300">
-                Share your thoughts, ask questions, or start a conversation
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-sky-100 dark:from-black dark:via-gray-900 dark:to-black py-4 sm:py-6 lg:py-8 transition-all duration-300">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          {/* Header */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 lg:mb-8 space-y-4 sm:space-y-0">
+            <div className="text-center sm:text-left">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-sky-600 to-sky-800 dark:from-green-400 dark:to-green-600 bg-clip-text text-transparent mb-2 transition-all duration-300">
+                Discussions
+              </h1>
+              <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-gray-300 font-medium transition-colors duration-300">
+                Share ideas and connect with the community
               </p>
             </div>
-            
-            <form onSubmit={handleSubmit} className="p-3 sm:p-4 space-y-3 sm:space-y-4">
-              {/* Title Input */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">
-                  Discussion Title *
-                </label>
-                <input 
-                  type="text"
-                  name="title"
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-blue-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                  placeholder="Enter a descriptive title for your discussion"
-                  required
-                />
-              </div>
-
-              {/* Content Textarea */}
-              <div>
-                <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">
-                  Content *
-                </label>
-                <textarea 
-                  name="content"
-                  value={formData.content}
-                  onChange={handleInputChange}
-                  className="w-full bg-white dark:bg-gray-800 border border-gray-300 dark:border-blue-700 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-blue-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200 min-h-[100px] sm:min-h-[120px] resize-vertical"
-                  placeholder="What would you like to discuss? Share your thoughts, questions, or ideas..."
-                  required
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 transition-colors duration-300">
-                  Minimum 10 characters required
+            <button
+              onClick={handleNewDiscussionClick}
+              className="flex items-center justify-center space-x-2 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-green-500 dark:to-green-600 hover:from-sky-600 hover:to-sky-700 dark:hover:from-green-600 dark:hover:to-green-700 text-white px-4 py-2 rounded-xl transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 w-full sm:w-auto text-sm"
+            >
+              {showNewDiscussion ? (
+                <>
+                  <X size={18} />
+                  <span>Cancel</span>
+                </>
+              ) : (
+                <>
+                  <Plus size={18} />
+                  <span>New Discussion</span>
+                </>
+              )}
+            </button>
+          </div>
+  
+          {/* New Discussion Form */}
+          {showNewDiscussion && (
+            <div className="bg-white dark:bg-gray-900 border-2 border-sky-200 dark:border-green-700 rounded-2xl shadow-xl dark:shadow-green-900/20 mb-6 lg:mb-8 overflow-hidden transition-all duration-300">
+              <div className="bg-gradient-to-r from-sky-50 to-sky-100 dark:from-gray-800 dark:to-gray-700 border-b-2 border-sky-200 dark:border-green-700 px-6 py-4 transition-all duration-300">
+                <h2 className="text-base sm:text-lg font-bold text-sky-800 dark:text-green-400 flex items-center transition-colors duration-300">
+                  <MessageCircle className="h-4 w-4 text-sky-600 dark:text-green-400 mr-2" />
+                  Start a New Discussion
+                </h2>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-1 transition-colors duration-300">
+                  Share your thoughts, ask questions, or start a conversation
                 </p>
               </div>
-
-              {/* Action Buttons */}
-              <div className="flex flex-col-reverse sm:flex-row sm:justify-end space-y-2 space-y-reverse sm:space-y-0 sm:space-x-3 pt-3 border-t border-gray-200 dark:border-blue-800 transition-colors duration-300">
-                <button 
-                  type="button"
-                  onClick={() => {
-                    setShowNewDiscussion(false);
-                    setFormData({ title: '', content: '' });
-                  }}
-                  className="w-full sm:w-auto px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 border border-gray-300 dark:border-blue-700 rounded-lg transition-all duration-200 font-medium"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={!formData.title.trim() || !formData.content.trim() || isSubmitting}
-                  className="w-full sm:w-auto px-4 py-2 text-sm bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 disabled:bg-gray-300 dark:disabled:bg-gray-600 disabled:cursor-not-allowed transition-all duration-200 font-medium shadow-sm hover:shadow-md"
-                >
-                  {isSubmitting ? 'Posting...' : 'Post Discussion'}
-                </button>
-              </div>
-            </form>
-          </div>
-        )}
-
-        {/* Discussions List */}
-        {!showNewDiscussion && (
-          <div className="space-y-3">
-            {isLoading ? (
-              <div className="flex justify-center items-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-500 dark:text-blue-400" />
-              </div>
-            ) : discussions && discussions.length > 0 ? (
-              <div className="space-y-3">
-                {discussions.map(discussion => (
-                  <div key={discussion._id} className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-blue-800 rounded-lg shadow-sm p-4 transition-colors duration-300">
-                    <div className="flex items-start space-x-3">
-                      <div className="flex-shrink-0">
-                        <Link to={`/u/${discussion.author?.username || ''}`} className="block">
-                          <div className="h-8 w-8 rounded-full overflow-hidden ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 font-medium text-sm transition-colors duration-300">
-                            {discussion.author?.avatarUrl ? (
-                              <img src={discussion.author.avatarUrl} alt={discussion.author.username} className="w-full h-full object-cover" />
-                            ) : (
-                              discussion.author?.username?.charAt(0).toUpperCase() || 'U'
-                            )}
+              
+              <form onSubmit={handleSubmit} className="p-6 space-y-6">
+                {/* Title Input */}
+                <div>
+                  <label className="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1 transition-colors duration-300">
+                    Discussion Title *
+                  </label>
+                  <input 
+                    type="text"
+                    name="title"
+                    value={formData.title}
+                    onChange={handleInputChange}
+                    className="w-full bg-white dark:bg-gray-800 border-2 border-sky-200 dark:border-green-600 rounded-xl px-3 py-2 text-xs sm:text-sm text-gray-900 dark:text-green-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-600/30 focus:border-sky-500 dark:focus:border-green-500 transition-all duration-300 shadow-sm"
+                    placeholder="Enter a descriptive title for your discussion"
+                    required
+                  />
+                </div>
+  
+                {/* Content Textarea */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 transition-colors duration-300">
+                    Content *
+                  </label>
+                  <textarea 
+                    name="content"
+                    value={formData.content}
+                    onChange={handleInputChange}
+                    className="w-full bg-white dark:bg-gray-800 border-2 border-sky-200 dark:border-green-600 rounded-xl px-3 py-2 text-xs sm:text-sm text-gray-900 dark:text-green-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-600/30 focus:border-sky-500 dark:focus:border-green-500 transition-all duration-300 min-h-[100px] sm:min-h-[120px] resize-vertical shadow-sm"
+                    placeholder="What would you like to discuss? Share your thoughts, questions, or ideas..."
+                    required
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 transition-colors duration-300">
+                    Minimum 10 characters required
+                  </p>
+                </div>
+  
+                {/* Action Buttons */}
+                <div className="flex flex-col-reverse sm:flex-row sm:justify-end space-y-3 space-y-reverse sm:space-y-0 sm:space-x-4 pt-4 border-t-2 border-sky-100 dark:border-green-800 transition-colors duration-300">
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setShowNewDiscussion(false);
+                      setFormData({ title: '', content: '' });
+                    }}
+                    className="w-full sm:w-auto px-4 py-2 text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 rounded-xl transition-all duration-300 shadow-sm hover:shadow-md"
+                  >
+                    Cancel
+                  </button>
+                  <button 
+                    type="submit"
+                    disabled={!formData.title.trim() || !formData.content.trim() || isSubmitting}
+                    className="w-full sm:w-auto px-6 py-2 text-xs sm:text-sm bg-gradient-to-r from-sky-500 to-sky-600 dark:from-green-500 dark:to-green-600 text-white rounded-xl hover:from-sky-600 hover:to-sky-700 dark:hover:from-green-600 dark:hover:to-green-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-gray-600 dark:disabled:to-gray-700 disabled:cursor-not-allowed transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
+                  >
+                    {isSubmitting ? 'Posting...' : 'Post Discussion'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+  
+          {/* Discussions List */}
+          {!showNewDiscussion && (
+            <div className="space-y-4">
+              {isLoading ? (
+                <div className="flex justify-center items-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-sky-500 dark:text-green-400" />
+                </div>
+              ) : discussions && discussions.length > 0 ? (
+                <div className="space-y-4">
+                  {discussions.map(discussion => (
+                    <div key={discussion._id} className="bg-white dark:bg-gray-900 border-2 border-sky-100 dark:border-green-800 rounded-2xl shadow-lg dark:shadow-green-900/10 p-6 transition-all duration-300 hover:shadow-xl dark:hover:shadow-green-900/20 hover:border-sky-200 dark:hover:border-green-700 transform hover:-translate-y-1">
+                      <div className="flex items-start space-x-4">
+                        <div className="flex-shrink-0">
+                          <Link to={`/u/${discussion.author?.username || ''}`} className="block">
+                            <div className="h-12 w-12 rounded-full overflow-hidden ring-3 ring-sky-200 dark:ring-green-600 bg-gradient-to-r from-sky-100 to-sky-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center text-sky-600 dark:text-green-400 font-bold text-base transition-all duration-300 hover:ring-sky-300 dark:hover:ring-green-500 hover:scale-110">
+                              {discussion.author?.avatarUrl ? (
+                                <img src={discussion.author.avatarUrl} alt={discussion.author.username} className="w-full h-full object-cover" />
+                              ) : (
+                                discussion.author?.username?.charAt(0).toUpperCase() || 'U'
+                              )}
+                            </div>
+                          </Link>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between mb-2">
+                            <h3 className="text-sm font-bold text-sky-800 dark:text-green-400 transition-colors duration-300">
+                              <Link to={`/u/${discussion.author?.username || ''}`} className="hover:text-sky-600 dark:hover:text-green-300">
+                                {discussion.author?.fullName || discussion.author?.username || 'Anonymous'}
+                              </Link>
+                            </h3>
+                            <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded-lg transition-colors duration-300">
+                              {formatDate(discussion.createdAt)}
+                            </span>
                           </div>
-                        </Link>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-xs font-medium text-gray-900 dark:text-blue-400 transition-colors duration-300">
-                            <Link to={`/u/${discussion.author?.username || ''}`}>{discussion.author?.fullName || discussion.author?.username || 'Anonymous'}</Link>
-                          </h3>
-                          <span className="text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">
-                            {formatDate(discussion.createdAt)}
-                          </span>
-                        </div>
-                        <h2 className="text-base font-bold mt-1 text-gray-900 dark:text-blue-400 transition-colors duration-300">{discussion.title}</h2>
-                        <p className="mt-2 text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line transition-colors duration-300">{discussion.content}</p>
-                        
-                        {/* Like and Comment Actions */}
-                        <div className="flex items-center mt-3 space-x-4 text-xs text-gray-500 dark:text-gray-400">
-                          <button 
-                            onClick={() => toggleLike(discussion._id)}
-                            className={`flex items-center space-x-1 transition-colors ${
-                              discussion.isLiked ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
-                            }`}
-                          >
-                            <ThumbsUp className="h-3 w-3" />
-                            <span>{discussion.likes?.length || 0}</span>
-                          </button>
-                          <button 
-                            onClick={() => toggleReplies(discussion._id)}
-                            className="flex items-center space-x-1 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-                          >
-                            <MessageSquare className="h-3 w-3" />
-                            <span>{discussion.replies?.length || 0} comments</span>
-                          </button>
-                        </div>
-                        
-                        {/* Reply Section */}
-                        {discussion.showReplies && (
-                          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-blue-800 transition-colors duration-300">
-                            {discussion.isLoadingReplies ? (
-                              <div className="flex justify-center py-3">
-                                <Loader2 className="animate-spin h-4 w-4 text-gray-500 dark:text-gray-400" />
-                              </div>
-                            ) : (
-                              <>
-                                {/* Reply Form */}
-                                <div className="flex space-x-2 mb-3">
-                                  <input
-                                    type="text"
-                                    value={discussion.newReply || ''}
-                                    onChange={(e) => handleReplyChange(discussion._id, e.target.value)}
-                                    onKeyPress={(e) => e.key === 'Enter' && handleReplySubmit(discussion._id)}
-                                    placeholder="Write a reply..."
-                                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-blue-700 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-blue-500 dark:focus:border-blue-400 text-xs text-gray-700 dark:text-blue-400 bg-white dark:bg-gray-800 placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200"
-                                  />
-                                  <button 
-                                    onClick={() => handleReplySubmit(discussion._id)}
-                                    disabled={!discussion.newReply?.trim()}
-                                    className="px-3 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:ring-offset-2 dark:focus:ring-offset-gray-900 disabled:opacity-50 disabled:cursor-not-allowed text-xs transition-colors"
-                                  >
-                                    <Send className="h-3 w-3" />
-                                  </button>
+                          <h2 className="text-sm sm:text-base font-bold mt-2 text-gray-900 dark:text-green-300 transition-colors duration-300 leading-tight">
+                            {discussion.title}
+                          </h2>
+                          <p className="mt-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 whitespace-pre-line transition-colors duration-300 leading-relaxed">
+                            {discussion.content}
+                          </p>
+                          
+                          {/* Like and Comment Actions */}
+                          <div className="flex items-center mt-4 space-x-6 text-xs sm:text-sm">
+                            <button 
+                              onClick={() => toggleLike(discussion._id)}
+                              className={`flex items-center space-x-2 px-3 py-2 rounded-xl transition-all duration-300 font-medium ${
+                                discussion.isLiked 
+                                  ? 'text-sky-600 dark:text-green-400 bg-sky-100 dark:bg-green-900/30' 
+                                  : 'text-gray-500 dark:text-gray-400 hover:text-sky-600 dark:hover:text-green-400 hover:bg-sky-50 dark:hover:bg-green-900/20'
+                              }`}
+                            >
+                              <ThumbsUp className="h-4 w-4" />
+                              <span>{discussion.likes?.length || 0}</span>
+                            </button>
+                            <button 
+                              onClick={() => toggleReplies(discussion._id)}
+                              className="flex items-center space-x-2 px-3 py-2 rounded-xl text-gray-500 dark:text-gray-400 hover:text-sky-600 dark:hover:text-green-400 hover:bg-sky-50 dark:hover:bg-green-900/20 transition-all duration-300 font-medium"
+                            >
+                              <MessageSquare className="h-4 w-4" />
+                              <span>{discussion.replies?.length || 0} comments</span>
+                            </button>
+                          </div>
+                          
+                          {/* Reply Section */}
+                          {discussion.showReplies && (
+                            <div className="mt-4 pt-4 border-t-2 border-sky-100 dark:border-green-800 transition-colors duration-300">
+                              {discussion.isLoadingReplies ? (
+                                <div className="flex justify-center py-4">
+                                  <Loader2 className="animate-spin h-5 w-5 text-sky-500 dark:text-green-400" />
                                 </div>
-                                
-                                {/* Replies List */}
-                                {discussion.replies?.length > 0 && (
-                                  <div className="space-y-2">
-                                    {discussion.replies.map(reply => {
-                                      // Debug the reply data
-                                      console.log('Reply data:', {
-                                        replyId: reply._id,
-                                        author: reply.author,
-                                        content: reply.content
-                                      });
-                                      
-                                      // Ensure we have valid author data
-                                      const author = reply.author || { _id: 'unknown', username: 'User' };
-                                      const username = author?.username || 'User';
-                                      const userInitial = username.charAt(0).toUpperCase();
-                                      
-                                      console.log('Processed author data:', {
-                                        username,
-                                        userInitial
-                                      });
-                                      
-                                      return (
-                                        <div key={reply._id} className="bg-gray-50 dark:bg-gray-800 p-3 rounded transition-colors duration-300">
-                                          <div className="flex items-start space-x-3">
-                                            <Link to={`/u/${username}`} className="block">
-                                              <div className="h-6 w-6 rounded-full overflow-hidden ring-2 ring-blue-200 dark:ring-blue-800 bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 text-xs font-medium flex-shrink-0 transition-colors duration-300">
-                                                {author?.avatarUrl ? (
-                                                  <img src={author.avatarUrl} alt={username} className="w-full h-full object-cover" />
-                                                ) : (
-                                                  userInitial
-                                                )}
+                              ) : (
+                                <>
+                                  {/* Reply Form */}
+                                  <div className="flex space-x-3 mb-4">
+                                    <input
+                                      type="text"
+                                      value={discussion.newReply || ''}
+                                      onChange={(e) => handleReplyChange(discussion._id, e.target.value)}
+                                      onKeyPress={(e) => e.key === 'Enter' && handleReplySubmit(discussion._id)}
+                                      placeholder="Write a reply..."
+                                      className="flex-1 px-3 py-2 border-2 border-sky-200 dark:border-green-600 rounded-xl focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-600/30 focus:border-sky-500 dark:focus:border-green-500 text-xs sm:text-sm text-gray-700 dark:text-green-400 bg-white dark:bg-gray-800 placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-300 shadow-sm"
+                                    />
+                                    <button 
+                                      onClick={() => handleReplySubmit(discussion._id)}
+                                      disabled={!discussion.newReply?.trim()}
+                                      className="px-3 py-2 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-green-500 dark:to-green-600 text-white rounded-xl hover:from-sky-600 hover:to-sky-700 dark:hover:from-green-600 dark:hover:to-green-700 focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-600/30 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm transition-all duration-300 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none"
+                                    >
+                                      <Send className="h-4 w-4" />
+                                    </button>
+                                  </div>
+                                  
+                                  {/* Replies List */}
+                                  {discussion.replies?.length > 0 && (
+                                    <div className="space-y-3">
+                                      {discussion.replies.map(reply => {
+                                        // Debug the reply data
+                                        console.log('Reply data:', {
+                                          replyId: reply._id,
+                                          author: reply.author,
+                                          content: reply.content
+                                        });
+                                        
+                                        // Ensure we have valid author data
+                                        const author = reply.author || { _id: 'unknown', username: 'User' };
+                                        const username = author?.username || 'User';
+                                        const userInitial = username.charAt(0).toUpperCase();
+                                        
+                                        console.log('Processed author data:', {
+                                          username,
+                                          userInitial
+                                        });
+                                        
+                                        return (
+                                          <div key={reply._id} className="bg-gradient-to-r from-sky-50 to-white dark:from-gray-800 dark:to-gray-700 p-4 rounded-xl border border-sky-100 dark:border-green-700 transition-all duration-300 hover:shadow-md">
+                                            <div className="flex items-start space-x-3">
+                                              <Link to={`/u/${username}`} className="block">
+                                                <div className="h-8 w-8 rounded-full overflow-hidden ring-2 ring-sky-200 dark:ring-green-600 bg-gradient-to-r from-sky-100 to-sky-200 dark:from-gray-600 dark:to-gray-500 flex items-center justify-center text-sky-600 dark:text-green-400 text-sm font-bold flex-shrink-0 transition-all duration-300 hover:ring-sky-300 dark:hover:ring-green-500">
+                                                  {author?.avatarUrl ? (
+                                                    <img src={author.avatarUrl} alt={username} className="w-full h-full object-cover" />
+                                                  ) : (
+                                                    userInitial
+                                                  )}
+                                                </div>
+                                              </Link>
+                                              
+                                              <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between mb-1">
+                                                  <span className="text-sm font-bold text-sky-800 dark:text-green-400 transition-colors duration-300">
+                                                    <Link to={`/u/${username}`} className="hover:text-sky-600 dark:hover:text-green-300">
+                                                      {author?.fullName || username}
+                                                    </Link>
+                                                  </span>
+                                                  <span className="text-xs text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 px-2 py-1 rounded-lg whitespace-nowrap ml-2 transition-colors duration-300">
+                                                    {formatDate(reply.createdAt)}
+                                                  </span>
+                                                </div>
+                                                <p className="mt-1 text-xs sm:text-sm text-gray-700 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                                                  {reply.content}
+                                                </p>
                                               </div>
-                                            </Link>
-                                            
-                                            <div className="flex-1 min-w-0">
-                                              <div className="flex items-center justify-between">
-                                                <span className="text-xs font-medium text-gray-900 dark:text-blue-400 transition-colors duration-300">
-                                                  <Link to={`/u/${username}`}>{author?.fullName || username}</Link>
-                                                </span>
-                                                <span className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap ml-2 transition-colors duration-300">
-                                                  {formatDate(reply.createdAt)}
-                                                </span>
-                                              </div>
-                                              <p className="mt-1 text-xs text-gray-700 dark:text-gray-300 transition-colors duration-300">{reply.content}</p>
                                             </div>
                                           </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
-                        )}
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+              ) : (
+                /* Empty State */
+                <div className="text-center py-16">
+                  <div className="bg-gradient-to-r from-sky-100 to-sky-200 dark:from-gray-800 dark:to-gray-700 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 transition-all duration-300">
+                    <MessageCircle className="h-10 w-10 text-sky-600 dark:text-green-400 transition-colors duration-300" />
                   </div>
-                ))}
-              </div>
-            ) : (
-              /* Empty State */
-              <div className="text-center py-8">
-                <MessageCircle className="h-8 w-8 mx-auto text-gray-400 dark:text-gray-500 transition-colors duration-300" />
-                <h3 className="mt-2 text-base font-medium text-gray-900 dark:text-blue-400 transition-colors duration-300">No discussions yet</h3>
-                <p className="mt-1 text-xs text-gray-500 dark:text-gray-400 transition-colors duration-300">Be the first to start a discussion!</p>
-                <button
-                  onClick={() => setShowNewDiscussion(true)}
-                  className="mt-3 inline-flex items-center space-x-2 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition-all duration-200 font-medium shadow-sm hover:shadow-md text-sm"
-                >
-                  <Plus size={16} />
-                  <span>Start First Discussion</span>
-                </button>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Feature Info Cards - Only show when there are no discussions */}
-        {!isLoading && discussions.length === 0 && !showNewDiscussion && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-6">
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 transition-colors duration-300">
-              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mb-2 transition-colors duration-300">
-                <MessageCircle className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-              </div>
-              <h4 className="font-semibold text-gray-900 dark:text-blue-400 mb-1 text-sm transition-colors duration-300">Share Ideas</h4>
-              <p className="text-xs text-gray-600 dark:text-gray-300 transition-colors duration-300">
-                Discuss coding concepts, share solutions, and learn from others.
-              </p>
+                  <h3 className="text-base sm:text-lg font-bold text-gray-900 dark:text-green-300 mb-2 transition-colors duration-300">
+                    No discussions yet
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mb-6 transition-colors duration-300 max-w-md mx-auto">
+                    Be the first to start a discussion and help build our community!
+                  </p>
+                  <button
+                    onClick={() => setShowNewDiscussion(true)}
+                    className="inline-flex items-center space-x-2 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-green-500 dark:to-green-600 hover:from-sky-600 hover:to-sky-700 dark:hover:from-green-600 dark:hover:to-green-700 text-white px-6 py-3 rounded-xl transition-all duration-300 font-semibold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm"
+                  >
+                    <Plus size={20} />
+                    <span>Start First Discussion</span>
+                  </button>
+                </div>
+              )}
             </div>
-            
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 transition-colors duration-300">
-              <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mb-2 transition-colors duration-300">
-                <Plus className="h-4 w-4 text-green-600 dark:text-green-400" />
+          )}
+  
+          {/* Feature Info Cards - Only show when there are no discussions */}
+          {!isLoading && discussions.length === 0 && !showNewDiscussion && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mt-12">
+              <div className="bg-white dark:bg-gray-900 border-2 border-sky-100 dark:border-green-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl dark:hover:shadow-green-900/20 hover:border-sky-200 dark:hover:border-green-700 transform hover:-translate-y-1">
+                <div className="w-12 h-12 bg-gradient-to-r from-sky-100 to-sky-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mb-4 transition-all duration-300">
+                  <MessageCircle className="h-6 w-6 text-sky-600 dark:text-green-400" />
+                </div>
+                <h4 className="font-bold text-gray-900 dark:text-green-300 mb-2 text-sm transition-colors duration-300">
+                  Share Ideas
+                </h4>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                  Discuss coding concepts, share solutions, and learn from others in the community.
+                </p>
               </div>
-              <h4 className="font-semibold text-gray-900 dark:text-blue-400 mb-1 text-sm transition-colors duration-300">Ask Questions</h4>
-              <p className="text-xs text-gray-600 dark:text-gray-300 transition-colors duration-300">
-                Get help with problems, clarify doubts, and grow your knowledge.
-              </p>
-            </div>
-            
-            <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 sm:col-span-2 lg:col-span-1 transition-colors duration-300">
-              <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mb-2 transition-colors duration-300">
-                <MessageCircle className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              
+              <div className="bg-white dark:bg-gray-900 border-2 border-sky-100 dark:border-green-800 rounded-2xl p-6 transition-all duration-300 hover:shadow-xl dark:hover:shadow-green-900/20 hover:border-sky-200 dark:hover:border-green-700 transform hover:-translate-y-1">
+                <div className="w-12 h-12 bg-gradient-to-r from-emerald-100 to-emerald-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mb-4 transition-all duration-300">
+                  <Plus className="h-6 w-6 text-emerald-600 dark:text-green-400" />
+                </div>
+                <h4 className="font-bold text-gray-900 dark:text-green-300 mb-2 text-base transition-colors duration-300">
+                  Ask Questions
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                  Get help with problems, clarify doubts, and accelerate your learning journey.
+                </p>
               </div>
-              <h4 className="font-semibold text-gray-900 dark:text-blue-400 mb-1 text-sm transition-colors duration-300">Build Community</h4>
-              <p className="text-xs text-gray-600 dark:text-gray-300 transition-colors duration-300">
-                Connect with fellow developers and build lasting relationships.
-              </p>
+              
+              <div className="bg-white dark:bg-gray-900 border-2 border-sky-100 dark:border-green-800 rounded-2xl p-6 sm:col-span-2 lg:col-span-1 transition-all duration-300 hover:shadow-xl dark:hover:shadow-green-900/20 hover:border-sky-200 dark:hover:border-green-700 transform hover:-translate-y-1">
+                <div className="w-12 h-12 bg-gradient-to-r from-violet-100 to-violet-200 dark:from-gray-700 dark:to-gray-600 rounded-xl flex items-center justify-center mb-4 transition-all duration-300">
+                  <MessageCircle className="h-6 w-6 text-violet-600 dark:text-green-400" />
+                </div>
+                <h4 className="font-bold text-gray-900 dark:text-green-300 mb-2 text-base transition-colors duration-300">
+                  Build Community
+                </h4>
+                <p className="text-sm text-gray-600 dark:text-gray-300 transition-colors duration-300 leading-relaxed">
+                  Connect with fellow developers and build lasting professional relationships.
+                </p>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
-    </div>
-  );
-};
-
+    );
+  }
 export default Discuss;

@@ -172,21 +172,21 @@ const ContestProblemDetails: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
-      <div className="container mx-auto px-4 py-4">
-        <div className="mb-4 text-sm text-blue-700">
-          <Link to={`/contests/${contestId}`} className="hover:underline">Back to Contest</Link>
+    <div className="min-h-screen bg-white dark:bg-gray-900 transition-colors duration-300">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-3 lg:py-4">
+        <div className="mb-3 lg:mb-4 text-xs lg:text-sm text-sky-700 dark:text-green-400">
+          <Link to={`/contests/${contestId}`} className="hover:underline font-medium">Back to Contest</Link>
         </div>
-
-        <Card className="shadow-lg border-blue-200">
-          <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
-            <CardTitle className="text-xl sm:text-2xl font-bold">{problem.title}</CardTitle>
+  
+        <Card className="shadow-lg border border-sky-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+          <CardHeader className="bg-gradient-to-r from-sky-500 to-sky-600 dark:from-gray-700 dark:to-green-800 text-white rounded-t-lg">
+            <CardTitle className="text-base sm:text-lg lg:text-xl font-bold">{problem.title}</CardTitle>
           </CardHeader>
-          <CardContent className="p-4 sm:p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr_1fr] gap-4">
+          <CardContent className="p-3 sm:p-4 lg:p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[180px_1fr_1fr] xl:grid-cols-[200px_1fr_1fr] gap-3 lg:gap-4">
               {/* Sidebar: problem list */}
-              <aside className="bg-white border rounded-lg p-3 h-max hidden lg:block">
-                <h3 className="font-semibold mb-2">Problems</h3>
+              <aside className="bg-sky-50 dark:bg-gray-700 border border-sky-100 dark:border-gray-600 rounded-lg p-2 lg:p-3 h-max hidden lg:block">
+                <h3 className="text-xs lg:text-sm font-semibold mb-2 text-gray-900 dark:text-gray-100">Problems</h3>
                 <ol className="space-y-1">
                   {problems.map((p, idx) => {
                     const pid = String(getProblemId(p));
@@ -195,7 +195,11 @@ const ContestProblemDetails: React.FC = () => {
                       <li key={pid}>
                         <button
                           onClick={() => gotoIndex(idx)}
-                          className={`w-full text-left px-2 py-1 rounded ${active ? 'bg-blue-600 text-white' : 'hover:bg-blue-50'}`}
+                          className={`w-full text-left px-2 py-1 lg:py-1.5 rounded text-xs lg:text-sm transition-colors ${
+                            active 
+                              ? 'bg-sky-500 dark:bg-green-600 text-white' 
+                              : 'hover:bg-sky-100 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300'
+                          }`}
                         >
                           Problem {idx + 1}
                         </button>
@@ -204,33 +208,48 @@ const ContestProblemDetails: React.FC = () => {
                   })}
                 </ol>
               </aside>
-
+  
               {/* Left: Description */}
               <div className="order-1">
-                <div className="prose max-w-none mb-4 text-gray-700 bg-blue-50 p-4 rounded-lg border border-blue-200">
-                  <div dangerouslySetInnerHTML={{ __html: problem.description }} />
+                <div className="prose max-w-none mb-3 lg:mb-4 text-gray-700 dark:text-gray-300 bg-sky-50 dark:bg-gray-700 p-3 lg:p-4 rounded-lg border border-sky-200 dark:border-gray-600">
+                  <div className="text-xs lg:text-sm leading-relaxed" dangerouslySetInnerHTML={{ __html: problem.description }} />
                 </div>
                 {Array.isArray(problem.examples) && problem.examples.length > 0 && (
-                  <div className="space-y-3">
-                    <h3 className="font-semibold">Examples</h3>
+                  <div className="space-y-2 lg:space-y-3">
+                    <h3 className="text-xs lg:text-sm font-semibold text-gray-900 dark:text-gray-100">Examples</h3>
                     {problem.examples.map((ex, i) => (
-                      <div key={i} className="bg-gray-50 p-3 rounded border border-gray-200">
-                        <div className="text-sm"><b>Input:</b> <pre className="inline-block bg-white px-2 py-1 rounded border">{String(ex.input)}</pre></div>
-                        <div className="text-sm"><b>Output:</b> <pre className="inline-block bg-white px-2 py-1 rounded border">{String(ex.output)}</pre></div>
-                        {ex.explanation && <div className="text-sm"><b>Explanation:</b> {ex.explanation}</div>}
+                      <div key={i} className="bg-gray-50 dark:bg-gray-700 p-2 lg:p-3 rounded border border-gray-200 dark:border-gray-600">
+                        <div className="text-xs lg:text-sm mb-1">
+                          <b className="text-gray-900 dark:text-gray-100">Input:</b> 
+                          <pre className="inline-block bg-white dark:bg-gray-800 px-1.5 py-0.5 lg:px-2 lg:py-1 ml-2 rounded border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 text-xs">
+                            {String(ex.input)}
+                          </pre>
+                        </div>
+                        <div className="text-xs lg:text-sm mb-1">
+                          <b className="text-gray-900 dark:text-gray-100">Output:</b> 
+                          <pre className="inline-block bg-white dark:bg-gray-800 px-1.5 py-0.5 lg:px-2 lg:py-1 ml-2 rounded border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 text-xs">
+                            {String(ex.output)}
+                          </pre>
+                        </div>
+                        {ex.explanation && (
+                          <div className="text-xs lg:text-sm">
+                            <b className="text-gray-900 dark:text-gray-100">Explanation:</b> 
+                            <span className="ml-1 text-gray-700 dark:text-gray-300">{ex.explanation}</span>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-
+  
               {/* Right: Editor */}
-              <div className="space-y-3 order-2">
+              <div className="space-y-2 lg:space-y-3 order-2">
                 <div className="flex items-center justify-between">
                   <select
                     value={language}
                     onChange={(e) => setLanguage(e.target.value as Language)}
-                    className="px-3 py-2 bg-white border border-gray-300 rounded-md"
+                    className="px-2 lg:px-3 py-1 lg:py-1.5 bg-white dark:bg-gray-700 border border-sky-300 dark:border-gray-600 rounded-md text-xs lg:text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-500"
                   >
                     <option value="javascript">JavaScript</option>
                     <option value="python">Python</option>
@@ -238,8 +257,8 @@ const ContestProblemDetails: React.FC = () => {
                     <option value="cpp">C++</option>
                   </select>
                 </div>
-
-                <div className="border rounded-lg overflow-hidden shadow bg-white">
+  
+                <div className="border border-sky-200 dark:border-gray-600 rounded-lg overflow-hidden shadow bg-white dark:bg-gray-800">
                   <CodeEditor
                     value={code}
                     onChange={setCode}
@@ -249,31 +268,57 @@ const ContestProblemDetails: React.FC = () => {
                     options={{ minimap: { enabled: false }, wordWrap: 'on', fontSize: 14 }}
                   />
                 </div>
-
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Button onClick={handleReset} variant="outline" className="flex-1">
-                    <RotateCcw className="mr-2 h-4 w-4" /> Reset
+  
+                <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
+                  <Button 
+                    onClick={handleReset} 
+                    variant="outline" 
+                    className="flex-1 text-xs lg:text-sm border-sky-300 dark:border-gray-600 text-sky-700 dark:text-green-400 hover:bg-sky-50 dark:hover:bg-gray-700"
+                  >
+                    <RotateCcw className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" /> Reset
                   </Button>
-                  <Button onClick={handleRun} variant="secondary" disabled={isBusy} className="flex-1">
-                    {isBusy ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Running...</>) : (<><Play className="mr-2 h-4 w-4" /> Run</>)}
+                  <Button 
+                    onClick={handleRun} 
+                    variant="secondary" 
+                    disabled={isBusy} 
+                    className="flex-1 text-xs lg:text-sm bg-sky-100 dark:bg-gray-700 text-sky-700 dark:text-green-400 hover:bg-sky-200 dark:hover:bg-gray-600 border-sky-300 dark:border-gray-600"
+                  >
+                    {isBusy ? (
+                      <><Loader2 className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4 animate-spin" /> Running...</>
+                    ) : (
+                      <><Play className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" /> Run</>
+                    )}
                   </Button>
-                  <Button onClick={doSubmit} disabled={isBusy} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white">
-                    {isBusy ? (<><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>) : (<><Check className="mr-2 h-4 w-4" /> Submit</>)}
+                  <Button 
+                    onClick={doSubmit} 
+                    disabled={isBusy} 
+                    className="flex-1 text-xs lg:text-sm bg-sky-600 hover:bg-sky-700 dark:bg-green-600 dark:hover:bg-green-700 text-white"
+                  >
+                    {isBusy ? (
+                      <><Loader2 className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4 animate-spin" /> Submitting...</>
+                    ) : (
+                      <><Check className="mr-1 lg:mr-2 h-3 w-3 lg:h-4 lg:w-4" /> Submit</>
+                    )}
                   </Button>
                 </div>
-
-                <div className="flex flex-col sm:flex-row gap-3 justify-between items-center">
-                  <div className="flex gap-3">
+  
+                <div className="flex flex-col sm:flex-row gap-2 lg:gap-3 justify-between items-center">
+                  <div className="flex gap-2 lg:gap-3">
                     <Button
                       onClick={() => gotoIndex(currentIndex + 1)}
                       disabled={!lastSubmitOk || !hasNext}
                       variant="outline"
+                      className="text-xs lg:text-sm border-sky-300 dark:border-gray-600 text-sky-700 dark:text-green-400 hover:bg-sky-50 dark:hover:bg-gray-700"
                     >
                       Next Problem
                     </Button>
                   </div>
                   <div>
-                    <Button onClick={handleSubmitAll} variant="outline" className="bg-green-600 hover:bg-green-700 text-white">
+                    <Button 
+                      onClick={handleSubmitAll} 
+                      variant="outline" 
+                      className="text-xs lg:text-sm bg-green-600 hover:bg-green-700 dark:bg-green-500 dark:hover:bg-green-600 text-white border-green-600 dark:border-green-500"
+                    >
                       Submit All & Complete Contest
                     </Button>
                   </div>
@@ -285,6 +330,6 @@ const ContestProblemDetails: React.FC = () => {
       </div>
     </div>
   );
-};
+}
 
 export default ContestProblemDetails;
