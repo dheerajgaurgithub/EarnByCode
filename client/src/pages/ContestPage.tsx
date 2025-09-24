@@ -87,6 +87,7 @@ const ContestPage = () => {
   const [isRegistered, setIsRegistered] = useState<boolean>(false);
   const [contestHasStarted, setContestHasStarted] = useState<boolean>(false);
   const [contestEnded, setContestEnded] = useState<boolean>(false);
+  const [userStarted, setUserStarted] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [timeMode, setTimeMode] = useState<'untilStart' | 'untilEnd'>('untilStart');
@@ -208,14 +209,7 @@ const ContestPage = () => {
           setCurrentProblem(normalized[0]);
         }
         
-        // If user completed contest via problem details page, show completion view
-        try {
-          const key = `contestComplete:${id}`;
-          if (localStorage.getItem(key) === '1') {
-            setPhase('completed');
-            localStorage.removeItem(key);
-          }
-        } catch {}
+        // Do not auto-complete from localStorage; rely on server state or explicit flow
 
         // Calculate time left
         const now = new Date();
@@ -282,9 +276,11 @@ const ContestPage = () => {
               return 0;
             }
           } else {
-            // Contest is over
+            // Contest is over: only switch to completed if the user actually started this session
             setContestEnded(true);
-            setPhase('completed');
+            if (userStarted) {
+              setPhase('completed');
+            }
             return 0;
           }
         }
@@ -296,7 +292,7 @@ const ContestPage = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [contest, timeMode]);
+  }, [contest, timeMode, userStarted]);
 
   // Poll live leaderboard and clarifications during contest
   useEffect(() => {
@@ -426,6 +422,7 @@ const ContestPage = () => {
         setCurrentProblemCode(starter);
       } catch {}
       toast.success('Contest started!');
+      setUserStarted(true);
       setPhase('problems');
       return;
     } else {
@@ -576,8 +573,7 @@ const ContestPage = () => {
         if (navigator.sendBeacon) {
           navigator.sendBeacon(`/contests/${id}/auto-submit`, blob);
         }
-        // Mark as completed locally so we show feedback view on return
-        localStorage.setItem(`contestComplete:${id}`, '1');
+        // Do not set local completion flags; server will record auto-submit
       } catch {}
     };
     window.addEventListener('beforeunload', handler);
