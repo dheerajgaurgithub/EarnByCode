@@ -226,6 +226,21 @@ const userSchema = new mongoose.Schema({
   avatarPublicId: {
     type: String,
     default: ''
+  },
+  // Rewards and badges
+  rewards: {
+    streak1000: {
+      eligibleAt: { type: Date, default: null },
+      claimed: { type: Boolean, default: false },
+      claimedAt: { type: Date, default: null },
+      shipped: { type: Boolean, default: false },
+      shipment: {
+        carrier: { type: String, default: '' },
+        tracking: { type: String, default: '' },
+        addressSnapshot: { type: String, default: '' },
+        shippedAt: { type: Date, default: null }
+      }
+    }
   }
 }, {
   timestamps: true

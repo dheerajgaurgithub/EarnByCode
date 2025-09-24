@@ -32,6 +32,36 @@ router.get('/stats', async (req, res) => {
       // Don't include user-specific or transaction data that could be used for participation
       message: 'Admin access is restricted to platform management only.'
     });
+
+// Recalculate all users' points from solvedProblems using difficulty mapping
+// Difficulty mapping: easy=1, medium=2, hard=3 (default 1)
+// Query: ?dryRun=true to preview without writing
+router.post('/recalculate-points', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const dryRun = String(req.query.dryRun || '').toLowerCase() === 'true';
+    const users = await User.find({}).select('_id username solvedProblems points').lean();
+    const allProblemIds = Array.from(new Set(users.flatMap(u => (u.solvedProblems || []).map(id => String(id)))));
+    const problems = await Problem.find({ _id: { $in: allProblemIds } }).select('difficulty').lean();
+    const pMap = new Map(problems.map(p => [String(p._id), String(p.difficulty || '').toLowerCase()]));
+
+    const mapDiff = (d) => (d === 'easy' ? 1 : d === 'medium' ? 2 : d === 'hard' ? 3 : 1);
+    const results = [];
+    for (const u of users) {
+      const sum = (u.solvedProblems || []).reduce((acc, pid) => {
+        const d = pMap.get(String(pid)) || 'easy';
+        return acc + mapDiff(d);
+      }, 0);
+      if (!dryRun) {
+        await User.updateOne({ _id: u._id }, { $set: { points: sum } });
+      }
+      results.push({ userId: u._id, username: u.username, oldPoints: u.points || 0, newPoints: sum });
+    }
+    return res.json({ success: true, dryRun, updated: dryRun ? 0 : results.length, results });
+  } catch (error) {
+    console.error('Recalculate points error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to recalculate points' });
+  }
+});
   } catch (error) {
     console.error('Admin stats error:', error);
     res.status(500).json({ message: 'Failed to fetch admin stats' });

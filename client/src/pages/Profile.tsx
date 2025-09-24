@@ -11,6 +11,8 @@ import AvatarCropperModal from '@/components/Profile/AvatarCropperModal';
 import ClampText from '@/components/common/ClampText';
 import { apiService } from '@/lib/api';
 import leaderboardApi from '../services/api';
+import AchievementModal from '@/components/Profile/AchievementModal';
+import SubmissionCalendar from '@/components/Profile/SubmissionCalendar';
 
 interface EditFormData {
   fullName: string;
@@ -92,6 +94,13 @@ export const Profile: React.FC = () => {
   const [showPreview, setShowPreview] = useState(false);
   // Leaderboard current rank
   const [currentRank, setCurrentRank] = useState<number | null>(null);
+  // Streaks
+  const [currentStreak, setCurrentStreak] = useState<number>(0);
+  const [maxStreak, setMaxStreak] = useState<number>(0);
+  const [streakMilestones, setStreakMilestones] = useState<{ d100: boolean; d500: boolean; d1000: boolean }>({ d100: false, d500: false, d1000: false });
+  // Achievement modal
+  const [showAchModal, setShowAchModal] = useState<boolean>(false);
+  const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
 
   const onChooseAvatar = () => setShowCropper(true);
   const onAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,6 +172,28 @@ export const Profile: React.FC = () => {
     };
     fetchRank();
   }, [user?._id]);
+
+  // Fetch streaks (Accepted-per-day) for the profile user
+  useEffect(() => {
+    const fetchStreaks = async () => {
+      try {
+        const data = await apiService.get<any>('/users/me/streaks');
+        const payload = (data?.data || data) as any;
+        setCurrentStreak(payload?.currentStreak || 0);
+        setMaxStreak(payload?.maxStreak || 0);
+        setStreakMilestones({
+          d100: !!payload?.milestones?.d100,
+          d500: !!payload?.milestones?.d500,
+          d1000: !!payload?.milestones?.d1000,
+        });
+      } catch {
+        setCurrentStreak(0);
+        setMaxStreak(0);
+        setStreakMilestones({ d100: false, d500: false, d1000: false });
+      }
+    };
+    fetchStreaks();
+  }, []);
 
   if (isAuthLoading) {
     return (
@@ -247,7 +278,36 @@ export const Profile: React.FC = () => {
       description: 'Solved 10 problems', 
       earned: (user.solvedProblems?.length || 0) >= 10 
     },
+    {
+      title: 'AlgoBucks 1000 Points Certified',
+      description: 'Reached 1000 points and earned your AlgoBucks certification',
+      earned: (user.points || 0) >= 1000,
+    },
+    {
+      title: '100-Day Streak Badge',
+      description: 'Solved problems for 100 consecutive days',
+      earned: streakMilestones.d100,
+    },
+    {
+      title: '500-Day Streak Badge',
+      description: 'Solved problems for 500 consecutive days',
+      earned: streakMilestones.d500,
+    },
+    {
+      title: '1000-Day Streak Badge',
+      description: 'Solved problems for 1000 consecutive days — unlocks exclusive T‑shirt reward!',
+      earned: streakMilestones.d1000,
+    },
   ];
+
+  const openAchievement = (a: Achievement) => {
+    setActiveAchievement(a);
+    setShowAchModal(true);
+  };
+  const closeAchievement = () => {
+    setShowAchModal(false);
+    setActiveAchievement(null);
+  };
 
   type SubmissionItem = {
     _id: string;
@@ -621,6 +681,7 @@ export const Profile: React.FC = () => {
               <p className="text-blue-600 dark:text-blue-300 text-sm mt-1">You have full administrative access to the platform.</p>
             </div>
           ) : (
+            <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-6">
               <div className="text-center bg-blue-50 dark:bg-gray-800 p-2.5 sm:p-4 rounded-lg border border-blue-200 dark:border-gray-600 transition-colors duration-300">
                 <p className="text-xl sm:text-2xl font-bold text-blue-600 dark:text-blue-400">{user.codecoins || 0}</p>
@@ -643,6 +704,23 @@ export const Profile: React.FC = () => {
                 <p className="text-purple-500 dark:text-purple-400 text-xs sm:text-sm">Leaderboard Rank</p>
               </div>
             </div>
+
+            <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+              <div className="text-center bg-orange-50 dark:bg-orange-900/20 p-2.5 sm:p-4 rounded-lg border border-orange-200 dark:border-orange-800 transition-colors duration-300">
+                <p className="text-xl sm:text-2xl font-bold text-orange-600 dark:text-orange-300">{currentStreak}</p>
+                <p className="text-orange-500 dark:text-orange-300 text-xs sm:text-sm">Current Streak (days)</p>
+              </div>
+              <div className="text-center bg-teal-50 dark:bg-teal-900/20 p-2.5 sm:p-4 rounded-lg border border-teal-200 dark:border-teal-800 transition-colors duration-300">
+                <p className="text-xl sm:text-2xl font-bold text-teal-600 dark:text-teal-300">{maxStreak}</p>
+                <p className="text-teal-500 dark:text-teal-300 text-xs sm:text-sm">Max Streak (days)</p>
+              </div>
+            </div>
+
+            {/* Activity Calendar */}
+            <div className="mb-6">
+              <SubmissionCalendar days={365} />
+            </div>
+            </>
           )}
         </motion.div>
 
@@ -661,26 +739,34 @@ export const Profile: React.FC = () => {
             
             <div className="space-y-3">
               {achievements.map((achievement, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-center space-x-3 p-2.5 sm:p-3 rounded-lg transition-colors duration-300 ${
-                      achievement.earned ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800' : 'bg-blue-50 dark:bg-gray-800 border border-blue-200 dark:border-gray-600'
-                    }`}
-                  >
-                    <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${
-                      achievement.earned ? 'bg-yellow-500 dark:bg-yellow-600' : 'bg-blue-300 dark:bg-gray-600'
-                    }`}>
-                      <Trophy className={`w-4 h-4 sm:w-5 sm:h-5 ${achievement.earned ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`} />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className={`font-medium text-sm sm:text-base transition-colors duration-300 ${achievement.earned ? 'text-yellow-700 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'}`}>
-                        {achievement.title}
-                      </p>
-                      <p className="text-blue-500 dark:text-gray-400 text-xs sm:text-sm truncate" title={achievement.description}>{achievement.description}</p>
-                    </div>
+                <button
+                  type="button"
+                  key={index}
+                  onClick={() => achievement.earned && openAchievement(achievement)}
+                  disabled={!achievement.earned}
+                  title={achievement.earned ? 'View achievement' : 'Locked — keep going!'}
+                  className={`w-full text-left flex items-center space-x-3 p-2.5 sm:p-3 rounded-lg transition-colors duration-300 focus:outline-none ${
+                    achievement.earned
+                      ? 'focus:ring-2 focus:ring-blue-400 cursor-pointer'
+                      : 'opacity-60 cursor-not-allowed'
+                  } ${
+                    achievement.earned ? 'bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800' : 'bg-blue-50 dark:bg-gray-800 border border-blue-200 dark:border-gray-600'
+                  }`}
+                >
+                  <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center shrink-0 transition-colors duration-300 ${
+                    achievement.earned ? 'bg-yellow-500 dark:bg-yellow-600' : 'bg-blue-300 dark:bg-gray-600'
+                  }`}>
+                    <Trophy className={`w-4 h-4 sm:w-5 sm:h-5 ${achievement.earned ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`} />
                   </div>
-                ))}
-              </div>
+                  <div className="min-w-0 flex-1">
+                    <p className={`font-medium text-sm sm:text-base transition-colors duration-300 ${achievement.earned ? 'text-yellow-700 dark:text-yellow-400' : 'text-blue-600 dark:text-blue-400'}`}>
+                      {achievement.title}
+                    </p>
+                    <p className="text-blue-500 dark:text-gray-400 text-xs sm:text-sm truncate" title={achievement.description}>{achievement.description}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
           </motion.div>
 
           {/* Recent Activity - Show if allowed by privacy settings (also for admins) */}
@@ -746,6 +832,7 @@ export const Profile: React.FC = () => {
           )}
         </div>
       </div>
+      <AchievementModal open={showAchModal} onClose={closeAchievement} achievement={activeAchievement} />
     </div>
   );
-};
+}

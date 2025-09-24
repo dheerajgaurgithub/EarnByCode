@@ -210,13 +210,15 @@ router.post('/:id/submit', authenticate, checkProblemAccess, async (req, res) =>
     problem.updateAcceptance();
     await problem.save();
 
-    // Award codecoin if problem solved for first time
+    // Award codecoin and difficulty-based points if problem solved for first time
     let earnedCodecoin = false;
     if (result.status === 'Accepted' && !req.user.solvedProblems.includes(problemId)) {
-      console.log('Awarding codecoin to user:', req.user._id);
+      const diff = String(problem.difficulty || '').toLowerCase();
+      const incPoints = diff === 'easy' ? 1 : diff === 'medium' ? 2 : diff === 'hard' ? 3 : 1;
+      console.log('Awarding codecoin and points to user:', req.user._id, 'points:', incPoints, 'difficulty:', problem.difficulty);
       await User.findByIdAndUpdate(req.user._id, {
         $addToSet: { solvedProblems: problemId },
-        $inc: { codecoins: 1, points: 10 }
+        $inc: { codecoins: 1, points: incPoints }
       });
       earnedCodecoin = true;
     }

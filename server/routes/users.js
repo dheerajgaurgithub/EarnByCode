@@ -7,12 +7,62 @@ import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import cloudinary from 'cloudinary';
 import { sendEmail } from '../utils/mailer.js';
+import Submission from '../models/Submission.js';
+
+// Initialize router
+const router = express.Router();
 
 // Configure Cloudinary from environment
 cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// Daily activity heatmap: accepted submissions per day
+router.get('/me/activity', authenticate, async (req, res) => {
+  try {
+    const days = Math.min(730, Math.max(1, parseInt(String(req.query.days || '365'))));
+    const userId = req.user.id;
+    const end = new Date();
+    const start = new Date(Date.UTC(end.getUTCFullYear(), end.getUTCMonth(), end.getUTCDate()));
+    start.setUTCDate(start.getUTCDate() - (days - 1));
+
+    // Fetch accepted submissions within window
+    const subs = await Submission.find({
+      user: userId,
+      status: 'Accepted',
+      createdAt: { $gte: start, $lte: end }
+    }).select('createdAt').lean();
+
+    // Build map dateStr -> count
+    const toStr = (d) => {
+      const yyyy = d.getUTCFullYear();
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(d.getUTCDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    };
+    const counts = new Map();
+    subs.forEach(s => {
+      const d = new Date(s.createdAt);
+      const key = toStr(new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())));
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    // Generate full series of days
+    const series = [];
+    for (let i = 0; i < days; i++) {
+      const d = new Date(start.getTime());
+      d.setUTCDate(start.getUTCDate() + i);
+      const key = toStr(d);
+      series.push({ date: key, count: counts.get(key) || 0 });
+    }
+
+    return res.json({ success: true, days, start: toStr(start), end: toStr(new Date()), activity: series });
+  } catch (error) {
+    console.error('Get activity error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch activity' });
+  }
 });
 
 // Get current user's leaderboard rank (server-computed)
@@ -48,10 +98,6 @@ router.get('/me/leaderboard-rank', authenticate, async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to compute rank' });
   }
 });
-
-
-// Initialize router BEFORE any route definitions
-const router = express.Router();
 
 // Get user profile by username (public)
 router.get('/username/:username', optionalAuth, async (req, res) => {
@@ -133,7 +179,6 @@ const upload = multer({
     cb(null, true);
   }
 });
-
 
 // Optional auth: if Authorization header is present and valid, attach req.user; otherwise continue as guest
 function optionalAuth(req, _res, next) {
@@ -582,6 +627,9 @@ router.post('/me/email/change/request', authenticate, async (req, res) => {
   }
 });
 
+// Get user activity (per-day accepted submission counts)
+// (Removed duplicate '/users/me/activity' route)
+
 // Verify OTP and update email
 router.post('/me/email/change/verify', authenticate, async (req, res) => {
   try {
@@ -589,8 +637,8 @@ router.post('/me/email/change/verify', authenticate, async (req, res) => {
     if (!newEmail || !otp) {
       return res.status(400).json({ success: false, message: 'newEmail and otp are required' });
     }
-    const email = String(newEmail).trim().toLowerCase();
     const code = String(otp).trim();
+    const email = String(newEmail).trim().toLowerCase();
 
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
