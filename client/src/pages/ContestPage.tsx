@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { apiService } from '../lib/api';
 import { Contest } from '../types/contest';
@@ -98,6 +98,8 @@ const ContestPage = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [isWinner, setIsWinner] = useState<boolean>(false);
+  const [myRank, setMyRank] = useState<number | null>(null);
   // Live contest side-panels
   const [leaderboard, setLeaderboard] = useState<Array<{ username: string; score: number; time?: string }>>([]);
   const [clarifications, setClarifications] = useState<Array<{ id: string; question: string; answer?: string; at?: string }>>([]);
@@ -140,7 +142,7 @@ const ContestPage = () => {
   }, []);
 
   // Load problems for a contest with multiple fallback strategies
-  const loadContestProblems = useCallback(async (contestId: string): Promise<Problem[]> => {
+  const loadContestProblems = useCallback(async (contestId: string, started?: boolean): Promise<Problem[]> => {
     try {
       const data = await apiService.get<ContestWithProblems>(`/contests/${contestId}?populate=problems`);
       const arr = data?.problems || [];
@@ -149,15 +151,19 @@ const ContestPage = () => {
     } catch (e) {
       // ignore and try next
     }
-    try {
-      // Fallback endpoint used elsewhere in app (ContestProblemManager)
-      const res = await apiService.get<{ problems?: Problem[] }>(`/contest-problems/${contestId}`);
-      const arr = res?.problems || [];
-      const normalized = await normalizeProblems(arr as any[]);
-      return normalized;
-    } catch (e) {
-      return [];
+    // Only call strict contest-problems endpoint after contest starts; it enforces start check
+    if (started) {
+      try {
+        const res = await apiService.get<{ problems?: Problem[] }>(`/contest-problems/${contestId}`);
+        const arr = res?.problems || [];
+        const normalized = await normalizeProblems(arr as any[]);
+        return normalized;
+      } catch (e: any) {
+        // Gracefully ignore 403 'Contest has not started yet'
+        return [];
+      }
     }
+    return [];
   }, [normalizeProblems]);
 
   // Helper function to get difficulty color class
@@ -202,7 +208,7 @@ const ContestPage = () => {
         const contestData = await apiService.get<ContestWithProblems>(`/contests/${id}?populate=problems`);
         setContest(contestData);
         // Normalize problems to ensure we have full objects, not just ObjectIds
-        const normalized = await loadContestProblems(id);
+        const normalized = await loadContestProblems(id, false);
         setProblems(normalized);
         
         if (normalized.length > 0) {
@@ -402,7 +408,7 @@ const ContestPage = () => {
     let list = problems;
     if (!list || list.length === 0) {
       try {
-        list = await loadContestProblems(id!);
+        list = await loadContestProblems(id!, true);
         setProblems(list);
       } catch (e) {
         // ignore; we'll handle below
@@ -603,6 +609,29 @@ const ContestPage = () => {
       toast.error('Failed to submit feedback');
     }
   }, [feedback, id]);
+
+  // When completed, check if current user is in winners (top 10 flag from results)
+  useEffect(() => {
+    const checkWinner = async () => {
+      try {
+        if (phase !== 'completed' || !id) return;
+        // Try search by username to reduce payload
+        const uname = (user as any)?.username;
+        const resp = await apiService.get<any>(`/contests/${id}/results`, {
+          params: { search: uname || undefined, limit: 50 },
+        } as any);
+        const data = (resp?.results ? resp : resp?.data) || resp;
+        const meId = String((user as any)?._id || (user as any)?.id || '');
+        const mine = (data?.results || []).find((r: any) => String(r.userId) === meId);
+        setIsWinner(Boolean(mine?.topTen));
+        setMyRank(typeof mine?.rank === 'number' ? mine.rank : null);
+      } catch {
+        setIsWinner(false);
+        setMyRank(null);
+      }
+    };
+    checkWinner();
+  }, [phase, id, user]);
 
   // Update current problem when index changes
   useEffect(() => {
@@ -1086,6 +1115,11 @@ const ContestPage = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white py-8">
         <div className="container mx-auto px-4 max-w-2xl">
+          {!isWinner && (
+            <div className="mb-4 p-3 rounded border border-gray-200 bg-gray-50 text-gray-700 text-sm">
+              Thank you for playing — best of luck next time!
+            </div>
+          )}
           <Card className="shadow-lg border-blue-200">
             <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-t-lg">
               <CardTitle className="text-2xl sm:text-3xl font-bold flex items-center">
@@ -1095,6 +1129,29 @@ const ContestPage = () => {
               <CardDescription className="text-blue-100 text-base sm:text-lg">
                 Thank you for participating in {contest.title}
               </CardDescription>
+              {isWinner && (
+                <div className="mt-3 flex items-center gap-3">
+                  <Link to={`/contests/${id}/results`}>
+                    <Button
+                      variant="secondary"
+                      className={
+                        myRank === 1
+                          ? 'bg-yellow-500 hover:bg-yellow-600 text-white'
+                          : myRank === 2
+                          ? 'bg-gray-400 hover:bg-gray-500 text-white'
+                          : myRank === 3
+                          ? 'bg-amber-700 hover:bg-amber-800 text-white'
+                          : 'bg-white/10 hover:bg-white/20 text-white'
+                      }
+                    >
+                      View Results
+                    </Button>
+                  </Link>
+                  {typeof myRank === 'number' && (
+                    <span className="text-white/90 text-sm">You placed <b>#{myRank}</b></span>
+                  )}
+                </div>
+              )}
             </CardHeader>
             <CardContent className="p-6">
               <div className="space-y-6">

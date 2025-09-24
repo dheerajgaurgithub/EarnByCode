@@ -6,6 +6,7 @@ import Clarification from '../models/Clarification.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import admin from '../middleware/admin.js';
 import mongoose from 'mongoose';
+import Submission from '../models/Submission.js';
 
 const router = express.Router();
 
@@ -24,6 +25,122 @@ router.get('/', async (req, res) => {
       .populate('createdBy', 'username')
       .populate('problems', 'title difficulty')
       .sort({ startTime: -1 });
+
+// Contest results with custom ranking metric
+// average = (submissionTimeMs + runTimeMs + compileTimeMs) / 3
+// - submissionTimeMs: min time delta from contest start to a user's submission
+// - runTimeMs: average parsed runtime from Submission.runtime (best effort)
+// - compileTimeMs: 0 unless tracked; placeholder for future
+// Ties share the same rank. Supports search and pagination.
+router.get('/:id/results', async (req, res) => {
+  try {
+    const contestId = req.params.id;
+    const { search = '', page = 1, limit = 50 } = req.query;
+    const p = Math.max(1, parseInt(page));
+    const lim = Math.min(200, Math.max(1, parseInt(limit)));
+
+    const contest = await Contest.findById(contestId).populate('participants.user', 'username').lean();
+    if (!contest) return res.status(404).json({ message: 'Contest not found' });
+
+    const start = new Date(contest.startTime);
+    const end = new Date(contest.endTime);
+
+    // Fetch submissions once for this contest
+    const subs = await Submission.find({ contest: contestId })
+      .populate('user', 'username')
+      .lean();
+
+    const parseMs = (val) => {
+      if (val == null) return 0;
+      if (typeof val === 'number') return val;
+      const s = String(val);
+      const m = s.match(/(\d+(?:\.\d+)?)/);
+      return m ? Math.round(parseFloat(m[1])) : 0; // assume ms
+    };
+
+    // Group submissions by user
+    const byUser = new Map();
+    for (const s of subs) {
+      const uid = String(s.user?._id || s.user);
+      if (!byUser.has(uid)) byUser.set(uid, []);
+      byUser.get(uid).push(s);
+    }
+
+    // Build base list from participants to include users without submissions
+    const rows = [];
+    for (const part of contest.participants || []) {
+      const uid = String(part.user?._id || part.user);
+      const username = part.user?.username || String(part.user);
+      const list = byUser.get(uid) || [];
+
+      // Submission time: min delta from contest start to submission createdAt
+      let submissionTimeMs = Infinity;
+      for (const s of list) {
+        const created = new Date(s.createdAt);
+        const delta = Math.max(0, created.getTime() - start.getTime());
+        if (delta < submissionTimeMs) submissionTimeMs = delta;
+      }
+      if (!isFinite(submissionTimeMs)) submissionTimeMs = Math.max(0, end.getTime() - start.getTime());
+
+      // Run time: average of parsed runtime across submissions
+      let runSum = 0;
+      let runCount = 0;
+      for (const s of list) {
+        const ms = parseMs(s.runtime);
+        if (ms > 0) { runSum += ms; runCount += 1; }
+      }
+      const runTimeMs = runCount > 0 ? Math.round(runSum / runCount) : 0;
+
+      // Compile time placeholder (not tracked); keep 0 for now
+      const compileTimeMs = 0;
+
+      const average = Math.round((submissionTimeMs + runTimeMs + compileTimeMs) / 3);
+      rows.push({ userId: uid, username, submissionTimeMs, runTimeMs, compileTimeMs, average });
+    }
+
+    // Sort by average asc
+    rows.sort((a, b) => a.average - b.average);
+
+    // Assign ranks with ties (same average => same rank)
+    let rank = 0;
+    let lastAvg = null;
+    let count = 0;
+    for (const r of rows) {
+      count += 1;
+      if (lastAvg === null || r.average !== lastAvg) {
+        rank = count;
+        lastAvg = r.average;
+      }
+      r.rank = rank;
+    }
+
+    // Search filter by username
+    let filtered = rows;
+    if (search) {
+      const rx = new RegExp(String(search).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+      filtered = rows.filter(r => rx.test(r.username || ''));
+    }
+
+    const total = filtered.length;
+    const startIdx = (p - 1) * lim;
+    const pageItems = filtered.slice(startIdx, startIdx + lim);
+
+    // Mark top 10 for star display
+    const topTenCutoff = Math.min(10, rows.length);
+    const topTenRanks = new Set(rows.slice(0, topTenCutoff).map(r => r.userId));
+    for (const r of pageItems) r.topTen = topTenRanks.has(r.userId);
+
+    return res.json({
+      total,
+      page: p,
+      pages: Math.ceil(total / lim),
+      results: pageItems,
+    });
+  } catch (error) {
+    console.error('Results error:', error);
+    return res.status(500).json({ message: 'Failed to fetch results' });
+  }
+});
 
     res.json({ contests });
   } catch (error) {

@@ -13,6 +13,7 @@ import { Problems } from './pages/Problems';
 import ProblemDetail from './pages/ProblemDetail';
 import { Contests } from './pages/Contests';
 import ContestProblemDetails from './pages/ContestProblemDetails';
+import ContestResults from './pages/ContestResults';
 import Wallet from './app/wallet/page';
 import { Profile } from './pages/Profile';
 import AdminPanel from './pages/Admin/AdminPanel';
@@ -243,6 +244,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <ContestProblemDetails />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/contests/:contestId/results"
+                element={
+                  <ProtectedRoute>
+                    <ContestResults />
                   </ProtectedRoute>
                 }
               />
