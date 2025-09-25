@@ -46,8 +46,6 @@ export const Leaderboard: React.FC = () => {
   const [sortBy, setSortBy] = useState<'points' | 'totalSolved' | 'username' | 'codecoins'>('points');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [isSearching, setIsSearching] = useState(false);
-  const [minPoints, setMinPoints] = useState<number | ''>('');
-  const [minSolved, setMinSolved] = useState<number | ''>('');
 
   // Fetch leaderboard on initial load
   useEffect(() => {
@@ -57,7 +55,7 @@ export const Leaderboard: React.FC = () => {
   // Apply filters and sorting when inputs change
   useEffect(() => {
     filterAndSortUsers(users, debouncedSearchTerm, sortBy, sortOrder);
-  }, [debouncedSearchTerm, sortBy, sortOrder, users, minPoints, minSolved]);
+  }, [debouncedSearchTerm, sortBy, sortOrder, users]);
 
   const filterAndSortUsers = useCallback(
     (
@@ -80,20 +78,8 @@ export const Leaderboard: React.FC = () => {
               const nameHit = user.username.toLowerCase().includes(searchLower) || (user.fullName?.toLowerCase().includes(searchLower) ?? false);
               const pointsHit = String(user.points ?? '').includes(searchLower);
               const solvedHit = String(user.totalSolved ?? user.solvedProblems?.length ?? '').includes(searchLower);
-              const coinsHit = String(user.codecoins ?? '').includes(searchLower);
               const numericHit = numeric != null && ((user.points ?? 0) === numeric || (user.totalSolved ?? user.solvedProblems?.length ?? 0) === numeric);
-              return nameHit || pointsHit || solvedHit || coinsHit || numericHit;
-            });
-          }
-
-          // Apply min filters
-          if (minPoints !== '' || minSolved !== '') {
-            result = result.filter(user => {
-              const pts = user.points ?? 0;
-              const solved = (user.totalSolved ?? user.solvedProblems?.length ?? 0);
-              const okPts = minPoints === '' ? true : pts >= Number(minPoints);
-              const okSolved = minSolved === '' ? true : solved >= Number(minSolved);
-              return okPts && okSolved;
+              return nameHit || pointsHit || solvedHit || numericHit;
             });
           }
 
@@ -384,30 +370,6 @@ export const Leaderboard: React.FC = () => {
                 <Award className="h-4 w-4" />
                 <span>{t('stats.coins')} <SortIndicator field="codecoins" /></span>
               </button>
-            </div>
-
-            {/* Min Filters */}
-            <div className="mt-4 flex flex-wrap items-center justify-center gap-3">
-              <div className="flex items-center space-x-2">
-                <label className="text-sm text-slate-700 dark:text-green-300">Min Points</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={minPoints}
-                  onChange={(e) => setMinPoints(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-28 px-3 py-2 rounded-xl border-2 border-sky-200 dark:border-green-800 bg-white/80 dark:bg-gray-900/80 text-slate-800 dark:text-green-100 focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-400/20"
-                />
-              </div>
-              <div className="flex items-center space-x-2">
-                <label className="text-sm text-slate-700 dark:text-green-300">Min Solved</label>
-                <input
-                  type="number"
-                  min={0}
-                  value={minSolved}
-                  onChange={(e) => setMinSolved(e.target.value === '' ? '' : Number(e.target.value))}
-                  className="w-28 px-3 py-2 rounded-xl border-2 border-sky-200 dark:border-green-800 bg-white/80 dark:bg-gray-900/80 text-slate-800 dark:text-green-100 focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-400/20"
-                />
-              </div>
             </div>
 
             {/* Subtitle */}
