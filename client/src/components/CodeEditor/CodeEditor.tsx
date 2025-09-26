@@ -28,6 +28,10 @@ const CodeEditor = () => {
   const [compilerLog, setCompilerLog] = useState<string>("");
   const [showLog, setShowLog] = useState<boolean>(false);
   const [errorDecorations, setErrorDecorations] = useState<string[]>([]);
+  const [stdoutText, setStdoutText] = useState<string>("");
+  const [stderrText, setStderrText] = useState<string>("");
+  const [errorLines, setErrorLines] = useState<number[]>([]);
+  const [errorIdx, setErrorIdx] = useState<number>(0);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState<boolean>(true);
   const [ignoreCase, setIgnoreCase] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(true);
@@ -51,35 +55,44 @@ const CodeEditor = () => {
   };
 
   // Try to extract a meaningful line number and short message from toolchain output
-  const parseError = (language: Lang, text: string): { line: number | null; summary: string | null } => {
+  const parseError = (language: Lang, text: string): { line: number | null; summary: string | null; lines: number[] } => {
     try {
       const t = text || '';
+      const lines: number[] = [];
       // Java (javac): Main.java:23: error: ...
       if (language === 'Java') {
         const m = t.match(/\.java:(\d+):\s*error\b/i);
-        if (m) return { line: parseInt(m[1], 10), summary: t.split(/\r?\n/)[0] };
+        if (m) lines.push(parseInt(m[1], 10));
         // runtime stack traces often include ":<line>"
-        const m2 = t.match(/\((?:Main|[A-Za-z_]\w*)\.java:(\d+)\)/);
-        if (m2) return { line: parseInt(m2[1], 10), summary: t.split(/\r?\n/)[0] };
+        const g2 = t.match(/\([A-Za-z_]\w*\.java:(\d+)\)/g) || [];
+        g2.forEach(s => { const m3 = s.match(/:(\d+)\)/); if (m3) lines.push(parseInt(m3[1], 10)); });
+        const first = lines.length ? lines[0] : null;
+        return { line: first, summary: t.split(/\r?\n/)[0] || null, lines };
       }
       // C++ (g++): main.cpp:12:5: error: ... OR a.exe: ...
       if (language === 'Cpp') {
-        const m = t.match(/:(\d+):(\d+)?\s*:.*error/i) || t.match(/:(\d+)\s*:.*error/i);
-        if (m) return { line: parseInt(m[1], 10), summary: t.split(/\r?\n/)[0] };
+        const rgAll = /:(\d+)(?::\d+)?\s*:.*error/gi;
+        let mm; while ((mm = rgAll.exec(t)) !== null) { lines.push(parseInt(mm[1], 10)); }
+        const first = lines.length ? lines[0] : null;
+        return { line: first, summary: t.split(/\r?\n/)[0] || null, lines };
       }
       // Python: File "<stdin>", line 3, ... or File "...", line N
       if (language === 'Python') {
-        const m = t.match(/File\s+"[^"]+",\s+line\s+(\d+)/i);
-        if (m) return { line: parseInt(m[1], 10), summary: t.split(/\r?\n/).pop() || 'Error' };
+        const rgAll = /File\s+"[^"]+",\s+line\s+(\d+)/gi;
+        let mm; while ((mm = rgAll.exec(t)) !== null) { lines.push(parseInt(mm[1], 10)); }
+        const first = lines.length ? lines[0] : null;
+        return { line: first, summary: t.split(/\r?\n/).pop() || 'Error', lines };
       }
       // JavaScript (Node): <anonymous>:3:15 or stack traces with :line:col
       if (language === 'JavaScript') {
-        const m = t.match(/:(\d+):(\d+)/);
-        if (m) return { line: parseInt(m[1], 10), summary: t.split(/\r?\n/)[0] };
+        const rgAll = /:(\d+):(\d+)/g;
+        let mm; while ((mm = rgAll.exec(t)) !== null) { lines.push(parseInt(mm[1], 10)); }
+        const first = lines.length ? lines[0] : null;
+        return { line: first, summary: t.split(/\r?\n/)[0] || null, lines };
       }
-      return { line: null, summary: (t || '').split(/\r?\n/)[0] || null };
+      return { line: null, summary: (t || '').split(/\r?\n/)[0] || null, lines };
     } catch {
-      return { line: null, summary: null };
+      return { line: null, summary: null, lines: [] };
     }
   };
 
@@ -164,6 +177,22 @@ const CodeEditor = () => {
     loadProblem();
   }, [routeProblemId]);
 
+  // Persist Input/Expected between sessions
+  useEffect(() => {
+    try {
+      const savedIn = localStorage.getItem('codeEditor:input');
+      const savedEx = localStorage.getItem('codeEditor:expected');
+      if (savedIn !== null) setInput(savedIn);
+      if (savedEx !== null) setExpected(savedEx);
+    } catch {}
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem('codeEditor:input', input); } catch {}
+  }, [input]);
+  useEffect(() => {
+    try { localStorage.setItem('codeEditor:expected', expected); } catch {}
+  }, [expected]);
+
   useEffect(() => {
     setCode((prev) => {
       // if user hasn't typed anything custom yet, use template on language switch
@@ -234,6 +263,8 @@ const CodeEditor = () => {
       const data = await res.json();
       const outText = typeof data?.output === "string" ? data.output : JSON.stringify(data);
       setOutput(outText);
+      setStdoutText(typeof data?.stdout === 'string' ? data.stdout : outText);
+      setStderrText(typeof data?.stderr === 'string' ? data.stderr : '');
       setCompilerLog(outText);
       setRuntimeMs(typeof data?.runtimeMs === 'number' ? data.runtimeMs : null);
       setMemoryKb(typeof data?.memoryKb === 'number' ? data.memoryKb : null);
@@ -242,6 +273,8 @@ const CodeEditor = () => {
         const info = parseError(lang, outText);
         setErrorLine(info.line);
         setErrorSummary(info.summary);
+        setErrorLines(info.lines || (info.line ? [info.line] : []));
+        setErrorIdx(0);
         setShowLog(true);
       }
       
@@ -304,6 +337,8 @@ const CodeEditor = () => {
         const data = await res.json();
         const output = typeof data?.output === "string" ? data.output : JSON.stringify(data);
         setCompilerLog(output);
+        setStdoutText(typeof data?.stdout === 'string' ? data.stdout : output);
+        setStderrText(typeof data?.stderr === 'string' ? data.stderr : '');
         const exitCode = typeof data?.exitCode === 'number' ? data.exitCode : null;
         
         // Check if output matches expected
@@ -641,6 +676,45 @@ const CodeEditor = () => {
                       {exitCode === 124 ? 'Time limit exceeded' : `Exit: ${exitCode}`}
                     </span>
                   )}
+                  {errorLine != null && (
+                    <button
+                      type="button"
+                      className={`px-2 py-1 rounded-md ${theme.button.secondary}`}
+                      onClick={() => {
+                        try {
+                          const editor = editorRef.current;
+                          if (!editor) return;
+                          editor.revealLineInCenter(errorLine);
+                          editor.setPosition({ lineNumber: errorLine, column: 1 });
+                          editor.focus();
+                        } catch {}
+                      }}
+                    >
+                      Go to error line
+                    </button>
+                  )}
+                  {errorLines.length > 1 && (
+                    <button
+                      type="button"
+                      className={`px-2 py-1 rounded-md ${theme.button.secondary}`}
+                      onClick={() => {
+                        if (errorLines.length === 0) return;
+                        const next = (errorIdx + 1) % errorLines.length;
+                        setErrorIdx(next);
+                        const ln = errorLines[next];
+                        setErrorLine(ln);
+                        try {
+                          const editor = editorRef.current;
+                          if (!editor) return;
+                          editor.revealLineInCenter(ln);
+                          editor.setPosition({ lineNumber: ln, column: 1 });
+                          editor.focus();
+                        } catch {}
+                      }}
+                    >
+                      Next error ({(errorIdx + 1)}/{errorLines.length})
+                    </button>
+                  )}
                 </div>
               </div>
               <textarea 
@@ -673,6 +747,26 @@ const CodeEditor = () => {
                     readOnly
                     value={compilerLog}
                   />
+                )}
+                {showLog && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
+                    <div>
+                      <div className={`text-[10px] md:text-xs font-semibold ${theme.text}`}>stdout</div>
+                      <textarea
+                        className={`w-full h-20 rounded-xl p-2 text-[10px] md:text-xs ${theme.input} shadow-sm border-0`}
+                        readOnly
+                        value={stdoutText}
+                      />
+                    </div>
+                    <div>
+                      <div className={`text-[10px] md:text-xs font-semibold ${theme.text}`}>stderr</div>
+                      <textarea
+                        className={`w-full h-20 rounded-xl p-2 text-[10px] md:text-xs ${theme.input} shadow-sm border-0`}
+                        readOnly
+                        value={stderrText}
+                      />
+                    </div>
+                  </div>
                 )}
                 {errorLine != null && (
                   <div className={`mt-2 text-[10px] md:text-xs ${theme.textMuted}`}>

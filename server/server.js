@@ -1,7 +1,7 @@
 import express from 'express';
 import { Script, createContext } from 'node:vm';
 import os from 'os';
-import { spawn, spawnSync } from 'child_process';
+import { spawn, spawnSync, exec } from 'child_process';
 import ts from 'typescript';
 import mongoose from 'mongoose';
 import cors from 'cors';
@@ -648,8 +648,39 @@ app.post('/compile', async (req, res) => {
       return res.status(400).json({ output: 'Missing code or language', runtimeMs: 0, exitCode: 1 });
     }
     const start = Date.now();
-    const done = (output, exitCode = 0) => {
-      return res.status(200).json({ output: String(output || ''), runtimeMs: Date.now() - start, exitCode });
+    const done = (stdoutText, stderrText = '', exitCode = 0, memoryKb) => {
+      const output = String(stdoutText || '') || String(stderrText || '');
+      const payload = { output, stdout: String(stdoutText || ''), stderr: String(stderrText || ''), runtimeMs: Date.now() - start, exitCode };
+      if (typeof memoryKb === 'number' && Number.isFinite(memoryKb)) payload.memoryKb = Math.max(0, Math.round(memoryKb));
+      return res.status(200).json(payload);
+    };
+
+    // Best-effort peak memory polling for a child pid
+    const createMemoryPoller = (pid) => {
+      let peakKb = 0;
+      const interval = setInterval(() => {
+        if (!pid) return;
+        if (process.platform === 'win32') {
+          exec(`powershell -NoProfile -Command "(Get-Process -Id ${pid}).WorkingSet64"`, (err, stdout) => {
+            if (err) return; // ignore
+            const bytes = parseInt(String(stdout).trim(), 10);
+            if (Number.isFinite(bytes)) {
+              const kb = Math.round(bytes / 1024);
+              if (kb > peakKb) peakKb = kb;
+            }
+          });
+        } else {
+          exec(`ps -o rss= -p ${pid}`, (err, stdout) => {
+            if (err) return;
+            const kb = parseInt(String(stdout).trim(), 10);
+            if (Number.isFinite(kb) && kb > peakKb) peakKb = kb;
+          });
+        }
+      }, 80);
+      return {
+        stop: () => { try { clearInterval(interval); } catch {} },
+        getPeak: () => peakKb,
+      };
     };
 
     if (lang === 'JavaScript') {
@@ -658,6 +689,7 @@ app.post('/compile', async (req, res) => {
       const filePath = path.join(tmpDir, 'main.js');
       fs.writeFileSync(filePath, unescapeHtml(code), 'utf8');
       const child = spawn(process.execPath, [filePath], { stdio: ['pipe', 'pipe', 'pipe'] });
+      const mem = createMemoryPoller(child.pid);
       if (input) child.stdin.write(String(unescapeHtml(input)));
       child.stdin.end();
       let out = '', err = '';
@@ -667,9 +699,10 @@ app.post('/compile', async (req, res) => {
       child.stderr.on('data', d => (err += d.toString()));
       child.on('close', (code) => {
         clearTimeout(killTimer);
+        mem.stop();
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
         if (killed) return done('Time limit exceeded', 124);
-        return done(out || err, typeof code === 'number' ? code : 0);
+        return done(out || err, typeof code === 'number' ? code : 0, mem.getPeak());
       });
       return;
     }
@@ -679,6 +712,7 @@ app.post('/compile', async (req, res) => {
       fs.writeFileSync(tmpFile, unescapeHtml(code), 'utf8');
       const pythonBin = process.env.PYTHON_BIN || 'python';
       const child = spawn(pythonBin, [tmpFile], { stdio: ['pipe', 'pipe', 'pipe'] });
+      const mem = createMemoryPoller(child.pid);
       if (input) child.stdin.write(String(input));
       child.stdin.end();
       let out = '', err = '';
@@ -690,7 +724,7 @@ app.post('/compile', async (req, res) => {
         clearTimeout(killTimer);
         try { fs.unlinkSync(tmpFile); } catch {}
         if (killed) return done('Time limit exceeded', 124);
-        return done(out || err, typeof code === 'number' ? code : 0);
+        return done(out || err, typeof code === 'number' ? code : 0, mem.getPeak());
       });
       return;
     }
@@ -708,9 +742,10 @@ app.post('/compile', async (req, res) => {
         if (status !== 0) {
           const err = Buffer.concat(compileErr).toString('utf8');
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          return done(err || 'Compilation failed', 1);
+          return done('', err || 'Compilation failed', 1);
         }
         const child = spawn(java, ['-cp', tmpDir, 'Main'], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const mem = createMemoryPoller(child.pid);
         if (input) child.stdin.write(String(unescapeHtml(input)));
         child.stdin.end();
         let out = '', err = '';
@@ -721,8 +756,8 @@ app.post('/compile', async (req, res) => {
         child.on('close', (code) => {
           clearTimeout(killTimer);
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          if (killed) return done('Time limit exceeded', 124);
-          return done(out || err, typeof code === 'number' ? code : 0);
+          if (killed) return done('', 'Time limit exceeded', 124);
+          return done(out, err, typeof code === 'number' ? code : 0, mem.getPeak());
         });
       });
       return;
@@ -744,6 +779,7 @@ app.post('/compile', async (req, res) => {
           return done(err || 'Compilation failed', 1);
         }
         const child = spawn(exeFile, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const mem = createMemoryPoller(child.pid);
         if (input) child.stdin.write(String(input));
         child.stdin.end();
         let out = '', err = '';
@@ -755,7 +791,7 @@ app.post('/compile', async (req, res) => {
           clearTimeout(killTimer);
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
           if (killed) return done('Time limit exceeded', 124);
-          return done(out || err, typeof code === 'number' ? code : 0);
+          return done(out || err, typeof code === 'number' ? code : 0, mem.getPeak());
         });
       });
       return;
