@@ -9,7 +9,7 @@ const configurePassport = (passport) => {
   passport.use(new GoogleStrategy({
     clientID: config.GOOGLE_CLIENT_ID,
     clientSecret: config.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${config.API_URL}/api/auth/google/callback`,
+    callbackURL: `${config.API_URL}/api/oauth/google/callback`,
     passReqToCallback: true,
     scope: ['profile', 'email']
   }, async (req, accessToken, refreshToken, profile, done) => {

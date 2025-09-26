@@ -3,6 +3,7 @@ import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import User from '../models/User.js';
 import { generateRandomPassword } from '../config/auth.js';
+import config from '../config/config.js';
 
 const router = express.Router();
 
@@ -32,7 +33,7 @@ router.get('/google', (req, res, next) => {
 // Custom error handler for OAuth failures
 const handleOAuthError = (req, res, error) => {
   console.error('OAuth Error:', error);
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const frontendUrl = config.FRONTEND_URL || 'http://localhost:5173';
   const errorMessage = encodeURIComponent(error.message || 'Authentication failed');
   return res.redirect(`${frontendUrl}/login?error=${errorMessage}`);
 };
@@ -53,7 +54,7 @@ const handleOAuthSuccess = (req, res, user, redirectPath = '/') => {
       { expiresIn: process.env.JWT_EXPIRE || '7d' }
     );
 
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const frontendUrl = config.FRONTEND_URL || 'http://localhost:5173';
     
     // Create URL with token and redirect path
     const redirectUrl = new URL(redirectPath, frontendUrl);
