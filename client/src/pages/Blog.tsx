@@ -70,54 +70,88 @@ const Blog = () => {
   const posts = blogPosts;
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 text-slate-900 dark:text-green-200 py-6 px-4">
-      <div className="max-w-5xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-2xl font-bold">AlgoBucks Blog</h1>
-          <p className="text-sm text-slate-600 dark:text-green-300 mt-2 max-w-2xl mx-auto">News, tutorials, and tips to get more out of AlgoBucks.</p>
+    <div className="min-h-screen bg-gradient-to-br from-white to-sky-50 dark:bg-gradient-to-br dark:from-black dark:to-gray-950 text-gray-800 dark:text-green-100 transition-colors duration-300">
+      <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
+        {/* Header */}
+        <header className="text-center mb-12 lg:mb-16">
+          <div className="inline-flex items-center justify-center w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-white-400 to-sky-600 dark:from-green-500 dark:to-green-700 rounded-2xl mb-6 shadow-xl">
+            <img src="./logo.png" alt="lg" />
+          </div>
+          <h1 className="text-3xl lg:text-5xl font-extrabold bg-gradient-to-r from-sky-600 to-sky-800 dark:from-green-400 dark:to-green-600 bg-clip-text text-transparent mb-4">
+            AlgoBucks Blog
+          </h1>
+          <p className="text-base lg:text-lg text-gray-600 dark:text-green-300 max-w-3xl mx-auto leading-relaxed px-4">
+            Discover the latest insights, tutorials, and expert tips to maximize your AlgoBucks experience
+          </p>
         </header>
-
+  
+        {/* Blog Posts Grid */}
         <section>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
             {posts.map((post) => (
               <article
                 key={post.id}
-                className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden border border-sky-200 dark:border-green-800 hover:bg-sky-50/70 dark:hover:bg-green-900/20 transition"
+                className="group bg-white dark:bg-gray-900 rounded-2xl lg:rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl border border-sky-100 dark:border-green-800/30 hover:border-sky-300 dark:hover:border-green-600/50 transition-all duration-300 transform hover:-translate-y-2"
               >
-                <div className="h-32 sm:h-40 overflow-hidden">
+                {/* Image Container */}
+                <div className="relative h-48 lg:h-56 overflow-hidden">
                   <img
                     src={post.image}
                     alt={post.title}
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                 </div>
-                <div className="p-3 sm:p-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center text-xs text-slate-600 dark:text-green-300 mb-2 gap-2">
-                    <span className="flex items-center bg-sky-50 dark:bg-green-900/30 px-2 py-1 rounded">
-                      <User className="w-3 h-3 mr-1" />
+  
+                {/* Content */}
+                <div className="p-5 lg:p-6">
+                  {/* Meta Information */}
+                  <div className="flex flex-wrap gap-3 mb-4">
+                    <span className="inline-flex items-center bg-sky-50 dark:bg-green-900/30 text-sky-700 dark:text-green-300 px-3 py-1.5 rounded-full text-xs lg:text-sm font-medium border border-sky-200 dark:border-green-700">
+                      <User className="w-3 h-3 lg:w-4 lg:h-4 mr-1.5" />
                       {post.author}
                     </span>
-                    <span className="flex items-center bg-sky-50 dark:bg-green-900/30 px-2 py-1 rounded">
-                      <Clock className="w-3 h-3 mr-1" />
+                    <span className="inline-flex items-center bg-sky-50 dark:bg-green-900/30 text-sky-700 dark:text-green-300 px-3 py-1.5 rounded-full text-xs lg:text-sm font-medium border border-sky-200 dark:border-green-700">
+                      <Clock className="w-3 h-3 lg:w-4 lg:h-4 mr-1.5" />
                       {post.date}
                     </span>
                   </div>
-                  <h3 className="text-sm sm:text-base font-bold mb-2">
+  
+                  {/* Title */}
+                  <h3 className="text-lg lg:text-xl font-bold text-gray-900 dark:text-green-100 mb-3 line-clamp-2 group-hover:text-sky-600 dark:group-hover:text-green-400 transition-colors duration-300">
                     {post.title}
                   </h3>
-                  <p className="text-xs sm:text-sm text-slate-700 dark:text-green-300 mb-2 sm:mb-3 line-clamp-3 leading-relaxed">{post.excerpt}</p>
-                  <div className="flex justify-between items-center flex-wrap gap-2">
-                    <span className="inline-flex items-center px-2 py-1 rounded text-xs font-semibold bg-sky-100 dark:bg-green-800/50 text-sky-800 dark:text-green-300">
-                      <Tag className="w-3 h-3 mr-1" />
+  
+                  {/* Excerpt */}
+                  <p className="text-sm lg:text-base text-gray-600 dark:text-green-300 mb-4 line-clamp-3 leading-relaxed">
+                    {post.excerpt}
+                  </p>
+  
+                  {/* Footer */}
+                  <div className="flex justify-between items-center pt-4 border-t border-sky-100 dark:border-green-800/30">
+                    <span className="inline-flex items-center px-3 py-1.5 rounded-full text-xs lg:text-sm font-semibold bg-gradient-to-r from-sky-100 to-sky-200 dark:from-green-800/50 dark:to-green-700/50 text-sky-800 dark:text-green-300 border border-sky-200 dark:border-green-600/30">
+                      <Tag className="w-3 h-3 lg:w-4 lg:h-4 mr-1.5" />
                       {post.category}
                     </span>
-                    <span className="text-xs text-slate-600 dark:text-green-300">{post.readTime}</span>
+                    <span className="text-xs lg:text-sm text-gray-500 dark:text-green-400 font-medium bg-gray-50 dark:bg-gray-800 px-2 py-1 rounded-md">
+                      {post.readTime}
+                    </span>
                   </div>
                 </div>
               </article>
             ))}
           </div>
         </section>
+  
+        {/* Optional: Load More Button */}
+        <div className="text-center mt-12 lg:mt-16">
+          <button className="inline-flex items-center px-8 py-3 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-green-500 dark:to-green-600 text-white font-semibold rounded-xl hover:from-sky-600 hover:to-sky-700 dark:hover:from-green-600 dark:hover:to-green-700 transform hover:scale-105 transition-all duration-300 shadow-lg hover:shadow-xl">
+            Load More Articles
+            <svg className="w-5 h-5 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+        </div>
       </div>
     </div>
   );

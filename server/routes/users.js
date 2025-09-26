@@ -12,6 +12,24 @@ import Submission from '../models/Submission.js';
 // Initialize router
 const router = express.Router();
 
+// --- In-memory throttling for bank OTP requests ---
+const bankOtpAttemptByIp = new Map();
+const bankOtpAttemptByEmail = new Map();
+const pushAttempt = (map, key) => {
+  const now = Date.now();
+  const arr = map.get(key) || [];
+  const cutoff = now - 10 * 60 * 1000;
+  const trimmed = [...arr, now].filter(t => t >= cutoff).slice(-50);
+  map.set(key, trimmed);
+  return trimmed;
+};
+const countRecent = (map, key) => {
+  const now = Date.now();
+  const cutoff = now - 10 * 60 * 1000;
+  const arr = map.get(key) || [];
+  return arr.filter(t => t >= cutoff).length;
+};
+
 // Configure Cloudinary from environment
 cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -80,6 +98,14 @@ router.post('/me/bank/otp/request', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    // Throttle by IP and email
+    const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
+    if (countRecent(bankOtpAttemptByIp, ip) >= 30) {
+      return res.status(429).json({ success: false, message: 'Too many requests from this IP. Try again later.' });
+    }
+    if (countRecent(bankOtpAttemptByEmail, String(user.email).toLowerCase()) >= 5) {
+      return res.status(429).json({ success: false, message: 'Too many OTP requests for this account. Try again later.' });
+    }
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     user.bankDetails = user.bankDetails || {};
     user.bankDetails.bankOtp = otp;
@@ -101,6 +127,9 @@ router.post('/me/bank/otp/request', authenticate, async (req, res) => {
       await sendEmail({ to: user.email, subject, text, html });
     } catch {}
 
+    // Record attempt on success
+    pushAttempt(bankOtpAttemptByIp, ip);
+    pushAttempt(bankOtpAttemptByEmail, String(user.email).toLowerCase());
     return res.json({ success: true, message: 'OTP sent to your email' });
   } catch (error) {
     console.error('Bank OTP request error:', error);

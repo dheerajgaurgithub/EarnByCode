@@ -41,6 +41,9 @@ import config from './config/config.js';
 // Import routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
+import cors from 'cors';
 import problemRoutes from './routes/problems.js';
 import contestRoutes from './routes/contests.js';
 import submissionRoutes from './routes/submissions.js';
@@ -366,7 +369,30 @@ app.options('*', cors(corsOptions));
 app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*' }));
 
 // General parsers
-app.use(express.json({ limit: '10kb' }));
+// Core middleware
+app.use(express.json({ limit: '2mb' }));
+app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: false,
+}));
+
+// CORS: restrict to frontend origin if provided
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || process.env.CLIENT_ORIGIN || '';
+app.use(cors({
+  origin: FRONTEND_ORIGIN ? [FRONTEND_ORIGIN] : true,
+  credentials: true,
+}));
+
+// Rate limit high-risk routes
+const authLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  max: 100, // 100 requests/10min per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api/auth/', authLimiter);
+app.use('/api/users/me/bank', authLimiter);
+app.use('/api/analytics/faq', rateLimit({ windowMs: 60 * 1000, max: 120 }));
 app.use(express.urlencoded({ extended: true, limit: '10kb' }));
 
 // Data sanitization against NoSQL query injection
@@ -418,18 +444,31 @@ app.use(passport.session());
 // Serve static files from public directory
 const publicPath = path.join(__dirname, '../../public');
 
-// Security headers for static files
+// Security headers (CSP) — restrict to strict origins
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || process.env.CLIENT_ORIGIN || 'https://algobucks-tau.vercel.app';
+const API_ORIGINS = [
+  'https://algobucks.onrender.com',
+  'http://localhost:5000',
+  FRONTEND_ORIGIN,
+].filter(Boolean);
+
 app.use(helmet({
   contentSecurityPolicy: {
+    useDefaults: true,
     directives: {
       defaultSrc: ["'self'"],
-      scriptSrc: ["'self'", "'unsafe-inline'"],
+      baseUri: ["'self'"],
+      objectSrc: ["'none'"],
+      scriptSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'"],
       imgSrc: ["'self'", 'data:', 'https:'],
-      connectSrc: ["'self'", 'https://algobucks.onrender.com', 'http://localhost:5000', 'https://algobucks-tau.vercel.app'],
-    },
+      fontSrc: ["'self'", 'https:', 'data:'],
+      connectSrc: ["'self'", ...API_ORIGINS],
+      frameAncestors: ["'self'"],
+      upgradeInsecureRequests: [],
+    }
   },
-  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginResourcePolicy: { policy: 'cross-origin' },
 }));
 
 // Serve static files with cache control

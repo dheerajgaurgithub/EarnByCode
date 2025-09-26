@@ -373,33 +373,36 @@ const HelpCenter = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-950 py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white dark:from-gray-950 dark:to-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6">
+      <div className="max-w-4xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-8 sm:mb-10 lg:mb-12">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-green-200 mb-2">
+        <div className="text-center mb-6 sm:mb-8 lg:mb-10">
+          <div className="inline-flex items-center justify-center w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-sky-100 dark:bg-green-900/30 mb-4">
+            <HelpCircle className="w-7 h-7 sm:w-8 sm:h-8 text-sky-600 dark:text-green-400" />
+          </div>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-green-100 mb-2">
             Help Center
           </h1>
-          <p className="text-sm sm:text-base text-slate-700 dark:text-green-300 max-w-2xl mx-auto px-2">
-            Find answers about using AlgoBucks, or contact our support team.
+          <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-green-300 max-w-xl mx-auto leading-relaxed">
+            Find answers about using AlgoBucks, or contact our support team for assistance.
           </p>
         </div>
 
         {/* Search */}
-        <div className="max-w-xl sm:max-w-2xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative">
+        <div className="max-w-lg sm:max-w-xl lg:max-w-2xl mx-auto mb-6 sm:mb-8 lg:mb-10">
           <div className="relative">
-            <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-gray-400" />
+            <Search className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 h-4 w-4 sm:h-5 sm:w-5 text-sky-400 dark:text-green-500" />
             <input
               type="text"
               placeholder="Search help articles..."
-              className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-4 bg-white border-2 border-blue-100 rounded-xl sm:rounded-2xl text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 shadow-sm transition-all duration-200 text-sm sm:text-base"
+              className="w-full pl-10 sm:pl-12 pr-10 sm:pr-12 py-3 sm:py-3.5 bg-white dark:bg-gray-900 border border-sky-200 dark:border-green-800 rounded-xl text-gray-900 dark:text-green-100 placeholder-sky-400 dark:placeholder-green-500 focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-600 focus:border-sky-500 dark:focus:border-green-600 shadow-sm transition-all duration-200 text-xs sm:text-sm"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             {searchQuery && (
               <button
                 onClick={() => setSearchQuery('')}
-                className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                className="absolute right-3 sm:right-4 top-1/2 transform -translate-y-1/2 text-sky-400 dark:text-green-500 hover:text-sky-600 dark:hover:text-green-400 transition-colors"
               >
                 <X className="h-4 w-4 sm:h-5 sm:w-5" />
               </button>
@@ -408,36 +411,36 @@ const HelpCenter = () => {
         </div>
 
         {/* Categories */}
-        <div className="space-y-3 sm:space-y-4 mb-8 sm:mb-10 lg:mb-12">
+        <div className="space-y-3 sm:space-y-4 mb-6 sm:mb-8 lg:mb-10">
           {filteredCategories.map((category) => (
-            <div key={category.id} className="bg-white/80 backdrop-blur-sm rounded-xl sm:rounded-2xl border border-blue-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden">
+            <div key={category.id} className="bg-white dark:bg-gray-900 rounded-xl border border-sky-200 dark:border-green-800 shadow-sm hover:shadow-md dark:hover:shadow-green-900/20 transition-all duration-200 overflow-hidden">
               <button
-                className="w-full px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-blue-50/50 transition-colors duration-200"
+                className="w-full px-4 sm:px-5 lg:px-6 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-sky-50 dark:hover:bg-green-900/20 transition-colors duration-200"
                 onClick={() => toggleCategory(category.id)}
               >
                 <div className="flex items-center min-w-0 flex-1">
-                  <span className="text-xl sm:text-2xl mr-2 sm:mr-3 flex-shrink-0">{category.icon}</span>
-                  <h2 className="text-lg sm:text-xl font-semibold text-gray-900 truncate">{category.name}</h2>
-                  <span className="ml-2 text-xs sm:text-sm bg-blue-100 text-blue-700 px-2 py-1 rounded-full font-medium flex-shrink-0">
+                  <span className="text-lg sm:text-xl mr-2 sm:mr-3 flex-shrink-0">{category.icon}</span>
+                  <h2 className="text-sm sm:text-base lg:text-lg font-semibold text-gray-900 dark:text-green-100 truncate">{category.name}</h2>
+                  <span className="ml-2 text-xs bg-sky-100 dark:bg-green-900/40 text-sky-700 dark:text-green-300 px-2 py-1 rounded-full font-medium flex-shrink-0">
                     {category.questions.length}
                   </span>
                 </div>
                 <div className="ml-2 flex-shrink-0">
                   {activeCategory === category.id ? (
-                    <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
+                    <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5 text-sky-500 dark:text-green-400" />
                   ) : (
-                    <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500" />
+                    <ChevronDown className="h-4 w-4 sm:h-5 sm:w-5 text-sky-500 dark:text-green-400" />
                   )}
                 </div>
               </button>
               
               {activeCategory === category.id && (
-                <div className="px-4 sm:px-6 pb-3 sm:pb-4 pt-0 sm:pt-2">
+                <div className="px-4 sm:px-5 lg:px-6 pb-3 sm:pb-4 pt-1 sm:pt-2">
                   <div className="space-y-3 sm:space-y-4">
                     {category.questions.map((q) => (
-                      <div key={q.id} className="border-l-3 border-l-4 border-blue-500 pl-3 sm:pl-4 py-2 bg-blue-50/30 rounded-r-lg">
-                        <h3 className="font-medium text-gray-900 text-sm sm:text-base mb-1 sm:mb-2 leading-snug">{q.question}</h3>
-                        <p className="text-gray-600 text-sm sm:text-base leading-relaxed">{q.answer}</p>
+                      <div key={q.id} className="border-l-4 border-sky-400 dark:border-green-500 pl-3 sm:pl-4 py-2 sm:py-3 bg-sky-50/50 dark:bg-green-900/10 rounded-r-lg">
+                        <h3 className="font-medium text-gray-900 dark:text-green-100 text-xs sm:text-sm lg:text-base mb-1 sm:mb-2 leading-snug">{q.question}</h3>
+                        <p className="text-gray-600 dark:text-green-300 text-xs sm:text-sm lg:text-base leading-relaxed">{q.answer}</p>
                       </div>
                     ))}
                   </div>
@@ -449,112 +452,118 @@ const HelpCenter = () => {
 
         {/* No results message */}
         {searchQuery && filteredCategories.length === 0 && (
-          <div className="text-center py-8 sm:py-12">
-            <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
-              <Search className="w-6 h-6 sm:w-8 sm:h-8 text-blue-500" />
+          <div className="text-center py-6 sm:py-8 lg:py-12">
+            <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 mx-auto mb-4 bg-sky-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+              <Search className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-sky-500 dark:text-green-400" />
             </div>
-            <h3 className="text-lg sm:text-xl font-medium text-gray-900 mb-2">No results found</h3>
-            <p className="text-gray-600 text-sm sm:text-base mb-4">
+            <h3 className="text-base sm:text-lg lg:text-xl font-medium text-gray-900 dark:text-green-100 mb-2">No results found</h3>
+            <p className="text-gray-600 dark:text-green-300 text-xs sm:text-sm lg:text-base mb-4">
               We couldn't find any help articles matching "{searchQuery}"
             </p>
             <button
               onClick={() => setSearchQuery('')}
-              className="text-blue-600 hover:text-blue-700 font-medium text-sm sm:text-base"
+              className="text-sky-600 dark:text-green-400 hover:text-sky-700 dark:hover:text-green-300 font-medium text-xs sm:text-sm lg:text-base"
             >
               Clear search and view all articles
             </button>
           </div>
         )}
 
-        {/* Contact Support (simple) */}
-        <div className="rounded-xl p-6 border border-sky-200 dark:border-green-800 bg-white dark:bg-gray-900">
+        {/* Contact Support */}
+        <div className="rounded-xl p-4 sm:p-6 border border-sky-200 dark:border-green-800 bg-white dark:bg-gray-900">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-sky-50 dark:bg-green-900/30 mb-4">
-              <MessageSquare className="w-5 h-5 text-sky-600 dark:text-green-400" />
+            <div className="inline-flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-sky-100 dark:bg-green-900/30 mb-3 sm:mb-4">
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-sky-600 dark:text-green-400" />
             </div>
-            <h2 className="text-xl font-bold mb-2">Still need help?</h2>
-            <p className="text-sm text-slate-700 dark:text-green-300 mb-4 max-w-xl mx-auto">
+            <h2 className="text-base sm:text-lg lg:text-xl font-bold mb-2 text-gray-900 dark:text-green-100">Still need help?</h2>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-green-300 mb-4 max-w-lg mx-auto leading-relaxed">
               Our support team is here to help with any questions about using AlgoBucks.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <a href="mailto:coder9265@gmail.com" className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 inline-flex items-center justify-center text-sm">
-                <Mail className="w-4 h-4 mr-2" /> Email Support
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
+              <a href="mailto:coder9265@gmail.com" className="px-3 sm:px-4 py-2 bg-sky-600 dark:bg-green-700 text-white font-semibold rounded-lg hover:bg-sky-700 dark:hover:bg-green-600 inline-flex items-center justify-center text-xs sm:text-sm transition-colors">
+                <Mail className="w-3 h-3 sm:w-4 sm:h-4 mr-2" /> Email Support
               </a>
-              <a href="/contact" className="px-4 py-2 border border-sky-300 dark:border-green-800 rounded-lg text-sm inline-flex items-center justify-center hover:bg-sky-50/70 dark:hover:bg-green-900/30">
-                <HelpCircle className="w-4 h-4 mr-2" /> Contact Form
+              <a href="/contact" className="px-3 sm:px-4 py-2 border border-sky-300 dark:border-green-700 rounded-lg text-xs sm:text-sm inline-flex items-center justify-center hover:bg-sky-50 dark:hover:bg-green-900/20 text-gray-900 dark:text-green-100 transition-colors">
+                <HelpCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-2" /> Contact Form
               </a>
             </div>
           </div>
         </div>
-
-        {/* Removed quick links to keep the Help Center focused on the web app */}
       </div>
+
       {/* Floating Chatbot */}
       <div className="fixed bottom-4 right-4 z-40">
         {/* Toggle button on small screens */}
         {!chatOpen && (
-          <button onClick={() => setChatOpen(true)} className="flex items-center gap-2 px-3 py-2 bg-sky-600 text-white rounded-full shadow-lg">
-            <Bot className="w-4 h-4" /> Chat
+          <button onClick={() => setChatOpen(true)} className="flex items-center gap-2 px-3 py-2 bg-sky-600 dark:bg-green-700 text-white rounded-full shadow-lg hover:bg-sky-700 dark:hover:bg-green-600 transition-colors">
+            <Bot className="w-4 h-4" /> 
+            <span className="text-sm">Chat</span>
           </button>
         )}
 
         {chatOpen && (
-          <div className="w-[92vw] max-w-md bg-white dark:bg-gray-900 border border-sky-200 dark:border-green-800 rounded-2xl shadow-2xl overflow-hidden">
-            <div className="px-3 py-2 bg-sky-50 dark:bg-gray-800 border-b border-sky-200 dark:border-green-800 flex items-center justify-between">
+          <div className="w-[92vw] max-w-sm bg-white dark:bg-gray-900 border border-sky-200 dark:border-green-800 rounded-2xl shadow-xl overflow-hidden">
+            <div className="px-3 py-2 bg-sky-100 dark:bg-green-900/30 border-b border-sky-200 dark:border-green-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bot className="w-4 h-4 text-sky-600 dark:text-green-400" />
-                <span className="text-sm font-semibold">AlgoBucks Help Assistant</span>
+                <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-green-100">AlgoBucks Help Assistant</span>
               </div>
-              <button onClick={() => setChatOpen(false)} className="text-slate-500 hover:text-slate-700 dark:text-green-300 dark:hover:text-green-100">
+              <button onClick={() => setChatOpen(false)} className="text-gray-500 dark:text-green-400 hover:text-gray-700 dark:hover:text-green-300">
                 <X className="w-4 h-4" />
               </button>
             </div>
+            
             {/* Quick suggestions */}
-            <div className="px-3 py-2 flex flex-wrap gap-2 border-b border-sky-200 dark:border-green-800 bg-white dark:bg-gray-900">
+            <div className="px-3 py-2 flex flex-wrap gap-1.5 border-b border-sky-200 dark:border-green-800 bg-sky-50/50 dark:bg-green-900/10">
               {quickSuggestions.map((s, idx) => (
                 <button
                   key={idx}
                   onClick={() => sendSuggestion(s)}
-                  className="text-xs px-2 py-1 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-700 dark:bg-green-900/40 dark:hover:bg-green-900/60 dark:text-green-300"
+                  className="text-xs px-2 py-1 rounded-full bg-sky-200 dark:bg-green-900/40 hover:bg-sky-300 dark:hover:bg-green-900/60 text-sky-800 dark:text-green-300 transition-colors"
                   title={s}
                 >
                   {s}
                 </button>
               ))}
             </div>
-            <div className="h-64 overflow-y-auto px-3 py-3 space-y-2">
+            
+            <div className="h-56 overflow-y-auto px-3 py-3 space-y-2">
               {messages.map((m, i) => (
                 <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
-                  <div className={`inline-block max-w-[85%] px-3 py-2 rounded-xl text-sm ${m.role === 'user' ? 'bg-sky-600 text-white rounded-br-sm' : 'bg-slate-100 dark:bg-gray-800 text-slate-800 dark:text-green-200 rounded-bl-sm'}`}>
+                  <div className={`inline-block max-w-[85%] px-3 py-2 rounded-xl text-xs sm:text-sm ${m.role === 'user' ? 'bg-sky-600 dark:bg-green-700 text-white rounded-br-sm' : 'bg-sky-100 dark:bg-green-900/30 text-gray-800 dark:text-green-200 rounded-bl-sm'}`}>
                     {m.text}
                   </div>
                 </div>
               ))}
             </div>
+            
             <div className="p-2 border-t border-sky-200 dark:border-green-800 flex items-center gap-2">
               <input
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') sendMessage(); }}
-                placeholder="Ask about pages, submissions, contests, policies..."
-                className="flex-1 px-3 py-2 rounded-lg bg-white dark:bg-gray-800 border border-sky-200 dark:border-green-800 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500"
+                placeholder="Ask about pages, submissions, contests..."
+                className="flex-1 px-3 py-2 rounded-lg bg-sky-50 dark:bg-gray-800 border border-sky-200 dark:border-green-800 text-xs focus:outline-none focus:ring-1 focus:ring-sky-500 dark:focus:ring-green-600 text-gray-900 dark:text-green-100 placeholder-gray-500 dark:placeholder-green-400"
               />
-              <button onClick={sendMessage} className="px-3 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-sm inline-flex items-center gap-1">
-                <Send className="w-4 h-4" />
+              <button onClick={sendMessage} className="px-3 py-2 bg-sky-600 dark:bg-green-700 hover:bg-sky-700 dark:hover:bg-green-600 text-white rounded-lg text-xs inline-flex items-center gap-1 transition-colors">
+                <Send className="w-3 h-3" />
               </button>
             </div>
-            <div className="px-3 py-2 bg-slate-50 dark:bg-gray-800 text-[11px] text-slate-500 dark:text-green-300 border-t border-sky-200 dark:border-green-800">
-              Responses are based only on AlgoBucks website content. For further help, see <a href="/contact" className="underline">/contact</a>.
+            
+            <div className="px-3 py-2 bg-sky-50 dark:bg-green-900/20 text-xs text-gray-500 dark:text-green-400 border-t border-sky-200 dark:border-green-800">
+              Responses are based on AlgoBucks content. For more help, see <a href="/contact" className="underline text-sky-600 dark:text-green-300">/contact</a>.
             </div>
           </div>
         )}
       </div>
+
+      {/* Admin Analytics Panel */}
       {isAdmin && (
-        <div className="fixed bottom-4 left-4 z-40 w-[92vw] max-w-md bg-white dark:bg-gray-900 border border-sky-200 dark:border-green-800 rounded-2xl shadow-2xl overflow-hidden">
-          <div className="px-3 py-2 bg-slate-100 dark:bg-gray-800 border-b border-sky-200 dark:border-green-800 flex items-center justify-between">
-            <span className="text-sm font-semibold">Top Questions (analytics)</span>
-            <div className="flex items-center gap-2">
-              <select value={range} onChange={(e)=>setRange(e.target.value as any)} className="text-xs border rounded px-1 py-0.5 bg-white dark:bg-gray-900 border-slate-300 dark:border-green-800">
+        <div className="fixed bottom-4 left-4 z-40 w-[92vw] max-w-sm bg-white dark:bg-gray-900 border border-sky-200 dark:border-green-800 rounded-2xl shadow-xl overflow-hidden">
+          <div className="px-3 py-2 bg-sky-100 dark:bg-green-900/30 border-b border-sky-200 dark:border-green-800 flex items-center justify-between">
+            <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-green-100">Top Questions (analytics)</span>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <select value={range} onChange={(e)=>setRange(e.target.value as any)} className="text-xs border rounded px-1 py-0.5 bg-white dark:bg-gray-800 border-sky-300 dark:border-green-700 text-gray-900 dark:text-green-100">
                 <option value="all">All time</option>
                 <option value="7d">Last 7 days</option>
                 <option value="30d">Last 30 days</option>
@@ -562,27 +571,32 @@ const HelpCenter = () => {
               </select>
               {range === 'custom' && (
                 <>
-                  <input type="datetime-local" value={fromISO} onChange={(e)=>setFromISO(e.target.value)} className="text-xs border rounded px-1 py-0.5 bg-white dark:bg-gray-900 border-slate-300 dark:border-green-800" />
-                  <input type="datetime-local" value={toISO} onChange={(e)=>setToISO(e.target.value)} className="text-xs border rounded px-1 py-0.5 bg-white dark:bg-gray-900 border-slate-300 dark:border-green-800" />
-                  <button onClick={()=>setTopFaqsVersion(v=>v+1)} className="text-xs px-2 py-1 rounded bg-sky-600 text-white hover:bg-sky-700">Apply</button>
+                  <input type="datetime-local" value={fromISO} onChange={(e)=>setFromISO(e.target.value)} className="text-xs border rounded px-1 py-0.5 bg-white dark:bg-gray-800 border-sky-300 dark:border-green-700 text-gray-900 dark:text-green-100" />
+                  <input type="datetime-local" value={toISO} onChange={(e)=>setToISO(e.target.value)} className="text-xs border rounded px-1 py-0.5 bg-white dark:bg-gray-800 border-sky-300 dark:border-green-700 text-gray-900 dark:text-green-100" />
+                  <button onClick={()=>setTopFaqsVersion(v=>v+1)} className="text-xs px-2 py-1 rounded bg-sky-600 dark:bg-green-700 text-white hover:bg-sky-700 dark:hover:bg-green-600 transition-colors">Apply</button>
                 </>
               )}
-              <button onClick={clearTopFaqs} className="text-xs px-2 py-1 rounded bg-slate-600 text-white hover:bg-slate-700">Clear Local</button>
+              <button onClick={clearTopFaqs} className="text-xs px-2 py-1 rounded bg-gray-500 dark:bg-gray-600 text-white hover:bg-gray-600 dark:hover:bg-gray-500 transition-colors">Clear</button>
             </div>
           </div>
-          <div className="max-h-64 overflow-y-auto px-3 py-2">
+          
+          <div className="max-h-56 overflow-y-auto px-3 py-2">
             {topFaqs.length === 0 ? (
-              <p className="text-xs text-slate-500">No data yet.</p>
+              <p className="text-xs text-gray-500 dark:text-green-400">No data yet.</p>
             ) : (
-              <ul className="space-y-2">
+              <ul className="space-y-1.5">
                 {topFaqs.map((t, i) => (
-                  <li key={i} className="text-xs"><span className="font-semibold mr-2">{t.c}×</span>{t.q}</li>
+                  <li key={i} className="text-xs text-gray-700 dark:text-green-300">
+                    <span className="font-semibold mr-2 text-sky-600 dark:text-green-400">{t.c}×</span>
+                    {t.q}
+                  </li>
                 ))}
               </ul>
             )}
           </div>
-          <div className="px-3 py-2 bg-slate-50 dark:bg-gray-800 text-[11px] text-slate-500 dark:text-green-300 border-t border-sky-200 dark:border-green-800">
-            Visible to admins only; data is fetched from the analytics API. Local counters are used as fallback.
+          
+          <div className="px-3 py-2 bg-sky-50 dark:bg-green-900/20 text-xs text-gray-500 dark:text-green-400 border-t border-sky-200 dark:border-green-800">
+            Admin only: Analytics API data with local fallback.
           </div>
         </div>
       )}

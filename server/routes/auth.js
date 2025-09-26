@@ -57,6 +57,26 @@ const generateOTP = () => {
 
 const router = express.Router();
 
+// --- Simple in-memory attempt tracking for OTP requests (email/IP) ---
+const otpAttemptByEmail = new Map(); // email -> timestamps[]
+const otpAttemptByIp = new Map();    // ip -> timestamps[]
+const pushAttempt = (map, key) => {
+  const now = Date.now();
+  const arr = map.get(key) || [];
+  arr.push(now);
+  // keep last 50 and within 10 minutes
+  const cutoff = now - 10 * 60 * 1000;
+  const trimmed = arr.filter(t => t >= cutoff).slice(-50);
+  map.set(key, trimmed);
+  return trimmed;
+};
+const countRecent = (map, key) => {
+  const now = Date.now();
+  const cutoff = now - 10 * 60 * 1000;
+  const arr = map.get(key) || [];
+  return arr.filter(t => t >= cutoff).length;
+};
+
 // Register
 router.post('/register', async (req, res) => {
   try {
@@ -287,6 +307,15 @@ router.post('/forgot-password/request', async (req, res) => {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
+    // Throttle by IP and email
+    const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
+    if (countRecent(otpAttemptByIp, ip) >= 30) {
+      return res.status(429).json({ message: 'Too many requests from this IP. Try again later.' });
+    }
+    if (countRecent(otpAttemptByEmail, String(email).toLowerCase()) >= 5) {
+      return res.status(429).json({ message: 'Too many OTP requests for this email. Try again later.' });
+    }
+
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(404).json({ message: 'This email is not registered' });
@@ -317,13 +346,16 @@ router.post('/forgot-password/request', async (req, res) => {
       return res.status(500).json({ message: 'Failed to send reset code. Please try again later.' });
     }
 
+    // Record successful attempt
+    pushAttempt(otpAttemptByIp, ip);
+    pushAttempt(otpAttemptByEmail, String(email).toLowerCase());
+
     return res.status(200).json({ message: 'OTP has been sent to your verified email' });
   } catch (error) {
     console.error('Forgot password request error:', error);
     res.status(500).json({ message: 'Server error during password reset request' });
   }
 });
-{{ ... }}
 // Step 2: Verify OTP (optional separate step)
 router.post('/forgot-password/verify', async (req, res) => {
   try {
