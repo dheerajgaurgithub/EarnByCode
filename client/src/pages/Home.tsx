@@ -275,13 +275,6 @@ export default function Home() {
                   </button>
                 )}
 
-                <button
-                  onClick={() => handleNavigation('/contests')}
-                  className="group relative inline-flex items-center justify-center w-full xs:w-auto px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 text-xs sm:text-sm font-bold text-sky-700 dark:text-green-400 border border-sky-300 dark:border-green-700 bg-white/80 dark:bg-green-950/40 rounded-lg backdrop-blur-sm hover:border-sky-500 dark:hover:border-green-600 hover:bg-sky-50 dark:hover:bg-green-900/50 transition-all duration-300 hover:scale-105"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-white/0 to-sky-100/60 dark:from-green-950/0 dark:to-green-900/60 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-lg"></div>
-                  <span className="relative whitespace-nowrap">{t('home.cta.browse_contests')}</span>
-                </button>
               </div>
             </div>
           </div>

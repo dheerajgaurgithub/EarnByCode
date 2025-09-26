@@ -1,18 +1,18 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Clock, Tag, User } from 'lucide-react';
 
 const Blog = () => {
-  // Sample blog posts data with updated 2025 dates
-  const blogPosts = [
+  // Default fallback data (used if blog.json is unavailable)
+  const fallbackPosts = [
     {
       id: 1,
-      title: 'Getting Started with Algorithmic Trading',
-      excerpt: 'Learn the basics of algorithmic trading and how to get started with AlgoBucks platform. A comprehensive guide for beginners.',
+      title: 'How to Earn on AlgoBucks: A Complete Guide',
+      excerpt: 'AlgoBucks is for coders. Learn how to earn through coding contests, problem bounties, streak rewards, and redeeming CodeCoins.',
       author: 'Jane Smith',
       date: 'September 5, 2025',
-      readTime: '5 min read',
-      category: 'Tutorial',
-      image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80',
+      readTime: '6 min read',
+      category: 'Earning',
+      image: 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=1200&auto=format&fit=crop',
       featured: true
     },
     {
@@ -27,47 +27,70 @@ const Blog = () => {
     },
     {
       id: 3,
-      title: 'The Future of Algorithmic Trading',
-      excerpt: 'Explore the latest trends and future predictions in the world of algorithmic trading and financial technology.',
+      title: 'From Practice to Payouts: Turning ACs into Rewards',
+      excerpt: 'Maximize your accepted submissions: complete daily problems, maintain streaks, and convert your activity into tangible rewards.',
       author: 'Alex Johnson',
       date: 'September 1, 2025',
-      readTime: '8 min read',
-      category: 'Insights',
-      image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+      readTime: '7 min read',
+      category: 'Rewards',
+      image: 'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=1200&auto=format&fit=crop'
     },
     {
       id: 4,
-      title: 'Machine Learning in Trading: A Deep Dive',
-      excerpt: 'Understanding how machine learning algorithms are revolutionizing financial markets and trading strategies.',
+      title: 'Contest Playbook: Strategies to Win and Earn More',
+      excerpt: 'Practical tips for reading problems fast, avoiding WA/TLE, and climbing the leaderboard to unlock higher earnings.',
       author: 'Sarah Chen',
       date: 'August 28, 2025',
-      readTime: '12 min read',
-      category: 'Technology',
-      image: 'https://images.unsplash.com/photo-1518186285589-2f7649de83e0?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+      readTime: '10 min read',
+      category: 'Contests',
+      image: 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=1200&auto=format&fit=crop'
     },
     {
       id: 5,
-      title: 'Risk Management Strategies for Algo Traders',
-      excerpt: 'Essential risk management techniques every algorithmic trader should know to protect their investments.',
+      title: 'Payments & KYC: How Payouts Work on AlgoBucks',
+      excerpt: 'Understand KYC, bank/UPI setup with OTP verification, and payout timelines so your earnings reach you safely.',
       author: 'Michael Brown',
       date: 'August 25, 2025',
-      readTime: '9 min read',
-      category: 'Strategy',
-      image: 'https://images.unsplash.com/photo-1590283603385-17ffb3a7f29f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+      readTime: '5 min read',
+      category: 'Payouts',
+      image: 'https://images.unsplash.com/photo-1521791136064-7986c2920216?q=80&w=1200&auto=format&fit=crop'
     },
     {
       id: 6,
-      title: 'Building Your First Trading Bot',
-      excerpt: 'Step-by-step guide to creating your first automated trading system from scratch using Python.',
+      title: 'Craft a Standout Profile: Showcase Skills and Earn',
+      excerpt: 'Use submissions, badges, and social links to build a coder profile that attracts opportunities and boosts rewards.',
       author: 'Emma Wilson',
       date: 'August 20, 2025',
-      readTime: '15 min read',
-      category: 'Tutorial',
-      image: 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80'
+      readTime: '8 min read',
+      category: 'Profile',
+      image: 'https://images.unsplash.com/photo-1504805572947-34fad45aed93?q=80&w=1200&auto=format&fit=crop'
     }
   ];
 
-  const posts = blogPosts;
+  const [posts, setPosts] = useState(fallbackPosts);
+
+  useEffect(() => {
+    let alive = true;
+    const load = async () => {
+      try {
+        // Try API first (proxied + cached), then fall back to static JSON
+        const apiRes = await fetch('/api/blog?limit=100', { cache: 'no-store' });
+        let data;
+        if (apiRes.ok) {
+          data = await apiRes.json();
+        } else {
+          const res = await fetch('/blog.json', { cache: 'no-store' });
+          if (!res.ok) throw new Error('Failed to fetch blog.json');
+          data = await res.json();
+        }
+        if (alive && Array.isArray(data) && data.length) setPosts(data);
+      } catch (e) {
+        // keep fallback on any error
+      }
+    };
+    load();
+    return () => { alive = false; };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white to-sky-50 dark:bg-gradient-to-br dark:from-black dark:to-gray-950 text-gray-800 dark:text-green-100 transition-colors duration-300">

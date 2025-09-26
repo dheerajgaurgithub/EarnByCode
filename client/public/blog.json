@@ -1,0 +1,103 @@
+[
+  {
+    "id": 1,
+    "title": "How to Earn on AlgoBucks: A Complete Guide",
+    "excerpt": "AlgoBucks is for coders. Learn how to earn through coding contests, problem bounties, streak rewards, and redeeming CodeCoins.",
+    "author": "Jane Smith",
+    "date": "September 5, 2025",
+    "readTime": "6 min read",
+    "category": "Earning",
+    "image": "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?q=80&w=1200&auto=format&fit=crop",
+    "featured": true
+  },
+  {
+    "id": 2,
+    "title": "Top 5 Strategies for Competitive Coding",
+    "excerpt": "Discover the most effective strategies to improve your competitive coding skills and win more contests.",
+    "author": "John Doe",
+    "date": "September 3, 2025",
+    "readTime": "7 min read",
+    "category": "Tips",
+    "image": "https://images.unsplash.com/photo-1555066931-4365d14bab8c?q=80&w=1200&auto=format&fit=crop"
+  },
+  {
+    "id": 3,
+    "title": "From Practice to Payouts: Turning ACs into Rewards",
+    "excerpt": "Maximize your accepted submissions: complete daily problems, maintain streaks, and convert your activity into tangible rewards.",
+    "author": "Alex Johnson",
+    "date": "September 1, 2025",
+    "readTime": "7 min read",
+    "category": "Rewards",
+    "image": "https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?q=80&w=1200&auto=format&fit=crop"
+  },
+  {
+    "id": 4,
+    "title": "Contest Playbook: Strategies to Win and Earn More",
+    "excerpt": "Practical tips for reading problems fast, avoiding WA/TLE, and climbing the leaderboard to unlock higher earnings.",
+    "author": "Sarah Chen",
+    "date": "August 28, 2025",
+    "readTime": "10 min read",
+    "category": "Contests",
+    "image": "https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=1200&auto=format&fit=crop"
+  },
+  {
+    "id": 5,
+    "title": "Payments & KYC: How Payouts Work on AlgoBucks",
+    "excerpt": "Understand KYC, bank/UPI setup with OTP verification, and payout timelines so your earnings reach you safely.",
+    "author": "Michael Brown",
+    "date": "August 25, 2025",
+    "readTime": "5 min read",
+    "category": "Payouts",
+    "image": "https://images.unsplash.com/photo-1521791136064-7986c2920216?q=80&w=1200&auto=format&fit=crop"
+  },
+  {
+    "id": 6,
+    "title": "Craft a Standout Profile: Showcase Skills and Earn",
+    "excerpt": "Use submissions, badges, and social links to build a coder profile that attracts opportunities and boosts rewards.",
+    "author": "Emma Wilson",
+    "date": "August 20, 2025",
+    "readTime": "8 min read",
+    "category": "Profile",
+    "image": "https://images.unsplash.com/photo-1504805572947-34fad45aed93?q=80&w=1200&auto=format&fit=crop"
+  },
+  {
+    "id": 7,
+    "title": "Streak Milestones: 100, 500, 1000 Days",
+    "excerpt": "Why streaks matter, how to maintain them, and what rewards unlock at major milestones.",
+    "author": "Priya Verma",
+    "date": "August 15, 2025",
+    "readTime": "6 min read",
+    "category": "Streaks",
+    "image": "https://images.unsplash.com/photo-1520975922323-27bddd42d71c?q=80&w=1200&auto=format&fit=crop"
+  },
+  {
+    "id": 8,
+    "title": "Climb the Leaderboard: Ranking Factors Explained",
+    "excerpt": "Points, codecoins, and accepted submissions — how they impact your leaderboard position.",
+    "author": "Daniel Kim",
+    "date": "August 12, 2025",
+    "readTime": "7 min read",
+    "category": "Leaderboard",
+    "image": "https://images.unsplash.com/photo-1526378722484-bd91ca387e72?q=80&w=1200&auto=format&fit=crop"
+  },
+  {
+    "id": 9,
+    "title": "Daily Problem Tips: Build Consistency and Speed",
+    "excerpt": "A routine to solve the daily problem in under 30 minutes, with warmups and pattern recognition.",
+    "author": "Lina Park",
+    "date": "August 9, 2025",
+    "readTime": "5 min read",
+    "category": "Daily",
+    "image": "https://images.unsplash.com/photo-1537432376769-00a4c1ecf315?q=80&w=1200&auto=format&fit=crop"
+  },
+  {
+    "id": 10,
+    "title": "CodeCoin Redemption: Gift Cards, Perks, and More",
+    "excerpt": "Everything you can redeem with CodeCoins and how to optimize earning them across the platform.",
+    "author": "Ravi Patil",
+    "date": "August 5, 2025",
+    "readTime": "6 min read",
+    "category": "CodeCoins",
+    "image": "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?q=80&w=1200&auto=format&fit=crop"
+  }
+]
