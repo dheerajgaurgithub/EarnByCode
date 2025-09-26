@@ -12,6 +12,7 @@ import { walletService } from '../../services/walletService';
 import type { User } from '../../types';
 import ContestProblemManager from '../../components/Admin/ContestProblemManager';
 import JobsList from '@/components/Admin/Jobs/JobsList';
+import { useToast } from '@/components/ui/use-toast';
 
 // Type definitions
 type BlockHistoryItem = {
@@ -151,6 +152,7 @@ const UserAvatar = ({ username }: { username: string }) => {
 const AdminPanel: React.FC = () => {
   const { user } = useAuth();
   const currentUserId = user?._id || 'admin';
+  const toast = useToast();
   
   // UI State
   const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'problems' | 'contests' | 'jobs'>('overview');
@@ -353,6 +355,7 @@ const AdminPanel: React.FC = () => {
           totalProblems: stats.totalProblems || 0,
           totalSubmissions: stats.totalSubmissions || 0
         };
+
         console.log('Setting stats data:', statsData);
         setStats(statsData);
       } else {
@@ -645,10 +648,23 @@ const AdminPanel: React.FC = () => {
       try {
         await apiService.deleteProblem(problemId);
         await fetchProblems();
+        try { toast.success?.('Problem deleted'); } catch {}
       } catch (error) {
         console.error('Error deleting problem:', error);
         setProblemError('Failed to delete problem');
+        try { toast.error?.('Failed to delete problem'); } catch {}
       }
+    }
+  }, [fetchProblems]);
+
+  const handleToggleProblemPublish = useCallback(async (problem: Problem) => {
+    try {
+      await apiService.updateProblem(problem._id, { isPublished: !problem.isPublished });
+      await fetchProblems();
+      try { toast.success?.(problem.isPublished ? 'Moved to Draft' : 'Published'); } catch {}
+    } catch (e) {
+      console.error('Toggle publish error:', e);
+      try { toast.error?.('Failed to update status'); } catch {}
     }
   }, [fetchProblems]);
 
@@ -700,6 +716,15 @@ const AdminPanel: React.FC = () => {
 
   // Problem Form Modal component
   const ProblemFormModal = () => {
+    const [saving, setSaving] = useState(false);
+    const todayUtc = (() => {
+      const d = new Date();
+      const yyyy = d.getUTCFullYear();
+      const mm = String(d.getUTCMonth() + 1).padStart(2, '0');
+      const dd = String(d.getUTCDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    })();
+    const [dailyDate, setDailyDate] = useState<string>(todayUtc);
     const [problemForm, setProblemForm] = useState({
       title: '',
       description: '',
@@ -784,7 +809,21 @@ const AdminPanel: React.FC = () => {
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
+      // Basic validation
+      if (!problemForm.title.trim()) {
+        try { toast.error?.('Title is required'); } catch {}
+        return;
+      }
+      if (!problemForm.description.trim()) {
+        try { toast.error?.('Description is required'); } catch {}
+        return;
+      }
+      if (!Number.isFinite(Number(problemForm.points)) || Number(problemForm.points) < 1) {
+        try { toast.error?.('Points must be at least 1'); } catch {}
+        return;
+      }
       try {
+        setSaving(true);
         const payload: any = {
           title: problemForm.title.trim(),
           description: problemForm.description.trim(),
@@ -803,8 +842,10 @@ const AdminPanel: React.FC = () => {
 
         if (selectedProblem?._id) {
           await apiService.updateProblem(selectedProblem._id, payload);
+          try { toast.success?.('Problem updated'); } catch {}
         } else {
           await apiService.createProblem(payload);
+          try { toast.success?.('Problem created'); } catch {}
         }
 
         // Refresh list and close
@@ -813,7 +854,9 @@ const AdminPanel: React.FC = () => {
         setShowProblemForm(false);
       } catch (err) {
         console.error('Error saving problem:', err);
-        alert((err as Error)?.message || 'Failed to save problem');
+        try { toast.error?.((err as Error)?.message || 'Failed to save problem'); } catch {}
+      } finally {
+        setSaving(false);
       }
     };
 

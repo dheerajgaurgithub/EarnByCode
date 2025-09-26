@@ -621,16 +621,7 @@ const ProblemDetail: React.FC = () => {
     return String(dailyProblem.problemId) === String(problem._id);
   }, [problem, dailyProblem]);
 
-  const setAsTodaysProblem = useCallback(async () => {
-    if (!user || !problem) return;
-    try {
-      const resp = await api.post(`/users/me/daily-problem`, { problemId: problem._id });
-      const payload = (resp as any).data || resp;
-      setDailyProblem(payload.dailyProblem || { date: '', problemId: String(problem._id) });
-    } catch (e) {
-      console.warn('Failed to set daily problem');
-    }
-  }, [user, problem]);
+  // Removed per-user 'set as today's problem' in favor of admin-managed daily problem
 
   // Timer tick
   useEffect(() => {
@@ -823,14 +814,10 @@ const ProblemDetail: React.FC = () => {
                 </div>
               </div>
 
-              {/* Action bar: set today's problem, timer, chat */}
+              {/* Action bar: timer, chat */}
               <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-2">
-                  {!isTodaysProblem && (
-                    <button onClick={setAsTodaysProblem} className="inline-flex items-center px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-gradient-to-r from-orange-100 to-amber-100 dark:from-green-900/50 dark:to-green-800/50 border border-orange-200 dark:border-green-700 text-orange-700 dark:text-green-300 hover:from-orange-200 hover:to-amber-200 dark:hover:from-green-800/70 dark:hover:to-green-700/70 transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105">
-                      <Flame className="w-2.5 h-2.5 mr-1" /> Set as Today's Problem
-                    </button>
-                  )}
+                  {/* Set-as-today removed; managed by admins in Admin Panel */}
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {/* Timer */}

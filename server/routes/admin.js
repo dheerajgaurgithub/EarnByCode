@@ -5,6 +5,7 @@ import User from '../models/User.js';
 import Submission from '../models/Submission.js';
 import Transaction from '../models/Transaction.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
+import DailyProblem from '../models/DailyProblem.js';
 
 const router = express.Router();
 
@@ -32,6 +33,54 @@ router.get('/stats', async (req, res) => {
       // Don't include user-specific or transaction data that could be used for participation
       message: 'Admin access is restricted to platform management only.'
     });
+
+// Set global daily problem for a given UTC date (YYYY-MM-DD). If date is omitted, uses today's UTC date.
+router.post('/daily-problem', async (req, res) => {
+  try {
+    const { problemId, date } = req.body || {};
+    if (!problemId) return res.status(400).json({ success: false, message: 'problemId is required' });
+
+    // Validate problem exists
+    const problem = await Problem.findById(problemId).select('_id title');
+    if (!problem) return res.status(404).json({ success: false, message: 'Problem not found' });
+
+    // Normalize date to YYYY-MM-DD (UTC)
+    const now = new Date();
+    const yyyy = now.getUTCFullYear();
+    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(now.getUTCDate()).padStart(2, '0');
+    const today = `${yyyy}-${mm}-${dd}`;
+    const key = (typeof date === 'string' && /\d{4}-\d{2}-\d{2}/.test(date)) ? date : today;
+
+    const up = await DailyProblem.findOneAndUpdate(
+      { date: key },
+      { $set: { problemId, updatedAt: new Date(), createdBy: req.user?._id } },
+      { upsert: true, new: true }
+    );
+    return res.json({ success: true, dailyProblem: { date: up.date, problemId: String(up.problemId) } });
+  } catch (e) {
+    console.error('Set daily problem error:', e);
+    return res.status(500).json({ success: false, message: 'Failed to set daily problem' });
+  }
+});
+
+// Get global daily problem for a given date (YYYY-MM-DD). If omitted, returns today's UTC.
+router.get('/daily-problem', async (req, res) => {
+  try {
+    const qd = String(req.query.date || '');
+    const now = new Date();
+    const yyyy = now.getUTCFullYear();
+    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(now.getUTCDate()).padStart(2, '0');
+    const key = (/^\d{4}-\d{2}-\d{2}$/.test(qd) ? qd : `${yyyy}-${mm}-${dd}`);
+    const doc = await DailyProblem.findOne({ date: key }).lean();
+    if (!doc) return res.json({ success: true, dailyProblem: null });
+    return res.json({ success: true, dailyProblem: { date: doc.date, problemId: String(doc.problemId) } });
+  } catch (e) {
+    console.error('Get daily problem error:', e);
+    return res.status(500).json({ success: false, message: 'Failed to fetch daily problem' });
+  }
+});
 
 // Recalculate all users' points from solvedProblems using difficulty mapping
 // Difficulty mapping: easy=1, medium=2, hard=3 (default 1)

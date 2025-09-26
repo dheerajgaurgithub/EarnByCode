@@ -1,5 +1,6 @@
 import express from 'express';
 import Problem from '../models/Problem.js';
+import DailyProblem from '../models/DailyProblem.js';
 import Submission from '../models/Submission.js';
 import User from '../models/User.js';
 import Contest from '../models/Contest.js';
@@ -9,6 +10,24 @@ import { executeCode } from '../utils/codeExecutor.js';
 import ts from 'typescript';
 
 const router = express.Router();
+
+// Public: Get global daily problem (optionally for a specific UTC date via ?date=YYYY-MM-DD)
+router.get('/daily', async (req, res) => {
+  try {
+    const qd = String(req.query.date || '');
+    const now = new Date();
+    const yyyy = now.getUTCFullYear();
+    const mm = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const dd = String(now.getUTCDate()).padStart(2, '0');
+    const key = (/^\d{4}-\d{2}-\d{2}$/.test(qd) ? qd : `${yyyy}-${mm}-${dd}`);
+    const doc = await DailyProblem.findOne({ date: key }).lean();
+    if (!doc) return res.json({ success: true, dailyProblem: null });
+    return res.json({ success: true, dailyProblem: { date: doc.date, problemId: String(doc.problemId) } });
+  } catch (e) {
+    console.error('Public get daily problem error:', e);
+    return res.status(500).json({ success: false, message: 'Failed to fetch daily problem' });
+  }
+});
 
 // Get all problems with filters
 router.get('/', async (req, res) => {

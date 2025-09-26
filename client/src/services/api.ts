@@ -19,6 +19,7 @@ export interface Problem {
   testCases: TestCase[];
   starterCode: Record<string, string>;
   isPremium: boolean;
+  isPublished?: boolean;
   createdAt: string;
   updatedAt: string;
 }

@@ -20,8 +20,14 @@ const CodeEditor = () => {
   const [expected, setExpected] = useState<string>("");
   const [passed, setPassed] = useState<boolean | null>(null);
   const [runtimeMs, setRuntimeMs] = useState<number | null>(null);
+  const [memoryKb, setMemoryKb] = useState<number | null>(null);
   const [exitCode, setExitCode] = useState<number | null>(null);
+  const [errorLine, setErrorLine] = useState<number | null>(null);
+  const [errorSummary, setErrorSummary] = useState<string | null>(null);
   const [running, setRunning] = useState(false);
+  const [compilerLog, setCompilerLog] = useState<string>("");
+  const [showLog, setShowLog] = useState<boolean>(false);
+  const [errorDecorations, setErrorDecorations] = useState<string[]>([]);
   const [ignoreWhitespace, setIgnoreWhitespace] = useState<boolean>(true);
   const [ignoreCase, setIgnoreCase] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(true);
@@ -42,6 +48,39 @@ const CodeEditor = () => {
   const onMount: OnMount = (editor) => {
     editorRef.current = editor;
     editor.focus();
+  };
+
+  // Try to extract a meaningful line number and short message from toolchain output
+  const parseError = (language: Lang, text: string): { line: number | null; summary: string | null } => {
+    try {
+      const t = text || '';
+      // Java (javac): Main.java:23: error: ...
+      if (language === 'Java') {
+        const m = t.match(/\.java:(\d+):\s*error\b/i);
+        if (m) return { line: parseInt(m[1], 10), summary: t.split(/\r?\n/)[0] };
+        // runtime stack traces often include ":<line>"
+        const m2 = t.match(/\((?:Main|[A-Za-z_]\w*)\.java:(\d+)\)/);
+        if (m2) return { line: parseInt(m2[1], 10), summary: t.split(/\r?\n/)[0] };
+      }
+      // C++ (g++): main.cpp:12:5: error: ... OR a.exe: ...
+      if (language === 'Cpp') {
+        const m = t.match(/:(\d+):(\d+)?\s*:.*error/i) || t.match(/:(\d+)\s*:.*error/i);
+        if (m) return { line: parseInt(m[1], 10), summary: t.split(/\r?\n/)[0] };
+      }
+      // Python: File "<stdin>", line 3, ... or File "...", line N
+      if (language === 'Python') {
+        const m = t.match(/File\s+"[^"]+",\s+line\s+(\d+)/i);
+        if (m) return { line: parseInt(m[1], 10), summary: t.split(/\r?\n/).pop() || 'Error' };
+      }
+      // JavaScript (Node): <anonymous>:3:15 or stack traces with :line:col
+      if (language === 'JavaScript') {
+        const m = t.match(/:(\d+):(\d+)/);
+        if (m) return { line: parseInt(m[1], 10), summary: t.split(/\r?\n/)[0] };
+      }
+      return { line: null, summary: (t || '').split(/\r?\n/)[0] || null };
+    } catch {
+      return { line: null, summary: null };
+    }
   };
 
   // Theme classes
@@ -110,7 +149,8 @@ const CodeEditor = () => {
                 expected: tc.expectedOutput || ''
               })));
               return;
-            }
+              setShowLog(true);
+        }
           }
           // If no test cases found, add one empty test case
           setTestcases([{ input: '', expected: '' }]);
@@ -137,6 +177,39 @@ const CodeEditor = () => {
   const monacoLanguage =
     lang === "Cpp" ? "cpp" : lang === "JavaScript" ? "javascript" : lang.toLowerCase();
 
+  // Auto-wrap Java sources so users aren't forced to name the main class 'Main'
+  const autoWrapJava = (src: string): string => {
+    try {
+      const code = src || '';
+      // If already defines public class Main, no change
+      if (/public\s+class\s+Main\b/.test(code)) return code;
+
+      // Extract optional package declaration to reuse in wrapper
+      const packageMatch = code.match(/^\s*package\s+([\w\.]+);/m);
+      const pkgLine = packageMatch ? packageMatch[0] + "\n" : '';
+
+      // Find a public class Name
+      const publicClassMatch = code.match(/public\s+class\s+([A-Za-z_]\w*)/);
+      if (!publicClassMatch) {
+        // No public class; try class with main without public
+        const anyMainMatch = code.match(/class\s+([A-Za-z_]\w*)[\s\S]*?\bpublic\s+static\s+void\s+main\s*\(/);
+        if (!anyMainMatch) return code; // cannot safely wrap
+        const cls = anyMainMatch[1];
+        // Add a delegating public Main wrapper; keep original code untouched
+        return `${pkgLine}${code}\n\npublic class Main { public static void main(String[] args) throws Exception { ${cls}.main(args); } }`;
+      }
+
+      const originalName = publicClassMatch[1];
+      // Replace 'public class Name' with 'class Name'
+      const withoutPublic = code.replace(/public\s+class\s+([A-Za-z_]\w*)/, (m, g1) => `class ${g1}`);
+      // Append wrapper Main delegating to the original main
+      const wrapped = `${pkgLine}${withoutPublic}\n\npublic class Main { public static void main(String[] args) throws Exception { ${originalName}.main(args); } }`;
+      return wrapped;
+    } catch {
+      return src;
+    }
+  };
+
   const normalize = (s: string) => {
     if (s === undefined || s === null) return '';
     let t = s;
@@ -149,16 +222,28 @@ const CodeEditor = () => {
     try {
       setRunning(true);
       setOutput("");
-      const payload = { code, input, lang };
+      setErrorLine(null);
+      setErrorSummary(null);
+      const javaReady = lang === 'Java' ? autoWrapJava(code) : code;
+      const payload = { code: javaReady, input, lang };
       const res = await fetch(`${apiBase}/compile`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
       const data = await res.json();
-      setOutput(typeof data?.output === "string" ? data.output : JSON.stringify(data));
+      const outText = typeof data?.output === "string" ? data.output : JSON.stringify(data);
+      setOutput(outText);
+      setCompilerLog(outText);
       setRuntimeMs(typeof data?.runtimeMs === 'number' ? data.runtimeMs : null);
+      setMemoryKb(typeof data?.memoryKb === 'number' ? data.memoryKb : null);
       setExitCode(typeof data?.exitCode === 'number' ? data.exitCode : null);
+      if (typeof data?.exitCode === 'number' && data.exitCode !== 0) {
+        const info = parseError(lang, outText);
+        setErrorLine(info.line);
+        setErrorSummary(info.summary);
+        setShowLog(true);
+      }
       
       // Auto check vs expected (trim both)
       if (expected.trim().length > 0) {
@@ -168,8 +253,11 @@ const CodeEditor = () => {
         setPassed(null);
       }
     } catch (e: any) {
-      setOutput(e?.message || "Run failed");
+      const msg = e?.message || "Run failed";
+      setOutput(msg);
+      setCompilerLog(msg);
       setRuntimeMs(null);
+      setMemoryKb(null);
       setExitCode(null);
       setPassed(false);
     } finally {
@@ -181,6 +269,8 @@ const CodeEditor = () => {
     if (testcases.length === 0) return;
     
     setRunning(true);
+    setErrorLine(null);
+    setErrorSummary(null);
     
     // Reset all test cases
     setTestcases(prev => prev.map(tc => ({
@@ -194,8 +284,9 @@ const CodeEditor = () => {
     // Run each test case one by one
     for (let i = 0; i < testcases.length; i++) {
       const tc = testcases[i];
+      const javaReady = lang === 'Java' ? autoWrapJava(code) : code;
       const payload = {
-        code,
+        code: javaReady,
         lang, // Fixed: was 'language', should be 'lang'
         input: tc.input
       };
@@ -212,12 +303,19 @@ const CodeEditor = () => {
         
         const data = await res.json();
         const output = typeof data?.output === "string" ? data.output : JSON.stringify(data);
+        setCompilerLog(output);
         const exitCode = typeof data?.exitCode === 'number' ? data.exitCode : null;
         
         // Check if output matches expected
         const normalizedOutput = normalize(output);
         const normalizedExpected = normalize(tc.expected);
         const passed = normalizedExpected ? normalizedOutput === normalizedExpected : null;
+        // If first failing case, capture its error line summary
+        if (exitCode != null && exitCode !== 0 && errorLine == null) {
+          const info = parseError(lang, output);
+          setErrorLine(info.line);
+          setErrorSummary(info.summary);
+        }
         
         // Update the specific test case with results
         setTestcases(prev => prev.map((item, idx) => 
@@ -253,6 +351,42 @@ const CodeEditor = () => {
     
     setRunning(false);
   };
+
+  // Apply Monaco decoration and auto-scroll on error line
+  useEffect(() => {
+    try {
+      const editor = editorRef.current;
+      if (!editor) return;
+      // clear existing decorations
+      if (errorDecorations.length) {
+        const cleared = editor.deltaDecorations(errorDecorations, []);
+        setErrorDecorations(cleared);
+      }
+      if (errorLine && errorLine > 0) {
+        const newDecos = editor.deltaDecorations([], [
+          {
+            range: {
+              startLineNumber: errorLine,
+              startColumn: 1,
+              endLineNumber: errorLine,
+              endColumn: 1,
+            },
+            options: {
+              isWholeLine: true,
+              className: 'editor-error-line-bg',
+              glyphMarginClassName: 'editor-error-glyph',
+              inlineClassName: 'editor-error-inline',
+            },
+          },
+        ]);
+        setErrorDecorations(newDecos);
+        editor.revealLineInCenter(errorLine);
+        editor.setPosition({ lineNumber: errorLine, column: 1 });
+        editor.focus();
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [errorLine]);
 
   const resetTestcases = () => {
     if (confirm('Are you sure you want to reset all test cases? This cannot be undone.')) {
@@ -305,6 +439,12 @@ const CodeEditor = () => {
 
   return (
     <div className={`min-h-screen p-3 md:p-6 ${theme.container} transition-all duration-300`}>
+      {/* Inline styles for Monaco error decorations */}
+      <style>{`
+        .editor-error-line-bg { background: rgba(239, 68, 68, 0.18) !important; }
+        .editor-error-glyph { background: #ef4444 !important; width: 6px !important; }
+        .editor-error-inline { border-bottom: 2px solid #ef4444 !important; }
+      `}</style>
       {/* Header with theme toggle */}
       <div className={`flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 p-4 md:p-6 rounded-2xl ${theme.header} shadow-lg backdrop-blur-sm border border-sky-100 dark:border-gray-700`}>
         <div className="flex items-center gap-3 md:gap-4">
@@ -344,6 +484,11 @@ const CodeEditor = () => {
               <option value="Python">Python</option>
               <option value="JavaScript">JavaScript</option>
             </select>
+            {lang === 'Java' && (
+              <span className={`text-[10px] md:text-xs ${theme.textMuted} sm:ml-2`}>
+                Hint: use <code>public class Main</code> with <code>public static void main(String[] args)</code>
+              </span>
+            )}
           </div>
           
           {/* Run Button */}
@@ -420,6 +565,21 @@ const CodeEditor = () => {
                 onChange={(e) => setInput(e.target.value)}
                 placeholder="Enter your input here..."
               />
+              {/* Language-specific input tips */}
+              <div className={`mt-2 text-[10px] md:text-xs ${theme.textMuted}`}>
+                {lang === 'Java' && (
+                  <span>Tip: provide plain integers/spaces/newlines only (e.g., "5 2" then a line of numbers). Avoid commas, labels, or brackets.</span>
+                )}
+                {lang === 'Cpp' && (
+                  <span>Tip: stdin is passed verbatim. Use standard input patterns (e.g., cin &gt;&gt; n &gt;&gt; d).</span>
+                )}
+                {lang === 'Python' && (
+                  <span>Tip: input() reads lines as-is. Provide exactly what your code expects, no JSON or commas unless your parser handles them.</span>
+                )}
+                {lang === 'JavaScript' && (
+                  <span>Tip: stdin is available; if using custom runners, read from process.stdin or pre-baked helper in your template.</span>
+                )}
+              </div>
             </div>
 
             {/* Expected Output Section */}
@@ -471,9 +631,14 @@ const CodeEditor = () => {
                       <span className="text-xs">⏱️</span> {runtimeMs} ms
                     </span>
                   )}
+                  {memoryKb != null && (
+                    <span className="bg-sky-50 dark:bg-gray-700 px-2 py-1 rounded-lg flex items-center gap-1">
+                      <span className="text-xs">💾</span> {memoryKb} KB
+                    </span>
+                  )}
                   {exitCode != null && (
                     <span className="bg-sky-50 dark:bg-gray-700 px-2 py-1 rounded-lg">
-                      Exit: {exitCode}
+                      {exitCode === 124 ? 'Time limit exceeded' : `Exit: ${exitCode}`}
                     </span>
                   )}
                 </div>
@@ -484,6 +649,38 @@ const CodeEditor = () => {
                 readOnly 
                 placeholder="Output will appear here..."
               />
+              {/* Compiler Log Toggle */}
+              <div className="mt-3">
+                <button
+                  type="button"
+                  className={`px-2 py-1 rounded-md text-xs ${theme.button.secondary}`}
+                  onClick={() => setShowLog(v => !v)}
+                >
+                  {showLog ? 'Hide' : 'Show'} Compiler Log
+                </button>
+                {showLog && (
+                  <button
+                    type="button"
+                    className={`ml-2 px-2 py-1 rounded-md text-xs ${theme.button.secondary}`}
+                    onClick={() => { try { navigator.clipboard.writeText(compilerLog || ''); } catch {} }}
+                  >
+                    Copy Log
+                  </button>
+                )}
+                {showLog && (
+                  <textarea
+                    className={`w-full mt-2 h-24 md:h-32 rounded-xl p-2 md:p-3 text-[10px] md:text-xs ${theme.input} shadow-sm border-0`}
+                    readOnly
+                    value={compilerLog}
+                  />
+                )}
+                {errorLine != null && (
+                  <div className={`mt-2 text-[10px] md:text-xs ${theme.textMuted}`}>
+                    Error line: <span className="font-bold">{errorLine}</span>
+                    {errorSummary ? <> — <span className="italic">{errorSummary}</span></> : null}
+                  </div>
+                )}
+              </div>
               
               {/* Pass/Fail Indicator */}
               {passed !== null && (
