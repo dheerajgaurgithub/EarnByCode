@@ -515,6 +515,20 @@ app.get('/api/auth/google/callback', (req, res) => {
   return res.redirect(302, `/api/oauth/google/callback${qs}`);
 });
 
+// Debug endpoint: expose current OAuth-related config (safe values only)
+app.get('/api/debug/oauth-config', (req, res) => {
+  try {
+    return res.status(200).json({
+      apiUrl: config.API_URL,
+      frontendUrl: config.FRONTEND_URL,
+      googleClientId: config.GOOGLE_CLIENT_ID,
+      callbackUrl: `${config.API_URL}/api/oauth/google/callback`,
+    });
+  } catch (e) {
+    return res.status(200).json({ error: true });
+  }
+});
+
 // --- Press Live Updates (SSE) ---
 // Simple in-memory feed and SSE broadcaster to support the Press page live updates
 const pressClients = new Set(); // each item is an Express Response

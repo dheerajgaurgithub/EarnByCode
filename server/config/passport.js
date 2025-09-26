@@ -6,10 +6,14 @@ import config from './config.js';
 
 const configurePassport = (passport) => {
   // Google OAuth Strategy
+  const callbackURL = `${config.API_URL}/api/oauth/google/callback`;
+  console.log('[OAuth] Using Google Client ID:', config.GOOGLE_CLIENT_ID);
+  console.log('[OAuth] Using Callback URL:', callbackURL);
+
   passport.use(new GoogleStrategy({
     clientID: config.GOOGLE_CLIENT_ID,
     clientSecret: config.GOOGLE_CLIENT_SECRET,
-    callbackURL: `${config.API_URL}/api/oauth/google/callback`,
+    callbackURL,
     passReqToCallback: true,
     scope: ['profile', 'email']
   }, async (req, accessToken, refreshToken, profile, done) => {
