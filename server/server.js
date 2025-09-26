@@ -463,6 +463,115 @@ app.use('/api/discussions', discussionRoutes);
 app.use('/api/contest-problems', contestProblemRoutes);
 app.use('/api/oauth', oauthRoutes);
 
+// --- Press Live Updates (SSE) ---
+// Simple in-memory feed and SSE broadcaster to support the Press page live updates
+const pressClients = new Set(); // each item is an Express Response
+let pressFeed = [];
+
+// Seed with a couple of items
+pressFeed = [
+  {
+    id: String(Date.now() - 60000),
+    type: 'status',
+    title: 'Press feed initialized',
+    message: 'Welcome to AlgoBucks live press updates!',
+    source: 'AlgoBucks',
+    timestamp: Date.now() - 60000,
+  },
+  {
+    id: String(Date.now() - 30000),
+    type: 'press',
+    title: 'AlgoBucks featured in TechDaily',
+    message: 'Our new contests platform covered by TechDaily.',
+    source: 'TechDaily',
+    url: 'https://example.com/article',
+    timestamp: Date.now() - 30000,
+  },
+];
+
+// GET recent press items
+app.get('/api/press', (req, res) => {
+  try {
+    const since = req.query.since;
+    if (since) {
+      const sinceTs = isNaN(Number(since)) ? Date.parse(String(since)) : Number(since);
+      const filtered = pressFeed.filter((it) => Number(it.timestamp) > Number(sinceTs));
+      return res.status(200).json(filtered.sort((a, b) => Number(b.timestamp) - Number(a.timestamp)));
+    }
+    const recent = [...pressFeed].sort((a, b) => Number(b.timestamp) - Number(a.timestamp)).slice(0, 50);
+    return res.status(200).json(recent);
+  } catch (e) {
+    return res.status(200).json([]);
+  }
+});
+
+// SSE stream
+app.get('/api/press/stream', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders && res.flushHeaders();
+
+  // Notify client of retry interval
+  res.write('retry: 10000\n\n');
+
+  // Send a hello message
+  res.write(`data: ${JSON.stringify({ id: String(Date.now()), type: 'status', message: 'connected', timestamp: Date.now() })}\n\n`);
+
+  pressClients.add(res);
+
+  req.on('close', () => {
+    try { pressClients.delete(res); } catch {}
+    try { res.end(); } catch {}
+  });
+});
+
+// Simple manual injection endpoint (optional) to push a new press item
+app.post('/api/press', express.json(), (req, res) => {
+  try {
+    const body = req.body || {};
+    const item = {
+      id: String(body.id || Date.now()),
+      type: String(body.type || 'press'),
+      title: body.title || undefined,
+      message: String(body.message || ''),
+      source: body.source || 'AlgoBucks',
+      url: body.url || undefined,
+      timestamp: Number(body.timestamp || Date.now()),
+    };
+    pressFeed.unshift(item);
+    // Broadcast to all clients
+    const payload = `data: ${JSON.stringify(item)}\n\n`;
+    for (const client of pressClients) {
+      try { client.write(payload); } catch {}
+    }
+    return res.status(200).json({ ok: true, item });
+  } catch (e) {
+    return res.status(400).json({ ok: false });
+  }
+});
+
+// Demo ticker (can be disabled by setting PRESS_DEMO_STREAM=off)
+if ((process.env.PRESS_DEMO_STREAM || 'on').toLowerCase() !== 'off') {
+  setInterval(() => {
+    const demo = {
+      id: String(Date.now()),
+      type: 'mention',
+      title: 'Social mention',
+      message: 'AlgoBucks mentioned in a developer forum thread.',
+      source: 'Community',
+      url: undefined,
+      timestamp: Date.now(),
+    };
+    pressFeed.unshift(demo);
+    pressFeed = pressFeed.slice(0, 200);
+    const payload = `data: ${JSON.stringify(demo)}\n\n`;
+    for (const client of pressClients) {
+      try { client.write(payload); } catch {}
+    }
+  }, 30000);
+}
+
 // Lightweight compiler endpoint for CodeEditor
 // Accepts { code, input, lang } where lang is one of: 'Cpp' | 'Java' | 'Python' | 'JavaScript'
 // Responds with { output, runtimeMs, exitCode }

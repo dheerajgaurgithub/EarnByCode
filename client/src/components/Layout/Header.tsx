@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
@@ -84,6 +84,7 @@ export const Header: React.FC = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement | null>(null);
 
   const userInfo = user as UserDisplayInfo | null;
 
@@ -104,6 +105,28 @@ export const Header: React.FC = () => {
   useEffect(() => {
     setShowMobileMenu(false);
   }, [location.pathname]);
+
+  // Close user dropdown on outside click and Escape
+  useEffect(() => {
+    if (!showDropdown) return;
+    const onDown = (e: MouseEvent | TouchEvent) => {
+      const el = dropdownRef.current;
+      if (el && !el.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowDropdown(false);
+    };
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown, { passive: true });
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown as any);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [showDropdown]);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -255,7 +278,7 @@ export const Header: React.FC = () => {
 
             {/* User menu */}
             {userInfo ? (
-              <div className="relative ml-1">
+              <div className="relative ml-1" ref={dropdownRef}>
                 <button
                   type="button"
                   className="flex items-center space-x-1 sm:space-x-2 rounded-md bg-sky-50 dark:bg-green-900/50 border border-sky-200/60 dark:border-green-800/60 px-1.5 sm:px-2 py-1 sm:py-1.5 text-xs sm:text-sm hover:bg-sky-100 dark:hover:bg-green-900/70 hover:border-sky-300/60 dark:hover:border-green-700/60 transition-all duration-300 group shadow-sm shadow-sky-500/5 dark:shadow-green-900/10"

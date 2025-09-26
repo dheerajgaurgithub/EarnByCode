@@ -262,120 +262,120 @@ export const Leaderboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-white dark:bg-black flex flex-col items-center justify-center px-4 transition-colors duration-300">
         <div className="relative">
-          <div className="animate-spin rounded-full h-12 w-12 border-4 border-sky-100 dark:border-green-800 border-t-sky-500 dark:border-t-green-400"></div>
-          <div className="absolute inset-0 animate-ping rounded-full h-12 w-12 border-4 border-sky-200 dark:border-green-700 opacity-30"></div>
+          <div className="animate-spin rounded-full h-8 w-8 sm:h-10 sm:w-10 border-3 border-sky-100 dark:border-green-800 border-t-sky-500 dark:border-t-green-400"></div>
+          <div className="absolute inset-0 animate-ping rounded-full h-8 w-8 sm:h-10 sm:w-10 border-3 border-sky-200 dark:border-green-700 opacity-30"></div>
         </div>
-        <p className="mt-6 text-slate-600 dark:text-green-300 text-base font-medium">Loading leaderboard...</p>
-        <div className="mt-3 flex space-x-2">
-          <div className="w-2 h-2 bg-sky-500 dark:bg-green-400 rounded-full animate-bounce"></div>
-          <div className="w-2 h-2 bg-sky-400 dark:bg-green-400 rounded-full animate-bounce animation-delay-100"></div>
-          <div className="w-2 h-2 bg-sky-300 dark:bg-green-400 rounded-full animate-bounce animation-delay-200"></div>
+        <p className="mt-4 text-slate-600 dark:text-green-300 text-sm sm:text-base font-medium">Loading leaderboard...</p>
+        <div className="mt-2 flex space-x-1">
+          <div className="w-1.5 h-1.5 bg-sky-500 dark:bg-green-400 rounded-full animate-bounce"></div>
+          <div className="w-1.5 h-1.5 bg-sky-400 dark:bg-green-400 rounded-full animate-bounce animation-delay-100"></div>
+          <div className="w-1.5 h-1.5 bg-sky-300 dark:bg-green-400 rounded-full animate-bounce animation-delay-200"></div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white to-sky-50 dark:bg-gradient-to-br dark:from-black dark:to-gray-900 py-4 sm:py-8 px-4 sm:px-6 transition-all duration-300">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-white to-sky-50 dark:bg-gradient-to-br dark:from-black dark:to-gray-900 py-3 sm:py-6 px-3 sm:px-4 transition-all duration-300">
+      <div className="max-w-5xl mx-auto">
         {/* Header Section */}
         <motion.div 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="text-center mb-8 sm:mb-12"
+          className="text-center mb-6 sm:mb-8"
         >
-          <div className="flex flex-col items-center space-y-4 sm:space-y-6 mb-8">
+          <div className="flex flex-col items-center space-y-3 sm:space-y-4 mb-6">
             {/* Main Title */}
-            <div className="flex flex-col sm:flex-row items-center space-y-3 sm:space-y-0 sm:space-x-3">
+            <div className="flex flex-col sm:flex-row items-center space-y-2 sm:space-y-0 sm:space-x-2">
               <div className="relative">
-                <Trophy className="h-8 w-8 sm:h-10 sm:w-10 text-amber-500 dark:text-green-400" />
-                <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-amber-400 dark:text-green-300" />
+                <Trophy className="h-6 w-6 sm:h-7 sm:w-7 text-amber-500 dark:text-green-400" />
+                <Sparkles className="absolute -top-0.5 -right-0.5 h-3 w-3 text-amber-400 dark:text-green-300" />
               </div>
-              <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black bg-gradient-to-r from-sky-600 via-sky-700 to-sky-800 dark:from-green-400 dark:via-green-500 dark:to-green-600 bg-clip-text text-transparent text-center leading-tight">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-black bg-gradient-to-r from-sky-600 via-sky-700 to-sky-800 dark:from-green-400 dark:via-green-500 dark:to-green-600 bg-clip-text text-transparent text-center leading-tight">
                 {t('leaderboard.title')}
               </h1>
-              <Heart className="h-6 w-6 sm:h-7 sm:w-7 text-rose-500 dark:text-green-400" />
+              <Heart className="h-4 w-4 sm:h-5 sm:w-5 text-rose-500 dark:text-green-400" />
             </div>
 
             {/* Search Bar */}
-            <div className="w-full max-w-2xl mt-6 relative">
+            <div className="w-full max-w-xl mt-4 relative">
               <div className="relative group">
-                <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-slate-400 dark:text-green-500 group-focus-within:text-sky-600 dark:group-focus-within:text-green-400 transition-colors duration-200" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-green-500 group-focus-within:text-sky-600 dark:group-focus-within:text-green-400 transition-colors duration-200" />
                 <input
                   type="text"
                   placeholder={t('leaderboard.search_placeholder')}
-                  className="w-full pl-12 pr-12 py-4 rounded-2xl border-2 border-sky-200 dark:border-green-800 bg-white/80 dark:bg-gray-900/80 text-slate-800 dark:text-green-100 placeholder-slate-500 dark:placeholder-green-400 focus:outline-none focus:ring-4 focus:ring-sky-200 dark:focus:ring-green-400/20 focus:border-sky-500 dark:focus:border-green-500 transition-all duration-200 text-base backdrop-blur-sm"
+                  className="w-full pl-9 pr-9 py-2.5 sm:py-3 rounded-xl border-2 border-sky-200 dark:border-green-800 bg-white/80 dark:bg-gray-900/80 text-slate-800 dark:text-green-100 placeholder-slate-500 dark:placeholder-green-400 focus:outline-none focus:ring-3 focus:ring-sky-200 dark:focus:ring-green-400/20 focus:border-sky-500 dark:focus:border-green-500 transition-all duration-200 text-sm backdrop-blur-sm"
                   value={searchTerm}
                   onChange={handleSearchChange}
                 />
                 {searchTerm && (
                   <button
                     onClick={clearSearch}
-                    className="absolute right-4 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-green-500 hover:text-slate-600 dark:hover:text-green-300 transition-colors"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 dark:text-green-500 hover:text-slate-600 dark:hover:text-green-300 transition-colors"
                   >
-                    <X className="h-5 w-5" />
+                    <X className="h-4 w-4" />
                   </button>
                 )}
                 {isSearching && (
-                  <div className="absolute right-12 top-1/2 transform -translate-y-1/2">
-                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-sky-200 dark:border-green-800 border-t-sky-600 dark:border-t-green-400"></div>
+                  <div className="absolute right-9 top-1/2 transform -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-sky-200 dark:border-green-800 border-t-sky-600 dark:border-t-green-400"></div>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Sort Buttons */}
-            <div className="flex flex-wrap gap-3 mt-6 justify-center">
+            <div className="flex flex-wrap gap-2 mt-4 justify-center">
               <button
                 onClick={() => handleSortChange('username')}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 text-base flex items-center space-x-2 ${
+                className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 text-sm flex items-center space-x-1.5 ${
                   sortBy === 'username' 
-                    ? 'bg-sky-600 dark:bg-green-600 text-white shadow-lg shadow-sky-200 dark:shadow-green-900/50 transform scale-105' 
-                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-sky-50 dark:hover:bg-gray-800 border-2 border-sky-200 dark:border-green-800 hover:border-sky-300 dark:hover:border-green-600'
+                    ? 'bg-sky-600 dark:bg-green-600 text-white shadow-md shadow-sky-200 dark:shadow-green-900/50 transform scale-105' 
+                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-sky-50 dark:hover:bg-gray-800 border border-sky-200 dark:border-green-800 hover:border-sky-300 dark:hover:border-green-600'
                 }`}
               >
-                <Users className="h-4 w-4" />
+                <Users className="h-3.5 w-3.5" />
                 <span>{t('leaderboard.sort_name')} <SortIndicator field="username" /></span>
               </button>
               <button
                 onClick={() => handleSortChange('points')}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 text-base flex items-center space-x-2 ${
+                className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 text-sm flex items-center space-x-1.5 ${
                   sortBy === 'points' 
-                    ? 'bg-amber-500 dark:bg-green-600 text-white shadow-lg shadow-amber-200 dark:shadow-green-900/50 transform scale-105' 
-                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-amber-50 dark:hover:bg-gray-800 border-2 border-sky-200 dark:border-green-800 hover:border-amber-300 dark:hover:border-green-600'
+                    ? 'bg-amber-500 dark:bg-green-600 text-white shadow-md shadow-amber-200 dark:shadow-green-900/50 transform scale-105' 
+                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-amber-50 dark:hover:bg-gray-800 border border-sky-200 dark:border-green-800 hover:border-amber-300 dark:hover:border-green-600'
                 }`}
               >
-                <Zap className="h-4 w-4" />
+                <Zap className="h-3.5 w-3.5" />
                 <span>{t('stats.points')} <SortIndicator field="points" /></span>
               </button>
               <button
                 onClick={() => handleSortChange('totalSolved')}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 text-base flex items-center space-x-2 ${
+                className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 text-sm flex items-center space-x-1.5 ${
                   sortBy === 'totalSolved' 
-                    ? 'bg-emerald-600 dark:bg-green-600 text-white shadow-lg shadow-emerald-200 dark:shadow-green-900/50 transform scale-105' 
-                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-emerald-50 dark:hover:bg-gray-800 border-2 border-sky-200 dark:border-green-800 hover:border-emerald-300 dark:hover:border-green-600'
+                    ? 'bg-emerald-600 dark:bg-green-600 text-white shadow-md shadow-emerald-200 dark:shadow-green-900/50 transform scale-105' 
+                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-emerald-50 dark:hover:bg-gray-800 border border-sky-200 dark:border-green-800 hover:border-emerald-300 dark:hover:border-green-600'
                 }`}
               >
-                <Trophy className="h-4 w-4" />
+                <Trophy className="h-3.5 w-3.5" />
                 <span>{t('leaderboard.solved')} <SortIndicator field="totalSolved" /></span>
               </button>
               <button
                 onClick={() => handleSortChange('codecoins')}
-                className={`px-6 py-3 rounded-xl font-semibold transition-all duration-200 text-base flex items-center space-x-2 ${
+                className={`px-4 py-2 rounded-lg font-semibold transition-all duration-200 text-sm flex items-center space-x-1.5 ${
                   sortBy === 'codecoins' 
-                    ? 'bg-violet-600 dark:bg-green-600 text-white shadow-lg shadow-violet-200 dark:shadow-green-900/50 transform scale-105' 
-                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-violet-50 dark:hover:bg-gray-800 border-2 border-sky-200 dark:border-green-800 hover:border-violet-300 dark:hover:border-green-600'
+                    ? 'bg-violet-600 dark:bg-green-600 text-white shadow-md shadow-violet-200 dark:shadow-green-900/50 transform scale-105' 
+                    : 'bg-white dark:bg-gray-900 text-slate-700 dark:text-green-300 hover:bg-violet-50 dark:hover:bg-gray-800 border border-sky-200 dark:border-green-800 hover:border-violet-300 dark:hover:border-green-600'
                 }`}
               >
-                <Award className="h-4 w-4" />
+                <Award className="h-3.5 w-3.5" />
                 <span>{t('stats.coins')} <SortIndicator field="codecoins" /></span>
               </button>
             </div>
 
             {/* Subtitle */}
-            <div className="text-center mt-6">
-              <p className="text-slate-700 dark:text-green-300 text-lg sm:text-xl font-semibold">{t('leaderboard.subtitle')}</p>
-              <p className="text-slate-600 dark:text-green-400 mt-2 text-base">
+            <div className="text-center mt-4">
+              <p className="text-slate-700 dark:text-green-300 text-base sm:text-lg font-semibold">{t('leaderboard.subtitle')}</p>
+              <p className="text-slate-600 dark:text-green-400 mt-1 text-sm">
                 {t('leaderboard.subtitle2')}
               </p>
             </div>
@@ -384,40 +384,40 @@ export const Leaderboard: React.FC = () => {
 
         {/* Top 3 Podium (uses filtered users) */}
         {podium.length === 3 && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             {/* Second Place */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-2 border-slate-200 dark:border-green-800 rounded-3xl p-6 text-center md:mt-6 shadow-xl shadow-slate-200/50 dark:shadow-green-900/20 hover:shadow-2xl hover:shadow-slate-300/50 dark:hover:shadow-green-900/40 transition-all duration-300 transform hover:scale-105 hover:-translate-y-2"
+              className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-2 border-slate-200 dark:border-green-800 rounded-2xl p-4 text-center md:mt-4 shadow-lg shadow-slate-200/50 dark:shadow-green-900/20 hover:shadow-xl hover:shadow-slate-300/50 dark:hover:shadow-green-900/40 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
             >
-              <div className="relative mb-4">
+              <div className="relative mb-3">
                 <Link to={`/u/${podium[1]?.username}`} className="block">
-                  <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center ring-4 ring-slate-300 dark:ring-green-700 overflow-hidden bg-slate-100 dark:bg-green-900">
+                  <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center ring-3 ring-slate-300 dark:ring-green-700 overflow-hidden bg-slate-100 dark:bg-green-900">
                     {podium[1]?.avatarUrl ? (
                       <img src={podium[1]?.avatarUrl} alt={podium[1]?.username} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-slate-700 dark:text-green-200 font-bold text-xl">{podium[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                      <span className="text-slate-700 dark:text-green-200 font-bold text-base">{podium[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
                     )}
                   </div>
                 </Link>
-                <div className="absolute -top-2 -right-2 bg-slate-500 dark:bg-green-600 rounded-full p-2 shadow-lg">
-                  <span className="text-white font-bold text-base">2</span>
+                <div className="absolute -top-1 -right-1 bg-slate-500 dark:bg-green-600 rounded-full p-1.5 shadow-lg">
+                  <span className="text-white font-bold text-sm">2</span>
                 </div>
-                <div className="absolute -bottom-2 -right-2">
-                  <Medal className="h-6 w-6 text-slate-500 dark:text-green-400" />
+                <div className="absolute -bottom-1 -right-1">
+                  <Medal className="h-4 w-4 text-slate-500 dark:text-green-400" />
                 </div>
               </div>
-              <h3 className="text-slate-900 dark:text-green-100 font-bold text-lg truncate mb-1">
+              <h3 className="text-slate-900 dark:text-green-100 font-bold text-base truncate mb-1">
                 <Link to={`/u/${podium[1]?.username}`}>{podium[1]?.fullName || podium[1]?.username}</Link>
               </h3>
-              <p className="text-slate-600 dark:text-green-300 text-base mb-4 truncate">
+              <p className="text-slate-600 dark:text-green-300 text-sm mb-3 truncate">
                 <Link to={`/u/${podium[1]?.username}`}>@{podium[1]?.username}</Link>
               </p>
-              <div className="bg-slate-50 dark:bg-green-900/30 rounded-2xl p-4 border-2 border-slate-200 dark:border-green-800">
-                <p className="text-slate-900 dark:text-green-100 font-bold text-xl">{podium[1]?.points} points</p>
-                <p className="text-slate-600 dark:text-green-300 text-base font-medium">Silver Champion</p>
+              <div className="bg-slate-50 dark:bg-green-900/30 rounded-xl p-3 border border-slate-200 dark:border-green-800">
+                <p className="text-slate-900 dark:text-green-100 font-bold text-lg">{podium[1]?.points} points</p>
+                <p className="text-slate-600 dark:text-green-300 text-sm font-medium">Silver Champion</p>
               </div>
             </motion.div>
 
@@ -425,34 +425,34 @@ export const Leaderboard: React.FC = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-br from-amber-50 to-orange-100 dark:from-green-950 dark:to-green-900 border-3 border-amber-300 dark:border-green-600 rounded-3xl p-8 text-center shadow-2xl shadow-amber-300/50 dark:shadow-green-900/40 hover:shadow-3xl hover:shadow-amber-400/60 dark:hover:shadow-green-900/60 transform hover:scale-110 hover:-translate-y-3 transition-all duration-300"
+              className="bg-gradient-to-br from-amber-50 to-orange-100 dark:from-green-950 dark:to-green-900 border-2 border-amber-300 dark:border-green-600 rounded-2xl p-5 text-center shadow-xl shadow-amber-300/50 dark:shadow-green-900/40 hover:shadow-2xl hover:shadow-amber-400/60 dark:hover:shadow-green-900/60 transform hover:scale-110 hover:-translate-y-2 transition-all duration-300"
             >
-              <div className="relative mb-6">
+              <div className="relative mb-4">
                 <Link to={`/u/${podium[0]?.username}`} className="block">
-                  <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center ring-4 ring-amber-300 dark:ring-green-500 overflow-hidden bg-amber-100 dark:bg-green-800">
+                  <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center ring-3 ring-amber-300 dark:ring-green-500 overflow-hidden bg-amber-100 dark:bg-green-800">
                     {podium[0]?.avatarUrl ? (
                       <img src={podium[0]?.avatarUrl} alt={podium[0]?.username} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-amber-800 dark:text-green-100 font-extrabold text-2xl">{podium[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                      <span className="text-amber-800 dark:text-green-100 font-extrabold text-xl">{podium[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
                     )}
                   </div>
                 </Link>
-                <div className="absolute -top-3 -right-3 bg-amber-500 dark:bg-green-600 rounded-full p-3 shadow-xl">
-                  <Crown className="w-6 h-6 text-white" />
+                <div className="absolute -top-2 -right-2 bg-amber-500 dark:bg-green-600 rounded-full p-2 shadow-lg">
+                  <Crown className="w-4 h-4 text-white" />
                 </div>
-                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
-                  <Star className="h-8 w-8 text-amber-500 dark:text-green-400" />
+                <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2">
+                  <Star className="h-6 w-6 text-amber-500 dark:text-green-400" />
                 </div>
               </div>
-              <h3 className="text-slate-900 dark:text-green-100 font-black text-xl mb-2 truncate">
+              <h3 className="text-slate-900 dark:text-green-100 font-black text-lg mb-1 truncate">
                 <Link to={`/u/${podium[0]?.username}`}>{podium[0]?.fullName || podium[0]?.username}</Link>
               </h3>
-              <p className="text-amber-700 dark:text-green-300 text-lg mb-6 truncate">
+              <p className="text-amber-700 dark:text-green-300 text-base mb-4 truncate">
                 <Link to={`/u/${podium[0]?.username}`}>@{podium[0]?.username}</Link>
               </p>
-              <div className="bg-amber-100 dark:bg-green-900/50 rounded-2xl p-4 border-2 border-amber-200 dark:border-green-700">
-                <p className="text-amber-800 dark:text-green-100 font-black text-2xl">{podium[0]?.points} points</p>
-                <p className="text-amber-700 dark:text-green-300 text-lg font-bold">🏆 Champion</p>
+              <div className="bg-amber-100 dark:bg-green-900/50 rounded-xl p-3 border border-amber-200 dark:border-green-700">
+                <p className="text-amber-800 dark:text-green-100 font-black text-xl">{podium[0]?.points} points</p>
+                <p className="text-amber-700 dark:text-green-300 text-base font-bold">🏆 Champion</p>
               </div>
             </motion.div>
 
@@ -461,34 +461,34 @@ export const Leaderboard: React.FC = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-2 border-orange-200 dark:border-green-800 rounded-3xl p-6 text-center md:mt-6 shadow-xl shadow-orange-200/50 dark:shadow-green-900/20 hover:shadow-2xl hover:shadow-orange-300/50 dark:hover:shadow-green-900/40 transition-all duration-300 transform hover:scale-105 hover:-translate-y-2"
+              className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm border-2 border-orange-200 dark:border-green-800 rounded-2xl p-4 text-center md:mt-4 shadow-lg shadow-orange-200/50 dark:shadow-green-900/20 hover:shadow-xl hover:shadow-orange-300/50 dark:hover:shadow-green-900/40 transition-all duration-300 transform hover:scale-105 hover:-translate-y-1"
             >
-              <div className="relative mb-4">
+              <div className="relative mb-3">
                 <Link to={`/u/${podium[2]?.username}`} className="block">
-                  <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center ring-4 ring-orange-200 dark:ring-green-700 overflow-hidden bg-orange-100 dark:bg-green-900">
+                  <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center ring-3 ring-orange-200 dark:ring-green-700 overflow-hidden bg-orange-100 dark:bg-green-900">
                     {podium[2]?.avatarUrl ? (
                       <img src={podium[2]?.avatarUrl} alt={podium[2]?.username} className="w-full h-full object-cover" />
                     ) : (
-                      <span className="text-orange-800 dark:text-green-200 font-bold text-xl">{podium[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
+                      <span className="text-orange-800 dark:text-green-200 font-bold text-base">{podium[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
                     )}
                   </div>
                 </Link>
-                <div className="absolute -top-2 -right-2 bg-orange-500 dark:bg-green-600 rounded-full p-2 shadow-lg">
-                  <span className="text-white font-bold text-base">3</span>
+                <div className="absolute -top-1 -right-1 bg-orange-500 dark:bg-green-600 rounded-full p-1.5 shadow-lg">
+                  <span className="text-white font-bold text-sm">3</span>
                 </div>
-                <div className="absolute -bottom-2 -right-2">
-                  <Award className="h-6 w-6 text-orange-500 dark:text-green-400" />
+                <div className="absolute -bottom-1 -right-1">
+                  <Award className="h-4 w-4 text-orange-500 dark:text-green-400" />
                 </div>
               </div>
-              <h3 className="text-slate-900 dark:text-green-100 font-bold text-lg truncate mb-1">
+              <h3 className="text-slate-900 dark:text-green-100 font-bold text-base truncate mb-1">
                 <Link to={`/u/${podium[2]?.username}`}>{podium[2]?.fullName || podium[2]?.username}</Link>
               </h3>
-              <p className="text-orange-700 dark:text-green-300 text-base mb-4 truncate">
+              <p className="text-orange-700 dark:text-green-300 text-sm mb-3 truncate">
                 <Link to={`/u/${podium[2]?.username}`}>@{podium[2]?.username}</Link>
               </p>
-              <div className="bg-orange-50 dark:bg-green-900/30 rounded-2xl p-4 border-2 border-orange-200 dark:border-green-800">
-                <p className="text-orange-800 dark:text-green-100 font-bold text-xl">{podium[2]?.points} points</p>
-                <p className="text-orange-700 dark:text-green-300 text-base font-medium">Bronze Star</p>
+              <div className="bg-orange-50 dark:bg-green-900/30 rounded-xl p-3 border border-orange-200 dark:border-green-800">
+                <p className="text-orange-800 dark:text-green-100 font-bold text-lg">{podium[2]?.points} points</p>
+                <p className="text-orange-700 dark:text-green-300 text-sm font-medium">Bronze Star</p>
               </div>
             </motion.div>
           </div>
@@ -499,27 +499,27 @@ export const Leaderboard: React.FC = () => {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.3 }}
-          className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl border-2 border-sky-200 dark:border-green-800 overflow-hidden shadow-2xl shadow-sky-200/50 dark:shadow-green-900/30"
+          className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl border-2 border-sky-200 dark:border-green-800 overflow-hidden shadow-xl shadow-sky-200/50 dark:shadow-green-900/30"
         >
-          <div className="px-6 py-5 border-b-2 border-sky-200 dark:border-green-800 bg-gradient-to-r from-sky-50 to-sky-100 dark:from-green-950/80 dark:to-green-900/80">
-            <h2 className="text-lg sm:text-xl font-black text-slate-800 dark:text-green-100 flex items-center">
-              <TrendingUp className="h-6 w-6 mr-3 text-sky-600 dark:text-green-400" />
+          <div className="px-4 py-3 border-b border-sky-200 dark:border-green-800 bg-gradient-to-r from-sky-50 to-sky-100 dark:from-green-950/80 dark:to-green-900/80">
+            <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-green-100 flex items-center">
+              <TrendingUp className="h-4 w-4 mr-2 text-sky-600 dark:text-green-400" />
               <span className="bg-gradient-to-r from-sky-600 to-sky-800 dark:from-green-400 dark:to-green-600 bg-clip-text text-transparent">
                 {t('leaderboard.full_rankings')}
               </span>
             </h2>
           </div>
 
-          <div className="divide-y-2 divide-sky-100 dark:divide-green-800">
+          <div className="divide-y divide-sky-100 dark:divide-green-800">
             {remainder.length === 0 ? (
-              <div className="text-center py-12">
-                <div className="mb-6">
-                  <Search className="h-16 w-16 text-slate-400 dark:text-green-500 mx-auto mb-4" />
+              <div className="text-center py-8">
+                <div className="mb-4">
+                  <Search className="h-12 w-12 text-slate-400 dark:text-green-500 mx-auto mb-3" />
                 </div>
-                <p className="text-slate-600 dark:text-green-300 text-lg mb-6">{t('leaderboard.no_users')}</p>
+                <p className="text-slate-600 dark:text-green-300 text-base mb-4">{t('leaderboard.no_users')}</p>
                 <button
                   onClick={clearSearch}
-                  className="px-8 py-4 bg-sky-600 dark:bg-green-600 text-white rounded-2xl font-bold hover:bg-sky-700 dark:hover:bg-green-700 transition-all duration-200 text-base shadow-lg"
+                  className="px-6 py-3 bg-sky-600 dark:bg-green-600 text-white rounded-xl font-bold hover:bg-sky-700 dark:hover:bg-green-700 transition-all duration-200 text-sm shadow-md"
                 >
                   {t('leaderboard.clear_search')}
                 </button>
@@ -534,38 +534,38 @@ export const Leaderboard: React.FC = () => {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: idx * 0.03 }}
-                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-4 sm:p-6 hover:bg-sky-50/50 dark:hover:bg-green-900/30 hover:shadow-lg transition-all duration-300 ${getRankBg(rank)} mx-2 my-1 rounded-2xl`}
+                  className={`flex flex-col sm:flex-row sm:items-center sm:justify-between p-3 sm:p-4 hover:bg-sky-50/50 dark:hover:bg-green-900/30 hover:shadow-md transition-all duration-300 ${getRankBg(rank)} mx-1 my-0.5 rounded-xl`}
                 >
-                  <div className="flex items-center space-x-4 mb-3 sm:mb-0">
-                    <div className="flex items-center justify-center w-8 text-lg font-bold">
+                  <div className="flex items-center space-x-3 mb-2 sm:mb-0">
+                    <div className="flex items-center justify-center w-6 text-base font-bold">
                       {getRankIcon(rank)}
                     </div>
                     
-                    <div className="flex items-center space-x-4 min-w-0 flex-1">
+                    <div className="flex items-center space-x-3 min-w-0 flex-1">
                       <div className="relative flex-shrink-0">
                         <Link to={`/u/${user.username}`} className="block">
-                          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center ring-3 ring-sky-200 dark:ring-green-700 overflow-hidden bg-sky-100 dark:bg-green-900 hover:ring-sky-400 dark:hover:ring-green-500 transition-all duration-300">
+                          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ring-2 ring-sky-200 dark:ring-green-700 overflow-hidden bg-sky-100 dark:bg-green-900 hover:ring-sky-400 dark:hover:ring-green-500 transition-all duration-300">
                             {user.avatarUrl ? (
                               <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
                             ) : (
-                              <span className="text-sky-700 dark:text-green-200 font-bold text-lg">{user.username?.[0]?.toUpperCase() || 'U'}</span>
+                              <span className="text-sky-700 dark:text-green-200 font-bold text-sm">{user.username?.[0]?.toUpperCase() || 'U'}</span>
                             )}
                           </div>
                         </Link>
                         {rank <= 10 && (
-                          <div className="absolute -top-1 -right-1 w-5 h-5 bg-sky-600 dark:bg-green-600 rounded-full flex items-center justify-center">
-                            <Star className="w-3 h-3 text-white" />
+                          <div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-sky-600 dark:bg-green-600 rounded-full flex items-center justify-center">
+                            <Star className="w-2.5 h-2.5 text-white" />
                           </div>
                         )}
                       </div>
                       
                       <div className="min-w-0 flex-1">
-                        <p className="text-slate-900 dark:text-green-100 font-bold text-base sm:text-lg truncate">
+                        <p className="text-slate-900 dark:text-green-100 font-bold text-sm sm:text-base truncate">
                           <Link to={`/u/${user.username}`} className="hover:text-sky-600 dark:hover:text-green-400 transition-colors">
                             {user.fullName || user.username}
                           </Link>
                         </p>
-                        <p className="text-slate-600 dark:text-green-300 text-sm sm:text-base truncate">
+                        <p className="text-slate-600 dark:text-green-300 text-xs sm:text-sm truncate">
                           <Link to={`/u/${user.username}`} className="hover:text-sky-600 dark:hover:text-green-400 transition-colors">
                             @{user.username}
                           </Link>
@@ -574,18 +574,18 @@ export const Leaderboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end space-x-3 text-sm">
-                    <div className="text-center bg-sky-50 dark:bg-green-900/40 rounded-xl p-3 min-w-[70px] border-2 border-sky-200 dark:border-green-800">
-                      <p className="text-slate-900 dark:text-green-100 font-bold text-base">{user.points}</p>
-                      <p className="text-slate-600 dark:text-green-300 text-sm">{t('stats.points')}</p>
+                  <div className="flex items-center justify-between sm:justify-end space-x-2 text-xs">
+                    <div className="text-center bg-sky-50 dark:bg-green-900/40 rounded-lg p-2 min-w-[50px] border border-sky-200 dark:border-green-800">
+                      <p className="text-slate-900 dark:text-green-100 font-bold text-sm">{user.points}</p>
+                      <p className="text-slate-600 dark:text-green-300 text-xs">{t('stats.points')}</p>
                     </div>
-                    <div className="text-center bg-amber-50 dark:bg-green-900/40 rounded-xl p-3 min-w-[70px] border-2 border-amber-200 dark:border-green-800">
-                      <p className="text-amber-700 dark:text-green-200 font-bold text-base">{user.codecoins}</p>
-                      <p className="text-amber-600 dark:text-green-300 text-sm">{t('stats.coins')}</p>
+                    <div className="text-center bg-amber-50 dark:bg-green-900/40 rounded-lg p-2 min-w-[50px] border border-amber-200 dark:border-green-800">
+                      <p className="text-amber-700 dark:text-green-200 font-bold text-sm">{user.codecoins}</p>
+                      <p className="text-amber-600 dark:text-green-300 text-xs">{t('stats.coins')}</p>
                     </div>
-                    <div className="text-center bg-emerald-50 dark:bg-green-900/40 rounded-xl p-3 min-w-[70px] border-2 border-emerald-200 dark:border-green-800">
-                      <p className="text-emerald-700 dark:text-green-200 font-bold text-base">{user.solvedProblems.length}</p>
-                      <p className="text-emerald-600 dark:text-green-300 text-sm">{t('leaderboard.solved')}</p>
+                    <div className="text-center bg-emerald-50 dark:bg-green-900/40 rounded-lg p-2 min-w-[50px] border border-emerald-200 dark:border-green-800">
+                      <p className="text-emerald-700 dark:text-green-200 font-bold text-sm">{user.solvedProblems.length}</p>
+                      <p className="text-emerald-600 dark:text-green-300 text-xs">{t('leaderboard.solved')}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -600,11 +600,11 @@ export const Leaderboard: React.FC = () => {
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="text-center py-12"
+            className="text-center py-8"
           >
-            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl border-2 border-sky-200 dark:border-green-800 p-12 shadow-xl">
-              <Trophy className="h-20 w-20 text-slate-400 dark:text-green-500 mx-auto mb-6" />
-              <p className="text-slate-600 dark:text-green-300 text-lg">No users found</p>
+            <div className="bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl border-2 border-sky-200 dark:border-green-800 p-8 shadow-lg">
+              <Trophy className="h-16 w-16 text-slate-400 dark:text-green-500 mx-auto mb-4" />
+              <p className="text-slate-600 dark:text-green-300 text-base">No users found</p>
             </div>
           </motion.div>
         )}

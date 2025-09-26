@@ -54,7 +54,7 @@ const SubmissionDetail: React.FC = () => {
     if (s === 'accepted') return 'text-green-700 bg-green-100 border-green-200';
     if (s === 'time limit exceeded') return 'text-orange-700 bg-orange-100 border-orange-200';
     if (s === 'runtime error' || s === 'compilation error') return 'text-purple-700 bg-purple-100 border-purple-200';
-    if (s === 'wrong answer') return 'text-red-700 bg-red-100 border-red-200';
+    if (s === 'wrong answer') return 'text-red-800 bg-red-100 border-red-300 dark:text-red-200 dark:bg-red-900/30 dark:border-red-700';
     return 'text-gray-700 bg-gray-100 border-gray-200';
   };
 
@@ -92,7 +92,7 @@ const SubmissionDetail: React.FC = () => {
             <div className="animate-spin rounded-full h-12 w-12 border-4 border-sky-200 dark:border-emerald-200 border-t-sky-600 dark:border-t-emerald-600"></div>
           </div>
         ) : error ? (
-          <div className="bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 p-6 rounded-xl shadow-lg text-sm sm:text-base">{error}</div>
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 text-red-800 dark:text-red-200 p-6 rounded-xl shadow-lg text-sm sm:text-base">{error}</div>
         ) : !submission ? (
           <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 p-6 rounded-xl shadow-lg text-sm sm:text-base">{t('subs.detail.not_found')}</div>
         ) : (
@@ -190,7 +190,7 @@ const SubmissionDetail: React.FC = () => {
                     <div className="bg-slate-100 dark:bg-gray-800 px-4 py-3 border-b border-slate-200 dark:border-gray-600">
                       <div className="flex items-center space-x-2">
                         <div className="flex space-x-2">
-                          <div className="w-3 h-3 bg-red-400 rounded-full"></div>
+                          <div className="w-3 h-3 bg-red-500 rounded-full"></div>
                           <div className="w-3 h-3 bg-yellow-400 rounded-full"></div>
                           <div className="w-3 h-3 bg-green-400 rounded-full"></div>
                         </div>
