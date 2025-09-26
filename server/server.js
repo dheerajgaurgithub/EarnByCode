@@ -701,8 +701,8 @@ app.post('/compile', async (req, res) => {
         clearTimeout(killTimer);
         mem.stop();
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-        if (killed) return done('Time limit exceeded', 124);
-        return done(out || err, typeof code === 'number' ? code : 0, mem.getPeak());
+        if (killed) return done('', 'Time limit exceeded', 124);
+        return done(out, err, typeof code === 'number' ? code : 0, mem.getPeak());
       });
       return;
     }
@@ -723,8 +723,8 @@ app.post('/compile', async (req, res) => {
       child.on('close', (code) => {
         clearTimeout(killTimer);
         try { fs.unlinkSync(tmpFile); } catch {}
-        if (killed) return done('Time limit exceeded', 124);
-        return done(out || err, typeof code === 'number' ? code : 0, mem.getPeak());
+        if (killed) return done('', 'Time limit exceeded', 124);
+        return done(out, err, typeof code === 'number' ? code : 0, mem.getPeak());
       });
       return;
     }
@@ -776,7 +776,7 @@ app.post('/compile', async (req, res) => {
         if (status !== 0) {
           const err = Buffer.concat(compileErr).toString('utf8');
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          return done(err || 'Compilation failed', 1);
+          return done('', err || 'Compilation failed', 1);
         }
         const child = spawn(exeFile, [], { stdio: ['pipe', 'pipe', 'pipe'] });
         const mem = createMemoryPoller(child.pid);
@@ -790,8 +790,8 @@ app.post('/compile', async (req, res) => {
         child.on('close', (code) => {
           clearTimeout(killTimer);
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          if (killed) return done('Time limit exceeded', 124);
-          return done(out || err, typeof code === 'number' ? code : 0, mem.getPeak());
+          if (killed) return done('', 'Time limit exceeded', 124);
+          return done(out, err, typeof code === 'number' ? code : 0, mem.getPeak());
         });
       });
       return;

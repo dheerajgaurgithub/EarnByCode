@@ -25,6 +25,15 @@ function getTransporter() {
     port,
     secure,
     auth: { user, pass },
+    requireTLS: !secure,
+    connectionTimeout: 15000,
+    greetingTimeout: 10000,
+    socketTimeout: 20000,
+    pool: true,
+    maxConnections: 3,
+    maxMessages: 50,
+    dnsTimeout: 8000,
+    family: 4,
   });
 
   return transporter;
