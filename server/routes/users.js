@@ -37,6 +37,29 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Get current user's bank details (sanitized)
+router.get('/me/bank-details', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select('bankDetails');
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const bd = user.bankDetails || {};
+    const safe = {
+      bankAccountName: bd.bankAccountName || '',
+      bankAccountNumberLast4: bd.bankAccountNumberLast4 || '',
+      ifsc: bd.ifsc || '',
+      bankName: bd.bankName || '',
+      upiId: bd.upiId || '',
+      verified: !!bd.verified,
+      lastUpdatedAt: bd.lastUpdatedAt || null,
+    };
+    return res.json({ success: true, bankDetails: safe });
+  } catch (error) {
+    console.error('Get my bank details error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to fetch bank details' });
+  }
+});
+
 // Update bank details (requires recent OTP verification)
 // Body: { bankAccountName, bankAccountNumber, ifsc, bankName, upiId }
 router.patch('/me/bank-details', authenticate, async (req, res) => {
