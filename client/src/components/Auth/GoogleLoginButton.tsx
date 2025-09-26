@@ -21,8 +21,8 @@ export function GoogleLoginButton({ isRegister = false, onSuccess, onError }: Go
       const currentPath = window.location.pathname;
       // Construct the OAuth URL without duplicating /api
       const oauthUrl = API_URL.endsWith('/api') 
-        ? `${API_URL}/auth/google`
-        : `${API_URL}/api/auth/google`;
+        ? `${API_URL}/oauth/google`
+        : `${API_URL}/api/oauth/google`;
       
       // Redirect to backend OAuth endpoint with redirect path
       window.location.href = `${oauthUrl}?redirectTo=${encodeURIComponent(currentPath)}`;

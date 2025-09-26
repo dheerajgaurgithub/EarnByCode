@@ -41,8 +41,7 @@ import config from './config/config.js';
 // Import routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
-import rateLimit from 'express-rate-limit';
-import cors from 'cors';
+
 import problemRoutes from './routes/problems.js';
 import contestRoutes from './routes/contests.js';
 import submissionRoutes from './routes/submissions.js';
@@ -377,7 +376,7 @@ app.use(helmet({
 }));
 
 // CORS: restrict to frontend origin if provided
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || process.env.CLIENT_ORIGIN || '';
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || process.env.CLIENT_ORIGIN || 'https://algobucks-tau.vercel.app';
 app.use(cors({
   origin: FRONTEND_ORIGIN ? [FRONTEND_ORIGIN] : true,
   credentials: true,
@@ -445,7 +444,6 @@ app.use(passport.session());
 const publicPath = path.join(__dirname, '../../public');
 
 // Security headers (CSP) — restrict to strict origins
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || process.env.CLIENT_ORIGIN || 'https://algobucks-tau.vercel.app';
 const API_ORIGINS = [
   'https://algobucks.onrender.com',
   'http://localhost:5000',
@@ -504,6 +502,18 @@ app.use('/api/contest-problems', contestProblemRoutes);
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/blog', blogRoutes);
+
+// Backward-compatible aliases for legacy OAuth path (/api/auth/* -> /api/oauth/*)
+app.get('/api/auth/google', (req, res) => {
+  const qsIndex = req.originalUrl.indexOf('?');
+  const qs = qsIndex >= 0 ? req.originalUrl.slice(qsIndex) : '';
+  return res.redirect(302, `/api/oauth/google${qs}`);
+});
+app.get('/api/auth/google/callback', (req, res) => {
+  const qsIndex = req.originalUrl.indexOf('?');
+  const qs = qsIndex >= 0 ? req.originalUrl.slice(qsIndex) : '';
+  return res.redirect(302, `/api/oauth/google/callback${qs}`);
+});
 
 // --- Press Live Updates (SSE) ---
 // Simple in-memory feed and SSE broadcaster to support the Press page live updates
