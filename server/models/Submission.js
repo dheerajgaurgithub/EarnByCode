@@ -30,11 +30,19 @@ const submissionSchema = new mongoose.Schema({
     enum: ['Accepted', 'Wrong Answer', 'Time Limit Exceeded', 'Runtime Error', 'Compilation Error'],
     required: true
   },
+  // Formatted values (backward compatibility with existing data)
   runtime: {
     type: String
   },
   memory: {
     type: String
+  },
+  // Exact numeric values for analytics and accurate display
+  runtimeMs: {
+    type: Number
+  },
+  memoryKb: {
+    type: Number
   },
   testsPassed: {
     type: Number,

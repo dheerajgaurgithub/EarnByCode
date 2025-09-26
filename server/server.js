@@ -818,6 +818,29 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
       ignoreCase,
     });
 
+    // Parse numeric runtime/memory from result (best-effort)
+    const parseMs = (v) => {
+      if (v == null) return undefined;
+      if (typeof v === 'number') return Math.round(v);
+      const m = String(v).match(/([0-9]+(?:\.[0-9]+)?)\s*ms/i);
+      if (m) return Math.round(parseFloat(m[1]));
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.round(n) : undefined;
+    };
+    const parseKb = (v) => {
+      if (v == null) return undefined;
+      if (typeof v === 'number') return Math.round(v);
+      const s = String(v);
+      const mb = s.match(/([0-9]+(?:\.[0-9]+)?)\s*mb/i);
+      if (mb) return Math.round(parseFloat(mb[1]) * 1024);
+      const kb = s.match(/([0-9]+(?:\.[0-9]+)?)\s*kb/i);
+      if (kb) return Math.round(parseFloat(kb[1]));
+      const n = Number(v);
+      return Number.isFinite(n) ? Math.round(n) : undefined;
+    };
+    const runtimeMs = parseMs(result?.runtime);
+    const memoryKb = parseKb(result?.memory);
+
     const submission = new Submission({
       user: req.user._id,
       problem: problem._id,
@@ -826,6 +849,8 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
       status: result?.status || 'Submitted',
       runtime: result?.runtime,
       memory: result?.memory,
+      runtimeMs,
+      memoryKb,
       testsPassed: Number(result?.testsPassed || 0),
       totalTests: Number(result?.totalTests || (problem.testCases?.length || 0)),
       score: Number(result?.score || 0),
@@ -857,7 +882,7 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
       }
     }
 
-    return res.json({ submission, result: { ...(result || {}), earnedCodecoin } });
+    return res.json({ submission, result: { ...(result || {}), runtimeMs, memoryKb, earnedCodecoin } });
   } catch (err) {
     console.error('Legacy /api/code/submit error:', err);
     return res.status(500).json({ status: 'error', message: 'Failed to submit code' });

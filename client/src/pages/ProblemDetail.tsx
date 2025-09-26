@@ -353,7 +353,7 @@ const ProblemDetail: React.FC = () => {
         return n > 4096 ? Math.round(n / 1024) : Math.round(n);
       };
       const runtimeMs = parseMs(rawTime);
-      // Note: memoryKb not used in UI; skip storing to silence lints
+      const memoryKb = parseKb(rawMem);
 
       const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
       const hasExpected = typeof exampleOutput === 'string' && exampleOutput.trim().length > 0;
@@ -369,7 +369,7 @@ const ProblemDetail: React.FC = () => {
         message: err ? 'Execution error' : undefined,
         error: err || undefined,
         runtimeMs,
-        // memoryKb
+        memoryKb,
       });
     } catch (error: unknown) {
       console.error('Error running code:', error);
