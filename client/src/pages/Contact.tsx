@@ -85,33 +85,33 @@ const Contact: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-sky-100 dark:from-gray-950 dark:via-black dark:to-gray-900 text-sky-900 dark:text-green-300 py-3 sm:py-4 lg:py-6 px-3 sm:px-4 lg:px-6 transition-colors duration-300">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-sky-100 dark:from-gray-950 dark:via-black dark:to-gray-900 text-sky-900 dark:text-green-300 py-2 sm:py-3 lg:py-4 px-3 sm:px-4 lg:px-5 transition-colors duration-300">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
-        <div className="text-center mb-6 sm:mb-8 lg:mb-12">
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-sky-600 via-sky-500 to-sky-700 dark:from-green-400 dark:via-green-300 dark:to-green-500 bg-clip-text text-transparent mb-3 sm:mb-4 transition-all duration-300">
+        <div className="text-center mb-4 sm:mb-6 lg:mb-8">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold bg-gradient-to-r from-sky-600 via-sky-500 to-sky-700 dark:from-green-400 dark:via-green-300 dark:to-green-500 bg-clip-text text-transparent mb-2 sm:mb-3 transition-all duration-300">
             Contact Us
           </h1>
-          <p className="text-sm sm:text-base lg:text-lg text-sky-700 dark:text-green-300 max-w-3xl mx-auto leading-relaxed px-3 transition-colors duration-300 font-medium">
+          <p className="text-xs sm:text-sm lg:text-base text-sky-700 dark:text-green-300 max-w-2xl mx-auto leading-relaxed px-3 transition-colors duration-300 font-medium">
             Have questions or feedback? We'd love to hear from you!
           </p>
         </div>
   
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 sm:gap-8 lg:gap-10">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
           {/* Contact Information */}
           <div className="order-2 xl:order-1">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-sky-900 dark:text-green-400 mb-4 sm:mb-6 lg:mb-8 transition-colors duration-300">Get in Touch</h2>
+            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-sky-900 dark:text-green-400 mb-3 sm:mb-4 lg:mb-5 transition-colors duration-300">Get in Touch</h2>
             
-            <div className="space-y-4 sm:space-y-6">
-              <div className="group flex items-start p-4 sm:p-5 lg:p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl border border-sky-200/50 dark:border-green-800/30 shadow-lg hover:shadow-xl hover:border-sky-300/70 dark:hover:border-green-700/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
-                <div className="text-sky-600 dark:text-green-400 mr-3 sm:mr-4 mt-1 flex-shrink-0 group-hover:text-sky-700 dark:group-hover:text-green-300 transition-colors duration-300">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
-                    <MapPin className="w-5 h-5 sm:w-6 sm:h-6" />
+            <div className="space-y-3 sm:space-y-4">
+              <div className="group flex items-start p-3 sm:p-4 lg:p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-xl border border-sky-200/50 dark:border-green-800/30 shadow-lg hover:shadow-xl hover:border-sky-300/70 dark:hover:border-green-700/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
+                <div className="text-sky-600 dark:text-green-400 mr-2 sm:mr-3 mt-1 flex-shrink-0 group-hover:text-sky-700 dark:group-hover:text-green-300 transition-colors duration-300">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-10 lg:h-10 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                    <MapPin className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-bold text-sky-900 dark:text-green-400 mb-2 sm:mb-3 transition-colors duration-300">Our Office</h3>
-                  <div className="space-y-1 text-sky-700 dark:text-green-300 mb-2 text-sm sm:text-base transition-colors duration-300">
+                  <h3 className="text-sm sm:text-base font-bold text-sky-900 dark:text-green-400 mb-1 sm:mb-2 transition-colors duration-300">Our Office</h3>
+                  <div className="space-y-0.5 text-sky-700 dark:text-green-300 mb-1 text-xs sm:text-sm transition-colors duration-300">
                     <p className="font-semibold">NH-2 Delhi-Agra</p>
                     <p className="font-semibold">GLA University, Mathura 281406</p>
                     <p className="font-semibold">Uttar Pradesh, India</p>
@@ -119,50 +119,50 @@ const Contact: React.FC = () => {
                 </div>
               </div>
   
-              <div className="group flex items-start p-4 sm:p-5 lg:p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl border border-sky-200/50 dark:border-green-800/30 shadow-lg hover:shadow-xl hover:border-sky-300/70 dark:hover:border-green-700/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
-                <div className="text-sky-600 dark:text-green-400 mr-3 sm:mr-4 mt-1 flex-shrink-0 group-hover:text-sky-700 dark:group-hover:text-green-300 transition-colors duration-300">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
-                    <Mail className="w-5 h-5 sm:w-6 sm:h-6" />
+              <div className="group flex items-start p-3 sm:p-4 lg:p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-xl border border-sky-200/50 dark:border-green-800/30 shadow-lg hover:shadow-xl hover:border-sky-300/70 dark:hover:border-green-700/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
+                <div className="text-sky-600 dark:text-green-400 mr-2 sm:mr-3 mt-1 flex-shrink-0 group-hover:text-sky-700 dark:group-hover:text-green-300 transition-colors duration-300">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-10 lg:h-10 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                    <Mail className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-bold text-sky-900 dark:text-green-400 mb-2 sm:mb-3 transition-colors duration-300">Email Us</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-sky-900 dark:text-green-400 mb-1 sm:mb-2 transition-colors duration-300">Email Us</h3>
                   <a 
                     href="mailto:hello@algobucks.com" 
-                    className="text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-colors duration-300 text-sm sm:text-base font-bold hover:underline break-all block mb-1"
+                    className="text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-colors duration-300 text-xs sm:text-sm font-bold hover:underline break-all block mb-0.5"
                   >
                     hello@algobucks.com
                   </a>
-                  <p className="text-sky-500 dark:text-green-300/70 text-xs sm:text-sm font-medium transition-colors duration-300">
+                  <p className="text-sky-500 dark:text-green-300/70 text-xs font-medium transition-colors duration-300">
                     We typically respond within 24 hours
                   </p>
                 </div>
               </div>
   
-              <div className="group flex items-start p-4 sm:p-5 lg:p-6 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl border border-sky-200/50 dark:border-green-800/30 shadow-lg hover:shadow-xl hover:border-sky-300/70 dark:hover:border-green-700/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
-                <div className="text-sky-600 dark:text-green-400 mr-3 sm:mr-4 mt-1 flex-shrink-0 group-hover:text-sky-700 dark:group-hover:text-green-300 transition-colors duration-300">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 rounded-2xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
-                    <Phone className="w-5 h-5 sm:w-6 sm:h-6" />
+              <div className="group flex items-start p-3 sm:p-4 lg:p-4 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-xl border border-sky-200/50 dark:border-green-800/30 shadow-lg hover:shadow-xl hover:border-sky-300/70 dark:hover:border-green-700/50 transition-all duration-300 transform hover:-translate-y-1 hover:scale-105">
+                <div className="text-sky-600 dark:text-green-400 mr-2 sm:mr-3 mt-1 flex-shrink-0 group-hover:text-sky-700 dark:group-hover:text-green-300 transition-colors duration-300">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 lg:w-10 lg:h-10 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 rounded-xl flex items-center justify-center group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-lg">
+                    <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-lg font-bold text-sky-900 dark:text-green-400 mb-2 sm:mb-3 transition-colors duration-300">Call Us</h3>
+                  <h3 className="text-sm sm:text-base font-bold text-sky-900 dark:text-green-400 mb-1 sm:mb-2 transition-colors duration-300">Call Us</h3>
                   <a 
                     href="tel:+916397684456" 
-                    className="text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-colors duration-300 text-sm sm:text-base font-bold hover:underline block mb-1"
+                    className="text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-colors duration-300 text-xs sm:text-sm font-bold hover:underline block mb-0.5"
                   >
                     +91 63976 84456
                   </a>
-                  <p className="text-sky-500 dark:text-green-300/70 text-xs sm:text-sm font-medium transition-colors duration-300">
+                  <p className="text-sky-500 dark:text-green-300/70 text-xs font-medium transition-colors duration-300">
                     Monday - Friday, 9:00 AM - 5:00 PM IST
                   </p>
                 </div>
               </div>
             </div>
   
-            <div className="mt-6 sm:mt-8 lg:mt-10">
-              <h3 className="text-base sm:text-lg lg:text-xl font-bold text-sky-900 dark:text-green-400 mb-3 sm:mb-4 lg:mb-6 transition-colors duration-300">Follow Us</h3>
-              <div className="flex flex-wrap gap-3 sm:gap-4">
+            <div className="mt-4 sm:mt-6 lg:mt-6">
+              <h3 className="text-sm sm:text-base lg:text-lg font-bold text-sky-900 dark:text-green-400 mb-2 sm:mb-3 lg:mb-4 transition-colors duration-300">Follow Us</h3>
+              <div className="flex flex-wrap gap-2 sm:gap-3">
                 {[
                   { name: 'Twitter', url: 'https://twitter.com/codearena', color: 'from-sky-400 to-sky-600', darkColor: 'dark:from-green-500 dark:to-green-700' },
                   { name: 'GitHub', url: 'https://github.com/codearena', color: 'from-sky-500 to-sky-700', darkColor: 'dark:from-green-600 dark:to-green-800' },
@@ -174,11 +174,11 @@ const Contact: React.FC = () => {
                     href={social.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-sky-700 dark:text-green-300 hover:text-white dark:hover:text-white transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-black rounded-2xl"
+                    className="text-sky-700 dark:text-green-300 hover:text-white dark:hover:text-white transition-all duration-300 group focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-500 focus:ring-offset-2 dark:focus:ring-offset-black rounded-xl"
                     aria-label={social.name}
                   >
                     <span className="sr-only">{social.name}</span>
-                    <div className={`w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-2xl bg-gradient-to-br ${social.color} ${social.darkColor} flex items-center justify-center hover:scale-110 hover:rotate-6 transition-all duration-300 font-bold text-sm sm:text-base text-white shadow-lg hover:shadow-xl`}>
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 lg:w-10 lg:h-10 rounded-xl bg-gradient-to-br ${social.color} ${social.darkColor} flex items-center justify-center hover:scale-110 hover:rotate-6 transition-all duration-300 font-bold text-xs sm:text-sm text-white shadow-lg hover:shadow-xl`}>
                       {social.name[0]}
                     </div>
                   </a>
@@ -188,29 +188,29 @@ const Contact: React.FC = () => {
           </div>
   
           {/* Contact Form */}
-          <div className="order-1 xl:order-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl p-4 sm:p-6 lg:p-8 border border-sky-200/50 dark:border-green-800/30 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-            <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-sky-900 dark:text-green-400 mb-4 sm:mb-6 lg:mb-8 transition-colors duration-300">Send Us a Message</h2>
+          <div className="order-1 xl:order-2 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl p-3 sm:p-4 lg:p-5 border border-sky-200/50 dark:border-green-800/30 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+            <h2 className="text-base sm:text-lg lg:text-xl font-bold text-sky-900 dark:text-green-400 mb-3 sm:mb-4 lg:mb-5 transition-colors duration-300">Send Us a Message</h2>
             
             {submitStatus && (
-              <div className={`mb-4 sm:mb-6 p-3 sm:p-4 rounded-xl border transition-all duration-300 ${
+              <div className={`mb-3 sm:mb-4 p-2 sm:p-3 rounded-lg border transition-all duration-300 ${
                 submitStatus.success 
                   ? 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800' 
                   : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-400 border-red-200 dark:border-red-800'
               }`}>
                 <div className="flex items-start">
                   {submitStatus.success ? (
-                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 mt-0.5 flex-shrink-0" />
+                    <CheckCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-2 mt-0.5 flex-shrink-0" />
                   ) : (
-                    <XCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2 mt-0.5 flex-shrink-0" />
+                    <XCircle className="w-3 h-3 sm:w-4 sm:h-4 mr-2 mt-0.5 flex-shrink-0" />
                   )}
-                  <span className="font-semibold text-sm sm:text-base">{submitStatus.message}</span>
+                  <span className="font-semibold text-xs sm:text-sm">{submitStatus.message}</span>
                 </div>
               </div>
             )}
   
-            <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
-                <label htmlFor="name" className="block text-sm sm:text-base font-bold text-sky-800 dark:text-green-400 mb-2 transition-colors duration-300">
+                <label htmlFor="name" className="block text-xs sm:text-sm font-bold text-sky-800 dark:text-green-400 mb-1 transition-colors duration-300">
                   Full Name *
                 </label>
                 <input
@@ -220,13 +220,13 @@ const Contact: React.FC = () => {
                   value={formData.name}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-sky-200/60 dark:border-green-700/40 rounded-xl focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:border-sky-500 dark:focus:border-green-400 transition-all duration-300 text-sky-900 dark:text-green-200 font-medium hover:border-sky-400 dark:hover:border-green-600 text-sm sm:text-base placeholder-sky-400 dark:placeholder-green-400/60 shadow-sm hover:shadow-md focus:shadow-lg"
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-sky-200/60 dark:border-green-700/40 rounded-lg focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:border-sky-500 dark:focus:border-green-400 transition-all duration-300 text-sky-900 dark:text-green-200 font-medium hover:border-sky-400 dark:hover:border-green-600 text-xs sm:text-sm placeholder-sky-400 dark:placeholder-green-400/60 shadow-sm hover:shadow-md focus:shadow-lg"
                   placeholder="Mahir Gaur"
                 />
               </div>
   
               <div>
-                <label htmlFor="email" className="block text-sm sm:text-base font-bold text-sky-800 dark:text-green-400 mb-2 transition-colors duration-300">
+                <label htmlFor="email" className="block text-xs sm:text-sm font-bold text-sky-800 dark:text-green-400 mb-1 transition-colors duration-300">
                   Email Address *
                 </label>
                 <input
@@ -236,13 +236,13 @@ const Contact: React.FC = () => {
                   value={formData.email}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-sky-200/60 dark:border-green-700/40 rounded-xl focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:border-sky-500 dark:focus:border-green-400 transition-all duration-300 text-sky-900 dark:text-green-200 font-medium hover:border-sky-400 dark:hover:border-green-600 text-sm sm:text-base placeholder-sky-400 dark:placeholder-green-400/60 shadow-sm hover:shadow-md focus:shadow-lg"
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-sky-200/60 dark:border-green-700/40 rounded-lg focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:border-sky-500 dark:focus:border-green-400 transition-all duration-300 text-sky-900 dark:text-green-200 font-medium hover:border-sky-400 dark:hover:border-green-600 text-xs sm:text-sm placeholder-sky-400 dark:placeholder-green-400/60 shadow-sm hover:shadow-md focus:shadow-lg"
                   placeholder="mahir@gmail.com"
                 />
               </div>
   
               <div>
-                <label htmlFor="subject" className="block text-sm sm:text-base font-bold text-sky-800 dark:text-green-400 mb-2 transition-colors duration-300">
+                <label htmlFor="subject" className="block text-xs sm:text-sm font-bold text-sky-800 dark:text-green-400 mb-1 transition-colors duration-300">
                   Subject *
                 </label>
                 <select
@@ -251,7 +251,7 @@ const Contact: React.FC = () => {
                   value={formData.subject}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-sky-200/60 dark:border-green-700/40 rounded-xl focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:border-sky-500 dark:focus:border-green-400 transition-all duration-300 text-sky-900 dark:text-green-200 font-medium hover:border-sky-400 dark:hover:border-green-600 text-sm sm:text-base shadow-sm hover:shadow-md focus:shadow-lg"
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-sky-200/60 dark:border-green-700/40 rounded-lg focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:border-sky-500 dark:focus:border-green-400 transition-all duration-300 text-sky-900 dark:text-green-200 font-medium hover:border-sky-400 dark:hover:border-green-600 text-xs sm:text-sm shadow-sm hover:shadow-md focus:shadow-lg"
                 >
                   <option value="" disabled className="text-sky-400 dark:text-green-400/60">Select a subject</option>
                   <option value="General Inquiry" className="text-sky-900 dark:text-green-200">General Inquiry</option>
@@ -263,17 +263,17 @@ const Contact: React.FC = () => {
               </div>
   
               <div>
-                <label htmlFor="message" className="block text-sm sm:text-base font-bold text-sky-800 dark:text-green-400 mb-2 transition-colors duration-300">
+                <label htmlFor="message" className="block text-xs sm:text-sm font-bold text-sky-800 dark:text-green-400 mb-1 transition-colors duration-300">
                   Message *
                 </label>
                 <textarea
                   id="message"
                   name="message"
-                  rows={4}
+                  rows={3}
                   value={formData.message}
                   onChange={handleChange}
                   required
-                  className="w-full px-3 sm:px-4 py-2 sm:py-3 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-sky-200/60 dark:border-green-700/40 rounded-xl focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:border-sky-500 dark:focus:border-green-400 transition-all duration-300 text-sky-900 dark:text-green-200 font-medium hover:border-sky-400 dark:hover:border-green-600 resize-none text-sm sm:text-base placeholder-sky-400 dark:placeholder-green-400/60 shadow-sm hover:shadow-md focus:shadow-lg"
+                  className="w-full px-2 sm:px-3 py-1.5 sm:py-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-sky-200/60 dark:border-green-700/40 rounded-lg focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:border-sky-500 dark:focus:border-green-400 transition-all duration-300 text-sky-900 dark:text-green-200 font-medium hover:border-sky-400 dark:hover:border-green-600 resize-none text-xs sm:text-sm placeholder-sky-400 dark:placeholder-green-400/60 shadow-sm hover:shadow-md focus:shadow-lg"
                   placeholder="How can we help you?"
                 ></textarea>
               </div>
@@ -282,7 +282,7 @@ const Contact: React.FC = () => {
                 <button
                   type="submit"
                   disabled={isSubmitting}
-                  className={`group flex items-center justify-center w-full px-4 sm:px-6 py-3 sm:py-4 rounded-xl font-bold text-sm sm:text-base transition-all duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:ring-offset-2 dark:focus:ring-offset-black ${
+                  className={`group flex items-center justify-center w-full px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-bold text-xs sm:text-sm transition-all duration-300 shadow-lg hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-400 focus:ring-offset-2 dark:focus:ring-offset-black ${
                     isSubmitting
                       ? 'bg-sky-400 dark:bg-green-600 cursor-not-allowed opacity-75'
                       : 'bg-gradient-to-r from-sky-500 to-sky-600 dark:from-green-600 dark:to-green-700 hover:from-sky-600 hover:to-sky-700 dark:hover:from-green-700 dark:hover:to-green-800 hover:scale-105 active:scale-95 transform'
@@ -293,7 +293,7 @@ const Contact: React.FC = () => {
                       'Sending...'
                     ) : (
                       <>
-                        <Send className="w-4 h-4 sm:w-5 sm:h-5 mr-2 group-hover:translate-x-1 transition-transform duration-300" />
+                        <Send className="w-3 h-3 sm:w-4 sm:h-4 mr-1.5 group-hover:translate-x-1 transition-transform duration-300" />
                         Send Message
                       </>
                     )}
@@ -305,14 +305,14 @@ const Contact: React.FC = () => {
         </div>
   
         {/* Map */}
-        <div className="mt-8 sm:mt-12 lg:mt-16 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-3xl overflow-hidden border border-sky-200/50 dark:border-green-800/30 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-          <div className="h-64 sm:h-80 lg:h-96 w-full bg-gradient-to-br from-sky-100 to-sky-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center relative overflow-hidden transition-colors duration-300">
-            <div className="text-center p-4 sm:p-6 relative z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-2xl border border-sky-200/60 dark:border-green-700/40 shadow-xl transition-all duration-300 transform hover:scale-105">
-              <div className="w-12 h-12 sm:w-16 sm:h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 transition-colors duration-300 shadow-lg">
-                <MapPin className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 text-sky-600 dark:text-green-400" />
+        <div className="mt-6 sm:mt-8 lg:mt-10 bg-white/90 dark:bg-gray-900/90 backdrop-blur-sm rounded-2xl overflow-hidden border border-sky-200/50 dark:border-green-800/30 shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+          <div className="h-48 sm:h-60 lg:h-64 w-full bg-gradient-to-br from-sky-100 to-sky-200 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center relative overflow-hidden transition-colors duration-300">
+            <div className="text-center p-3 sm:p-4 relative z-10 bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-xl border border-sky-200/60 dark:border-green-700/40 shadow-xl transition-all duration-300 transform hover:scale-105">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 rounded-xl flex items-center justify-center mx-auto mb-2 sm:mb-3 transition-colors duration-300 shadow-lg">
+                <MapPin className="w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7 text-sky-600 dark:text-green-400" />
               </div>
-              <h3 className="text-base sm:text-lg lg:text-xl font-bold text-sky-900 dark:text-green-400 mb-2 sm:mb-3 transition-colors duration-300">Our Location</h3>
-              <p className="text-sky-700 dark:text-green-300 max-w-md font-semibold text-sm sm:text-base transition-colors duration-300">
+              <h3 className="text-sm sm:text-base lg:text-lg font-bold text-sky-900 dark:text-green-400 mb-1 sm:mb-2 transition-colors duration-300">Our Location</h3>
+              <p className="text-sky-700 dark:text-green-300 max-w-md font-semibold text-xs sm:text-sm transition-colors duration-300">
                 Visit our office at 27.6062° N, 77.5973° E
               </p>
             </div>
