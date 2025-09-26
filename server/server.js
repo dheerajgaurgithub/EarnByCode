@@ -41,7 +41,6 @@ import config from './config/config.js';
 // Import routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
-import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
 import cors from 'cors';
 import problemRoutes from './routes/problems.js';
