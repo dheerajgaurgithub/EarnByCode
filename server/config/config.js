@@ -17,7 +17,8 @@ const config = {
   // Server
   NODE_ENV: process.env.NODE_ENV || 'development',
   PORT: process.env.PORT || 5000,
-  API_URL: process.env.API_URL || 'http://localhost:5000',
+  // Prefer explicit API_URL, else platform-provided public URL (e.g., Render), else localhost
+  API_URL: process.env.API_URL || process.env.RENDER_EXTERNAL_URL || 'http://localhost:5000',
   
   // Database
   MONGODB_URI: process.env.MONGODB_URI || 'mongodb+srv://coder9265_db_user:girlfriend160106@dataset.ohcvuvo.mongodb.net/?retryWrites=true&w=majority&appName=DataSet',
