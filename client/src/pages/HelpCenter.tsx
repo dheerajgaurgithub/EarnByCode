@@ -6,7 +6,7 @@ const HelpCenter = () => {
   const { user } = useAuth();
   const [activeCategory, setActiveCategory] = useState<number | null>(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [chatOpen, setChatOpen] = useState(true);
+  const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string }[]>([
     { role: 'assistant', text: 'Hi! I am the AlgoBucks Help Assistant. Ask me anything about this website—features, pages, navigation, submissions, contests, policies, or how to contact support.' },
@@ -29,7 +29,7 @@ const HelpCenter = () => {
     return base.replace(/\/$/, '');
   };
 
-  // FAQ categories and questions
+  // FAQ categories and questions (focused on web application)
   const faqCategories = [
     {
       id: 1,
@@ -39,68 +39,123 @@ const HelpCenter = () => {
         {
           id: 1,
           question: 'How do I create an account?',
-          answer: 'To create an account, click on the "Sign Up" button in the top right corner and follow the registration process.'
+          answer: 'Click Sign Up in the header or go to /register, then confirm your email to get started.'
         },
         {
           id: 2,
-          question: 'Is there a free trial available?',
-          answer: 'Yes, we offer a 14-day free trial for all new users to explore our platform.'
+          question: 'Where do I find coding problems?',
+          answer: 'Go to the Problems page (/problems). Open any problem to see its description, examples, and constraints.'
         },
         {
           id: 3,
-          question: 'What are the system requirements?',
-          answer: 'Our platform works on all modern web browsers. For the best experience, we recommend using the latest version of Chrome, Firefox, Safari, or Edge.'
+          question: 'What browsers are supported?',
+          answer: 'AlgoBucks works on modern browsers (Chrome, Firefox, Safari, Edge). Keep your browser updated for the best experience.'
+        },
+        {
+          id: 11,
+          question: 'How do I verify my email?',
+          answer: 'After registering, check your inbox for a verification link. You can also visit /verify-email if prompted.'
         }
       ]
     },
     {
       id: 2,
-      name: 'Account & Billing',
-      icon: '💳',
+      name: 'Problems & Submissions',
+      icon: '💻',
       questions: [
         {
           id: 4,
-          question: 'How do I update my payment method?',
-          answer: 'You can update your payment method in the Billing section of your account settings.'
+          question: 'How do I submit a solution?',
+          answer: 'Open a problem from /problems, write code in the editor, run tests, then click Submit. Accepted submissions count toward your profile.'
         },
         {
           id: 5,
-          question: 'How do I cancel my subscription?',
-          answer: 'You can cancel your subscription at any time in the Billing section of your account settings.'
+          question: 'Where can I see all my submissions?',
+          answer: 'Visit /submissions to view all your submissions with status and details. Recent submissions also appear on the problem page and on your Profile.'
+        },
+        {
+          id: 12,
+          question: 'Why is my submission failing hidden tests?',
+          answer: 'Ensure you follow the exact input/output format, handle edge cases (empty arrays, large inputs), and respect constraints and time limits.'
         }
       ]
     },
     {
       id: 3,
-      name: 'Trading & Algorithms',
-      icon: '📊',
+      name: 'Contests',
+      icon: '🏁',
       questions: [
         {
           id: 6,
-          question: 'How do I create a trading algorithm?',
-          answer: 'Navigate to the Algorithms section and click "Create New Algorithm" to get started with our algorithm builder.'
+          question: 'How do I join a contest?',
+          answer: 'Go to /contests, open a contest, and click Join. During the contest, solve the listed problems and your ranking will appear in results.'
         },
         {
           id: 7,
-          question: 'What programming languages are supported?',
-          answer: 'We currently support Python and JavaScript for algorithm development.'
+          question: 'Where can I see contest results?',
+          answer: 'After a contest ends, results are visible on the contest page and the leaderboard.'
+        },
+        {
+          id: 13,
+          question: 'Is there a contest timer?',
+          answer: 'Contests display timers on their pages. Make sure to submit solutions before time runs out.'
         }
       ]
     },
     {
       id: 4,
-      name: 'Troubleshooting',
-      icon: '🔧',
+      name: 'Account & Support',
+      icon: '🛠️',
       questions: [
         {
           id: 8,
-          question: 'I forgot my password. How can I reset it?',
-          answer: 'Click on "Forgot Password" on the login page and follow the instructions sent to your email.'
+          question: 'How do I change my settings?',
+          answer: 'Open /settings to update your preferences. Your profile stats are on /profile.'
+        },
+        {
+          id: 15,
+          question: 'How do I change my password?',
+          answer: 'Go to /settings (Security section) to change your password. If you forgot it, use the Forgot Password link on the Login page.'
+        },
+        {
+          id: 16,
+          question: 'How do I delete my account?',
+          answer: 'Request account deletion from /settings (Account section). Deletion may be irreversible and may remove submissions and contest history.'
         },
         {
           id: 9,
-          question: 'Why is my algorithm not executing?',
-          answer: 'Check your algorithm for syntax errors and ensure all required parameters are set correctly.'
+          question: 'How do I contact support?',
+          answer: 'Use the Contact page (/contact) or email coder9265@gmail.com.'
+        },
+        {
+          id: 10,
+          question: 'Where can I read your policies?',
+          answer: 'See /privacy, /terms, and /cookies for our policies.'
+        },
+        {
+          id: 14,
+          question: 'How do I report a bug?',
+          answer: 'Share details on the Contact page (/contact) or email coder9265@gmail.com with steps to reproduce.'
+        },
+        {
+          id: 17,
+          question: 'How do I add or update my bank details?',
+          answer: 'Go to /wallet to manage wallet and payouts. Add or update bank details in the Wallet/Bank section. Ensure IFSC/UPI are correct before saving.'
+        },
+        {
+          id: 18,
+          question: 'How do I update my profile?',
+          answer: 'Open /profile to edit your bio, links, and other fields. Some fields are editable under /settings as well.'
+        },
+        {
+          id: 19,
+          question: 'How do I change preferences and theme?',
+          answer: 'Go to /settings. Under Preferences, you can change language, timezone, editor options, and theme (light/dark/auto).'
+        },
+        {
+          id: 20,
+          question: 'How do I enable notifications?',
+          answer: 'In /settings, enable email notifications such as contest reminders and submission results. Browser push notifications may also be available if prompted.'
         }
       ]
     }
@@ -318,21 +373,15 @@ const HelpCenter = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-100 py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
-      {/* Background decoration */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute -top-32 sm:-top-40 -right-24 sm:-right-32 w-64 sm:w-80 h-64 sm:h-80 bg-blue-200/30 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-32 sm:-bottom-40 -left-24 sm:-left-32 w-64 sm:w-80 h-64 sm:h-80 bg-indigo-200/30 rounded-full blur-3xl"></div>
-      </div>
-
-      <div className="max-w-5xl mx-auto relative z-10">
+    <div className="min-h-screen bg-white dark:bg-gray-950 py-6 sm:py-8 lg:py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8 sm:mb-10 lg:mb-12">
-          <h1 className="text-3xl sm:text-4xl lg:text-5xl xl:text-6xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent mb-3 sm:mb-4 leading-tight">
-            How can we help you?
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-green-200 mb-2">
+            Help Center
           </h1>
-          <p className="text-base sm:text-lg lg:text-xl text-gray-600 max-w-2xl lg:max-w-3xl mx-auto px-2">
-            Find answers to common questions or get in touch with our support team.
+          <p className="text-sm sm:text-base text-slate-700 dark:text-green-300 max-w-2xl mx-auto px-2">
+            Find answers about using AlgoBucks, or contact our support team.
           </p>
         </div>
 
@@ -417,53 +466,28 @@ const HelpCenter = () => {
           </div>
         )}
 
-        {/* Contact Support */}
-        <div className="bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl sm:rounded-3xl p-6 sm:p-8 lg:p-10 shadow-xl">
+        {/* Contact Support (simple) */}
+        <div className="rounded-xl p-6 border border-sky-200 dark:border-green-800 bg-white dark:bg-gray-900">
           <div className="text-center">
-            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/20 backdrop-blur-sm mb-4 sm:mb-6">
-              <MessageSquare className="w-5 h-5 sm:w-6 sm:h-6 lg:w-8 lg:h-8 text-white" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-sky-50 dark:bg-green-900/30 mb-4">
+              <MessageSquare className="w-5 h-5 text-sky-600 dark:text-green-400" />
             </div>
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white mb-2 sm:mb-3">Still need help?</h2>
-            <p className="text-blue-100 text-sm sm:text-base lg:text-lg mb-6 sm:mb-8 max-w-xl lg:max-w-2xl mx-auto leading-relaxed px-2">
-              Our support team is here to help you with any questions or issues you might have.
+            <h2 className="text-xl font-bold mb-2">Still need help?</h2>
+            <p className="text-sm text-slate-700 dark:text-green-300 mb-4 max-w-xl mx-auto">
+              Our support team is here to help with any questions about using AlgoBucks.
             </p>
-            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center max-w-md sm:max-w-none mx-auto">
-              <a
-                href="mailto:coder9265@gmail.com"
-                className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 bg-white text-blue-600 font-semibold rounded-xl sm:rounded-2xl hover:bg-blue-50 transition-all duration-300 flex items-center justify-center shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 text-sm sm:text-base"
-              >
-                <Mail className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Email Support
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <a href="mailto:coder9265@gmail.com" className="px-4 py-2 bg-sky-600 text-white font-semibold rounded-lg hover:bg-sky-700 inline-flex items-center justify-center text-sm">
+                <Mail className="w-4 h-4 mr-2" /> Email Support
               </a>
-              <a
-                href="/contact"
-                className="px-4 sm:px-6 lg:px-8 py-3 sm:py-4 border-2 border-white/30 text-white font-semibold rounded-xl sm:rounded-2xl hover:bg-white/10 hover:border-white/50 transition-all duration-300 flex items-center justify-center backdrop-blur-sm text-sm sm:text-base"
-              >
-                <HelpCircle className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-                Contact Form
+              <a href="/contact" className="px-4 py-2 border border-sky-300 dark:border-green-800 rounded-lg text-sm inline-flex items-center justify-center hover:bg-sky-50/70 dark:hover:bg-green-900/30">
+                <HelpCircle className="w-4 h-4 mr-2" /> Contact Form
               </a>
             </div>
           </div>
         </div>
 
-        {/* Quick help links - Mobile optimized */}
-        <div className="mt-8 sm:mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
-          <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-blue-100 hover:border-blue-200 transition-colors">
-            <div className="text-2xl sm:text-3xl mb-2 sm:mb-3">📚</div>
-            <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1 sm:mb-2">Documentation</h3>
-            <p className="text-gray-600 text-xs sm:text-sm">Comprehensive guides and API references</p>
-          </div>
-          <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-blue-100 hover:border-blue-200 transition-colors">
-            <div className="text-2xl sm:text-3xl mb-2 sm:mb-3">💬</div>
-            <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1 sm:mb-2">Community</h3>
-            <p className="text-gray-600 text-xs sm:text-sm">Join discussions with other users</p>
-          </div>
-          <div className="bg-white/60 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-blue-100 hover:border-blue-200 transition-colors sm:col-span-2 lg:col-span-1">
-            <div className="text-2xl sm:text-3xl mb-2 sm:mb-3">🎥</div>
-            <h3 className="font-semibold text-gray-900 text-sm sm:text-base mb-1 sm:mb-2">Video Tutorials</h3>
-            <p className="text-gray-600 text-xs sm:text-sm">Step-by-step video guides</p>
-          </div>
-        </div>
+        {/* Removed quick links to keep the Help Center focused on the web app */}
       </div>
       {/* Floating Chatbot */}
       <div className="fixed bottom-4 right-4 z-40">

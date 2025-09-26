@@ -15,6 +15,18 @@ const AnalyticsFAQSchema = new mongoose.Schema(
       min: 0,
       index: true,
     },
+    helpfulUp: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
+    helpfulDown: {
+      type: Number,
+      required: true,
+      default: 0,
+      min: 0,
+    },
   },
   {
     timestamps: true,

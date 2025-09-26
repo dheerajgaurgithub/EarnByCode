@@ -282,47 +282,82 @@ router.post('/verify-email', async (req, res) => {
 // Google OAuth routes are handled in oauth.js
 
 // Resend Verification Email
-router.post('/resend-verification', async (req, res) => {
+router.post('/forgot-password/request', async (req, res) => {
   try {
-    const { email } = req.body;
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
     const user = await User.findOne({ email });
-
     if (!user) {
-      return res.status(404).json({ message: 'User not found' });
+      return res.status(404).json({ message: 'This email is not registered' });
+    }
+    if (!user.isEmailVerified) {
+      return res.status(400).json({ message: 'Email is not verified. Please verify your email first.' });
     }
 
-    if (user.isEmailVerified) {
-      return res.status(400).json({ message: 'Email is already verified' });
-    }
-
-    // Generate new OTP
     const otp = generateOTP();
-    user.verificationToken = otp;
-    user.verificationTokenExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    user.resetPasswordToken = otp;
+    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
     await user.save();
 
-    // Send verification email
     try {
-      const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
-      const text = `Your verification code is ${otp}. It expires in 60 minutes.`;
+      const subject = process.env.EMAIL_SUBJECT_RESET || 'AlgoBucks: Password reset code';
+      const text = `Your password reset code is ${otp}. It expires in 15 minutes.`;
       const html = `
         <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>Verify your email</h2>
-          <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>
-          <p style=\"font-size: 22px; font-weight: 700; letter-spacing: 2px;\">${otp}</p>
-          <p style=\"color:#555\">This code expires in <strong>60 minutes</strong>.</p>
+          <h2>Password reset</h2>
+          <p>Use the code below to reset your password for <strong>AlgoBucks</strong>:</p>
+          <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
+          <p style="color:#555">This code expires in <strong>15 minutes</strong>.</p>
         </div>
       `;
       await sendEmail({ to: email, subject, text, html });
     } catch (e) {
-      console.error('Resend verification email error:', e);
-      return res.status(500).json({ message: 'Failed to send verification email' });
+      console.error('Send reset OTP email error:', e);
+      return res.status(500).json({ message: 'Failed to send reset code. Please try again later.' });
     }
 
-    res.status(200).json({ message: 'Verification email resent successfully' });
+    return res.status(200).json({ message: 'OTP has been sent to your verified email' });
   } catch (error) {
-    console.error('Resend verification error:', error);
-    res.status(500).json({ message: 'Server error while resending verification email' });
+    console.error('Forgot password request error:', error);
+    res.status(500).json({ message: 'Server error during password reset request' });
+  }
+});
+{{ ... }}
+// Step 2: Verify OTP (optional separate step)
+router.post('/forgot-password/verify', async (req, res) => {
+  try {
+    const { email, otp } = req.body || {};
+    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
+
+    const user = await User.findOne({ email, resetPasswordToken: otp, resetPasswordExpire: { $gt: Date.now() } });
+    if (!user) return res.status(400).json({ message: 'Invalid or expired OTP' });
+
+    return res.status(200).json({ message: 'OTP verified' });
+  } catch (error) {
+    console.error('Forgot password verify error:', error);
+    res.status(500).json({ message: 'Server error during OTP verification' });
+  }
+});
+
+// Step 3: Reset password with valid OTP
+router.post('/forgot-password/reset', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body || {};
+    if (!email || !otp || !newPassword) return res.status(400).json({ message: 'Email, OTP and newPassword are required' });
+
+    const user = await User.findOne({ email, resetPasswordToken: otp, resetPasswordExpire: { $gt: Date.now() } });
+    if (!user) return res.status(400).json({ message: 'Invalid or expired OTP' });
+
+    user.password = newPassword;
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    return res.status(200).json({ message: 'Password has been reset successfully' });
+  } catch (error) {
+    console.error('Forgot password reset error:', error);
+    res.status(500).json({ message: 'Server error during password reset' });
   }
 });
 

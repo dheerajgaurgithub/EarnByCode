@@ -9,6 +9,7 @@ import { I18nProvider } from '@/context/I18nContext';
 import { Header } from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
 import Home from './pages/Home';
+import ChatbotWidget from './components/ChatbotWidget';
 import { Problems } from './pages/Problems';
 import ProblemDetail from './pages/ProblemDetail';
 import { Contests } from './pages/Contests';
@@ -25,6 +26,7 @@ import SubmissionDetail from './pages/SubmissionDetail';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage';
 import VerifyEmailPage from './pages/Auth/VerifyEmail';
+import ForgotPassword from './pages/Auth/ForgotPassword';
 import { Settings } from './pages/Settings';
 import About from './pages/About';
 import Company from './pages/Company';
@@ -136,6 +138,10 @@ function App() {
     headerHiddenPrefixes.some((p) => pathname.startsWith(p)) ||
     headerHiddenExact.includes(pathname);
 
+  // Chatbot visibility logic: hide on problem details, contests, and help center
+  const chatbotHiddenPrefixes = ['/problems/', '/contests', '/help'];
+  const hideChatbot = chatbotHiddenPrefixes.some((p) => pathname.startsWith(p));
+
   // Enhanced toast configuration with better dark mode support
   const getToastOptions = () => {
     const isDarkMode = document.documentElement.classList.contains('dark');
@@ -214,6 +220,14 @@ function App() {
                 element={
                   <PublicRoute>
                     <VerifyEmailPage />
+                  </PublicRoute>
+                }
+              />
+              <Route
+                path="/forgot-password"
+                element={
+                  <PublicRoute>
+                    <ForgotPassword />
                   </PublicRoute>
                 }
               />
@@ -351,6 +365,7 @@ function App() {
           </main>
           
           {!hideFooter && <Footer />}
+          {!hideChatbot && <ChatbotWidget />}
         </div>
       </div>
       </I18nProvider>

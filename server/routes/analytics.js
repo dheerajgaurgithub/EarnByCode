@@ -27,6 +27,27 @@ router.post('/faq', async (req, res) => {
   }
 });
 
+// POST /api/analytics/faq/feedback
+// body: { question: string, vote: 'up' | 'down' }
+router.post('/faq/feedback', async (req, res) => {
+  try {
+    const { question, vote } = req.body || {};
+    const q = normalizeQuestion(question || '');
+    if (!q || (vote !== 'up' && vote !== 'down')) {
+      return res.status(400).json({ ok: false, message: 'invalid payload' });
+    }
+    const inc = vote === 'up' ? { helpfulUp: 1 } : { helpfulDown: 1 };
+    const updated = await AnalyticsFAQ.findOneAndUpdate(
+      { question: q },
+      { $inc: inc },
+      { new: true, upsert: true }
+    );
+    return res.json({ ok: true, item: updated });
+  } catch (e) {
+    return res.status(500).json({ ok: false, message: 'failed to record feedback', error: String(e?.message || e) });
+  }
+});
+
 // GET /api/analytics/faq/top?limit=10
 router.get('/faq/top', async (req, res) => {
   try {

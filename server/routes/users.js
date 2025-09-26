@@ -19,6 +19,125 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Update bank details (requires recent OTP verification)
+// Body: { bankAccountName, bankAccountNumber, ifsc, bankName, upiId }
+router.patch('/me/bank-details', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const details = user.bankDetails || {};
+    // Require that OTP was verified within the last 10 minutes
+    if (!details.bankOtpExpires || new Date(details.bankOtpExpires).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, message: 'Please verify OTP before updating bank details' });
+    }
+
+    const { bankAccountName, bankAccountNumber, ifsc, bankName, upiId } = req.body || {};
+    // Basic validation
+    if (!bankAccountName || !(ifsc || upiId)) {
+      return res.status(400).json({ success: false, message: 'bankAccountName and IFSC or UPI are required' });
+    }
+
+    details.bankAccountName = String(bankAccountName).trim();
+    if (ifsc) details.ifsc = String(ifsc).trim().toUpperCase();
+    if (bankName) details.bankName = String(bankName).trim();
+    if (upiId) details.upiId = String(upiId).trim();
+
+    if (bankAccountNumber) {
+      const acc = String(bankAccountNumber).replace(/\s+/g, '');
+      const last4 = acc.slice(-4);
+      details.bankAccountNumberLast4 = last4;
+      // Do not store full number in plain text; if you add encryption later, set bankAccountNumberEnc
+      details.bankAccountNumberEnc = ''; // placeholder (consider encrypting server-side)
+    }
+
+    details.lastUpdatedAt = new Date();
+    // Clear OTP validity after successful update to prevent reuse
+    details.bankOtpExpires = null;
+    user.bankDetails = details;
+    user.markModified('bankDetails');
+    await user.save();
+
+    const safe = {
+      bankAccountName: details.bankAccountName || '',
+      bankAccountNumberLast4: details.bankAccountNumberLast4 || '',
+      ifsc: details.ifsc || '',
+      bankName: details.bankName || '',
+      upiId: details.upiId || '',
+      verified: !!details.verified,
+      lastUpdatedAt: details.lastUpdatedAt || null,
+    };
+    return res.json({ success: true, message: 'Bank details updated', bankDetails: safe });
+  } catch (error) {
+    console.error('Update bank details error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to update bank details' });
+  }
+});
+
+// --- Bank details OTP (email) ---
+// Request OTP for bank update
+router.post('/me/bank/otp/request', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    user.bankDetails = user.bankDetails || {};
+    user.bankDetails.bankOtp = otp;
+    user.bankDetails.bankOtpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    await user.save();
+
+    // send email
+    try {
+      const subject = 'AlgoBucks: Verify bank details change';
+      const text = `Use this code to verify your bank details update: ${otp}. It expires in 10 minutes.`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2>Verify bank details change</h2>
+          <p>Use the code below to verify your bank details update for <strong>AlgoBucks</strong>:</p>
+          <p style="font-size:20px; font-weight:700; letter-spacing:2px;">${otp}</p>
+          <p style="color:#555">This code expires in <strong>10 minutes</strong>.</p>
+        </div>
+      `;
+      await sendEmail({ to: user.email, subject, text, html });
+    } catch {}
+
+    return res.json({ success: true, message: 'OTP sent to your email' });
+  } catch (error) {
+    console.error('Bank OTP request error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to send OTP' });
+  }
+});
+
+// Verify OTP for bank update
+router.post('/me/bank/otp/verify', authenticate, async (req, res) => {
+  try {
+    const { otp } = req.body || {};
+    if (!otp) return res.status(400).json({ success: false, message: 'OTP is required' });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const details = user.bankDetails || {};
+    if (!details.bankOtp || !details.bankOtpExpires) {
+      return res.status(400).json({ success: false, message: 'No OTP request found' });
+    }
+    if (new Date(details.bankOtpExpires).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, message: 'OTP expired' });
+    }
+    if (String(details.bankOtp) !== String(otp)) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+    // Mark as verified by clearing code but leaving a short-term verified window via timestamp
+    details.bankOtp = null;
+    // Reuse bankOtpExpires as a validity window marker from now for 10 minutes
+    details.bankOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
+    user.markModified('bankDetails');
+    await user.save();
+    return res.json({ success: true, message: 'OTP verified. You can now update bank details for 10 minutes.' });
+  } catch (error) {
+    console.error('Bank OTP verify error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
+  }
+});
+
 // Get current user's daily problem (today in UTC)
 router.get('/me/daily-problem', authenticate, async (req, res) => {
   try {

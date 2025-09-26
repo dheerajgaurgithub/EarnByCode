@@ -181,7 +181,10 @@ const userSchema = new mongoose.Schema({
     bankName: { type: String, trim: true },
     upiId: { type: String, trim: true },
     verified: { type: Boolean, default: false },
-    lastUpdatedAt: { type: Date }
+    lastUpdatedAt: { type: Date },
+    // OTP for bank detail updates
+    bankOtp: { type: String, default: null },
+    bankOtpExpires: { type: Date, default: null }
   },
   isAdmin: {
     type: Boolean,
