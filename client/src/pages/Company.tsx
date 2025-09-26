@@ -8,20 +8,22 @@ import imgDivesh from './Honors/divesh.png';
 import imgNeelesh from './Honors/neelesh.png';
 
 export const Company: React.FC = () => {
-  const team = [
-    { name: 'Dheeraj Gaur', role: 'CEO & Founder', image: imgDheeraj },
-    { name: 'Manish Kumar', role: 'Chief Technology Officer (CTO)', image: imgManish },
-    { name: 'Mukul Kumar', role: 'VP & Director of Engineering', image: imgMukul },
-    { name: 'Divesh Singh', role: 'Product Manager & Head of Product', image: imgDivesh },
-    { name: 'Neelesh Shakya', role: 'Technical Architect & Principal Engineer', image: imgNeelesh },
-  ];
+  const CEO_LINK = 'https://dheerajgaurofficial.netlify.app/';
+  const ceo = { name: 'Dheeraj Gaur', role: 'CEO & Founder', image: imgDheeraj, link: CEO_LINK } as const;
+  
+  const otherTeamMembers = [
+    { name: 'Manish Kumar', role: 'Chief Technology Officer (CTO)', image: imgManish, link: 'https://manishdev.tech/' },
+    { name: 'Mukul Kumar', role: 'VP & Director of Engineering', image: imgMukul, link: CEO_LINK },
+    { name: 'Divesh Singh', role: 'Product Manager & Head of Product', image: imgDivesh, link: CEO_LINK },
+    { name: 'Neelesh Shakya', role: 'Technical Architect & Principal Engineer', image: imgNeelesh, link: CEO_LINK },
+  ] as const;
 
   return (
     <div className="min-h-screen bg-white dark:bg-gray-950 text-slate-900 dark:text-green-200 py-6 px-4">
       <div className="max-w-4xl mx-auto">
         <header className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-sky-100 dark:bg-green-900/40 mb-3">
-            <Building className="w-6 h-6 text-sky-600 dark:text-green-400" />
+            <img src="./logo.png" alt="./logo.png" />
           </div>
           <h1 className="text-2xl font-bold">About AlgoBucks</h1>
           <p className="text-sm text-slate-600 dark:text-green-300 mt-2 max-w-2xl mx-auto">
@@ -61,17 +63,30 @@ export const Company: React.FC = () => {
 
         {/* Team */}
         <section className="mb-8">
-          <h2 className="text-lg font-semibold mb-3">Team</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {team.map((m) => (
-              <div key={m.name} className="flex items-center gap-3 p-3 border border-sky-200 dark:border-green-800 rounded-lg">
-                <img src={m.image} alt={m.name} className="w-12 h-12 rounded-full object-cover border border-sky-200 dark:border-green-800" />
-                <div>
-                  <p className="text-sm font-semibold">{m.name}</p>
-                  <p className="text-xs text-slate-600 dark:text-green-400">{m.role}</p>
+          <h2 className="text-lg font-semibold mb-6">Team</h2>
+          
+          {/* CEO Section */}
+          <div className="flex justify-center mb-8">
+            <div className="text-center p-6 border border-sky-200 dark:border-green-800 rounded-xl max-w-sm">
+              <img src={ceo.image} alt={ceo.name} className="w-20 h-20 rounded-full object-cover border-2 border-sky-200 dark:border-green-800 mx-auto mb-3" />
+              <h3 className="text-base font-semibold">{ceo.name}</h3>
+              <p className="text-sm text-slate-600 dark:text-green-400">{ceo.role}</p>
+              <a href={ceo.link} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-600 dark:text-green-400 underline">View profile</a>
+            </div>
+          </div>
+          
+          {/* Other Team Members */}
+          <div className="border border-sky-200 dark:border-green-800 rounded-xl p-6">
+            <div className="flex flex-wrap justify-center gap-8">
+              {otherTeamMembers.map((member) => (
+                <div key={member.name} className="text-center">
+                  <img src={member.image} alt={member.name} className="w-16 h-16 rounded-full object-cover border-2 border-sky-200 dark:border-green-800 mx-auto mb-2" />
+                  <h4 className="text-sm font-semibold">{member.name}</h4>
+                  <p className="text-xs text-slate-600 dark:text-green-400 max-w-24">{member.role}</p>
+                  <a href={member.link} target="_blank" rel="noopener noreferrer" className="text-xs text-sky-600 dark:text-green-400 underline">View profile</a>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </section>
 

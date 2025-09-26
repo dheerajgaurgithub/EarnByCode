@@ -50,6 +50,7 @@ import jobRoutes from './routes/jobs.js';
 import paymentRoutes from './routes/payments.js';
 import discussionRoutes from './routes/discussions.js';
 import contestProblemRoutes from './routes/contestProblems.js';
+import analyticsRoutes from './routes/analytics.js';
 import oauthRoutes from './routes/oauth.js';
 import walletRoutes from './routes/wallet.js';
 import { authenticate } from './middleware/auth.js';
@@ -462,6 +463,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/discussions', discussionRoutes);
 app.use('/api/contest-problems', contestProblemRoutes);
 app.use('/api/oauth', oauthRoutes);
+app.use('/api/analytics', analyticsRoutes);
 
 // --- Press Live Updates (SSE) ---
 // Simple in-memory feed and SSE broadcaster to support the Press page live updates
