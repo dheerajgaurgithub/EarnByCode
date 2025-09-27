@@ -18,6 +18,7 @@ const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState('');
   const [message, setMessage] = React.useState('');
+  const [testOtp, setTestOtp] = React.useState<string | null>(null);
   const navigate = useNavigate();
 
   const requestOtp = async () => {
@@ -27,12 +28,13 @@ const ForgotPassword: React.FC = () => {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email }),
       });
+      const data = await res.json().catch(() => ({}));
       if (res.ok) {
         setMessage('If an account exists, an OTP has been sent to your email.');
         setStep(2);
+        if (data?.testOtp) setTestOtp(String(data.testOtp)); else setTestOtp(null);
       } else {
-        const d = await res.json().catch(() => ({}));
-        setError(d?.message || 'Failed to request OTP');
+        setError(data?.message || 'Failed to request OTP');
       }
     } catch (e:any) {
       setError(e?.message || 'Network error');
@@ -112,6 +114,9 @@ const ForgotPassword: React.FC = () => {
                 <Hash className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <Input type="text" value={otp} onChange={(e)=>setOtp(e.target.value)} placeholder="6-digit code" className="pl-9" />
               </div>
+              {testOtp && (
+                <p className="text-xs text-amber-600">Dev test OTP: <code>{testOtp}</code></p>
+              )}
               <button disabled={loading || !otp} onClick={verifyOtp} className="w-full mt-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50">
                 {loading ? 'Verifying...' : 'Verify Code'}
               </button>

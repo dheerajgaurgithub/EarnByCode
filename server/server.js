@@ -492,6 +492,16 @@ app.get('/api/debug/oauth-config', (req, res) => {
   }
 });
 
+// Lightweight flags endpoint: expose safe feature flags
+app.get('/api/config/flags', (req, res) => {
+  try {
+    const exposeOtp = String(process.env.EXPOSE_OTP || '').toLowerCase() === 'true';
+    return res.status(200).json({ exposeOtp });
+  } catch (e) {
+    return res.status(200).json({ exposeOtp: false });
+  }
+});
+
 // --- Press Live Updates (SSE) ---
 // Simple in-memory feed and SSE broadcaster to support the Press page live updates
 const pressClients = new Set(); // each item is an Express Response

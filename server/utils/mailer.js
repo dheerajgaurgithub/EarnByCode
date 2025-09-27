@@ -82,9 +82,10 @@ export async function sendEmail({ to, subject, text, html }) {
       clearTimeout(t);
       if (!resp.ok) {
         const errText = await resp.text().catch(() => '');
-        // If domain not verified, retry once with onboarding sender
-        if (resp.status === 403 && /domain is not verified/i.test(errText)) {
-          console.warn('[mailer] Resend: domain not verified. Retrying with onboarding@resend.dev');
+        console.warn('[mailer] Resend primary send failed:', resp.status, errText?.slice?.(0, 200) || '');
+        // Retry once with onboarding sender for any 403 (common for unverified domains)
+        if (resp.status === 403) {
+          console.warn('[mailer] Resend: retrying with onboarding@resend.dev (fallback sender)');
           const controller2 = new AbortController();
           const t2 = setTimeout(() => controller2.abort(), 10000);
           const fallbackBody = { from: 'onboarding@resend.dev', to: recipients, subject, text, html };

@@ -15,7 +15,7 @@ interface AuthContextType {
   updatePreferences: (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR'; preferences?: any }) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   // Email change via OTP (kept)
-  requestEmailChangeOtp: (newEmail: string) => Promise<void>;
+  requestEmailChangeOtp: (newEmail: string) => Promise<any>;
   verifyEmailChangeOtp: (newEmail: string, otp: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
 }
@@ -89,8 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Request OTP to change email (kept)
-  const requestEmailChangeOtp = async (newEmail: string): Promise<void> => {
+  // Request OTP to change email (kept). Returns server payload so caller can read testOtp when available.
+  const requestEmailChangeOtp = async (newEmail: string): Promise<any> => {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
     const requestPath = (import.meta.env.VITE_EMAIL_CHANGE_REQUEST_PATH as string) || '/users/me/email/change/request';
@@ -108,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const extra = res.status === 404 ? ' Endpoint not found. Please configure VITE_EMAIL_CHANGE_REQUEST_PATH to match your backend.' : '';
       throw new Error(data.message || ('Failed to send verification code.' + extra));
     }
+    return data;
   };
 
   // Verify OTP and update email (kept)

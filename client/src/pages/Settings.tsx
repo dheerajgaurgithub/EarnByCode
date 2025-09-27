@@ -31,6 +31,7 @@ export const Settings: React.FC = () => {
   const [emailOtpSent, setEmailOtpSent] = useState(false);
   const [emailOtp, setEmailOtp] = useState('');
   const [pendingEmail, setPendingEmail] = useState('');
+  const [emailTestOtp, setEmailTestOtp] = useState<string | null>(null);
   const [deleteText, setDeleteText] = useState('');
   const [resendCooldown, setResendCooldown] = useState(0);
   const [otpError, setOtpError] = useState<string | null>(null);
@@ -96,6 +97,7 @@ export const Settings: React.FC = () => {
   const [savingBank, setSavingBank] = useState(false);
   const [bankOtpCooldown, setBankOtpCooldown] = useState(0);
   const [bankOtpActiveWindow, setBankOtpActiveWindow] = useState(false);
+  const [bankTestOtp, setBankTestOtp] = useState<string | null>(null);
 
   const languageOptions = useMemo(() => {
     try {
@@ -257,10 +259,16 @@ export const Settings: React.FC = () => {
 
   const requestBankOtp = async () => {
     try {
-      const resp = await api.post('/users/me/bank/otp/request', {});
+      const resp = await api.post('/users/me/bank/otp/request', {} as any);
       if ((resp as any)?.success === false) throw new Error((resp as any)?.message || 'Failed');
       toast.success('OTP sent to your email');
       setBankOtpCooldown(60);
+      if ((resp as any)?.testOtp) {
+        setBankTestOtp(String((resp as any).testOtp));
+        toast.success(`Dev OTP: ${(resp as any).testOtp}`);
+      } else {
+        setBankTestOtp(null);
+      }
     } catch (e: any) {
       toast.error(e?.message || 'Failed to send OTP');
     }
@@ -287,12 +295,18 @@ export const Settings: React.FC = () => {
       // Email change is handled via OTP flow; trigger OTP if email changed and OTP not yet sent/verified
       if (accountForm.email !== user.email) {
         if (!emailOtpSent) {
-          await requestEmailChangeOtp(accountForm.email);
+          const resp: any = await requestEmailChangeOtp(accountForm.email);
           setEmailOtpSent(true);
           setPendingEmail(accountForm.email);
           toast.success('Verification code sent to the new email. Please enter the code below to confirm change.');
           setResendCooldown(60);
           setOtpError(null);
+          if (resp?.testOtp) {
+            setEmailTestOtp(String(resp.testOtp));
+            toast.success(`Dev OTP: ${resp.testOtp}`);
+          } else {
+            setEmailTestOtp(null);
+          }
           return; // stop here; user must verify before other updates
         }
       }
@@ -601,6 +615,9 @@ export const Settings: React.FC = () => {
                                     <CheckCircle className="h-4 w-4" /> Verified
                                   </span>
                                 )}
+                                {emailTestOtp && (
+                                  <span className="text-xs sm:text-sm text-amber-600 dark:text-amber-400">Dev test OTP: <code>{emailTestOtp}</code></span>
+                                )}
                                 {otpError && (
                                   <div className="flex items-center gap-2 mt-1 sm:mt-0 sm:ml-2">
                                     <p className="text-rose-600 dark:text-rose-400 text-xs sm:text-sm">{otpError}</p>
@@ -729,6 +746,9 @@ export const Settings: React.FC = () => {
                             </button>
                             {bankOtpActiveWindow && (
                               <span className="text-emerald-600 dark:text-emerald-400 text-xs">Verified</span>
+                            )}
+                            {bankTestOtp && (
+                              <span className="text-amber-600 dark:text-amber-400 text-xs">Dev test OTP: <code>{bankTestOtp}</code></span>
                             )}
                           </div>
                         </div>

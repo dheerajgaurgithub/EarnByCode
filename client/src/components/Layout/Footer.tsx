@@ -2,11 +2,25 @@ import React from 'react';
 import { Github, Twitter, Mail, ExternalLink, MessageCircle } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useI18n } from '@/context/I18nContext';
+import config from '@/lib/config';
 
 export default function Footer() {
   const navigate = useNavigate();
   const { t } = useI18n();
   const buildTime = (import.meta as any)?.env?.VITE_BUILD_TIME as string | undefined;
+  const [exposeOtp, setExposeOtp] = React.useState(false);
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const res = await fetch(`${config.api.baseUrl}/config/flags`, { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!mounted) return;
+        setExposeOtp(!!data?.exposeOtp);
+      } catch {}
+    })();
+    return () => { mounted = false; };
+  }, []);
   const handleNavigation = (path: string) => {
     if (/^https?:\/\//i.test(path)) {
       window.open(path, '_blank', 'noopener,noreferrer');
@@ -218,15 +232,25 @@ export default function Footer() {
           </div>
         </div>
       </div>
-      {buildTime && (
+      {(buildTime || exposeOtp) && (
         <div className="absolute bottom-1 right-2 sm:bottom-2 sm:right-3 z-30">
-          <span
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] md:text-xs font-medium border bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-sky-200 dark:border-green-700 text-sky-700 dark:text-green-300 shadow-sm"
-            title={`Build time: ${buildTime}`}
-          >
-            <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-sky-500 dark:bg-green-500 animate-pulse"></span>
-            Build: {buildTime}
-          </span>
+          {buildTime && (
+            <span
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] md:text-xs font-medium border bg-white/90 dark:bg-gray-900/90 backdrop-blur-md border-sky-200 dark:border-green-700 text-sky-700 dark:text-green-300 shadow-sm"
+              title={`Build time: ${buildTime}`}
+            >
+              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-sky-500 dark:bg-green-500 animate-pulse"></span>
+              Build: {buildTime}
+            </span>
+          )}
+          {exposeOtp && (
+            <span
+              className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] md:text-xs font-semibold border bg-amber-50/90 dark:bg-amber-900/40 border-amber-300/80 dark:border-amber-700/70 text-amber-800 dark:text-amber-300 shadow-sm"
+              title="OTP in dev mode (EXPOSE_OTP=true)"
+            >
+              OTP dev mode
+            </span>
+          )}
         </div>
       )}
     </footer>

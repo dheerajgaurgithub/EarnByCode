@@ -251,7 +251,7 @@ router.post('/forgot-password/request', async (req, res) => {
       }
     });
 
-    return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
+    return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.', ...(process.env.EXPOSE_OTP === 'true' ? { testOtp: otp } : {}) });
   } catch (error) {
     console.error('Forgot password request error:', error);
     res.status(500).json({ message: 'Server error during password reset request' });

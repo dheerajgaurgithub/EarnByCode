@@ -148,12 +148,14 @@ router.post('/me/bank/otp/request', authenticate, async (req, res) => {
         </div>
       `;
       await sendEmail({ to: user.email, subject, text, html });
-    } catch {}
+    } catch (e) {
+      console.error('[bank-otp] Failed to send OTP email:', e?.message || e);
+    }
 
     // Record attempt on success
     pushAttempt(bankOtpAttemptByIp, ip);
     pushAttempt(bankOtpAttemptByEmail, String(user.email).toLowerCase());
-    return res.json({ success: true, message: 'OTP sent to your email' });
+    return res.json({ success: true, message: 'OTP sent to your email', ...(process.env.EXPOSE_OTP === 'true' ? { testOtp: otp } : {}) });
   } catch (error) {
     console.error('Bank OTP request error:', error);
     return res.status(500).json({ success: false, message: 'Failed to send OTP' });
@@ -892,7 +894,7 @@ router.post('/me/email/change/request', authenticate, async (req, res) => {
       }
     });
 
-    return res.json({ success: true, message: 'Verification code sent to the new email' });
+    return res.json({ success: true, message: 'Verification code sent to the new email', ...(process.env.EXPOSE_OTP === 'true' ? { testOtp: otp } : {}) });
   } catch (error) {
     console.error('Email change request error:', error);
     return res.status(500).json({ success: false, message: 'Failed to start email change' });
@@ -1004,7 +1006,7 @@ router.post('/me/email/change/request', authenticate, async (req, res) => {
     `;
     await sendEmail({ to: email, subject, text, html });
 
-    return res.json({ success: true, message: 'Verification code sent' });
+    return res.json({ success: true, message: 'Verification code sent', ...(process.env.EXPOSE_OTP === 'true' ? { testOtp: otp } : {}) });
   } catch (error) {
     console.error('Email change request error:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to request email change' });
