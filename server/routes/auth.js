@@ -88,9 +88,9 @@ router.post('/debug/send-test-email', async (req, res) => {
 
     const s = await sendEmail({
       to,
-      subject: subject || 'AlgoBucks Test Email',
-      text: text || 'This is a test email from AlgoBucks server.',
-      html: html || '<p>This is a <strong>test email</strong> from AlgoBucks server.</p>',
+      subject: subject || 'EarnByCode Test Email',
+      text: text || 'This is a test email from EarnByCode server.',
+      html: html || '<p>This is a <strong>test email</strong> from EarnByCode server.</p>',
     });
     return res.status(200).json({ ok: true, provider: s?.provider || 'unknown' });
   } catch (e) {
@@ -224,12 +224,12 @@ router.post('/resend-verification', async (req, res) => {
     // Send email in background
     setImmediate(async () => {
       try {
-        const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
+        const subject = process.env.EMAIL_SUBJECT_VERIFY || 'EarnByCode: Verify your email';
         const text = `Your new verification code is ${otp}. It expires in 60 minutes.`;
         const html = `
           <div style=\"font-family: Arial, sans-serif; line-height: 1.6;\">\n\
             <h2>Verify your email</h2>\n\
-            <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>\n\
+            <p>Use the following code to verify your email for <strong>EarnByCode</strong>:</p>\n\
             <p style=\"font-size: 22px; font-weight: 700; letter-spacing: 2px;\">${otp}</p>\n\
             <p style=\"color:#555\">This code expires in <strong>60 minutes</strong>.</p>\n\
           </div>
@@ -436,12 +436,12 @@ router.post('/forgot-password/request', async (req, res) => {
     await user.save();
 
     try {
-      const subject = process.env.EMAIL_SUBJECT_RESET || 'AlgoBucks: Password reset code';
+      const subject = process.env.EMAIL_SUBJECT_RESET || 'EarnByCode: Password reset code';
       const text = `Your password reset code is ${otp}. It expires in 15 minutes.`;
       const html = `
         <div style="font-family: Arial, sans-serif; line-height: 1.6;">
           <h2>Password reset</h2>
-          <p>Use the code below to reset your password for <strong>AlgoBucks</strong>:</p>
+          <p>Use the code below to reset your password for <strong>EarnByCode</strong>:</p>
           <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
           <p style="color:#555">This code expires in <strong>15 minutes</strong>.</p>
         </div>

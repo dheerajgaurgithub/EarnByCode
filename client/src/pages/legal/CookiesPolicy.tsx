@@ -87,7 +87,7 @@ const CookiesPolicy = () => {
 
             <div className="mt-12 pt-6 border-t border-slate-700/50">
               <p className="text-slate-400 text-sm">
-                For any questions about our use of cookies, please contact us at privacy@algobucks.com
+                For any questions about our use of cookies, please contact us at replyearnbycode@gmail.com
               </p>
             </div>
           </div>

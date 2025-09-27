@@ -53,7 +53,7 @@ const TermsOfService = () => {
             ))}
             <div className="mt-12 pt-6 border-t border-slate-700/50">
               <p className="text-slate-400 text-sm">
-                For any questions about these Terms, please contact us at legal@algobucks.com
+                For any questions about these Terms, please contact us at replyearnbycode@gmail.com
               </p>
             </div>
           </div>

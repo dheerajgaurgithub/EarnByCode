@@ -9,7 +9,7 @@ const HelpCenter = () => {
   const [chatOpen, setChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; text: string }[]>([
-    { role: 'assistant', text: 'Hi! I am the AlgoBucks Help Assistant. Ask me anything about this website—features, pages, navigation, submissions, contests, policies, or how to contact support.' },
+    { role: 'assistant', text: 'Hi! I am the EarnByCode Help Assistant. Ask me anything about this website—features, pages, navigation, submissions, contests, policies, or how to contact support.' },
   ]);
   const quickSuggestions = useMemo(
     () => [
@@ -49,7 +49,7 @@ const HelpCenter = () => {
         {
           id: 3,
           question: 'What browsers are supported?',
-          answer: 'AlgoBucks works on modern browsers (Chrome, Firefox, Safari, Edge). Keep your browser updated for the best experience.'
+          answer: 'EarnByCode works on modern browsers (Chrome, Firefox, Safari, Edge). Keep your browser updated for the best experience.'
         },
         {
           id: 11,
@@ -125,7 +125,7 @@ const HelpCenter = () => {
         {
           id: 9,
           question: 'How do I contact support?',
-          answer: 'Use the Contact page (/contact) or email coder9265@gmail.com.'
+          answer: 'Use the Contact page (/contact) or email replyearnbycode@gmail.com.'
         },
         {
           id: 10,
@@ -135,7 +135,7 @@ const HelpCenter = () => {
         {
           id: 14,
           question: 'How do I report a bug?',
-          answer: 'Share details on the Contact page (/contact) or email coder9265@gmail.com with steps to reproduce.'
+          answer: 'Share details on the Contact page (/contact) or email replyearnbycode@gmail.com with steps to reproduce.'
         },
         {
           id: 17,
@@ -253,7 +253,7 @@ const HelpCenter = () => {
     { title: 'Cookies Policy', content: 'Information about cookies used on the site.', href: '/cookies', tags: ['policy','cookies'] },
     // Targeted FAQs reflected in the app behavior
     { title: 'View all submissions', content: 'Use the Submissions page via the header or go to /submissions to view all your submissions and filter details.', href: '/submissions', tags: ['submissions','view all'] },
-    { title: 'Contact support email', content: 'You can email support at coder9265@gmail.com or use the Contact page form.', href: '/contact', tags: ['support','email'] },
+    { title: 'Contact support email', content: 'You can email support at replyearnbycode@gmail.com or use the Contact page form.', href: '/contact', tags: ['support','email'] },
   ], []);
 
   const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9\s/.-]+/g, ' ').replace(/\s+/g, ' ').trim();
@@ -266,14 +266,14 @@ const HelpCenter = () => {
     // Quick navigational intents
     if (/pricing|price/.test(nq)) {
       return {
-        text: 'We do not have a dedicated pricing page on this site. If you have billing or pricing questions, please reach out via the Contact page or email support at coder9265@gmail.com.',
+        text: 'We do not have a dedicated pricing page on this site. If you have billing or pricing questions, please reach out via the Contact page or email support at replyearnbycode@gmail.com.',
         href: '/contact'
       };
     }
 
     if (/support|contact|help\s?(team|desk)?/.test(nq)) {
       return {
-        text: 'You can contact support using the Contact page or by emailing coder9265@gmail.com.',
+        text: 'You can contact support using the Contact page or by emailing replyearnbycode@gmail.com.',
         href: '/contact'
       };
     }
@@ -309,7 +309,7 @@ const HelpCenter = () => {
     // If not obviously site-related, respond with scope message
     if (!matchesSite) {
       return {
-        text: 'I can help with AlgoBucks only (pages, features, navigation, and policies). Could you rephrase your question about this website?',
+        text: 'I can help with EarnByCode only (pages, features, navigation, and policies). Could you rephrase your question about this website?',
       };
     }
 
@@ -384,7 +384,7 @@ const HelpCenter = () => {
             Help Center
           </h1>
           <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-green-300 max-w-xl mx-auto leading-relaxed">
-            Find answers about using AlgoBucks, or contact our support team for assistance.
+            Find answers about using EarnByCode, or contact our support team for assistance.
           </p>
         </div>
 
@@ -477,10 +477,10 @@ const HelpCenter = () => {
             </div>
             <h2 className="text-base sm:text-lg lg:text-xl font-bold mb-2 text-gray-900 dark:text-green-100">Still need help?</h2>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-green-300 mb-4 max-w-lg mx-auto leading-relaxed">
-              Our support team is here to help with any questions about using AlgoBucks.
+              Our support team is here to help with any questions about using EarnByCode.
             </p>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
-              <a href="mailto:coder9265@gmail.com" className="px-3 sm:px-4 py-2 bg-sky-600 dark:bg-green-700 text-white font-semibold rounded-lg hover:bg-sky-700 dark:hover:bg-green-600 inline-flex items-center justify-center text-xs sm:text-sm transition-colors">
+              <a href="mailto:replyearnbycode@gmail.com" className="px-3 sm:px-4 py-2 bg-sky-600 dark:bg-green-700 text-white font-semibold rounded-lg hover:bg-sky-700 dark:hover:bg-green-600 inline-flex items-center justify-center text-xs sm:text-sm transition-colors">
                 <Mail className="w-3 h-3 sm:w-4 sm:h-4 mr-2" /> Email Support
               </a>
               <a href="/contact" className="px-3 sm:px-4 py-2 border border-sky-300 dark:border-green-700 rounded-lg text-xs sm:text-sm inline-flex items-center justify-center hover:bg-sky-50 dark:hover:bg-green-900/20 text-gray-900 dark:text-green-100 transition-colors">
@@ -551,7 +551,7 @@ const HelpCenter = () => {
             </div>
             
             <div className="px-3 py-2 bg-sky-50 dark:bg-green-900/20 text-xs text-gray-500 dark:text-green-400 border-t border-sky-200 dark:border-green-800">
-              Responses are based on AlgoBucks content. For more help, see <a href="/contact" className="underline text-sky-600 dark:text-green-300">/contact</a>.
+              Responses are based on EarnByCode content. For more help, see <a href="/contact" className="underline text-sky-600 dark:text-green-300">/contact</a>.
             </div>
           </div>
         )}

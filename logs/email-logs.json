@@ -1045,5 +1045,40 @@
     "timestamp": "2025-09-27T07:47:31.762Z",
     "type": "config_success",
     "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-27T08:16:30.551Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-27T08:17:03.530Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-27T08:18:05.055Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-27T08:22:55.565Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
+  },
+  {
+    "timestamp": "2025-09-27T08:28:45.041Z",
+    "type": "config_error",
+    "error": "Invalid login: 535 Authentication failed: The provided authorization grant is invalid, expired, or revoked"
+  },
+  {
+    "timestamp": "2025-09-27T08:33:49.947Z",
+    "type": "config_error",
+    "error": "Invalid login: 535 Authentication failed: Bad username / password"
+  },
+  {
+    "timestamp": "2025-09-27T08:37:20.756Z",
+    "type": "config_success",
+    "message": "SMTP connection verified"
   }
 ]

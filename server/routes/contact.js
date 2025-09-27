@@ -9,17 +9,17 @@ const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// SMTP Configuration
+// SMTP Configuration (env-based)
 const SMTP_CONFIG = {
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
+  host: process.env.SMTP_HOST || 'smtp.gmail.com',
+  port: Number(process.env.SMTP_PORT || 587),
+  secure: String(process.env.SMTP_SECURE || (process.env.SMTP_PORT === '465')).toLowerCase() === 'true' || String(process.env.SMTP_PORT) === '465',
   auth: {
-    user: 'coder9265@gmail.com',
-    pass: 'wytkgrkixzsmpmga'
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
   },
-  logger: true,
-  debug: true
+  logger: false,
+  debug: false,
 };
 
 // Create logs directory if it doesn't exist
@@ -101,9 +101,9 @@ router.post(
     });
 
     const mailOptions = {
-      from: `"${name}" <${SMTP_CONFIG.auth.user}>`,
+      from: process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'replyearnbycode@gmail.com',
       replyTo: email,
-      to: 'coder9265@gmail.com',
+      to: 'replyearnbycode@gmail.com',
       subject: `[Contact Form] ${subject}`,
       text: `
 You have a new contact form submission:

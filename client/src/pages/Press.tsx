@@ -176,8 +176,8 @@ const Press: React.FC = () => {
           <div className="rounded-lg border border-sky-200 dark:border-green-800 p-4 sm:p-6 bg-white dark:bg-gray-900">
             <h2 className="text-lg font-semibold mb-2">Media contact</h2>
             <p className="text-sm text-slate-700 dark:text-green-300 mb-3">For press or media inquiries, please reach out to our team.</p>
-            <a href="mailto:press@algobucks.com" className="inline-flex items-center text-sm text-sky-700 dark:text-green-300 underline">
-              <Mail className="w-4 h-4 mr-1" /> press@algobucks.com
+            <a href="mailto:replyearnbycode@gmail.com" className="inline-flex items-center text-sm text-sky-700 dark:text-green-300 underline">
+              <Mail className="w-4 h-4 mr-1" /> replyearnbycode@gmail.com
             </a>
           </div>
         </div>

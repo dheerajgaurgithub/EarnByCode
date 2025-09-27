@@ -2,14 +2,12 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
 import { getJobs, applyForJob } from '@/services/jobService';
 import { Loader2, Briefcase, Mail, MapPin, DollarSign, Clock, Users, BarChart2, RefreshCw } from 'lucide-react';
 import type { Job } from '@/types/job';
 import { ApplicationModal } from '@/components/Careers/ApplicationModal';
-import { formatDistanceToNow } from 'date-fns';
+//
 
 const benefits = [
   {
@@ -240,7 +238,7 @@ export default function Careers() {
                 <RefreshCw className="mr-2 h-3 w-3 lg:h-4 lg:w-4" /> Refresh Jobs
               </Button>
               <Button 
-                onClick={() => window.location.href = 'mailto:careers@example.com'}
+                onClick={() => window.location.href = 'mailto:replyearnbycode@gmail.com'}
                 className="border-2 border-sky-600 dark:border-green-600 text-sky-600 dark:text-green-600 hover:bg-sky-50 dark:hover:bg-gray-700 px-4 lg:px-6 py-2 lg:py-3 text-sm lg:text-base rounded-lg font-medium transition-colors"
               >
                 <Mail className="mr-2 h-3 w-3 lg:h-4 lg:w-4" /> Contact Us

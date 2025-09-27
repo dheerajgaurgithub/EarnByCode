@@ -73,7 +73,7 @@ const Contact: React.FC = () => {
       console.error('Error submitting form:', error);
       const errorMessage = error instanceof Error ? 
         error.message : 
-        'Failed to send message. Please try again later or contact us directly at dheerajgaur.0fficial@gmail.com';
+        'Failed to send message. Please try again later or contact us directly at replyearnbycode@gmail.com';
       
       setSubmitStatus({
         success: false,
@@ -128,10 +128,10 @@ const Contact: React.FC = () => {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-sm sm:text-base font-bold text-sky-900 dark:text-green-400 mb-1 sm:mb-2 transition-colors duration-300">Email Us</h3>
                   <a 
-                    href="mailto:hello@algobucks.com" 
+                    href="mailto:replyearnbycode@gmail.com" 
                     className="text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-colors duration-300 text-xs sm:text-sm font-bold hover:underline break-all block mb-0.5"
                   >
-                    hello@algobucks.com
+                    replyearnbycode@gmail.com
                   </a>
                   <p className="text-sky-500 dark:text-green-300/70 text-xs font-medium transition-colors duration-300">
                     We typically respond within 24 hours
@@ -330,7 +330,7 @@ const Contact: React.FC = () => {
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
               className="absolute inset-0 opacity-50 dark:opacity-30 dark:invert dark:hue-rotate-180 transition-all duration-300"
-              title="AlgoBucks Office Location"
+              title="EarnByCode Office Location"
             ></iframe>
           </div>
         </div>

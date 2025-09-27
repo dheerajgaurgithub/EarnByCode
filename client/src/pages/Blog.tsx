@@ -97,14 +97,12 @@ const Blog = () => {
       <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
         {/* Header */}
         <header className="text-center mb-12 lg:mb-16">
-          <div className="inline-flex items-center justify-center w-16 h-16 lg:w-20 lg:h-20 bg-gradient-to-br from-white-400 to-sky-600 dark:from-green-500 dark:to-green-700 rounded-2xl mb-6 shadow-xl">
-            <img src="./logo.png" alt="lg" />
-          </div>
+          <img src="/logo.png" alt="EarnByCode Logo" className="inline-block mb-4 w-16 h-16 lg:w-24 lg:h-24 object-contain" />
           <h1 className="text-3xl lg:text-5xl font-extrabold bg-gradient-to-r from-sky-600 to-sky-800 dark:from-green-400 dark:to-green-600 bg-clip-text text-transparent mb-4">
-            AlgoBucks Blog
+            EarnByCode Blog
           </h1>
           <p className="text-base lg:text-lg text-gray-600 dark:text-green-300 max-w-3xl mx-auto leading-relaxed px-4">
-            Discover the latest insights, tutorials, and expert tips to maximize your AlgoBucks experience
+            Discover the latest insights, tutorials, and expert tips to maximize your EarnByCode experience
           </p>
         </header>
   

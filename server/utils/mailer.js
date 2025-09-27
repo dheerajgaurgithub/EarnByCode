@@ -59,7 +59,7 @@ function getTransporter() {
  * @param {string} [params.html] - HTML body
  */
 export async function sendEmail({ to, subject, text, html }) {
-  const from = process.env.EMAIL_FROM || 'no-reply@algobucks.com';
+  const from = process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'replyearnbycode@gmail.com';
   const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 
   // Prefer Resend API first if available (avoids SMTP egress issues on PaaS)

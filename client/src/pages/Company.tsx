@@ -150,8 +150,8 @@ export const Company: React.FC = () => {
               <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 text-gray-900 dark:text-green-100">Contact Us</h2>
               <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-green-300 leading-relaxed">
                 For general queries and press inquiries: 
-                <a href="mailto:press@algobucks.com" className="ml-1 text-sky-600 dark:text-green-400 hover:text-sky-700 dark:hover:text-green-300 font-medium underline transition-colors">
-                  press@algobucks.com
+                <a href="mailto:replyearnbycode@gmail.com" className="ml-1 text-sky-600 dark:text-green-400 hover:text-sky-700 dark:hover:text-green-300 font-medium underline transition-colors">
+                  replyearnbycode@gmail.com
                 </a>
               </p>
             </div>

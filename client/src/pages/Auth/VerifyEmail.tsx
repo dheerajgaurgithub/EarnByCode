@@ -89,9 +89,7 @@ export function VerifyEmailPage() {
       <div className="w-full max-w-sm mx-auto">
         <div className="bg-white/90 border border-blue-200/50 rounded-xl shadow-lg shadow-blue-500/10 backdrop-blur-lg p-4">
           <div className="text-center mb-4">
-            <div className="inline-flex items-center justify-center w-12 h-12 mb-3 bg-gradient-to-br from-blue-100 to-blue-200/50 rounded-lg border border-blue-300/30 backdrop-blur-sm shadow-md">
-              <img src="/logo.png" alt="AlgoBucks Logo" className="w-6 h-6 object-contain" />
-            </div>
+            <img src="/logo.png" alt="EarnByCode Logo" className="inline-block mb-3 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain" />
             <h1 className="text-xl font-bold text-gray-800 mb-1 tracking-tight">{t('verify.title')}</h1>
             <p className="text-gray-600 text-xs font-medium">{t('verify.subtitle')}</p>
           </div>
