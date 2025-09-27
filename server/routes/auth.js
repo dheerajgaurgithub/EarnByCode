@@ -115,7 +115,6 @@ router.post('/register', async (req, res) => {
       username
     });
 
-    // Send verification email with OTP in background (fire-and-forget)
     setImmediate(async () => {
       try {
         const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
@@ -128,7 +127,8 @@ router.post('/register', async (req, res) => {
             <p style="color:#555">This code expires in <strong>60 minutes</strong>.</p>
           </div>
         `;
-        await sendEmail({ to: email, subject, text, html });
+        const sent = await sendEmail({ to: email, subject, text, html });
+        try { console.log(`[email] register OTP sent via provider=${sent?.provider || 'unknown'}`); } catch {}
       } catch (e) {
         console.error('Send verification email (background) error:', e);
       }
@@ -177,7 +177,8 @@ router.post('/resend-verification', async (req, res) => {
             <p style=\"color:#555\">This code expires in <strong>60 minutes</strong>.</p>\n\
           </div>
         `;
-        await sendEmail({ to: email, subject, text, html });
+        const sent = await sendEmail({ to: email, subject, text, html });
+        try { console.log(`[email] resend OTP sent via provider=${sent?.provider || 'unknown'}`); } catch {}
       } catch (e) {
         console.error('Resend verification email (background) error:', e);
       }
