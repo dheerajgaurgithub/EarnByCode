@@ -37,7 +37,7 @@ const handleOAuthError = (req, res, error) => {
 };
 
 // Handle OAuth success with token and redirect
-const handleOAuthSuccess = (req, res, user, redirectPath = '/') => {
+const handleOAuthSuccess = async (req, res, user, redirectPath = '/') => {
   try {
     console.log('Handling OAuth success for user:', user.email);
     
@@ -163,7 +163,7 @@ router.get('/google/callback',
   async (req, res) => {
     try {
       console.log('OAuth successful for user:', req.user.email);
-      return handleOAuthSuccess(req, res, req.user, req.redirectTo || '/');
+      return await handleOAuthSuccess(req, res, req.user, req.redirectTo || '/');
     } catch (error) {
       console.error('Error in OAuth success handler:', error);
       return handleOAuthError(req, res, error);
