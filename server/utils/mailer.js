@@ -46,6 +46,37 @@ export async function sendEmail({ to, subject, text, html }) {
   const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
   if (!from) throw new Error('EMAIL_FROM or SMTP_USER must be set');
 
+  // Helper: send via Resend HTTP API
+  const tryResend = async () => {
+    const key = process.env.RESEND_API_KEY;
+    if (!key) throw new Error('RESEND_API_KEY not set');
+    const resp = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        from,
+        to,
+        subject,
+        html: html || undefined,
+        text: text || undefined
+      })
+    });
+    if (!resp.ok) {
+      const body = await resp.text();
+      throw new Error(`Resend API error: ${resp.status} ${body}`);
+    }
+    const data = await resp.json();
+    return { ok: true, provider: 'resend', messageId: data?.id || 'resend' };
+  };
+
+  // If explicitly configured to use Resend, use it first
+  if ((process.env.EMAIL_PROVIDER || '').toLowerCase() === 'resend') {
+    return await tryResend();
+  }
+
   const t = createTransporter();
   try {
     const info = await t.sendMail({ from, to, subject, text, html });
@@ -107,7 +138,23 @@ export async function sendEmail({ to, subject, text, html }) {
         return { ok: true, provider: 'smtp', messageId: info.messageId };
       } catch (e2) {
         console.error('SMTP fallback (465) failed:', e2?.message || e2);
+        // last resort: Resend, if available
+        if (process.env.RESEND_API_KEY) {
+          try {
+            return await tryResend();
+          } catch (e3) {
+            console.error('Resend fallback failed:', e3?.message || e3);
+          }
+        }
         throw err;
+      }
+    }
+    // If SMTP failed due to timeout and Resend is configured, try Resend
+    if (isTimeout && process.env.RESEND_API_KEY) {
+      try {
+        return await tryResend();
+      } catch (e3) {
+        console.error('Resend fallback failed:', e3?.message || e3);
       }
     }
     throw err;
