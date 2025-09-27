@@ -257,6 +257,12 @@ const userSchema = new mongoose.Schema({
 // Hash password before saving
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();
+  // If password already looks like a bcrypt hash, skip rehashing
+  try {
+    if (typeof this.password === 'string' && /^\$2[aby]\$\d{2}\$/.test(this.password)) {
+      return next();
+    }
+  } catch {}
   
   try {
     const salt = await bcrypt.genSalt(12);

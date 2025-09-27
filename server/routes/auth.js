@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import passport from 'passport';
 import User from '../models/User.js';
+import PendingUser from '../models/PendingUser.js';
+import bcrypt from 'bcryptjs';
 import { authenticate } from '../middleware/auth.js';
 import { sendEmail } from '../utils/mailer.js';
 import config from '../config/config.js';
@@ -77,79 +79,33 @@ const countRecent = (map, key) => {
   return arr.filter(t => t >= cutoff).length;
 };
 
-// Register
+// Register (store in PendingUser until OTP verified)
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password, fullName } = req.body;
 
-    // Check if user already exists (by email/username)
-    const existingUser = await User.findOne({
-      $or: [{ email }, { username }]
-    });
-
+    // Check if verified user already exists with email or username
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
-      // If the email matches and the account is NOT verified yet, resend OTP and allow verification flow
-      if (existingUser.email === email && !existingUser.isEmailVerified) {
-        const otp = generateOTP();
-        existingUser.verificationToken = otp;
-        existingUser.verificationTokenExpires = Date.now() + 60 * 60 * 1000; // 1 hour
-        await existingUser.save();
-
-        try {
-          const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
-          const text = `Welcome back! Your verification code is ${otp}. It expires in 60 minutes.`;
-          const html = `
-            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-              <h2>Verify your email</h2>
-              <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>
-              <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
-              <p style="color:#555">This code expires in <strong>60 minutes</strong>.</p>
-            </div>
-          `;
-          await sendEmail({ to: email, subject, text, html });
-        } catch (e) {
-          console.error('Resend verification email error:', e);
-          return res.status(500).json({ message: 'Failed to send verification email' });
-        }
-
-        const token = jwt.sign(
-          { userId: existingUser._id, purpose: 'email-verification' },
-          process.env.JWT_SECRET,
-          { expiresIn: '1h' }
-        );
-
-        return res.status(200).json({
-          message: 'Verification email re-sent. Please verify to complete registration.',
-          token,
-          userId: existingUser._id,
-          requiresVerification: true
-        });
-      }
-
-      // Otherwise, if username conflicts or verified email exists, block with 400
       return res.status(400).json({
         message: existingUser.email === email ? 'Email already registered' : 'Username already taken'
       });
     }
 
-    // Generate OTP and set as verification token (expires in 1 hour)
+    // Hash password for pending record
+    const salt = await bcrypt.genSalt(12);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // Generate OTP (expires in 1 hour)
     const otp = generateOTP();
-    const verificationToken = otp;
-    const verificationTokenExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
 
-    // Create new user
-    const user = new User({
-      username,
-      email,
-      password,
-      fullName,
-      ranking: await User.countDocuments() + 1,
-      verificationToken,
-      verificationTokenExpires,
-      isEmailVerified: false
-    });
-
-    await user.save();
+    // Upsert PendingUser (so resubmits refresh OTP)
+    const pending = await PendingUser.findOneAndUpdate(
+      { $or: [{ email }, { username }] },
+      { username, email, passwordHash, fullName, otp, expiresAt },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     // Send verification email with OTP
     try {
@@ -169,18 +125,11 @@ router.post('/register', async (req, res) => {
       return res.status(500).json({ message: 'Failed to send verification email' });
     }
 
-    // Generate temporary token for email verification
-    const token = jwt.sign(
-      { userId: user._id, purpose: 'email-verification' },
-      process.env.JWT_SECRET,
-      { expiresIn: '1h' }
-    );
-
     res.status(201).json({
       message: 'Verification email sent. Please check your email to verify your account.',
-      token,
-      userId: user._id,
-      requiresVerification: true
+      requiresVerification: true,
+      email,
+      username
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -289,7 +238,7 @@ router.put('/profile', authenticate, async (req, res) => {
   }
 });
 
-// Verify Email with OTP
+// Verify Email with OTP (create real User on success)
 router.post('/verify-email', async (req, res) => {
   try {
     const { email, otp } = req.body;
@@ -298,21 +247,30 @@ router.post('/verify-email', async (req, res) => {
       return res.status(400).json({ message: 'Email and OTP are required' });
     }
 
-    const user = await User.findOne({ 
-      email,
-      verificationToken: otp,
-      verificationTokenExpires: { $gt: Date.now() }
-    });
-
-    if (!user) {
+    // Find pending record
+    const pending = await PendingUser.findOne({ email, otp, expiresAt: { $gt: new Date() } });
+    if (!pending) {
       return res.status(400).json({ message: 'Invalid or expired OTP' });
     }
 
-    // Mark email as verified
-    user.isEmailVerified = true;
-    user.verificationToken = undefined;
-    user.verificationTokenExpires = undefined;
+    // Final collision check prior to creating user
+    const collision = await User.findOne({ $or: [{ email }, { username: pending.username }] });
+    if (collision) {
+      await PendingUser.deleteOne({ _id: pending._id }).catch(() => {});
+      return res.status(400).json({ message: 'Email or username already registered' });
+    }
+
+    // Create real user using hashed password
+    const user = new User({
+      username: pending.username,
+      email: pending.email,
+      password: pending.passwordHash, // pre-hashed; model pre-save will skip rehash
+      fullName: pending.fullName,
+      ranking: await User.countDocuments() + 1,
+      isEmailVerified: true,
+    });
     await user.save();
+    await PendingUser.deleteOne({ _id: pending._id }).catch(() => {});
 
     // Generate JWT token for authenticated session
     const token = jwt.sign(
