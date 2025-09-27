@@ -107,29 +107,31 @@ router.post('/register', async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    // Send verification email with OTP
-    try {
-      const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
-      const text = `Welcome to AlgoBucks! Your verification code is ${otp}. It expires in 60 minutes.`;
-      const html = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>Verify your email</h2>
-          <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>
-          <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
-          <p style="color:#555">This code expires in <strong>60 minutes</strong>.</p>
-        </div>
-      `;
-      await sendEmail({ to: email, subject, text, html });
-    } catch (e) {
-      console.error('Send verification email error:', e);
-      return res.status(500).json({ message: 'Failed to send verification email' });
-    }
-
+    // Respond immediately to avoid client/network timeouts
     res.status(201).json({
       message: 'Verification email sent. Please check your email to verify your account.',
       requiresVerification: true,
       email,
       username
+    });
+
+    // Send verification email with OTP in background (fire-and-forget)
+    setImmediate(async () => {
+      try {
+        const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
+        const text = `Welcome to AlgoBucks! Your verification code is ${otp}. It expires in 60 minutes.`;
+        const html = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Verify your email</h2>
+            <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>
+            <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
+            <p style="color:#555">This code expires in <strong>60 minutes</strong>.</p>
+          </div>
+        `;
+        await sendEmail({ to: email, subject, text, html });
+      } catch (e) {
+        console.error('Send verification email (background) error:', e);
+      }
     });
   } catch (error) {
     console.error('Registration error:', error);
