@@ -62,10 +62,108 @@ export async function sendEmail({ to, subject, text, html }) {
   const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
   const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
   const SMTP_PREFERRED = String(process.env.SMTP_PREFERRED || '').toLowerCase() === 'true';
+  const GMAIL_API_ENABLED = String(process.env.GMAIL_API_ENABLED || '').toLowerCase() === 'true';
+  const GMAIL_USER = process.env.GMAIL_USER || from;
+  const GMAIL_CLIENT_ID = process.env.GMAIL_CLIENT_ID || '';
+  const GMAIL_CLIENT_SECRET = process.env.GMAIL_CLIENT_SECRET || '';
+  const GMAIL_REFRESH_TOKEN = process.env.GMAIL_REFRESH_TOKEN || '';
 
   const recipients = Array.isArray(to) ? to : [to];
 
-  // 1) If SMTP is not preferred, try API providers first (Resend -> SendGrid)
+  // Helper: Gmail API sender (OAuth2)
+  async function gmailApiSend() {
+    // Preconditions
+    if (!GMAIL_API_ENABLED) return { ok: false, error: 'gmail_api_disabled' };
+    if (!GMAIL_CLIENT_ID || !GMAIL_CLIENT_SECRET || !GMAIL_REFRESH_TOKEN || !GMAIL_USER) {
+      return { ok: false, error: 'gmail_api_missing_env' };
+    }
+
+    // 1) Exchange refresh token for access token
+    let accessToken = '';
+    try {
+      const tokenResp = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: GMAIL_CLIENT_ID,
+          client_secret: GMAIL_CLIENT_SECRET,
+          refresh_token: GMAIL_REFRESH_TOKEN,
+          grant_type: 'refresh_token',
+        }),
+      });
+      if (!tokenResp.ok) {
+        const errText = await tokenResp.text().catch(() => '');
+        console.warn('[mailer] Gmail token refresh failed:', tokenResp.status, errText?.slice?.(0, 200) || '');
+        return { ok: false, error: 'gmail_token_refresh_failed' };
+      }
+      const tokenData = await tokenResp.json();
+      accessToken = tokenData.access_token;
+      if (!accessToken) return { ok: false, error: 'gmail_no_access_token' };
+    } catch (e) {
+      console.warn('[mailer] Gmail token refresh exception:', e?.message || e);
+      return { ok: false, error: 'gmail_token_exception' };
+    }
+
+    // 2) Build MIME message
+    const recipients = Array.isArray(to) ? to.join(', ') : String(to);
+    const boundary = 'mix-' + Math.random().toString(36).slice(2);
+    const dateStr = new Date().toUTCString();
+    const headers = [
+      `From: ${from}`,
+      `To: ${recipients}`,
+      `Subject: ${subject}`,
+      'MIME-Version: 1.0',
+      `Date: ${dateStr}`,
+      `Content-Type: multipart/alternative; boundary="${boundary}"`
+    ].join('\r\n');
+
+    const plain = text || (html ? html.replace(/<[^>]+>/g, ' ') : '');
+    const body = [
+      `--${boundary}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      plain,
+      `--${boundary}`,
+      'Content-Type: text/html; charset="UTF-8"',
+      '',
+      html || `<p>${plain}</p>`,
+      `--${boundary}--`
+    ].join('\r\n');
+
+    const rfc822 = `${headers}\r\n\r\n${body}`;
+    const base64url = Buffer.from(rfc822).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+
+    // 3) Call Gmail API
+    try {
+      const sendResp = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ raw: base64url })
+      });
+      if (sendResp.ok) {
+        const data = await sendResp.json().catch(() => ({}));
+        console.info('[mailer] Sent via Gmail API');
+        return { ok: true, provider: 'gmail_api', raw: data };
+      }
+      const errText = await sendResp.text().catch(() => '');
+      console.warn('[mailer] Gmail send failed:', sendResp.status, errText?.slice?.(0, 200) || '');
+      return { ok: false, error: 'gmail_send_failed' };
+    } catch (e) {
+      console.warn('[mailer] Gmail send exception:', e?.message || e);
+      return { ok: false, error: 'gmail_send_exception' };
+    }
+  }
+
+  // 1) Prefer Gmail API when enabled
+  if (!SMTP_PREFERRED) {
+    const g = await gmailApiSend();
+    if (g?.ok) return g;
+  }
+
+  // 2) If SMTP is not preferred, try API providers next (Resend -> SendGrid)
   if (!SMTP_PREFERRED) {
     if (RESEND_API_KEY) {
       try {

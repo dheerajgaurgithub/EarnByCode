@@ -77,7 +77,6 @@ export const Settings: React.FC = () => {
     reducedMotion: (user?.preferences as any)?.accessibility?.reducedMotion ?? false,
     highContrast: (user?.preferences as any)?.accessibility?.highContrast ?? false
   });
-  const [savingCurrency, setSavingCurrency] = useState(false);
   const [savingPrefs, setSavingPrefs] = useState(false);
   const [savingPrivacy, setSavingPrivacy] = useState(false);
   const [savingNotifications, setSavingNotifications] = useState(false);
@@ -95,9 +94,7 @@ export const Settings: React.FC = () => {
   const [bankVerified, setBankVerified] = useState<boolean>(false);
   const [bankLastUpdated, setBankLastUpdated] = useState<string | null>(null);
   const [savingBank, setSavingBank] = useState(false);
-  const [bankOtpCooldown, setBankOtpCooldown] = useState(0);
-  const [bankOtpActiveWindow, setBankOtpActiveWindow] = useState(false);
-  const [bankTestOtp, setBankTestOtp] = useState<string | null>(null);
+  // Bank OTP flow removed
 
   const languageOptions = useMemo(() => {
     try {
@@ -214,12 +211,7 @@ export const Settings: React.FC = () => {
     loadBankDetails();
   }, []);
 
-  // Cooldown ticker for bank OTP
-  useEffect(() => {
-    if (bankOtpCooldown <= 0) return;
-    const t = setTimeout(() => setBankOtpCooldown((s) => Math.max(0, s - 1)), 1000);
-    return () => clearTimeout(t);
-  }, [bankOtpCooldown]);
+  // Bank OTP flow removed
 
   const saveBankDetails = async () => {
     // Basic IFSC validation
@@ -249,39 +241,10 @@ export const Settings: React.FC = () => {
       toast.success('Bank details saved');
       setBankForm((p) => ({ ...p, bankAccountNumber: '' }));
       setBankLastUpdated(new Date().toISOString());
-      setBankOtpActiveWindow(false); // used OTP window
     } catch (e: any) {
       toast.error(e?.message || 'Failed to save bank details');
     } finally {
       setSavingBank(false);
-    }
-  };
-
-  const requestBankOtp = async () => {
-    try {
-      const resp = await api.post('/users/me/bank/otp/request', {} as any);
-      if ((resp as any)?.success === false) throw new Error((resp as any)?.message || 'Failed');
-      toast.success('OTP sent to your email');
-      setBankOtpCooldown(60);
-      if ((resp as any)?.testOtp) {
-        setBankTestOtp(String((resp as any).testOtp));
-        toast.success(`Dev OTP: ${(resp as any).testOtp}`);
-      } else {
-        setBankTestOtp(null);
-      }
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to send OTP');
-    }
-  };
-
-  const verifyBankOtp = async (code: string) => {
-    try {
-      const resp = await api.post('/users/me/bank/otp/verify', { otp: code });
-      if ((resp as any)?.success === false) throw new Error((resp as any)?.message || 'Failed');
-      toast.success('OTP verified. You can save bank details now.');
-      setBankOtpActiveWindow(true);
-    } catch (e: any) {
-      toast.error(e?.message || 'Failed to verify OTP');
     }
   };
 
@@ -722,48 +685,6 @@ export const Settings: React.FC = () => {
                       <div className="mt-8 border-t border-slate-200 dark:border-gray-600 pt-8">
                         <h3 className="text-lg sm:text-xl font-bold text-gray-800 dark:text-white mb-3">Bank Details (for Winnings)</h3>
                         <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-6">We will pay your contest winnings to these details.</p>
-                        {/* OTP Controls */}
-                        <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                          <button
-                            type="button"
-                            onClick={requestBankOtp}
-                            disabled={bankOtpCooldown > 0}
-                            className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold disabled:opacity-50"
-                          >
-                            {bankOtpCooldown > 0 ? `Resend in ${bankOtpCooldown}s` : 'Send OTP'}
-                          </button>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="Enter OTP"
-                              className="px-3 py-2 rounded-lg bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 text-sm"
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') {
-                                  const val = (e.currentTarget as HTMLInputElement).value.trim();
-                                  if (val) verifyBankOtp(val);
-                                }
-                              }}
-                            />
-                            <button
-                              type="button"
-                              onClick={(e) => {
-                                const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement);
-                                const code = input?.value?.trim();
-                                if (code) verifyBankOtp(code);
-                              }}
-                              className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-semibold"
-                            >
-                              Verify OTP
-                            </button>
-                            {bankOtpActiveWindow && (
-                              <span className="text-emerald-600 dark:text-emerald-400 text-xs">Verified</span>
-                            )}
-                            {bankTestOtp && (
-                              <span className="text-amber-600 dark:text-amber-400 text-xs">Dev test OTP: <code>{bankTestOtp}</code></span>
-                            )}
-                          </div>
-                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                           <div>
                             <label className="block text-sm sm:text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Account Holder Name</label>

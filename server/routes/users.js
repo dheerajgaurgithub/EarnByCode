@@ -846,19 +846,20 @@ router.post('/me/email/change/request', authenticate, async (_req, res) => {
       await sendEmail({ to: email, subject, text, html });
     } catch (e) {
       const isProd = String(process.env.NODE_ENV).toLowerCase() === 'production';
-      if (isProd) {
-        // In production, fail hard if email cannot be sent
+      const allowProdBypass = String(process.env.ALLOW_TEST_OTP_IN_PROD || '').toLowerCase() === 'true';
+      if (isProd && !allowProdBypass) {
+        // In production, fail hard if email cannot be sent (unless bypass explicitly allowed)
         await EmailChangeRequest.deleteOne({ user: user._id, newEmail: email }).catch(() => {});
         throw e;
       } else {
-        // In non-production, allow test via returning testOtp
-        console.warn('[dev] Email send failed, returning testOtp for verification:', e?.message || e);
+        // In non-production or when bypass is allowed, allow test via returning testOtp
+        console.warn('[otp] Email send failed, returning testOtp for verification:', e?.message || e);
       }
     }
 
     // In non-production, return testOtp to simplify testing
     const payload = { success: true, message: 'Verification code sent' };
-    if (String(process.env.NODE_ENV).toLowerCase() !== 'production') {
+    if (String(process.env.NODE_ENV).toLowerCase() !== 'production' || String(process.env.ALLOW_TEST_OTP_IN_PROD || '').toLowerCase() === 'true') {
       // Do not log sensitive info in production
       payload.testOtp = otp;
     }
