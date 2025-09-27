@@ -2,7 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import User from '../models/User.js';
-import { sendEmail } from '../utils/mailer.js';
+// OTP/email sending no longer used here
 import bcrypt from 'bcryptjs';
 import { authenticate } from '../middleware/auth.js';
 // OTP/email flows removed; mailer and config not needed here
@@ -54,8 +54,7 @@ const autoUnblockIfExpired = async (user) => {
 
 const router = express.Router();
 
-// 6-digit OTP generator for password reset
-const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
+// OTP-based password reset is deprecated
 
 // Register (simple: create user immediately, no OTP)
 router.post('/register', async (req, res) => {
@@ -216,84 +215,18 @@ router.post('/verify-email', async (req, res) => {
 // Google OAuth routes are handled in oauth.js
 
 // Forgot Password: Request OTP
-router.post('/forgot-password/request', async (req, res) => {
-  try {
-    const { email } = req.body || {};
-    if (!email) return res.status(400).json({ message: 'Email is required' });
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      // Don't reveal if email exists
-      return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
-    }
-
-    const otp = generateOTP();
-    user.resetPasswordToken = otp;
-    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
-    await user.save();
-
-    // Send email in background
-    setImmediate(async () => {
-      try {
-        const subject = process.env.EMAIL_SUBJECT_RESET || 'EarnByCode: Password reset code';
-        const text = `Your password reset code is ${otp}. It expires in 15 minutes.`;
-        const html = `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-            <h2>Password reset</h2>
-            <p>Use the code below to reset your password for <strong>EarnByCode</strong>:</p>
-            <p style=\"font-size: 22px; font-weight: 700; letter-spacing: 2px;\">${otp}</p>
-            <p style=\"color:#555\">This code expires in <strong>15 minutes</strong>.</p>
-          </div>
-        `;
-        const r = await sendEmail({ to: email, subject, text, html });
-        if (r && r.provider) console.info('[forgot-password] Email sent via provider:', r.provider);
-      } catch (e) {
-        console.error('Send reset OTP email error (background):', e);
-      }
-    });
-
-    return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.', ...(process.env.EXPOSE_OTP === 'true' ? { testOtp: otp } : {}) });
-  } catch (error) {
-    console.error('Forgot password request error:', error);
-    res.status(500).json({ message: 'Server error during password reset request' });
-  }
+router.post('/forgot-password/request', async (_req, res) => {
+  return res.status(410).json({ message: 'OTP-based password reset has been removed.' });
 });
 
 // Forgot Password: Verify OTP
-router.post('/forgot-password/verify', async (req, res) => {
-  try {
-    const { email, otp } = req.body || {};
-    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
-
-    const user = await User.findOne({ email, resetPasswordToken: otp, resetPasswordExpire: { $gt: Date.now() } });
-    if (!user) return res.status(400).json({ message: 'Invalid or expired OTP' });
-
-    return res.status(200).json({ message: 'OTP verified' });
-  } catch (error) {
-    console.error('Forgot password verify error:', error);
-    res.status(500).json({ message: 'Server error during OTP verification' });
-  }
+router.post('/forgot-password/verify', async (_req, res) => {
+  return res.status(410).json({ message: 'OTP-based password reset has been removed.' });
 });
 
 // Forgot Password: Reset with OTP
-router.post('/forgot-password/reset', async (req, res) => {
-  try {
-    const { email, otp, newPassword } = req.body || {};
-    if (!email || !otp || !newPassword) return res.status(400).json({ message: 'Email, OTP and newPassword are required' });
-
-    const user = await User.findOne({ email, resetPasswordToken: otp, resetPasswordExpire: { $gt: Date.now() } });
-    if (!user) return res.status(400).json({ message: 'Invalid or expired OTP' });
-
-    user.password = newPassword;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-    await user.save();
-
-    return res.status(200).json({ message: 'Password has been reset successfully' });
-  } catch (error) {
-    console.error('Forgot password reset error:', error);
-    res.status(500).json({ message: 'Server error during password reset' });
-  }
+router.post('/forgot-password/reset', async (_req, res) => {
+  return res.status(410).json({ message: 'OTP-based password reset has been removed.' });
 });
 
 export default router;

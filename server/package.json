@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "dev": "nodemon server.js",
-    "start": "node server.js"
+    "start": "node server.js",
+    "cleanup:otp": "node ./scripts/remove-otp-fields.js"
   },
   "dependencies": {
     "@sendgrid/mail": "^8.1.6",

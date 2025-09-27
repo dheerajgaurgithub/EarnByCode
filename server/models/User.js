@@ -182,9 +182,7 @@ const userSchema = new mongoose.Schema({
     upiId: { type: String, trim: true },
     verified: { type: Boolean, default: false },
     lastUpdatedAt: { type: Date },
-    // OTP for bank detail updates
-    bankOtp: { type: String, default: null },
-    bankOtpExpires: { type: Date, default: null }
+    // OTP fields removed
   },
   isAdmin: {
     type: Boolean,
@@ -208,19 +206,7 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpire: Date,
   googleId: String,
   googleProfile: Object,
-  // Email change verification
-  pendingEmailChange: {
-    type: String,
-    default: null
-  },
-  emailChangeOtp: {
-    type: String,
-    default: null
-  },
-  emailChangeOtpExpires: {
-    type: Date,
-    default: null
-  },
+  // Email change OTP fields removed
   // Profile avatar fields
   avatarUrl: {
     type: String,

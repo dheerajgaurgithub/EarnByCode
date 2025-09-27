@@ -6,29 +6,13 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import cloudinary from 'cloudinary';
-import { sendEmail } from '../utils/mailer.js';
+// OTP/email sending no longer used here
 import Submission from '../models/Submission.js';
 
 // Initialize router
 const router = express.Router();
 
-// --- In-memory throttling for bank OTP requests ---
-const bankOtpAttemptByIp = new Map();
-const bankOtpAttemptByEmail = new Map();
-const pushAttempt = (map, key) => {
-  const now = Date.now();
-  const arr = map.get(key) || [];
-  const cutoff = now - 10 * 60 * 1000;
-  const trimmed = [...arr, now].filter(t => t >= cutoff).slice(-50);
-  map.set(key, trimmed);
-  return trimmed;
-};
-const countRecent = (map, key) => {
-  const now = Date.now();
-  const cutoff = now - 10 * 60 * 1000;
-  const arr = map.get(key) || [];
-  return arr.filter(t => t >= cutoff).length;
-};
+// Bank OTP throttling removed
 
 // Configure Cloudinary from environment
 cloudinary.v2.config({
@@ -60,7 +44,7 @@ router.get('/me/bank-details', authenticate, async (req, res) => {
   }
 });
 
-// Update bank details (requires recent OTP verification)
+// Update bank details (OTP no longer required)
 // Body: { bankAccountName, bankAccountNumber, ifsc, bankName, upiId }
 router.patch('/me/bank-details', authenticate, async (req, res) => {
   try {
@@ -68,10 +52,7 @@ router.patch('/me/bank-details', authenticate, async (req, res) => {
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     const details = user.bankDetails || {};
-    // Require that OTP was verified within the last 10 minutes
-    if (!details.bankOtpExpires || new Date(details.bankOtpExpires).getTime() < Date.now()) {
-      return res.status(400).json({ success: false, message: 'Please verify OTP before updating bank details' });
-    }
+    // OTP verification removed: proceed with validation-only update
 
     const { bankAccountName, bankAccountNumber, ifsc, bankName, upiId } = req.body || {};
     // Basic validation
@@ -93,7 +74,8 @@ router.patch('/me/bank-details', authenticate, async (req, res) => {
     }
 
     details.lastUpdatedAt = new Date();
-    // Clear OTP validity after successful update to prevent reuse
+    // Clear legacy OTP markers if present
+    details.bankOtp = null;
     details.bankOtpExpires = null;
     user.bankDetails = details;
     user.markModified('bankDetails');
@@ -115,82 +97,13 @@ router.patch('/me/bank-details', authenticate, async (req, res) => {
   }
 });
 
-// --- Bank details OTP (email) ---
-// Request OTP for bank update
-router.post('/me/bank/otp/request', authenticate, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    // Throttle by IP and email
-    const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
-    if (countRecent(bankOtpAttemptByIp, ip) >= 30) {
-      return res.status(429).json({ success: false, message: 'Too many requests from this IP. Try again later.' });
-    }
-    if (countRecent(bankOtpAttemptByEmail, String(user.email).toLowerCase()) >= 5) {
-      return res.status(429).json({ success: false, message: 'Too many OTP requests for this account. Try again later.' });
-    }
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.bankDetails = user.bankDetails || {};
-    user.bankDetails.bankOtp = otp;
-    user.bankDetails.bankOtpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    await user.save();
-
-    // send email
-    try {
-      const subject = 'AlgoBucks: Verify bank details change';
-      const text = `Use this code to verify your bank details update: ${otp}. It expires in 10 minutes.`;
-      const html = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>Verify bank details change</h2>
-          <p>Use the code below to verify your bank details update for <strong>AlgoBucks</strong>:</p>
-          <p style="font-size:20px; font-weight:700; letter-spacing:2px;">${otp}</p>
-          <p style="color:#555">This code expires in <strong>10 minutes</strong>.</p>
-        </div>
-      `;
-      const r = await sendEmail({ to: user.email, subject, text, html });
-      if (r && r.provider) console.info('[bank-otp] Email sent via provider:', r.provider);
-    } catch (e) {
-      console.error('[bank-otp] Failed to send OTP email:', e?.message || e);
-    }
-
-    // Record attempt on success
-    pushAttempt(bankOtpAttemptByIp, ip);
-    pushAttempt(bankOtpAttemptByEmail, String(user.email).toLowerCase());
-    return res.json({ success: true, message: 'OTP sent to your email', ...(process.env.EXPOSE_OTP === 'true' ? { testOtp: otp } : {}) });
-  } catch (error) {
-    console.error('Bank OTP request error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to send OTP' });
-  }
+// Bank OTP flows removed
+router.post('/me/bank/otp/request', authenticate, async (_req, res) => {
+  return res.status(410).json({ success: false, message: 'Bank OTP flow has been removed.' });
 });
 
-// Verify OTP for bank update
-router.post('/me/bank/otp/verify', authenticate, async (req, res) => {
-  try {
-    const { otp } = req.body || {};
-    if (!otp) return res.status(400).json({ success: false, message: 'OTP is required' });
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-    const details = user.bankDetails || {};
-    if (!details.bankOtp || !details.bankOtpExpires) {
-      return res.status(400).json({ success: false, message: 'No OTP request found' });
-    }
-    if (new Date(details.bankOtpExpires).getTime() < Date.now()) {
-      return res.status(400).json({ success: false, message: 'OTP expired' });
-    }
-    if (String(details.bankOtp) !== String(otp)) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-    // Mark as verified by clearing code but leaving a short-term verified window via timestamp
-    details.bankOtp = null;
-    // Reuse bankOtpExpires as a validity window marker from now for 10 minutes
-    details.bankOtpExpires = new Date(Date.now() + 10 * 60 * 1000);
-    user.markModified('bankDetails');
-    await user.save();
-    return res.json({ success: true, message: 'OTP verified. You can now update bank details for 10 minutes.' });
-  } catch (error) {
-    console.error('Bank OTP verify error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to verify OTP' });
-  }
+router.post('/me/bank/otp/verify', authenticate, async (_req, res) => {
+  return res.status(410).json({ success: false, message: 'Bank OTP flow has been removed.' });
 });
 
 // Get current user's daily problem (today in UTC)
@@ -852,99 +765,6 @@ router.patch('/me/preferences', authenticate, async (req, res) => {
 
 // --- Email change via OTP ---
 // Step 1: Request change (send OTP to new email)
-router.post('/me/email/change/request', authenticate, async (req, res) => {
-  try {
-    const { newEmail } = req.body || {};
-    const email = String(newEmail || '').trim().toLowerCase();
-    if (!email) return res.status(400).json({ success: false, message: 'New email is required' });
-
-    const me = await User.findById(req.user.id);
-    if (!me) return res.status(404).json({ success: false, message: 'User not found' });
-
-    if (email === String(me.email).toLowerCase()) {
-      return res.status(400).json({ success: false, message: 'New email must be different from current email' });
-    }
-
-    const exists = await User.findOne({ email });
-    if (exists) {
-      return res.status(400).json({ success: false, message: 'This email is already in use' });
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    me.pendingEmailChange = email;
-    me.emailChangeOtp = otp;
-    me.emailChangeOtpExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-    await me.save();
-
-    // Send OTP email in background; do not fail request if it errors
-    setImmediate(async () => {
-      try {
-        const subject = 'AlgoBucks: Verify your new email address';
-        const text = `Use this code to verify your new email: ${otp}. It expires in 15 minutes.`;
-        const html = `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-            <h2>Verify new email</h2>
-            <p>Use the code below to confirm your new email for <strong>AlgoBucks</strong>:</p>
-            <p style="font-size:20px; font-weight:700; letter-spacing:2px;">${otp}</p>
-            <p style="color:#555">This code expires in <strong>15 minutes</strong>.</p>
-          </div>
-        `;
-        const r = await sendEmail({ to: email, subject, text, html });
-        if (r && r.provider) console.info('[email-change] Email sent via provider:', r.provider);
-      } catch (e) {
-        console.warn('[email-change] Failed to send OTP email:', e?.message || e);
-      }
-    });
-
-    return res.json({ success: true, message: 'Verification code sent to the new email', ...(process.env.EXPOSE_OTP === 'true' ? { testOtp: otp } : {}) });
-  } catch (error) {
-    console.error('Email change request error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to start email change' });
-  }
-});
-
-// Step 2: Verify OTP and apply email update
-router.post('/me/email/change/verify', authenticate, async (req, res) => {
-  try {
-    const { newEmail, otp } = req.body || {};
-    const email = String(newEmail || '').trim().toLowerCase();
-    const code = String(otp || '').trim();
-    if (!email || !code) return res.status(400).json({ success: false, message: 'New email and OTP are required' });
-
-    const me = await User.findById(req.user.id);
-    if (!me) return res.status(404).json({ success: false, message: 'User not found' });
-
-    if (!me.pendingEmailChange || !me.emailChangeOtp || !me.emailChangeOtpExpires) {
-      return res.status(400).json({ success: false, message: 'No email change request found' });
-    }
-    if (String(me.pendingEmailChange).toLowerCase() !== email) {
-      return res.status(400).json({ success: false, message: 'Email does not match the pending change request' });
-    }
-    if (new Date(me.emailChangeOtpExpires).getTime() < Date.now()) {
-      return res.status(400).json({ success: false, message: 'OTP expired' });
-    }
-    if (String(me.emailChangeOtp) !== code) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-
-    // Double-check email is still available
-    const exists = await User.findOne({ email });
-    if (exists && String(exists._id) !== String(me._id)) {
-      return res.status(400).json({ success: false, message: 'This email is already in use' });
-    }
-
-    me.email = email;
-    me.pendingEmailChange = null;
-    me.emailChangeOtp = null;
-    me.emailChangeOtpExpires = null;
-    await me.save();
-
-    return res.json({ success: true, message: 'Email updated successfully', user: me.toJSON() });
-  } catch (error) {
-    console.error('Email change verify error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to verify email change' });
-  }
-});
 
 // Change password
 router.patch('/me/password', authenticate, async (req, res) => {
@@ -970,92 +790,15 @@ router.patch('/me/password', authenticate, async (req, res) => {
   }
 });
 
-// Request OTP for email change
-router.post('/me/email/change/request', authenticate, async (req, res) => {
-  try {
-    const { newEmail } = req.body || {};
-    if (!newEmail || typeof newEmail !== 'string') {
-      return res.status(400).json({ success: false, message: 'newEmail is required' });
-    }
-    const email = String(newEmail).trim().toLowerCase();
-
-    // Check if email already in use
-    const exists = await User.findOne({ email });
-    if (exists && String(exists._id) !== String(req.user.id)) {
-      return res.status(400).json({ success: false, message: 'Email already in use' });
-    }
-
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.pendingEmailChange = email;
-    user.emailChangeOtp = otp; // For production, hash this value
-    user.emailChangeOtpExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-    await user.save();
-
-    // Send OTP via email
-    const subject = process.env.EMAIL_SUBJECT_EMAIL_CHANGE || 'AlgoBucks: Verify your new email';
-    const text = `Use this code to verify your new email for AlgoBucks: ${otp}\n\nThis code expires in 10 minutes.`;
-    const html = `
-      <div style="font-family: Arial, sans-serif; line-height: 1.5;">
-        <h2>Verify your new email</h2>
-        <p>Use the following code to verify your new email for <strong>AlgoBucks</strong>:</p>
-        <p style="font-size: 20px; font-weight: bold; letter-spacing: 2px;">${otp}</p>
-        <p style="color:#555">This code expires in <strong>10 minutes</strong>.</p>
-      </div>
-    `;
-    await sendEmail({ to: email, subject, text, html });
-
-    return res.json({ success: true, message: 'Verification code sent', ...(process.env.EXPOSE_OTP === 'true' ? { testOtp: otp } : {}) });
-  } catch (error) {
-    console.error('Email change request error:', error);
-    return res.status(500).json({ success: false, message: error.message || 'Failed to request email change' });
-  }
+router.post('/me/email/change/request', authenticate, async (_req, res) => {
+  return res.status(410).json({ success: false, message: 'Email change OTP flow has been removed.' });
 });
 
 // Get user activity (per-day accepted submission counts)
 // (Removed duplicate '/users/me/activity' route)
 
-// Verify OTP and update email
-router.post('/me/email/change/verify', authenticate, async (req, res) => {
-  try {
-    const { newEmail, otp } = req.body || {};
-    if (!newEmail || !otp) {
-      return res.status(400).json({ success: false, message: 'newEmail and otp are required' });
-    }
-    const code = String(otp).trim();
-    const email = String(newEmail).trim().toLowerCase();
-
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    if (!user.pendingEmailChange || !user.emailChangeOtp || !user.emailChangeOtpExpires) {
-      return res.status(400).json({ success: false, message: 'No email change request found' });
-    }
-    if (user.pendingEmailChange !== email) {
-      return res.status(400).json({ success: false, message: 'Email does not match pending request' });
-    }
-    if (new Date(user.emailChangeOtpExpires).getTime() < Date.now()) {
-      return res.status(400).json({ success: false, message: 'OTP has expired' });
-    }
-    if (user.emailChangeOtp !== code) {
-      return res.status(400).json({ success: false, message: 'Invalid OTP' });
-    }
-
-    // All good: update email and clear pending fields
-    user.email = email;
-    user.pendingEmailChange = null;
-    user.emailChangeOtp = null;
-    user.emailChangeOtpExpires = null;
-    await user.save();
-
-    return res.json({ success: true, message: 'Email updated', user: user.toJSON() });
-  } catch (error) {
-    console.error('Email change verify error:', error);
-    return res.status(500).json({ success: false, message: error.message || 'Failed to verify code' });
-  }
+router.post('/me/email/change/verify', authenticate, async (_req, res) => {
+  return res.status(410).json({ success: false, message: 'Email change OTP flow has been removed.' });
 });
 
 // Permanently delete the authenticated user's account

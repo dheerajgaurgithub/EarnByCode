@@ -86,7 +86,7 @@ export const Header: React.FC = () => {
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement | null>(null);
-  const [exposeOtp, setExposeOtp] = useState<boolean>(false);
+  // OTP dev badge removed
 
   const userInfo = user as UserDisplayInfo | null;
 
@@ -108,20 +108,7 @@ export const Header: React.FC = () => {
     setShowMobileMenu(false);
   }, [location.pathname]);
 
-  // Fetch safe flags (exposeOtp)
-  useEffect(() => {
-    let mounted = true;
-    const run = async () => {
-      try {
-        const res = await fetch(`${config.api.baseUrl}/config/flags`, { credentials: 'include' });
-        const data = await res.json().catch(() => ({}));
-        if (!mounted) return;
-        setExposeOtp(!!data?.exposeOtp);
-      } catch {}
-    };
-    run();
-    return () => { mounted = false; };
-  }, []);
+  // OTP flags removed
 
   // Close user dropdown on outside click and Escape
   useEffect(() => {
@@ -278,14 +265,7 @@ export const Header: React.FC = () => {
 
           {/* Right side actions */}
           <div className="flex items-center space-x-1.5 sm:space-x-2 flex-shrink-0">
-            {exposeOtp && (
-              <span
-                className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border bg-amber-50/90 dark:bg-amber-900/40 border-amber-300/80 dark:border-amber-700/70 text-amber-800 dark:text-amber-300 shadow-sm"
-                title="OTP in dev mode (EXPOSE_OTP=true)"
-              >
-                OTP dev mode
-              </span>
-            )}
+            {/* OTP dev badge removed */}
             {/* Mobile menu button */}
             <button
               type="button"
