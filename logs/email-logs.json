@@ -1157,25 +1157,5 @@
     "timestamp": "2025-09-27T09:47:21.211Z",
     "type": "config_success",
     "message": "SMTP connection verified"
-  },
-  {
-    "timestamp": "2025-09-27T09:55:58.449Z",
-    "type": "config_success",
-    "message": "SMTP connection verified"
-  },
-  {
-    "timestamp": "2025-09-27T10:02:41.553Z",
-    "type": "config_success",
-    "message": "SMTP connection verified"
-  },
-  {
-    "timestamp": "2025-09-27T10:04:30.683Z",
-    "type": "config_success",
-    "message": "SMTP connection verified"
-  },
-  {
-    "timestamp": "2025-09-27T10:13:42.756Z",
-    "type": "config_success",
-    "message": "SMTP connection verified"
   }
 ]
