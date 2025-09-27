@@ -83,26 +83,26 @@ const handleOAuthSuccess = async (req, res, user, redirectPath = '/') => {
     // Best-effort: if user just registered via Google, send a welcome/verification email with the same login link
     if (req.oauthNewUser && user?.email) {
       try {
-        const frontendUrl = config.FRONTEND_URL || 'http://localhost:5173';
-        const prettyLink = new URL('/auth/callback', frontendUrl);
-        prettyLink.hash = `#token=${token}&next=%2F&welcome=1`;
+        const apiUrl = config.API_URL || 'http://localhost:5000';
+        const verifyLink = new URL('/api/auth/verify-link', apiUrl);
+        verifyLink.searchParams.set('token', token);
+        verifyLink.searchParams.set('next', '/');
         const html = `
           <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;">
             <h2>Welcome to EarnByCode, ${user.fullName || user.username || ''}!</h2>
-            <p>Your Google email <b>${user.email}</b> has been verified.</p>
-            <p>Click the button below to finish signing in:</p>
+            <p>Verify your email <b>${user.email}</b> and finish signing in by clicking the button below:</p>
             <p style="text-align:center;margin:24px 0;">
-              <a href="${prettyLink.toString()}" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;">Finish Sign-in</a>
+              <a href="${verifyLink.toString()}" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;">Verify email & Sign in</a>
             </p>
             <p>If the button doesn’t work, copy and paste this link into your browser:</p>
-            <p style="word-break:break-all;color:#2563EB;">${prettyLink.toString()}</p>
+            <p style="word-break:break-all;color:#2563EB;">${verifyLink.toString()}</p>
             <p style="color:#666;font-size:12px;margin-top:24px">If you didn't request this, you can ignore this email.</p>
           </div>`;
         await sendEmail({
           to: user.email,
-          subject: 'Welcome to EarnByCode — Sign-in link',
+          subject: 'Verify your email — EarnByCode',
           html,
-          text: `Welcome to EarnByCode! Open this link to finish signing in: ${prettyLink.toString()}`
+          text: `Verify your email and finish signing in: ${verifyLink.toString()}`
         });
       } catch (e) {
         console.warn('Welcome email failed:', e?.message || e);

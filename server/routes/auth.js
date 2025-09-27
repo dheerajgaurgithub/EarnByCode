@@ -2,6 +2,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import User from '../models/User.js';
+import config from '../config/config.js';
 // OTP/email sending no longer used here
 import bcrypt from 'bcryptjs';
 import { authenticate } from '../middleware/auth.js';
@@ -226,6 +227,46 @@ router.post('/verify', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Verify account error:', error);
     return res.status(500).json({ success: false, message: 'Failed to verify account' });
+  }
+});
+
+// Email verification link handler: GET with token in query
+// Example: GET /api/auth/verify-link?token=...&next=%2F&welcome=1
+router.get('/verify-link', async (req, res) => {
+  try {
+    const { token, next = '/' } = req.query;
+    if (!token) {
+      return res.status(400).send('Invalid verification link');
+    }
+    let payload;
+    try {
+      payload = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(400).send('Verification link expired or invalid');
+    }
+    const userId = payload.userId || payload.id || payload._id;
+    if (!userId) {
+      return res.status(400).send('Invalid token payload');
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+    if (!user.isEmailVerified) {
+      user.isEmailVerified = true;
+      await user.save();
+    }
+
+    // Redirect to frontend callback so SPA can persist token and show welcome
+    const frontendUrl = config.FRONTEND_URL || 'http://localhost:5173';
+    const callbackUrl = new URL('/auth/callback', frontendUrl);
+    const urlWithHash = new URL(callbackUrl);
+    const nextParam = encodeURIComponent(next || '/');
+    urlWithHash.hash = `#token=${token}&next=${nextParam}&welcome=1`;
+    return res.redirect(urlWithHash.toString());
+  } catch (error) {
+    console.error('Verify-link error:', error);
+    return res.status(500).send('Failed to verify account');
   }
 });
 
