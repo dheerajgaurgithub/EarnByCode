@@ -137,7 +137,7 @@ export const Header: React.FC = () => {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 w-full transition-all duration-500 overflow-hidden',
+        'sticky top-0 z-50 w-full transition-all duration-500 overflow-visible',
         'bg-white/95 dark:bg-gray-950/95 backdrop-blur-2xl',
         scrolled
           ? 'border-b border-sky-200/60 dark:border-green-800/60 shadow-lg shadow-sky-500/10 dark:shadow-green-900/20'
