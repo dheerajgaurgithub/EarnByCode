@@ -15,6 +15,12 @@ const CodeEditor = () => {
   const editorRef = useRef<any>(null);
   const [lang, setLang] = useState<Lang>("Cpp");
   const [code, setCode] = useState<string>(DEFAULT_SNIPPETS["Cpp"]);
+  const [codeByLang, setCodeByLang] = useState<Record<Lang, string>>({
+    Java: DEFAULT_SNIPPETS.Java,
+    Cpp: DEFAULT_SNIPPETS.Cpp,
+    Python: DEFAULT_SNIPPETS.Python,
+    JavaScript: DEFAULT_SNIPPETS.JavaScript,
+  });
   const [input, setInput] = useState<string>("");
   const [output, setOutput] = useState<string>("");
   const [expected, setExpected] = useState<string>("");
@@ -146,13 +152,13 @@ const CodeEditor = () => {
 
   const theme = darkMode ? themeClasses.dark : themeClasses.light;
 
-  // Load problem test cases if problem ID is in route
+  // Load problem test cases and starter code if problem ID is in route
   useEffect(() => {
     const loadProblem = async () => {
       if (routeProblemId) {
         try {
           setProblemId(routeProblemId);
-          // Replace with your actual API endpoint
+          // Load test cases
           const response = await fetch(`/api/problems/${routeProblemId}/testcases`);
           if (response.ok) {
             const data = await response.json();
@@ -161,10 +167,41 @@ const CodeEditor = () => {
                 input: tc.input || '',
                 expected: tc.expectedOutput || ''
               })));
-              return;
-              setShowLog(true);
-        }
+            }
           }
+          // Load problem details to get starterCode (if available)
+          try {
+            const pr = await fetch(`/api/problems/${routeProblemId}`);
+            if (pr.ok) {
+              const pd = await pr.json();
+              const sc = (pd?.problem?.starterCode) || (pd?.starterCode) || {};
+              if (sc && typeof sc === 'object') {
+                const mapLangKey = (k: string): Lang | null => {
+                  const key = String(k || '').toLowerCase();
+                  if (key === 'cpp' || key === 'c++') return 'Cpp';
+                  if (key === 'java') return 'Java';
+                  if (key === 'python' || key === 'py') return 'Python';
+                  if (key === 'javascript' || key === 'js' || key === 'node') return 'JavaScript';
+                  return null;
+                };
+                const next: Record<Lang, string> = { ...codeByLang } as any;
+                (Object.keys(sc) as string[]).forEach(k => {
+                  const lk = mapLangKey(k);
+                  if (!lk) return;
+                  const val = typeof sc[k] === 'string' ? sc[k] : '';
+                  // Only apply starter if user hasn't edited for that language
+                  const current = next[lk];
+                  const isDefault = current === DEFAULT_SNIPPETS[lk];
+                  if (isDefault) next[lk] = val || current;
+                });
+                setCodeByLang(next);
+                // also set current code if the current language buffer is still default
+                if (next[lang] !== codeByLang[lang] && (code === DEFAULT_SNIPPETS[lang])) {
+                  setCode(next[lang]);
+                }
+              }
+            }
+          } catch {}
           // If no test cases found, add one empty test case
           setTestcases([{ input: '', expected: '' }]);
         } catch (error) {
@@ -193,15 +230,10 @@ const CodeEditor = () => {
     try { localStorage.setItem('codeEditor:expected', expected); } catch {}
   }, [expected]);
 
+  // When language changes, show that language's buffer
   useEffect(() => {
-    setCode((prev) => {
-      // if user hasn't typed anything custom yet, use template on language switch
-      if (!prev || prev === DEFAULT_SNIPPETS.Java || prev === DEFAULT_SNIPPETS.Cpp || prev === DEFAULT_SNIPPETS.Python || prev === DEFAULT_SNIPPETS.JavaScript) {
-        return DEFAULT_SNIPPETS[lang];
-      }
-      return prev;
-    });
-  }, [lang]);
+    setCode(codeByLang[lang] ?? DEFAULT_SNIPPETS[lang]);
+  }, [lang, codeByLang]);
 
   const monacoLanguage =
     lang === "Cpp" ? "cpp" : lang === "JavaScript" ? "javascript" : lang.toLowerCase();
@@ -565,7 +597,11 @@ const CodeEditor = () => {
               theme={darkMode ? "vs-dark" : "light"}
               language={monacoLanguage}
               value={code}
-              onChange={(v) => setCode(v || "")}
+              onChange={(v) => {
+                const val = v || '';
+                setCode(val);
+                setCodeByLang(prev => ({ ...prev, [lang]: val }));
+              }}
               options={{ 
                 minimap: { enabled: false },
                 fontSize: 12,

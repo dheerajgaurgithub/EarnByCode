@@ -74,6 +74,42 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 // Do NOT set to true (all) to avoid permissive trust proxy issues
 app.set('trust proxy', 1);
 
+// --- Robust CORS setup (must be BEFORE routes and sessions) ---
+const VERCELO = 'https://algobucks-tau.vercel.app';
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  VERCELO,
+  process.env.FRONTEND_ORIGIN,
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
+const dynamicCors = cors({
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    console.warn('CORS blocked origin:', origin);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+  methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','X-Requested-With'],
+  exposedHeaders: ['Content-Type','Content-Length'],
+  maxAge: 600,
+});
+
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+  next();
+});
+app.use(dynamicCors);
+app.options('*', dynamicCors);
+
 // Environment check endpoint
 app.get('/api/env/check', (req, res) => {
   try {
@@ -319,50 +355,7 @@ app.post('/api/code/run', async (req, res) => {
 
 // Middleware
 app.use(helmet());
-// Configure CORS (locked to specific origins)
-const allowedOrigins = [
-  'http://localhost:5173',
-  'https://algobucks-tau.vercel.app'
-];
-
-// CORS configuration
-const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) {
-      return callback(null, true);
-    }
-    // Strictly allow only the configured origins
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    console.warn('CORS Blocked:', origin, 'not in allowed origins:', allowedOrigins);
-    callback(new Error('Not allowed by CORS'));
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'x-application',
-    'x-csrf-token',
-    'x-requested-with'
-  ],
-  exposedHeaders: [
-    'Content-Range', 
-    'X-Total-Count',
-    'x-application'
-  ],
-  maxAge: 600, // 10 minutes
-  preflightContinue: false,
-  optionsSuccessStatus: 204
-};
-
-app.use(cors(corsOptions));
-
-// Handle preflight requests
-app.options('*', cors(corsOptions));
+// Legacy CORS block removed — using dynamicCors defined near the top.
 
 // Important: Razorpay webhook needs raw body for signature verification
 app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*' }));
@@ -375,12 +368,7 @@ app.use(helmet({
   contentSecurityPolicy: false,
 }));
 
-// CORS: restrict to frontend origin if provided
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || process.env.CLIENT_ORIGIN || 'https://algobucks-tau.vercel.app';
-app.use(cors({
-  origin: FRONTEND_ORIGIN ? [FRONTEND_ORIGIN] : true,
-  credentials: true,
-}));
+// Note: CORS is configured earlier via dynamicCors
 
 // Rate limit high-risk routes
 const authLimiter = rateLimit({
@@ -443,31 +431,6 @@ app.use(passport.session());
 // Serve static files from public directory
 const publicPath = path.join(__dirname, '../../public');
 
-// Security headers (CSP) — restrict to strict origins
-const API_ORIGINS = [
-  'https://algobucks.onrender.com',
-  'http://localhost:5000',
-  FRONTEND_ORIGIN,
-].filter(Boolean);
-
-app.use(helmet({
-  contentSecurityPolicy: {
-    useDefaults: true,
-    directives: {
-      defaultSrc: ["'self'"],
-      baseUri: ["'self'"],
-      objectSrc: ["'none'"],
-      scriptSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-      fontSrc: ["'self'", 'https:', 'data:'],
-      connectSrc: ["'self'", ...API_ORIGINS],
-      frameAncestors: ["'self'"],
-      upgradeInsecureRequests: [],
-    }
-  },
-  crossOriginResourcePolicy: { policy: 'cross-origin' },
-}));
 
 // Serve static files with cache control
 const staticOptions = {
