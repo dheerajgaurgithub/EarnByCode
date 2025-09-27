@@ -246,6 +246,11 @@ const AdminPanel: React.FC = () => {
   }>({});
   const [statsLoading, setStatsLoading] = useState(true);
   const [statsError, setStatsError] = useState<string | null>(null);
+  // Debug email tester state
+  const [testEmail, setTestEmail] = useState<string>('');
+  const [debugKey, setDebugKey] = useState<string>('');
+  const [sendingTestEmail, setSendingTestEmail] = useState<boolean>(false);
+  const [testEmailResult, setTestEmailResult] = useState<string>('');
   
   // Loading State
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -370,6 +375,69 @@ const AdminPanel: React.FC = () => {
       setStatsLoading(false);
     }
   }, []);
+
+  // Admin: send a test email to verify provider
+  const handleSendTestEmail = useCallback(async () => {
+    setTestEmailResult('');
+    if (!testEmail || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(testEmail)) {
+      try { toast.error?.('Enter a valid email'); } catch {}
+      return;
+    }
+    try {
+      setSendingTestEmail(true);
+      const url = `${(import.meta.env.VITE_API_URL || '').replace(/\/$/, '') || 'https://algobucks.onrender.com/api'}/auth/debug/send-test-email`;
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (debugKey) headers['x-debug-key'] = debugKey;
+      const resp = await fetch(url, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ to: testEmail })
+      });
+      const data = await resp.json().catch(() => ({} as any));
+      if (!resp.ok) throw new Error(data?.message || `HTTP ${resp.status}`);
+      setTestEmailResult(`Sent via provider=${data?.provider || 'unknown'}`);
+      try { toast.success?.('Test email sent'); } catch {}
+    } catch (e: any) {
+      console.error('Debug send-test-email error:', e);
+      setTestEmailResult(`Failed: ${e?.message || e}`);
+      try { toast.error?.(e?.message || 'Failed to send test email'); } catch {}
+    } finally {
+      setSendingTestEmail(false);
+    }
+  }, [testEmail, debugKey, toast]);
+
+  // Debug email tester card (Admin only UI)
+  const OverviewDebugEmailCard = () => (
+    <div className="mt-4 p-4 border border-blue-100 rounded-md bg-white">
+      <h3 className="text-sm font-semibold text-blue-900 mb-2">Email Delivery Tester (Admin)</h3>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <input
+          type="email"
+          placeholder="Recipient email"
+          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md bg-white text-black"
+          value={testEmail}
+          onChange={(e) => setTestEmail(e.target.value)}
+        />
+        <input
+          type="text"
+          placeholder="x-debug-key (prod only)"
+          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md bg-white text-black"
+          value={debugKey}
+          onChange={(e) => setDebugKey(e.target.value)}
+        />
+        <button
+          onClick={handleSendTestEmail}
+          disabled={sendingTestEmail}
+          className={`px-3 py-1.5 text-xs rounded-md text-white ${sendingTestEmail ? 'bg-blue-300' : 'bg-blue-600 hover:bg-blue-700'}`}
+        >
+          {sendingTestEmail ? 'Sending…' : 'Send Test Email'}
+        </button>
+      </div>
+      {testEmailResult && (
+        <p className="mt-2 text-xs text-gray-700">{testEmailResult}</p>
+      )}
+    </div>
+  );
 
   // Effect for initial stats load
   useEffect(() => {
@@ -1696,6 +1764,9 @@ const AdminPanel: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* Admin debug: Email tester */}
+            <OverviewDebugEmailCard />
           </div>
         )}
 

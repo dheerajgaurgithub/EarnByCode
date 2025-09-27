@@ -2,55 +2,57 @@ import nodemailer from 'nodemailer';
 
 // Create a singleton transporter using environment variables
 let transporter = null;
+let smtpFailureCount = 0;
+const SMTP_FAILURE_THRESHOLD = parseInt(process.env.SMTP_FAILURE_THRESHOLD || '3', 10);
+let smtpDisabled = false; // circuit breaker, process-lifetime
 
 function getTransporter() {
-  if (transporter) return transporter;
+  if (smtpDisabled) {
+    throw new Error('SMTP disabled by circuit breaker');
+  }
+  if (transporter) {
+    return transporter;
+  }
 
   const host = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT || 587);
   const secure = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
   const user = process.env.SMTP_USER || process.env.SMTP_EMAIL || process.env.EMAIL_USER;
-  const pass = process.env.SMTP_PASS || process.env.SMTP_PASSWORD || process.env.EMAIL_PASS;
+  const pass = process.env.SMTP_PASS || process.env.EMAIL_PASS || process.env.SMTP_PASSWORD;
 
-  if (!host || !user || !pass) {
-    const missing = [];
-    if (!host) missing.push('SMTP_HOST');
-    if (!user) missing.push('SMTP_USER (or SMTP_EMAIL/EMAIL_USER)');
-    if (!pass) missing.push('SMTP_PASS (or SMTP_PASSWORD/EMAIL_PASS)');
-    throw new Error(`SMTP is not configured. Missing: ${missing.join(', ')}. Please set SMTP_HOST, SMTP_PORT, SMTP_SECURE, SMTP_USER, SMTP_PASS in .env`);
+  if (!host) {
+    throw new Error('SMTP host not configured');
   }
 
   transporter = nodemailer.createTransport({
+    pool: true,
     host,
     port,
     secure,
-    auth: { user, pass },
-    requireTLS: !secure,
-    connectionTimeout: 15000,
-    greetingTimeout: 10000,
-    socketTimeout: 20000,
-    pool: true,
-    maxConnections: 3,
-    maxMessages: 50,
-    dnsTimeout: 8000,
-    family: 4,
+    auth: user && pass ? { user, pass } : undefined,
+    connectionTimeout: 10000,
+    greetingTimeout: 8000,
+    socketTimeout: 15000,
+    tls: {
+      rejectUnauthorized: false,
+      servername: host,
+      minVersion: 'TLSv1.2',
+    },
   });
 
-  // Non-blocking verify to surface config issues in logs
-  try {
-    transporter.verify().then(() => {
-      console.info('[mailer] SMTP verified');
-    }).catch((e) => {
-      console.warn('[mailer] SMTP verify failed:', e?.message || e);
-    });
-  } catch {}
+  // Verify in background
+  transporter.verify().then(() => {
+    console.info('[mailer] SMTP verified');
+  }).catch((e) => {
+    console.warn('[mailer] SMTP verify failed:', e?.message || e);
+  });
 
   return transporter;
 }
 
 /**
  * Send an email using the configured transporter
- * @param {Object} params
+{{ ... }}
  * @param {string} params.to - Recipient email
  * @param {string} params.subject - Email subject
  * @param {string} [params.text] - Plain text body
@@ -96,13 +98,26 @@ export async function sendEmail({ to, subject, text, html }) {
 
   // Fallback: SMTP
   try {
+    if (smtpDisabled) {
+      throw new Error('SMTP disabled by circuit breaker');
+    }
     const tx = getTransporter();
     const info = await tx.sendMail({ from, to, subject, text, html });
+    smtpFailureCount = 0; // reset on success
     return { ok: true, provider: 'smtp', raw: info };
   } catch (e) {
     const msg = String(e?.message || e);
     const code = (e && (e.code || e.errno)) || '';
     console.error('[mailer] SMTP send failed:', code, msg);
+    // increment breaker on connection/timeout errors
+    if (/timed?out|conn|ECONN|ENET|EHOST/i.test(code + ' ' + msg)) {
+      smtpFailureCount += 1;
+      console.warn(`[mailer] SMTP failures: ${smtpFailureCount}/${SMTP_FAILURE_THRESHOLD}`);
+      if (smtpFailureCount >= SMTP_FAILURE_THRESHOLD) {
+        smtpDisabled = true;
+        console.error('[mailer] SMTP circuit breaker OPENED. Further SMTP attempts will be skipped until restart.');
+      }
+    }
     throw e;
   }
 }
