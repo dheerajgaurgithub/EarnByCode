@@ -9,6 +9,26 @@ export default function Footer() {
   const { t } = useI18n();
   const buildTime = (import.meta as any)?.env?.VITE_BUILD_TIME as string | undefined;
   const [exposeOtp, setExposeOtp] = React.useState(false);
+  const sendTestEmail = React.useCallback(async () => {
+    try {
+      const to = window.prompt('Send test email to:');
+      if (!to) return;
+      const res = await fetch(`${config.api.baseUrl}/debug/send-test-email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ to, subject: 'AlgoBucks test email', text: 'Hello from debug button' })
+      });
+      const data = await res.json().catch(() => ({} as any));
+      if (res.ok && data?.ok) {
+        alert(`Sent via provider: ${data.provider || 'unknown'}`);
+      } else {
+        alert(`Failed: ${data?.error || 'Unknown error'}`);
+      }
+    } catch (e: any) {
+      alert(`Error: ${e?.message || e}`);
+    }
+  }, []);
   React.useEffect(() => {
     let mounted = true;
     (async () => {
@@ -244,12 +264,22 @@ export default function Footer() {
             </span>
           )}
           {exposeOtp && (
-            <span
-              className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] md:text-xs font-semibold border bg-amber-50/90 dark:bg-amber-900/40 border-amber-300/80 dark:border-amber-700/70 text-amber-800 dark:text-amber-300 shadow-sm"
-              title="OTP in dev mode (EXPOSE_OTP=true)"
-            >
-              OTP dev mode
-            </span>
+            <>
+              <span
+                className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] md:text-xs font-semibold border bg-amber-50/90 dark:bg-amber-900/40 border-amber-300/80 dark:border-amber-700/70 text-amber-800 dark:text-amber-300 shadow-sm"
+                title="OTP in dev mode (EXPOSE_OTP=true)"
+              >
+                OTP dev mode
+              </span>
+              <button
+                type="button"
+                onClick={sendTestEmail}
+                className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[9px] sm:text-[10px] md:text-xs font-semibold border bg-sky-50/90 dark:bg-gray-900/60 border-sky-300/80 dark:border-green-700/70 text-sky-800 dark:text-green-300 shadow-sm hover:bg-sky-100 dark:hover:bg-gray-800"
+                title="Send a test email"
+              >
+                Send test email
+              </button>
+            </>
           )}
         </div>
       )}

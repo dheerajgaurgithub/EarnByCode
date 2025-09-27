@@ -54,42 +54,42 @@ function getTransporter(smtpConfig = defaultSmtpConfig) {
   transporter.verify()
     .then(() => console.info('[mailer] SMTP verified'))
     .catch(err => console.warn('[mailer] SMTP verify failed:', err?.message || err));
-
   return transporter;
 }
 
 export async function sendEmail({ to, subject, text, html }) {
   const from = process.env.EMAIL_FROM || process.env.FROM_EMAIL || process.env.SMTP_USER || 'replyearnbycode@gmail.com';
-  const RESEND_API_KEY = process.env.RESEND_API_KEY ||'re_8XNYoePj_3ykioqzjiBc7DSji5Qg8Kp5q';
-  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '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';
+  const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
   const SMTP_PREFERRED = String(process.env.SMTP_PREFERRED || '').toLowerCase() === 'true';
 
   const recipients = Array.isArray(to) ? to : [to];
 
-  // If SMTP is preferred, jump straight to SMTP section
+  // 1) If SMTP is not preferred, try API providers first (Resend -> SendGrid)
   if (!SMTP_PREFERRED) {
-  // --- Resend API ---
-  if (RESEND_API_KEY) {
-    try {
-      const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 10000);
-      // Allow overriding From just for Resend (useful for onboarding@resend.dev during testing)
-      const forceFallback = String(process.env.RESEND_FORCE_FALLBACK || '').toLowerCase() === 'true';
-      const resendFrom = forceFallback ? 'onboarding@resend.dev' : (process.env.RESEND_FROM || from);
-      const body = { from: resendFrom, to: recipients, subject, text, html };
-      const resp = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      });
-      clearTimeout(t);
-      if (!resp.ok) {
+    if (RESEND_API_KEY) {
+      try {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 10000);
+        const forceFallback = String(process.env.RESEND_FORCE_FALLBACK || '').toLowerCase() === 'true';
+        const resendFrom = forceFallback ? 'onboarding@resend.dev' : (process.env.RESEND_FROM || from);
+        const body = { from: resendFrom, to: recipients, subject, text, html };
+        const resp = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+        clearTimeout(t);
+        if (resp.ok) {
+          const data = await resp.json();
+          console.info('[mailer] Sent via Resend API');
+          return { ok: true, provider: 'resend', raw: data };
+        }
         const errText = await resp.text().catch(() => '');
         console.warn('[mailer] Resend primary send failed:', resp.status, errText?.slice?.(0, 200) || '');
-        // Retry once with onboarding sender for any 403 (common for unverified domains)
         if (resp.status === 403) {
-          console.warn('[mailer] Resend: retrying with onboarding@resend.dev (fallback sender)');
+          // retry with onboarding sender once
           const controller2 = new AbortController();
           const t2 = setTimeout(() => controller2.abort(), 10000);
           const fallbackBody = { from: 'onboarding@resend.dev', to: recipients, subject, text, html };
@@ -100,64 +100,45 @@ export async function sendEmail({ to, subject, text, html }) {
             signal: controller2.signal,
           });
           clearTimeout(t2);
-          if (!resp2.ok) {
-            const errText2 = await resp2.text().catch(() => '');
-            throw new Error(`Resend API error (fallback): ${resp2.status} ${errText2}`);
+          if (resp2.ok) {
+            const data2 = await resp2.json();
+            console.info('[mailer] Sent via Resend API (fallback sender)');
+            return { ok: true, provider: 'resend', raw: data2 };
           }
-          const data2 = await resp2.json();
-          console.info('[mailer] Sent via Resend API (fallback sender)');
-          return { ok: true, provider: 'resend', raw: data2 };
         }
-        throw new Error(`Resend API error: ${resp.status} ${errText}`);
+      } catch (e) {
+        console.warn('[mailer] Resend send failed:', e?.message || e);
       }
-      const data = await resp.json();
-      console.info('[mailer] Sent via Resend API');
-      return { ok: true, provider: 'resend', raw: data };
-    } catch (re) {
-      console.warn('[mailer] Resend send failed, trying SendGrid or SMTP:', re?.message || re);
+    }
+
+    if (SENDGRID_API_KEY) {
+      try {
+        const sgResp = await fetch('https://api.sendgrid.com/v3/mail/send', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            personalizations: [{ to: recipients.map(r => ({ email: r })) }],
+            from: { email: from },
+            subject,
+            content: [
+              ...(text ? [{ type: 'text/plain', value: text }] : []),
+              ...(html ? [{ type: 'text/html', value: html }] : [])
+            ],
+          }),
+        });
+        if (sgResp.ok) {
+          console.info('[mailer] Sent via SendGrid API');
+          return { ok: true, provider: 'sendgrid', raw: { status: 'accepted' } };
+        }
+      } catch (e) {
+        console.warn('[mailer] SendGrid send failed:', e?.message || e);
+      }
     }
   }
 
-  // --- SendGrid API ---
-  if (!SMTP_PREFERRED && SENDGRID_API_KEY) {
-    try {
-      const sgResp = await fetch('https://api.sendgrid.com/v3/mail/send', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          personalizations: [{ to: recipients.map(r => ({ email: r })) }],
-          from: { email: from },
-          subject,
-          content: [
-            ...(text ? [{ type: 'text/plain', value: text }] : []),
-            ...(html ? [{ type: 'text/html', value: html }] : [])
-          ],
-        }),
-      });
-      if (!sgResp.ok) {
-        const errText = await sgResp.text().catch(() => '');
-        // If key invalid/expired, do not keep trying; proceed to SMTP
-        if (sgResp.status === 401) {
-          console.warn('[mailer] SendGrid API unauthorized (401). Skipping to SMTP fallback.');
-        } else {
-          throw new Error(`SendGrid API error: ${sgResp.status} ${errText}`);
-        }
-      }
-      if (sgResp.ok) {
-        console.info('[mailer] Sent via SendGrid API');
-        return { ok: true, provider: 'sendgrid', raw: { status: 'accepted' } };
-      }
-    } catch (se) {
-      console.warn('[mailer] SendGrid send failed, falling back to SMTP:', se?.message || se);
-    }
-  }
-
-  } // end if (!SMTP_PREFERRED)
-
-  // --- SMTP Fallback ---
+  // 2) Try SMTP (preferred or fallback)
   const transientRe = /timed?out|conn|ECONN|ENET|EHOST|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i;
   let lastErr;
-
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const tx = getTransporter();
@@ -169,7 +150,6 @@ export async function sendEmail({ to, subject, text, html }) {
       const msg = String(e?.message || e);
       const code = (e && (e.code || e.errno)) || '';
       console.error(`[mailer] SMTP send failed (attempt ${attempt}/3):`, code, msg);
-
       if (transientRe.test(code + ' ' + msg)) {
         smtpFailureCount += 1;
         lastSmtpFailureAt = Date.now();
@@ -179,19 +159,62 @@ export async function sendEmail({ to, subject, text, html }) {
           console.error('[mailer] SMTP circuit breaker OPENED.');
           break;
         }
-
-        // Retry with STARTTLS fallback on first attempt
         if (attempt === 1 && defaultSmtpConfig.secure) {
           console.warn('[mailer] Switching SMTP to STARTTLS fallback (port=587, secure=false)');
-          transporter = null; // recreate with fallback
+          transporter = null;
           continue;
         }
-
         const backoff = Math.min(2000 * Math.pow(2, attempt - 1), 8000);
         await new Promise(r => setTimeout(r, backoff));
         continue;
       }
       break;
+    }
+  }
+
+  // 3) If SMTP was preferred and still failed, try API providers last
+  if (SMTP_PREFERRED) {
+    if (RESEND_API_KEY) {
+      try {
+        const controller = new AbortController();
+        const t = setTimeout(() => controller.abort(), 10000);
+        const forceFallback = String(process.env.RESEND_FORCE_FALLBACK || '').toLowerCase() === 'true';
+        const resendFrom = forceFallback ? 'onboarding@resend.dev' : (process.env.RESEND_FROM || from);
+        const body = { from: resendFrom, to: recipients, subject, text, html };
+        const resp = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal: controller.signal,
+        });
+        clearTimeout(t);
+        if (resp.ok) {
+          const data = await resp.json();
+          console.info('[mailer] Sent via Resend API after SMTP failure');
+          return { ok: true, provider: 'resend', raw: data };
+        }
+      } catch {}
+    }
+    if (SENDGRID_API_KEY) {
+      try {
+        const sgResp = await fetch('https://api.sendgrid.com/v3/mail/send', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${SENDGRID_API_KEY}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            personalizations: [{ to: recipients.map(r => ({ email: r })) }],
+            from: { email: from },
+            subject,
+            content: [
+              ...(text ? [{ type: 'text/plain', value: text }] : []),
+              ...(html ? [{ type: 'text/html', value: html }] : [])
+            ],
+          }),
+        });
+        if (sgResp.ok) {
+          console.info('[mailer] Sent via SendGrid API after SMTP failure');
+          return { ok: true, provider: 'sendgrid', raw: { status: 'accepted' } };
+        }
+      } catch {}
     }
   }
 
