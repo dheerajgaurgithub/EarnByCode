@@ -137,6 +137,52 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// Resend verification OTP for pending registration
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    // If already verified, do not proceed
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ message: 'Email already registered' });
+    }
+
+    const pending = await PendingUser.findOne({ email });
+    if (!pending) {
+      return res.status(404).json({ message: 'No pending registration found for this email' });
+    }
+
+    const otp = generateOTP();
+    pending.otp = otp;
+    pending.expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await pending.save();
+
+    try {
+      const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
+      const text = `Your new verification code is ${otp}. It expires in 60 minutes.`;
+      const html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2>Verify your email</h2>
+          <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>
+          <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
+          <p style="color:#555">This code expires in <strong>60 minutes</strong>.</p>
+        </div>
+      `;
+      await sendEmail({ to: email, subject, text, html });
+    } catch (e) {
+      console.error('Resend verification email error:', e);
+      return res.status(500).json({ message: 'Failed to send verification email' });
+    }
+
+    return res.status(200).json({ message: 'Verification email re-sent', requiresVerification: true });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    res.status(500).json({ message: 'Server error during resend verification' });
+  }
+});
+
 // Login
 router.post('/login', async (req, res) => {
   try {
