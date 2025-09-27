@@ -1,6 +1,12 @@
 import nodemailer from 'nodemailer';
 
 let transporter;
+const debugEmail = (msg, ...args) => {
+  if (String(process.env.DEBUG_EMAIL || '0') === '1') {
+    // Use console.log to avoid alarming error logs in production
+    console.log(msg, ...args);
+  }
+};
 
 function createTransporter() {
   if (transporter) return transporter;
@@ -109,7 +115,7 @@ export async function sendEmail({ to, subject, text, html }) {
         transporter = fallback;
         return { ok: true, provider: 'smtp', messageId: info.messageId };
       } catch (e2) {
-        console.error('SMTP fallback (587) failed:', e2?.message || e2);
+        debugEmail('SMTP fallback (587) failed:', e2?.message || e2);
         throw err;
       }
     }
@@ -137,13 +143,13 @@ export async function sendEmail({ to, subject, text, html }) {
         transporter = fallback;
         return { ok: true, provider: 'smtp', messageId: info.messageId };
       } catch (e2) {
-        console.error('SMTP fallback (465) failed:', e2?.message || e2);
+        debugEmail('SMTP fallback (465) failed:', e2?.message || e2);
         // last resort: Resend, if available
         if (process.env.RESEND_API_KEY) {
           try {
             return await tryResend();
           } catch (e3) {
-            console.error('Resend fallback failed:', e3?.message || e3);
+            debugEmail('Resend fallback failed:', e3?.message || e3);
           }
         }
         throw err;
@@ -154,7 +160,7 @@ export async function sendEmail({ to, subject, text, html }) {
       try {
         return await tryResend();
       } catch (e3) {
-        console.error('Resend fallback failed:', e3?.message || e3);
+        debugEmail('Resend fallback failed:', e3?.message || e3);
       }
     }
     throw err;
