@@ -14,7 +14,7 @@ interface AuthContextType {
   removeAvatar: () => Promise<void>;
   updatePreferences: (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR'; preferences?: any }) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
-  // New methods for account/email management
+  // Email change via OTP (kept)
   requestEmailChangeOtp: (newEmail: string) => Promise<void>;
   verifyEmailChangeOtp: (newEmail: string, otp: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
@@ -89,7 +89,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Request OTP to change email
+  // Request OTP to change email (kept)
   const requestEmailChangeOtp = async (newEmail: string): Promise<void> => {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');
@@ -110,7 +110,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Verify OTP and update email
+  // Verify OTP and update email (kept)
   const verifyEmailChangeOtp = async (newEmail: string, otp: string): Promise<void> => {
     const token = localStorage.getItem('token');
     if (!token) throw new Error('Not authenticated');

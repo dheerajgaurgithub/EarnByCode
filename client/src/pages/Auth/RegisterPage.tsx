@@ -62,20 +62,13 @@ export function RegisterPage() {
         formData.fullName
       );
 
-      // If server requires email verification via OTP, route to verify page
-      if (response?.requiresVerification) {
-        toast.success(t('verify.sent'));
-        navigate(`/verify-email?email=${encodeURIComponent(formData.email)}`);
-        return;
-      }
-
-      // Otherwise, proceed with token login
+      // Server now creates user immediately (no OTP). Proceed with token login.
       if (response?.token) {
         localStorage.setItem('token', response.token);
         toast.success(t('register.success'));
         navigate('/dashboard');
       } else {
-        throw new Error('No authentication token received');
+        throw new Error('Registration succeeded but no token returned');
       }
     } catch (error: any) {
       console.error('Registration error:', error);

@@ -25,7 +25,6 @@ import { Submissions } from './pages/Submissions';
 import SubmissionDetail from './pages/SubmissionDetail';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage';
-import VerifyEmailPage from './pages/Auth/VerifyEmail';
 import ForgotPassword from './pages/Auth/ForgotPassword';
 import { Settings } from './pages/Settings';
 import About from './pages/About';
@@ -215,14 +214,7 @@ function App() {
                   </PublicRoute>
                 }
               />
-              <Route
-                path="/verify-email"
-                element={
-                  <PublicRoute>
-                    <VerifyEmailPage />
-                  </PublicRoute>
-                }
-              />
+              {/* Register OTP flow removed; Forgot Password remains */}
               <Route
                 path="/forgot-password"
                 element={

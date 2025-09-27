@@ -70,7 +70,9 @@ export async function sendEmail({ to, subject, text, html }) {
     try {
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 10000);
-      const body = { from, to: recipients, subject, text, html };
+      // Allow overriding From just for Resend (useful for onboarding@resend.dev during testing)
+      const resendFrom = process.env.RESEND_FROM || from;
+      const body = { from: resendFrom, to: recipients, subject, text, html };
       const resp = await fetch('https://api.resend.com/emails', {
         method: 'POST',
         headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
@@ -80,6 +82,27 @@ export async function sendEmail({ to, subject, text, html }) {
       clearTimeout(t);
       if (!resp.ok) {
         const errText = await resp.text().catch(() => '');
+        // If domain not verified, retry once with onboarding sender
+        if (resp.status === 403 && /domain is not verified/i.test(errText)) {
+          console.warn('[mailer] Resend: domain not verified. Retrying with onboarding@resend.dev');
+          const controller2 = new AbortController();
+          const t2 = setTimeout(() => controller2.abort(), 10000);
+          const fallbackBody = { from: 'onboarding@resend.dev', to: recipients, subject, text, html };
+          const resp2 = await fetch('https://api.resend.com/emails', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify(fallbackBody),
+            signal: controller2.signal,
+          });
+          clearTimeout(t2);
+          if (!resp2.ok) {
+            const errText2 = await resp2.text().catch(() => '');
+            throw new Error(`Resend API error (fallback): ${resp2.status} ${errText2}`);
+          }
+          const data2 = await resp2.json();
+          console.info('[mailer] Sent via Resend API (fallback sender)');
+          return { ok: true, provider: 'resend', raw: data2 };
+        }
         throw new Error(`Resend API error: ${resp.status} ${errText}`);
       }
       const data = await resp.json();
@@ -108,10 +131,17 @@ export async function sendEmail({ to, subject, text, html }) {
       });
       if (!sgResp.ok) {
         const errText = await sgResp.text().catch(() => '');
-        throw new Error(`SendGrid API error: ${sgResp.status} ${errText}`);
+        // If key invalid/expired, do not keep trying; proceed to SMTP
+        if (sgResp.status === 401) {
+          console.warn('[mailer] SendGrid API unauthorized (401). Skipping to SMTP fallback.');
+        } else {
+          throw new Error(`SendGrid API error: ${sgResp.status} ${errText}`);
+        }
       }
-      console.info('[mailer] Sent via SendGrid API');
-      return { ok: true, provider: 'sendgrid', raw: { status: 'accepted' } };
+      if (sgResp.ok) {
+        console.info('[mailer] Sent via SendGrid API');
+        return { ok: true, provider: 'sendgrid', raw: { status: 'accepted' } };
+      }
     } catch (se) {
       console.warn('[mailer] SendGrid send failed, falling back to SMTP:', se?.message || se);
     }

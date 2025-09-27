@@ -1,13 +1,11 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import crypto from 'crypto';
 import passport from 'passport';
 import User from '../models/User.js';
-import PendingUser from '../models/PendingUser.js';
+import { sendEmail } from '../utils/mailer.js';
 import bcrypt from 'bcryptjs';
 import { authenticate } from '../middleware/auth.js';
-import { sendEmail } from '../utils/mailer.js';
-import config from '../config/config.js';
+// OTP/email flows removed; mailer and config not needed here
 
 // Helper: is user currently blocked (without modifying DB)
 const isCurrentlyBlocked = (user) => {
@@ -42,62 +40,7 @@ const autoUnblockIfExpired = async (user) => {
         }
       });
 
-// Debug: fetch current OTP for a pending user (for local/testing only)
-router.get('/debug/pending-otp', async (req, res) => {
-  try {
-    const email = String(req.query.email || '').trim().toLowerCase();
-    if (!email) return res.status(400).json({ ok: false, message: 'Missing email' });
-
-    const debugKey = process.env.DEBUG_EMAIL_TEST_KEY || '';
-    const isProd = (process.env.NODE_ENV || config.NODE_ENV) === 'production';
-    if (isProd && debugKey) {
-      const hdr = String(req.headers['x-debug-key'] || '');
-      if (hdr !== debugKey) {
-        return res.status(403).json({ ok: false, message: 'Forbidden: invalid debug key' });
-      }
-    } else if (isProd && !debugKey) {
-      return res.status(403).json({ ok: false, message: 'Forbidden in production (set DEBUG_EMAIL_TEST_KEY to allow with header x-debug-key)' });
-    }
-
-    const pending = await PendingUser.findOne({ email });
-    if (!pending) return res.status(404).json({ ok: false, message: 'No pending registration for this email' });
-    return res.status(200).json({ ok: true, email, otp: pending.otp, expiresAt: pending.expiresAt });
-  } catch (e) {
-    console.error('Debug get pending OTP error:', e);
-    return res.status(500).json({ ok: false, message: String(e?.message || e) });
-  }
-});
-
-// Debug: send a test email and report which provider was used
-router.post('/debug/send-test-email', async (req, res) => {
-  try {
-    const { to, subject, text, html } = req.body || {};
-
-    if (!to) return res.status(400).json({ ok: false, message: 'Missing `to` email' });
-
-    const debugKey = process.env.DEBUG_EMAIL_TEST_KEY || '';
-    const isProd = (process.env.NODE_ENV || config.NODE_ENV) === 'production';
-    if (isProd && debugKey) {
-      const hdr = String(req.headers['x-debug-key'] || '');
-      if (hdr !== debugKey) {
-        return res.status(403).json({ ok: false, message: 'Forbidden: invalid debug key' });
-      }
-    } else if (isProd && !debugKey) {
-      return res.status(403).json({ ok: false, message: 'Forbidden in production (set DEBUG_EMAIL_TEST_KEY to allow with header x-debug-key)' });
-    }
-
-    const s = await sendEmail({
-      to,
-      subject: subject || 'EarnByCode Test Email',
-      text: text || 'This is a test email from EarnByCode server.',
-      html: html || '<p>This is a <strong>test email</strong> from EarnByCode server.</p>',
-    });
-    return res.status(200).json({ ok: true, provider: s?.provider || 'unknown' });
-  } catch (e) {
-    console.error('Debug test email error:', e);
-    return res.status(500).json({ ok: false, message: String(e?.message || e) });
-  }
-});
+// Debug email/OTP endpoints removed
       // Reload the user to reflect updates
       const refreshed = await User.findById(user._id);
       return refreshed || user;
@@ -109,85 +52,47 @@ router.post('/debug/send-test-email', async (req, res) => {
   }
 };
 
-// Helper function to generate OTP
-const generateOTP = () => {
-  return crypto.randomInt(100000, 999999).toString();
-};
-
 const router = express.Router();
 
-// --- Simple in-memory attempt tracking for OTP requests (email/IP) ---
-const otpAttemptByEmail = new Map(); // email -> timestamps[]
-const otpAttemptByIp = new Map();    // ip -> timestamps[]
-const pushAttempt = (map, key) => {
-  const now = Date.now();
-  const arr = map.get(key) || [];
-  arr.push(now);
-  // keep last 50 and within 10 minutes
-  const cutoff = now - 10 * 60 * 1000;
-  const trimmed = arr.filter(t => t >= cutoff).slice(-50);
-  map.set(key, trimmed);
-  return trimmed;
-};
-const countRecent = (map, key) => {
-  const now = Date.now();
-  const cutoff = now - 10 * 60 * 1000;
-  const arr = map.get(key) || [];
-  return arr.filter(t => t >= cutoff).length;
-};
+// 6-digit OTP generator for password reset
+const generateOTP = () => Math.floor(100000 + Math.random() * 900000).toString();
 
-// Register (store in PendingUser until OTP verified)
+// Register (simple: create user immediately, no OTP)
 router.post('/register', async (req, res) => {
   try {
-    const { username, email, password, fullName } = req.body;
+    const { username, email, password, fullName } = req.body || {};
 
-    // Check if verified user already exists with email or username
-    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
-    if (existingUser) {
-      return res.status(400).json({
-        message: existingUser.email === email ? 'Email already registered' : 'Username already taken'
-      });
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'username, email and password are required' });
     }
 
-    // Hash password for pending record
-    const salt = await bcrypt.genSalt(12);
-    const passwordHash = await bcrypt.hash(password, salt);
+    // Check if user already exists
+    const existingUser = await User.findOne({ $or: [{ email }, { username }] });
+    if (existingUser) {
+      return res.status(400).json({ message: existingUser.email === email ? 'Email already registered' : 'Username already taken' });
+    }
 
-    // Generate OTP (expires in 1 hour)
-    const otp = generateOTP();
-    const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-
-    // Upsert PendingUser (so resubmits refresh OTP)
-    const pending = await PendingUser.findOneAndUpdate(
-      { $or: [{ email }, { username }] },
-      { username, email, passwordHash, fullName, otp, expiresAt },
-      { upsert: true, new: true, setDefaultsOnInsert: true }
-    );
-
-    // Respond immediately to avoid client/network timeouts
-    res.status(201).json({
-      message: 'Verification email sent. Please check your email to verify your account.',
-      requiresVerification: true,
+    // Create real user; model should hash password on save if hook exists
+    const user = new User({
+      username,
       email,
-      username
+      password,
+      fullName,
+      isEmailVerified: true,
     });
+    await user.save();
 
-    setImmediate(async () => {
-      try {
-        const subject = process.env.EMAIL_SUBJECT_VERIFY || 'EarnByCode: Verify your email';
-        const text = `Welcome to EarnByCode! Your verification code is ${otp}. It expires in 60 minutes.`;
-        const html = `
-          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-            <h2>Verify your email</h2>
-            <p>Use the following code to verify your email for <strong>EarnByCode</strong>:</p>
-            <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
-            <p style="color:#555">This code expires in <strong>60 minutes</strong>.</p>
-          </div>
-        `;
-        const sent = await sendEmail({ to: email, subject, text, html });
-        try { console.log(`[email] register OTP sent via provider=${sent?.provider || 'unknown'}`); } catch {}
-      } catch (e) {
-        console.error('Send verification email (background) error:', e);
+    // Generate JWT token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
+
+    return res.status(201).json({
+      message: 'Registration successful',
+      token,
+      user: {
+        id: user._id,
+        username: user.username,
+        email: user.email,
+        isEmailVerified: user.isEmailVerified,
       }
     });
   } catch (error) {
@@ -196,54 +101,9 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Resend verification OTP for pending registration
+// Resend verification is disabled (no OTP needed)
 router.post('/resend-verification', async (req, res) => {
-  try {
-    const { email } = req.body || {};
-    if (!email) return res.status(400).json({ message: 'Email is required' });
-
-    // If already verified, do not proceed
-    const existing = await User.findOne({ email });
-    if (existing) {
-      return res.status(400).json({ message: 'Email already registered' });
-    }
-
-    const pending = await PendingUser.findOne({ email });
-    if (!pending) {
-      return res.status(404).json({ message: 'No pending registration found for this email' });
-    }
-
-    const otp = generateOTP();
-    pending.otp = otp;
-    pending.expiresAt = new Date(Date.now() + 60 * 60 * 1000);
-    await pending.save();
-
-    // Respond immediately to avoid client/network timeouts
-    res.status(200).json({ message: 'Verification email re-sent', requiresVerification: true });
-
-    // Send email in background
-    setImmediate(async () => {
-      try {
-        const subject = process.env.EMAIL_SUBJECT_VERIFY || 'EarnByCode: Verify your email';
-        const text = `Your new verification code is ${otp}. It expires in 60 minutes.`;
-        const html = `
-          <div style=\"font-family: Arial, sans-serif; line-height: 1.6;\">\n\
-            <h2>Verify your email</h2>\n\
-            <p>Use the following code to verify your email for <strong>EarnByCode</strong>:</p>\n\
-            <p style=\"font-size: 22px; font-weight: 700; letter-spacing: 2px;\">${otp}</p>\n\
-            <p style=\"color:#555\">This code expires in <strong>60 minutes</strong>.</p>\n\
-          </div>
-        `;
-        const sent = await sendEmail({ to: email, subject, text, html });
-        try { console.log(`[email] resend OTP sent via provider=${sent?.provider || 'unknown'}`); } catch {}
-      } catch (e) {
-        console.error('Resend verification email (background) error:', e);
-      }
-    });
-  } catch (error) {
-    console.error('Resend verification error:', error);
-    res.status(500).json({ message: 'Server error during resend verification' });
-  }
+  return res.status(410).json({ message: 'Email verification is not required.' });
 });
 
 // Login
@@ -347,87 +207,24 @@ router.put('/profile', authenticate, async (req, res) => {
   }
 });
 
-// Verify Email with OTP (create real User on success)
+// Email verification is disabled (no OTP needed)
 router.post('/verify-email', async (req, res) => {
-  try {
-    const { email, otp } = req.body;
-
-    if (!email || !otp) {
-      return res.status(400).json({ message: 'Email and OTP are required' });
-    }
-
-    // Find pending record
-    const pending = await PendingUser.findOne({ email, otp, expiresAt: { $gt: new Date() } });
-    if (!pending) {
-      return res.status(400).json({ message: 'Invalid or expired OTP' });
-    }
-
-    // Final collision check prior to creating user
-    const collision = await User.findOne({ $or: [{ email }, { username: pending.username }] });
-    if (collision) {
-      await PendingUser.deleteOne({ _id: pending._id }).catch(() => {});
-      return res.status(400).json({ message: 'Email or username already registered' });
-    }
-
-    // Create real user using hashed password
-    const user = new User({
-      username: pending.username,
-      email: pending.email,
-      password: pending.passwordHash, // pre-hashed; model pre-save will skip rehash
-      fullName: pending.fullName,
-      ranking: await User.countDocuments() + 1,
-      isEmailVerified: true,
-    });
-    await user.save();
-    await PendingUser.deleteOne({ _id: pending._id }).catch(() => {});
-
-    // Generate JWT token for authenticated session
-    const token = jwt.sign(
-      { userId: user._id },
-      process.env.JWT_SECRET,
-      { expiresIn: process.env.JWT_EXPIRE || '7d' }
-    );
-
-    res.status(200).json({
-      message: 'Email verified successfully',
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        isEmailVerified: user.isEmailVerified
-      }
-    });
-  } catch (error) {
-    console.error('Email verification error:', error);
-    res.status(500).json({ message: 'Server error during email verification' });
-  }
+  return res.status(410).json({ message: 'Email verification is not required.' });
 });
 
       
 // Google OAuth routes are handled in oauth.js
 
-// Resend Verification Email
+// Forgot Password: Request OTP
 router.post('/forgot-password/request', async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
-    // Throttle by IP and email
-    const ip = (req.headers['x-forwarded-for'] || req.ip || '').toString().split(',')[0].trim();
-    if (countRecent(otpAttemptByIp, ip) >= 30) {
-      return res.status(429).json({ message: 'Too many requests from this IP. Try again later.' });
-    }
-    if (countRecent(otpAttemptByEmail, String(email).toLowerCase()) >= 5) {
-      return res.status(429).json({ message: 'Too many OTP requests for this email. Try again later.' });
-    }
-
     const user = await User.findOne({ email });
     if (!user) {
-      return res.status(404).json({ message: 'This email is not registered' });
-    }
-    if (!user.isEmailVerified) {
-      return res.status(400).json({ message: 'Email is not verified. Please verify your email first.' });
+      // Don't reveal if email exists
+      return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
     }
 
     const otp = generateOTP();
@@ -435,10 +232,7 @@ router.post('/forgot-password/request', async (req, res) => {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
     await user.save();
 
-    // Respond immediately to avoid client/network timeouts
-    res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
-
-    // Send email in background (non-blocking)
+    // Send email in background
     setImmediate(async () => {
       try {
         const subject = process.env.EMAIL_SUBJECT_RESET || 'EarnByCode: Password reset code';
@@ -447,26 +241,24 @@ router.post('/forgot-password/request', async (req, res) => {
           <div style="font-family: Arial, sans-serif; line-height: 1.6;">
             <h2>Password reset</h2>
             <p>Use the code below to reset your password for <strong>EarnByCode</strong>:</p>
-            <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
-            <p style="color:#555">This code expires in <strong>15 minutes</strong>.</p>
+            <p style=\"font-size: 22px; font-weight: 700; letter-spacing: 2px;\">${otp}</p>
+            <p style=\"color:#555\">This code expires in <strong>15 minutes</strong>.</p>
           </div>
         `;
-        const sent = await sendEmail({ to: email, subject, text, html });
-        try { console.log(`[email] reset OTP sent via provider=${sent?.provider || 'unknown'}`); } catch {}
+        await sendEmail({ to: email, subject, text, html });
       } catch (e) {
         console.error('Send reset OTP email error (background):', e);
-      } finally {
-        // Record attempt regardless to enforce rate limits consistently
-        pushAttempt(otpAttemptByIp, ip);
-        pushAttempt(otpAttemptByEmail, String(email).toLowerCase());
       }
     });
+
+    return res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
   } catch (error) {
     console.error('Forgot password request error:', error);
     res.status(500).json({ message: 'Server error during password reset request' });
   }
 });
-// Step 2: Verify OTP (optional separate step)
+
+// Forgot Password: Verify OTP
 router.post('/forgot-password/verify', async (req, res) => {
   try {
     const { email, otp } = req.body || {};
@@ -482,7 +274,7 @@ router.post('/forgot-password/verify', async (req, res) => {
   }
 });
 
-// Step 3: Reset password with valid OTP
+// Forgot Password: Reset with OTP
 router.post('/forgot-password/reset', async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body || {};
