@@ -41,6 +41,37 @@ const autoUnblockIfExpired = async (user) => {
           }
         }
       });
+
+// Debug: send a test email and report which provider was used
+router.post('/debug/send-test-email', async (req, res) => {
+  try {
+    const { to, subject, text, html } = req.body || {};
+
+    if (!to) return res.status(400).json({ ok: false, message: 'Missing `to` email' });
+
+    const debugKey = process.env.DEBUG_EMAIL_TEST_KEY || '';
+    const isProd = (process.env.NODE_ENV || config.NODE_ENV) === 'production';
+    if (isProd && debugKey) {
+      const hdr = String(req.headers['x-debug-key'] || '');
+      if (hdr !== debugKey) {
+        return res.status(403).json({ ok: false, message: 'Forbidden: invalid debug key' });
+      }
+    } else if (isProd && !debugKey) {
+      return res.status(403).json({ ok: false, message: 'Forbidden in production (set DEBUG_EMAIL_TEST_KEY to allow with header x-debug-key)' });
+    }
+
+    const s = await sendEmail({
+      to,
+      subject: subject || 'AlgoBucks Test Email',
+      text: text || 'This is a test email from AlgoBucks server.',
+      html: html || '<p>This is a <strong>test email</strong> from AlgoBucks server.</p>',
+    });
+    return res.status(200).json({ ok: true, provider: s?.provider || 'unknown' });
+  } catch (e) {
+    console.error('Debug test email error:', e);
+    return res.status(500).json({ ok: false, message: String(e?.message || e) });
+  }
+});
       // Reload the user to reflect updates
       const refreshed = await User.findById(user._id);
       return refreshed || user;
