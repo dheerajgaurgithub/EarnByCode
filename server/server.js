@@ -61,6 +61,7 @@ import Submission from './models/Submission.js';
 import User from './models/User.js';
 import Contest from './models/Contest.js';
 import { executeCode } from './utils/codeExecutor.js';
+import sendEmail from './utils/mailer.js';
 
 // Initialize express app
 const app = express();
@@ -499,6 +500,22 @@ app.get('/api/config/flags', (req, res) => {
     return res.status(200).json({ exposeOtp });
   } catch (e) {
     return res.status(200).json({ exposeOtp: false });
+  }
+});
+
+// Debug: send a test email to verify provider delivery
+app.post('/api/debug/send-test-email', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const to = body.to || req.query.to;
+    if (!to) return res.status(400).json({ ok: false, message: 'Provide { to } in body or ?to=' });
+    const subject = body.subject || 'AlgoBucks test email';
+    const text = body.text || 'This is a test email from AlgoBucks debug endpoint.';
+    const html = body.html || `<p>This is a <strong>test email</strong> from AlgoBucks debug endpoint.</p>`;
+    const result = await sendEmail({ to, subject, text, html });
+    return res.status(200).json({ ok: true, provider: result?.provider || 'unknown', raw: result?.raw ? true : false });
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: String(e?.message || e) });
   }
 });
 

@@ -71,7 +71,8 @@ export async function sendEmail({ to, subject, text, html }) {
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 10000);
       // Allow overriding From just for Resend (useful for onboarding@resend.dev during testing)
-      const resendFrom = process.env.RESEND_FROM || from;
+      const forceFallback = String(process.env.RESEND_FORCE_FALLBACK || '').toLowerCase() === 'true';
+      const resendFrom = forceFallback ? 'onboarding@resend.dev' : (process.env.RESEND_FROM || from);
       const body = { from: resendFrom, to: recipients, subject, text, html };
       const resp = await fetch('https://api.resend.com/emails', {
         method: 'POST',

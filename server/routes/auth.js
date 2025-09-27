@@ -245,7 +245,8 @@ router.post('/forgot-password/request', async (req, res) => {
             <p style=\"color:#555\">This code expires in <strong>15 minutes</strong>.</p>
           </div>
         `;
-        await sendEmail({ to: email, subject, text, html });
+        const r = await sendEmail({ to: email, subject, text, html });
+        if (r && r.provider) console.info('[forgot-password] Email sent via provider:', r.provider);
       } catch (e) {
         console.error('Send reset OTP email error (background):', e);
       }

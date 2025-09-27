@@ -147,7 +147,8 @@ router.post('/me/bank/otp/request', authenticate, async (req, res) => {
           <p style="color:#555">This code expires in <strong>10 minutes</strong>.</p>
         </div>
       `;
-      await sendEmail({ to: user.email, subject, text, html });
+      const r = await sendEmail({ to: user.email, subject, text, html });
+      if (r && r.provider) console.info('[bank-otp] Email sent via provider:', r.provider);
     } catch (e) {
       console.error('[bank-otp] Failed to send OTP email:', e?.message || e);
     }
@@ -888,7 +889,8 @@ router.post('/me/email/change/request', authenticate, async (req, res) => {
             <p style="color:#555">This code expires in <strong>15 minutes</strong>.</p>
           </div>
         `;
-        await sendEmail({ to: email, subject, text, html });
+        const r = await sendEmail({ to: email, subject, text, html });
+        if (r && r.provider) console.info('[email-change] Email sent via provider:', r.provider);
       } catch (e) {
         console.warn('[email-change] Failed to send OTP email:', e?.message || e);
       }
