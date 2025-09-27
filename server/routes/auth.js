@@ -82,12 +82,51 @@ router.post('/register', async (req, res) => {
   try {
     const { username, email, password, fullName } = req.body;
 
-    // Check if user already exists
+    // Check if user already exists (by email/username)
     const existingUser = await User.findOne({
       $or: [{ email }, { username }]
     });
 
     if (existingUser) {
+      // If the email matches and the account is NOT verified yet, resend OTP and allow verification flow
+      if (existingUser.email === email && !existingUser.isEmailVerified) {
+        const otp = generateOTP();
+        existingUser.verificationToken = otp;
+        existingUser.verificationTokenExpires = Date.now() + 60 * 60 * 1000; // 1 hour
+        await existingUser.save();
+
+        try {
+          const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
+          const text = `Welcome back! Your verification code is ${otp}. It expires in 60 minutes.`;
+          const html = `
+            <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+              <h2>Verify your email</h2>
+              <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>
+              <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
+              <p style="color:#555">This code expires in <strong>60 minutes</strong>.</p>
+            </div>
+          `;
+          await sendEmail({ to: email, subject, text, html });
+        } catch (e) {
+          console.error('Resend verification email error:', e);
+          return res.status(500).json({ message: 'Failed to send verification email' });
+        }
+
+        const token = jwt.sign(
+          { userId: existingUser._id, purpose: 'email-verification' },
+          process.env.JWT_SECRET,
+          { expiresIn: '1h' }
+        );
+
+        return res.status(200).json({
+          message: 'Verification email re-sent. Please verify to complete registration.',
+          token,
+          userId: existingUser._id,
+          requiresVerification: true
+        });
+      }
+
+      // Otherwise, if username conflicts or verified email exists, block with 400
       return res.status(400).json({
         message: existingUser.email === email ? 'Email already registered' : 'Username already taken'
       });
