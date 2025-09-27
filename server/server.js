@@ -1437,15 +1437,12 @@ if (fs.existsSync(clientBuildPath)) {
   });
 }
 
-// MongoDB connection options (MongoDB Node Driver v5 / Mongoose v7+)
+// MongoDB connection options (compatible defaults)
 const isSrv = typeof config.MONGODB_URI === 'string' && config.MONGODB_URI.startsWith('mongodb+srv://');
 const mongooseOptions = {
-  // Modern driver options
-  serverSelectionTimeoutMS: 8000,
+  serverSelectionTimeoutMS: 10000,
   socketTimeoutMS: 45000,
   heartbeatFrequencyMS: 10000,
-  // Enable Stable API when using SRV/Atlas
-  ...(isSrv ? { serverApi: { version: '1', strict: true, deprecationErrors: true } } : {}),
 };
 
 // Connect to MongoDB and start server
@@ -1454,6 +1451,8 @@ const startServer = async () => {
     // Handle connection events
     mongoose.connection.on('connecting', () => {
       console.log('🔌 Connecting to MongoDB...');
+      console.log(`   • SRV URI: ${isSrv}`);
+      console.log(`   • NODE_ENV: ${config.NODE_ENV}`);
     });
 
     mongoose.connection.on('connected', () => {
