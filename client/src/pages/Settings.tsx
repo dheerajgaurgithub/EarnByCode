@@ -527,12 +527,18 @@ export const Settings: React.FC = () => {
                                 type="button"
                                 onClick={async () => {
                                   try {
-                                    await requestEmailChangeOtp(accountForm.email);
+                                    const resp: any = await requestEmailChangeOtp(accountForm.email);
                                     setEmailOtpSent(true);
                                     setPendingEmail(accountForm.email);
                                     toast.success('Verification code sent to the new email.');
                                     setResendCooldown(60);
                                     setOtpError(null);
+                                    if (resp?.testOtp) {
+                                      setEmailTestOtp(String(resp.testOtp));
+                                      toast.success(`Dev OTP: ${resp.testOtp}`);
+                                    } else {
+                                      setEmailTestOtp(null);
+                                    }
                                   } catch (err) {
                                     const msg = (err as Error)?.message || '';
                                     if (/endpoint not found/i.test(msg)) {

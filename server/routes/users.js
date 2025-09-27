@@ -845,9 +845,15 @@ router.post('/me/email/change/request', authenticate, async (_req, res) => {
     try {
       await sendEmail({ to: email, subject, text, html });
     } catch (e) {
-      // If email sending fails, clean up the request
-      await EmailChangeRequest.deleteOne({ user: user._id, newEmail: email }).catch(() => {});
-      throw e;
+      const isProd = String(process.env.NODE_ENV).toLowerCase() === 'production';
+      if (isProd) {
+        // In production, fail hard if email cannot be sent
+        await EmailChangeRequest.deleteOne({ user: user._id, newEmail: email }).catch(() => {});
+        throw e;
+      } else {
+        // In non-production, allow test via returning testOtp
+        console.warn('[dev] Email send failed, returning testOtp for verification:', e?.message || e);
+      }
     }
 
     // In non-production, return testOtp to simplify testing
