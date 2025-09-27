@@ -58,8 +58,43 @@ function getTransporter() {
  */
 export async function sendEmail({ to, subject, text, html }) {
   const from = process.env.EMAIL_FROM || 'no-reply@algobucks.com';
+  const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
 
-  // Primary: SMTP
+  // Prefer Resend API first if available (avoids SMTP egress issues on PaaS)
+  if (RESEND_API_KEY) {
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 10000); // 10s timeout
+      const body = {
+        from,
+        to: Array.isArray(to) ? to : [to],
+        subject,
+        html: html || undefined,
+        text: text || undefined,
+      };
+      const resp = await fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${RESEND_API_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      clearTimeout(t);
+      if (!resp.ok) {
+        const errText = await resp.text().catch(() => '');
+        throw new Error(`Resend API error: ${resp.status} ${errText}`);
+      }
+      const data = await resp.json();
+      console.info('[mailer] Sent via Resend');
+      return data;
+    } catch (re) {
+      console.warn('[mailer] Resend send failed, falling back to SMTP:', re?.message || re);
+    }
+  }
+
+  // Fallback: SMTP
   try {
     const tx = getTransporter();
     const info = await tx.sendMail({ from, to, subject, text, html });
@@ -67,40 +102,7 @@ export async function sendEmail({ to, subject, text, html }) {
   } catch (e) {
     const msg = String(e?.message || e);
     const code = (e && (e.code || e.errno)) || '';
-    console.warn('[mailer] SMTP send failed:', code, msg);
-
-    // Fallback: Resend REST API if configured
-    const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-    if (RESEND_API_KEY) {
-      try {
-        const body = {
-          from,
-          to: Array.isArray(to) ? to : [to],
-          subject,
-          html: html || undefined,
-          text: text || undefined,
-        };
-        const resp = await fetch('https://api.resend.com/emails', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${RESEND_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(body),
-        });
-        if (!resp.ok) {
-          const errText = await resp.text().catch(() => '');
-          throw new Error(`Resend API error: ${resp.status} ${errText}`);
-        }
-        const data = await resp.json();
-        console.info('[mailer] Sent via Resend');
-        return data;
-      } catch (re) {
-        console.error('[mailer] Resend fallback failed:', re?.message || re);
-      }
-    }
-
-    // If no fallback or still failing, rethrow original error
+    console.error('[mailer] SMTP send failed:', code, msg);
     throw e;
   }
 }
