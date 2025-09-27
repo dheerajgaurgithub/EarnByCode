@@ -435,28 +435,32 @@ router.post('/forgot-password/request', async (req, res) => {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 minutes
     await user.save();
 
-    try {
-      const subject = process.env.EMAIL_SUBJECT_RESET || 'EarnByCode: Password reset code';
-      const text = `Your password reset code is ${otp}. It expires in 15 minutes.`;
-      const html = `
-        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
-          <h2>Password reset</h2>
-          <p>Use the code below to reset your password for <strong>EarnByCode</strong>:</p>
-          <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
-          <p style="color:#555">This code expires in <strong>15 minutes</strong>.</p>
-        </div>
-      `;
-      await sendEmail({ to: email, subject, text, html });
-    } catch (e) {
-      console.error('Send reset OTP email error:', e);
-      return res.status(500).json({ message: 'Failed to send reset code. Please try again later.' });
-    }
+    // Respond immediately to avoid client/network timeouts
+    res.status(200).json({ message: 'If this email is registered, an OTP has been sent.' });
 
-    // Record successful attempt
-    pushAttempt(otpAttemptByIp, ip);
-    pushAttempt(otpAttemptByEmail, String(email).toLowerCase());
-
-    return res.status(200).json({ message: 'OTP has been sent to your verified email' });
+    // Send email in background (non-blocking)
+    setImmediate(async () => {
+      try {
+        const subject = process.env.EMAIL_SUBJECT_RESET || 'EarnByCode: Password reset code';
+        const text = `Your password reset code is ${otp}. It expires in 15 minutes.`;
+        const html = `
+          <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+            <h2>Password reset</h2>
+            <p>Use the code below to reset your password for <strong>EarnByCode</strong>:</p>
+            <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
+            <p style="color:#555">This code expires in <strong>15 minutes</strong>.</p>
+          </div>
+        `;
+        const sent = await sendEmail({ to: email, subject, text, html });
+        try { console.log(`[email] reset OTP sent via provider=${sent?.provider || 'unknown'}`); } catch {}
+      } catch (e) {
+        console.error('Send reset OTP email error (background):', e);
+      } finally {
+        // Record attempt regardless to enforce rate limits consistently
+        pushAttempt(otpAttemptByIp, ip);
+        pushAttempt(otpAttemptByEmail, String(email).toLowerCase());
+      }
+    });
   } catch (error) {
     console.error('Forgot password request error:', error);
     res.status(500).json({ message: 'Server error during password reset request' });
