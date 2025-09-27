@@ -36,6 +36,15 @@ function getTransporter() {
     family: 4,
   });
 
+  // Non-blocking verify to surface config issues in logs
+  try {
+    transporter.verify().then(() => {
+      console.info('[mailer] SMTP verified');
+    }).catch((e) => {
+      console.warn('[mailer] SMTP verify failed:', e?.message || e);
+    });
+  } catch {}
+
   return transporter;
 }
 
@@ -49,10 +58,51 @@ function getTransporter() {
  */
 export async function sendEmail({ to, subject, text, html }) {
   const from = process.env.EMAIL_FROM || 'no-reply@algobucks.com';
-  const tx = getTransporter();
 
-  const info = await tx.sendMail({ from, to, subject, text, html });
-  return info;
+  // Primary: SMTP
+  try {
+    const tx = getTransporter();
+    const info = await tx.sendMail({ from, to, subject, text, html });
+    return info;
+  } catch (e) {
+    const msg = String(e?.message || e);
+    const code = (e && (e.code || e.errno)) || '';
+    console.warn('[mailer] SMTP send failed:', code, msg);
+
+    // Fallback: Resend REST API if configured
+    const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
+    if (RESEND_API_KEY) {
+      try {
+        const body = {
+          from,
+          to: Array.isArray(to) ? to : [to],
+          subject,
+          html: html || undefined,
+          text: text || undefined,
+        };
+        const resp = await fetch('https://api.resend.com/emails', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${RESEND_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(body),
+        });
+        if (!resp.ok) {
+          const errText = await resp.text().catch(() => '');
+          throw new Error(`Resend API error: ${resp.status} ${errText}`);
+        }
+        const data = await resp.json();
+        console.info('[mailer] Sent via Resend');
+        return data;
+      } catch (re) {
+        console.error('[mailer] Resend fallback failed:', re?.message || re);
+      }
+    }
+
+    // If no fallback or still failing, rethrow original error
+    throw e;
+  }
 }
 
 export default { sendEmail };
