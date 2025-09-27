@@ -137,7 +137,7 @@ export const Header: React.FC = () => {
   return (
     <header
       className={cn(
-        'sticky top-0 z-50 w-full transition-all duration-500',
+        'sticky top-0 z-50 w-full transition-all duration-500 overflow-hidden',
         'bg-white/95 dark:bg-gray-950/95 backdrop-blur-2xl',
         scrolled
           ? 'border-b border-sky-200/60 dark:border-green-800/60 shadow-lg shadow-sky-500/10 dark:shadow-green-900/20'
@@ -154,10 +154,10 @@ export const Header: React.FC = () => {
           <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 flex-shrink-0">
             <Link
               to="/"
-              className="flex items-baseline space-x-1.5 sm:space-x-2 group transition-all duration-300 min-w-0"
+              className="flex items-center space-x-1.5 sm:space-x-2 group transition-all duration-300 min-w-0"
               aria-label="Home"
             >
-              <div className="relative flex-shrink-0 self-baseline">
+              <div className="relative flex-shrink-0">
                 <div className="h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 lg:h-12 lg:w-12 flex items-center justify-center relative">
                   <img
                     src="/logo.png"

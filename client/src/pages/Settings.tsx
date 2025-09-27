@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { 
   Settings as SettingsIcon, Bell, Shield, Palette, 
-  Save, Mail, Lock, Info, ShieldAlert, Trash2, CheckCircle, Loader2
+  Save, Mail, Lock, Info, ShieldAlert, Trash2, CheckCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTheme } from '@/context/ThemeContext';
@@ -13,7 +13,7 @@ import api from '@/lib/api';
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
-  const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar, requestEmailChangeOtp, verifyEmailChangeOtp, deleteAccount } = useAuth();
+  const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar, deleteAccount } = useAuth();
   const { setTheme: setUiTheme } = useTheme();
   const { setLanguage, t } = useI18n();
   const toast = useToast();
@@ -28,15 +28,8 @@ export const Settings: React.FC = () => {
     newPassword: '',
     confirmPassword: ''
   });
-  const [emailOtpSent, setEmailOtpSent] = useState(false);
-  const [emailOtp, setEmailOtp] = useState('');
-  const [pendingEmail, setPendingEmail] = useState('');
-  const [emailTestOtp, setEmailTestOtp] = useState<string | null>(null);
+  // OTP flow removed
   const [deleteText, setDeleteText] = useState('');
-  const [resendCooldown, setResendCooldown] = useState(0);
-  const [otpError, setOtpError] = useState<string | null>(null);
-  const [verifyingOtp, setVerifyingOtp] = useState(false);
-  const [otpVerified, setOtpVerified] = useState(false);
   const [emailUpdated, setEmailUpdated] = useState(false);
   
   // Notification settings
@@ -254,24 +247,9 @@ export const Settings: React.FC = () => {
     
     try {
       const updates: any = {};
-      
-      // Email change is handled via OTP flow; trigger OTP if email changed and OTP not yet sent/verified
-      if (accountForm.email !== user.email) {
-        if (!emailOtpSent) {
-          const resp: any = await requestEmailChangeOtp(accountForm.email);
-          setEmailOtpSent(true);
-          setPendingEmail(accountForm.email);
-          toast.success('Verification code sent to the new email. Please enter the code below to confirm change.');
-          setResendCooldown(60);
-          setOtpError(null);
-          if (resp?.testOtp) {
-            setEmailTestOtp(String(resp.testOtp));
-            toast.success(`Dev OTP: ${resp.testOtp}`);
-          } else {
-            setEmailTestOtp(null);
-          }
-          return; // stop here; user must verify before other updates
-        }
+      // Direct email update (OTP removed)
+      if (accountForm.email && accountForm.email !== user.email) {
+        updates.email = accountForm.email;
       }
       
       if (accountForm.newPassword) {
@@ -306,41 +284,7 @@ export const Settings: React.FC = () => {
     }
   };
 
-  // Resend cooldown ticker
-  useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const t = setTimeout(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
-    return () => clearTimeout(t);
-  }, [resendCooldown]);
-
-  const handleVerifyEmailOtp = async () => {
-    if (!pendingEmail || !emailOtp) {
-      toast.error('Please enter the verification code');
-      return;
-    }
-    try {
-      setVerifyingOtp(true);
-      setOtpError(null);
-      await verifyEmailChangeOtp(pendingEmail, emailOtp);
-      toast.success('Email updated successfully');
-      setEmailOtp('');
-      setEmailOtpSent(false);
-      setPendingEmail('');
-      setOtpError(null);
-      setOtpVerified(true);
-      setEmailUpdated(true);
-      setResendCooldown(0);
-      // Auto-hide the verified tick after a few seconds
-      setTimeout(() => setOtpVerified(false), 3000);
-      setTimeout(() => setEmailUpdated(false), 4000);
-    } catch (err) {
-      const msg = (err as Error)?.message || 'Failed to verify code';
-      setOtpError(msg);
-      toast.error(msg);
-    } finally {
-      setVerifyingOtp(false);
-    }
-  };
+  // OTP verify removed
 
   const onDeleteAccount = async () => {
     const phrase = 'delete earnbycode account';
@@ -483,136 +427,7 @@ export const Settings: React.FC = () => {
                             <CheckCircle className="h-4 w-4" /> Email updated
                           </p>
                         )}
-                        {accountForm.email !== user.email && (
-                          <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                            {!emailOtpSent ? (
-                              <button
-                                type="button"
-                                onClick={async () => {
-                                  try {
-                                    const resp: any = await requestEmailChangeOtp(accountForm.email);
-                                    setEmailOtpSent(true);
-                                    setPendingEmail(accountForm.email);
-                                    toast.success('Verification code sent to the new email.');
-                                    setResendCooldown(60);
-                                    setOtpError(null);
-                                    if (resp?.testOtp) {
-                                      setEmailTestOtp(String(resp.testOtp));
-                                      toast.success(`Dev OTP: ${resp.testOtp}`);
-                                    } else {
-                                      setEmailTestOtp(null);
-                                    }
-                                  } catch (err) {
-                                    const anyErr: any = err;
-                                    const msg = (anyErr as Error)?.message || '';
-                                    if (typeof anyErr?.waitSeconds === 'number') {
-                                      setResendCooldown(Math.max(0, Math.ceil(anyErr.waitSeconds)));
-                                      toast.error(`Please wait ${anyErr.waitSeconds}s before requesting another code.`);
-                                      return;
-                                    }
-                                    if (/endpoint not found/i.test(msg)) {
-                                      try {
-                                        await updateUser({ email: accountForm.email });
-                                        toast.success('Email updated (OTP not required on this server)');
-                                        setEmailOtpSent(false);
-                                        setPendingEmail('');
-                                        setOtpError(null);
-                                      } catch (e2) {
-                                        const m2 = (e2 as Error)?.message || 'Failed to update email';
-                                        setOtpError(m2);
-                                        toast.error(m2);
-                                      }
-                                    } else {
-                                      const finalMsg = msg || 'Failed to send verification code';
-                                      setOtpError(finalMsg);
-                                      toast.error(finalMsg);
-                                    }
-                                  }
-                                }}
-                                className="px-6 py-3 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl disabled:opacity-60 font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-lg"
-                                disabled={resendCooldown > 0 || verifyingOtp}
-                              >
-                                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Send OTP'}
-                              </button>
-                            ) : (
-                              <div className="w-full flex flex-col sm:flex-row gap-3">
-                                <input
-                                  type="text"
-                                  value={emailOtp}
-                                  onChange={(e) => {
-                                    setEmailOtp(e.target.value);
-                                    if (otpError) setOtpError(null);
-                                  }}
-                                  placeholder="Enter OTP"
-                                  className="w-full sm:w-48 px-4 py-3 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                                />
-                                <button
-                                  type="button"
-                                  onClick={async () => {
-                                    try {
-                                      await handleVerifyEmailOtp();
-                                    } catch (err) {
-                                      const msg = (err as Error)?.message || '';
-                                      if (/endpoint not found/i.test(msg)) {
-                                        try {
-                                          await updateUser({ email: accountForm.email });
-                                          toast.success('Email updated (OTP not required on this server)');
-                                          setEmailOtp('');
-                                          setEmailOtpSent(false);
-                                          setPendingEmail('');
-                                          setOtpError(null);
-                                        } catch (e2) {
-                                          const m2 = (e2 as Error)?.message || 'Failed to update email';
-                                          setOtpError(m2);
-                                          toast.error(m2);
-                                        }
-                                      } else {
-                                        const finalMsg = msg || 'Failed to verify code';
-                                        setOtpError(finalMsg);
-                                        toast.error(finalMsg);
-                                      }
-                                    }
-                                  }}
-                                  className="px-6 py-3 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl inline-flex items-center gap-2 disabled:opacity-60 font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-lg"
-                                  disabled={verifyingOtp || !emailOtp}
-                                >
-                                  {verifyingOtp ? (
-                                    <>
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                      Verifying…
-                                    </>
-                                  ) : (
-                                    'Verify & Update Email'
-                                  )}
-                                </button>
-                                {otpVerified && (
-                                  <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm mt-1 sm:mt-0">
-                                    <CheckCircle className="h-4 w-4" /> Verified
-                                  </span>
-                                )}
-                                {emailTestOtp && (
-                                  <span className="text-xs sm:text-sm text-amber-600 dark:text-amber-400">Dev test OTP: <code>{emailTestOtp}</code></span>
-                                )}
-                                {otpError && (
-                                  <div className="flex items-center gap-2 mt-1 sm:mt-0 sm:ml-2">
-                                    <p className="text-rose-600 dark:text-rose-400 text-xs sm:text-sm">{otpError}</p>
-                                    <button
-                                      type="button"
-                                      className="text-xs sm:text-sm text-rose-600 dark:text-rose-400 hover:text-rose-700 dark:hover:text-rose-300 underline"
-                                      onClick={() => setOtpError(null)}
-                                    >
-                                      Clear
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {emailOtpSent && pendingEmail && (
-                              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mt-2">Code sent to <span className="font-medium">{pendingEmail}</span></p>
-                            )}
-                            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">We will send a one-time code to the new email to confirm this change.</p>
-                          </div>
-                        )}
+                        {/* OTP flow removed */}
                       </div>
 
                       {/* Avatar management */}
