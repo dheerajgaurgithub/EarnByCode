@@ -59,12 +59,15 @@ function getTransporter(smtpConfig = defaultSmtpConfig) {
 }
 
 export async function sendEmail({ to, subject, text, html }) {
-  const from = process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'replyearnbycode@gmail.com';
-  const RESEND_API_KEY = process.env.RESEND_API_KEY || '';
-  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
+  const from = process.env.EMAIL_FROM || process.env.FROM_EMAIL || process.env.SMTP_USER || 'replyearnbycode@gmail.com';
+  const RESEND_API_KEY = process.env.RESEND_API_KEY ||'re_8XNYoePj_3ykioqzjiBc7DSji5Qg8Kp5q';
+  const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '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';
+  const SMTP_PREFERRED = String(process.env.SMTP_PREFERRED || '').toLowerCase() === 'true';
 
   const recipients = Array.isArray(to) ? to : [to];
 
+  // If SMTP is preferred, jump straight to SMTP section
+  if (!SMTP_PREFERRED) {
   // --- Resend API ---
   if (RESEND_API_KEY) {
     try {
@@ -116,7 +119,7 @@ export async function sendEmail({ to, subject, text, html }) {
   }
 
   // --- SendGrid API ---
-  if (SENDGRID_API_KEY) {
+  if (!SMTP_PREFERRED && SENDGRID_API_KEY) {
     try {
       const sgResp = await fetch('https://api.sendgrid.com/v3/mail/send', {
         method: 'POST',
@@ -148,6 +151,8 @@ export async function sendEmail({ to, subject, text, html }) {
       console.warn('[mailer] SendGrid send failed, falling back to SMTP:', se?.message || se);
     }
   }
+
+  } // end if (!SMTP_PREFERRED)
 
   // --- SMTP Fallback ---
   const transientRe = /timed?out|conn|ECONN|ENET|EHOST|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i;
@@ -193,4 +198,3 @@ export async function sendEmail({ to, subject, text, html }) {
   throw lastErr;
 }
 
-export default sendEmail;

@@ -61,7 +61,7 @@ import Submission from './models/Submission.js';
 import User from './models/User.js';
 import Contest from './models/Contest.js';
 import { executeCode } from './utils/codeExecutor.js';
-import sendEmail from './utils/mailer.js';
+import { sendEmail } from './utils/mailer.js';
 
 // Initialize express app
 const app = express();
