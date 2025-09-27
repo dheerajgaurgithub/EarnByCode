@@ -55,13 +55,12 @@ const handleOAuthSuccess = (req, res, user, redirectPath = '/') => {
     );
 
     const frontendUrl = config.FRONTEND_URL || 'http://localhost:5173';
-    
-    // Create URL with token and redirect path
-    const redirectUrl = new URL(redirectPath, frontendUrl);
-    
-    // Add token to URL hash for client-side retrieval
-    const urlWithToken = new URL(redirectUrl);
-    urlWithToken.hash = `#token=${token}&user=${encodeURIComponent(JSON.stringify({
+    // Always redirect to frontend /auth/callback so the SPA can capture the token
+    const callbackUrl = new URL('/auth/callback', frontendUrl);
+    // Place token and optional next path in the URL hash for the SPA to parse
+    const urlWithToken = new URL(callbackUrl);
+    const nextParam = encodeURIComponent(redirectPath || '/');
+    urlWithToken.hash = `#token=${token}&next=${nextParam}&user=${encodeURIComponent(JSON.stringify({
       id: user._id,
       email: user.email,
       username: user.username,
@@ -81,7 +80,7 @@ const handleOAuthSuccess = (req, res, user, redirectPath = '/') => {
 
     console.log('Redirecting to:', urlWithToken.toString());
     
-    // Redirect to frontend with token in URL
+    // Redirect to frontend /auth/callback with token in URL hash
     return res.redirect(urlWithToken.toString());
   } catch (error) {
     console.error('Error in handleOAuthSuccess:', error);

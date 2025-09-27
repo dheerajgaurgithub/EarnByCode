@@ -10,45 +10,30 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Parse the URL hash to get the access token
+        // Parse the URL hash to get the token and optional next path
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
-        const accessToken = params.get('access_token');
-        
-        if (!accessToken) {
-          throw new Error('No access token found');
+        const token = params.get('token');
+        const next = params.get('next');
+
+        if (!token) {
+          throw new Error('No token found');
         }
 
         // Store the token
-        localStorage.setItem('token', accessToken);
-        
+        localStorage.setItem('token', token);
+
         // Refresh user data
         await refreshUser();
-
-        // Redirect to the intended URL or home
-        const state = params.get('state');
-        let redirectTo = '/';
-        
-        if (state) {
-          try {
-            const parsedState = JSON.parse(decodeURIComponent(state));
-            if (parsedState.redirectTo) {
-              redirectTo = parsedState.redirectTo;
-            }
-          } catch (e) {
-            console.error('Error parsing state:', e);
-          }
-        }
 
         // Clear the URL hash
         window.history.replaceState({}, document.title, window.location.pathname);
 
-        // Redirect to the intended page
+        // Redirect to the intended page (if provided) or home
+        const redirectTo = next ? decodeURIComponent(next) : '/';
         navigate(redirectTo);
-        
       } catch (error) {
         console.error('Authentication error:', error);
-        // Use toast.error instead of toast with variant
         toast.error('There was an error during authentication. Please try again.');
         navigate('/login');
       }
