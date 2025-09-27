@@ -26,13 +26,17 @@ function getTransporter() {
 
   transporter = nodemailer.createTransport({
     pool: true,
+    maxConnections: 3,
+    maxMessages: 100,
+    keepAlive: true,
     host,
     port,
     secure,
     auth: user && pass ? { user, pass } : undefined,
-    connectionTimeout: 10000,
-    greetingTimeout: 8000,
-    socketTimeout: 15000,
+    // Bump timeouts to better tolerate cold starts / slow egress on PaaS
+    connectionTimeout: 20000,
+    greetingTimeout: 15000,
+    socketTimeout: 30000,
     tls: {
       rejectUnauthorized: false,
       servername: host,
@@ -96,30 +100,51 @@ export async function sendEmail({ to, subject, text, html }) {
     }
   }
 
-  // Fallback: SMTP
-  try {
-    if (smtpDisabled) {
-      throw new Error('SMTP disabled by circuit breaker');
-    }
-    const tx = getTransporter();
-    const info = await tx.sendMail({ from, to, subject, text, html });
-    smtpFailureCount = 0; // reset on success
-    return { ok: true, provider: 'smtp', raw: info };
-  } catch (e) {
-    const msg = String(e?.message || e);
-    const code = (e && (e.code || e.errno)) || '';
-    console.error('[mailer] SMTP send failed:', code, msg);
-    // increment breaker on connection/timeout errors
-    if (/timed?out|conn|ECONN|ENET|EHOST/i.test(code + ' ' + msg)) {
-      smtpFailureCount += 1;
-      console.warn(`[mailer] SMTP failures: ${smtpFailureCount}/${SMTP_FAILURE_THRESHOLD}`);
-      if (smtpFailureCount >= SMTP_FAILURE_THRESHOLD) {
-        smtpDisabled = true;
-        console.error('[mailer] SMTP circuit breaker OPENED. Further SMTP attempts will be skipped until restart.');
+  // Fallback: SMTP with retry/backoff on transient errors
+  const transientRe = /timed?out|conn|ECONN|ENET|EHOST|ETIMEDOUT|ECONNREFUSED|ECONNRESET/i;
+  let lastErr;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      if (smtpDisabled) {
+        throw new Error('SMTP disabled by circuit breaker');
       }
+      const tx = getTransporter();
+      const info = await tx.sendMail({ from, to, subject, text, html });
+      smtpFailureCount = 0; // reset on success
+      return { ok: true, provider: 'smtp', raw: info };
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e?.message || e);
+      const code = (e && (e.code || e.errno)) || '';
+      console.error(`[mailer] SMTP send failed (attempt ${attempt}/3):`, code, msg);
+      if (transientRe.test(code + ' ' + msg)) {
+        // On first transient failure, try switching to STARTTLS (587/false)
+        try {
+          const curPort = Number(process.env.SMTP_PORT || 0);
+          const curSecure = String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true';
+          if (attempt === 1 && (curSecure || curPort === 465)) {
+            console.warn('[mailer] Switching SMTP to STARTTLS fallback (port=587, secure=false) for retry');
+            process.env.SMTP_PORT = '587';
+            process.env.SMTP_SECURE = 'false';
+            transporter = null; // force recreate with new settings
+          }
+        } catch {}
+        smtpFailureCount += 1;
+        console.warn(`[mailer] SMTP failures: ${smtpFailureCount}/${SMTP_FAILURE_THRESHOLD}`);
+        if (smtpFailureCount >= SMTP_FAILURE_THRESHOLD) {
+          smtpDisabled = true;
+          console.error('[mailer] SMTP circuit breaker OPENED. Further SMTP attempts will be skipped until restart.');
+          break;
+        }
+        const backoff = Math.min(2000 * Math.pow(2, attempt - 1), 8000);
+        await new Promise(r => setTimeout(r, backoff));
+        continue; // retry
+      }
+      // non-transient, do not retry
+      break;
     }
-    throw e;
   }
+  throw lastErr;
 }
 
 export default { sendEmail };
