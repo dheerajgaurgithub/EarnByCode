@@ -88,7 +88,7 @@ export async function sendEmail({ to, subject, text, html }) {
       }
       const data = await resp.json();
       console.info('[mailer] Sent via Resend');
-      return data;
+      return { ok: true, provider: 'resend', raw: data };
     } catch (re) {
       console.warn('[mailer] Resend send failed, falling back to SMTP:', re?.message || re);
     }
@@ -98,7 +98,7 @@ export async function sendEmail({ to, subject, text, html }) {
   try {
     const tx = getTransporter();
     const info = await tx.sendMail({ from, to, subject, text, html });
-    return info;
+    return { ok: true, provider: 'smtp', raw: info };
   } catch (e) {
     const msg = String(e?.message || e);
     const code = (e && (e.code || e.errno)) || '';
