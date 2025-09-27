@@ -42,6 +42,32 @@ const autoUnblockIfExpired = async (user) => {
         }
       });
 
+// Debug: fetch current OTP for a pending user (for local/testing only)
+router.get('/debug/pending-otp', async (req, res) => {
+  try {
+    const email = String(req.query.email || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ ok: false, message: 'Missing email' });
+
+    const debugKey = process.env.DEBUG_EMAIL_TEST_KEY || '';
+    const isProd = (process.env.NODE_ENV || config.NODE_ENV) === 'production';
+    if (isProd && debugKey) {
+      const hdr = String(req.headers['x-debug-key'] || '');
+      if (hdr !== debugKey) {
+        return res.status(403).json({ ok: false, message: 'Forbidden: invalid debug key' });
+      }
+    } else if (isProd && !debugKey) {
+      return res.status(403).json({ ok: false, message: 'Forbidden in production (set DEBUG_EMAIL_TEST_KEY to allow with header x-debug-key)' });
+    }
+
+    const pending = await PendingUser.findOne({ email });
+    if (!pending) return res.status(404).json({ ok: false, message: 'No pending registration for this email' });
+    return res.status(200).json({ ok: true, email, otp: pending.otp, expiresAt: pending.expiresAt });
+  } catch (e) {
+    console.error('Debug get pending OTP error:', e);
+    return res.status(500).json({ ok: false, message: String(e?.message || e) });
+  }
+});
+
 // Debug: send a test email and report which provider was used
 router.post('/debug/send-test-email', async (req, res) => {
   try {
