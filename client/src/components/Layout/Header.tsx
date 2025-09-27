@@ -154,11 +154,11 @@ export const Header: React.FC = () => {
           <div className="flex items-center space-x-1.5 sm:space-x-2 min-w-0 flex-shrink-0">
             <Link
               to="/"
-              className="flex items-center space-x-1.5 sm:space-x-2 group transition-all duration-300 min-w-0"
+              className="flex items-baseline space-x-1.5 sm:space-x-2 group transition-all duration-300 min-w-0"
               aria-label="Home"
             >
-              <div className="relative flex-shrink-0">
-                <div className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 lg:h-10 lg:w-10 flex items-center justify-center relative">
+              <div className="relative flex-shrink-0 self-baseline">
+                <div className="h-8 w-8 sm:h-9 sm:w-9 md:h-10 md:w-10 lg:h-12 lg:w-12 flex items-center justify-center relative">
                   <img
                     src="/logo.png"
                     alt="EarnByCode Logo"
@@ -169,10 +169,10 @@ export const Header: React.FC = () => {
                 </div>
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-sm sm:text-base md:text-lg font-bold bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 dark:from-green-400 dark:via-emerald-500 dark:to-green-400 bg-clip-text text-transparent tracking-tight truncate">
+                <span className="leading-none text-sm sm:text-base md:text-lg font-bold bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 dark:from-green-400 dark:via-emerald-500 dark:to-green-400 bg-clip-text text-transparent tracking-tight truncate">
                   EarnByCode
                 </span>
-                <span className="text-xs sm:text-sm text-gray-600 dark:text-green-300 hidden sm:block font-medium tracking-wide truncate transition-colors duration-300">
+                <span className="leading-tight text-xs sm:text-sm text-gray-600 dark:text-green-300 hidden sm:block font-medium tracking-wide truncate transition-colors duration-300">
                   Code Your Way to Earnings
                 </span>
               </div>

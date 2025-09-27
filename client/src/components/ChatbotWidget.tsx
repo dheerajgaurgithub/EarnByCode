@@ -152,6 +152,7 @@ const ChatbotWidget: React.FC = () => {
         throw new Error(msg || `HTTP ${res.status}`);
       }
       let acc = '';
+      let gotToken = false;
       setMessages(prev => [...prev, { role: 'assistant' as const, content: '' }]);
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -169,6 +170,7 @@ const ChatbotWidget: React.FC = () => {
             const piece = obj?.choices?.[0]?.delta?.content || obj?.choices?.[0]?.message?.content || '';
             if (piece) {
               acc += piece;
+              gotToken = true;
               setMessages(prev => {
                 const copy = [...prev];
                 const last = copy[copy.length - 1];
@@ -181,8 +183,21 @@ const ChatbotWidget: React.FC = () => {
           } catch {}
         }
       }
+      // Fallback if stream produced no content
+      if (!gotToken) {
+        setMessages(prev => {
+          const copy = [...prev];
+          const last = copy[copy.length - 1];
+          if (last && last.role === 'assistant') {
+            (last as ChatMessage).content = 'Sorry, I could not generate a reply. Please try again or rephrase your question.';
+          }
+          return copy as ChatMessage[];
+        });
+        console.warn('[AI widget] No tokens received from stream. Check API key, model access, or network.');
+      }
     } catch (e: any) {
       setMessages(prev => [...prev, { role: 'assistant', content: stripCode(`Error: ${e?.message || e}`) }]);
+      try { console.error('[AI widget] chat error', e); } catch {}
     } finally {
       setLoading(false);
       abortRef.current = null;
