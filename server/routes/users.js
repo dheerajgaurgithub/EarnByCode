@@ -8,6 +8,8 @@ import multer from 'multer';
 import cloudinary from 'cloudinary';
 // OTP/email sending no longer used here
 import Submission from '../models/Submission.js';
+import EmailChangeRequest from '../models/EmailChangeRequest.js';
+import { sendEmail } from '../utils/mailer.js';
 
 // Initialize router
 const router = express.Router();
@@ -791,14 +793,131 @@ router.patch('/me/password', authenticate, async (req, res) => {
 });
 
 router.post('/me/email/change/request', authenticate, async (_req, res) => {
-  return res.status(410).json({ success: false, message: 'Email change OTP flow has been removed.' });
+  try {
+    const req = _req; // for typings consistency
+    const { newEmail } = req.body || {};
+    if (!newEmail || typeof newEmail !== 'string') {
+      return res.status(400).json({ success: false, message: 'newEmail is required' });
+    }
+    const email = String(newEmail).trim().toLowerCase();
+    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+    if (!emailRe.test(email)) {
+      return res.status(400).json({ success: false, message: 'Invalid email address' });
+    }
+
+    // Load user
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (user.email && String(user.email).toLowerCase() === email) {
+      return res.status(400).json({ success: false, message: 'This is already your email' });
+    }
+
+    // Ensure email not already in use by another account
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Email already in use' });
+    }
+
+    // Rate limit per user+email (cooldown 60s)
+    const now = Date.now();
+    const existingReq = await EmailChangeRequest.findOne({ user: user._id, newEmail: email });
+    if (existingReq && existingReq.lastSentAt && (now - new Date(existingReq.lastSentAt).getTime()) < 60_000) {
+      const wait = Math.ceil((60_000 - (now - new Date(existingReq.lastSentAt).getTime())) / 1000);
+      return res.status(429).json({ success: false, message: `Please wait ${wait}s before requesting another code` });
+    }
+
+    // Generate 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const otpHash = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Upsert request
+    await EmailChangeRequest.findOneAndUpdate(
+      { user: user._id, newEmail: email },
+      { $set: { otpHash, expiresAt, lastSentAt: new Date(), attempts: 0 } },
+      { upsert: true, new: true }
+    );
+
+    // Send email
+    const subject = 'Your AlgoBucks email change code';
+    const text = `Your email change verification code is ${otp}. It expires in 10 minutes.`;
+    const html = `<p>Your email change verification code is <b>${otp}</b>.</p><p>This code will expire in 10 minutes.</p>`;
+    try {
+      await sendEmail({ to: email, subject, text, html });
+    } catch (e) {
+      // If email sending fails, clean up the request
+      await EmailChangeRequest.deleteOne({ user: user._id, newEmail: email }).catch(() => {});
+      throw e;
+    }
+
+    // In non-production, return testOtp to simplify testing
+    const payload = { success: true, message: 'Verification code sent' };
+    if (String(process.env.NODE_ENV).toLowerCase() !== 'production') {
+      // Do not log sensitive info in production
+      payload.testOtp = otp;
+    }
+    return res.json(payload);
+  } catch (error) {
+    console.error('Email change request error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to request email change' });
+  }
 });
 
 // Get user activity (per-day accepted submission counts)
 // (Removed duplicate '/users/me/activity' route)
 
 router.post('/me/email/change/verify', authenticate, async (_req, res) => {
-  return res.status(410).json({ success: false, message: 'Email change OTP flow has been removed.' });
+  try {
+    const req = _req; // for typings consistency
+    const { newEmail, otp } = req.body || {};
+    if (!newEmail || !otp) {
+      return res.status(400).json({ success: false, message: 'newEmail and otp are required' });
+    }
+    const email = String(newEmail).trim().toLowerCase();
+    const code = String(otp).trim();
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const rec = await EmailChangeRequest.findOne({ user: user._id, newEmail: email });
+    if (!rec) {
+      return res.status(400).json({ success: false, message: 'No pending request for this email' });
+    }
+    if (new Date(rec.expiresAt).getTime() < Date.now()) {
+      await EmailChangeRequest.deleteOne({ _id: rec._id }).catch(() => {});
+      return res.status(400).json({ success: false, message: 'Code expired. Please request a new one.' });
+    }
+
+    // Allow up to 5 attempts
+    if ((rec.attempts || 0) >= 5) {
+      await EmailChangeRequest.deleteOne({ _id: rec._id }).catch(() => {});
+      return res.status(429).json({ success: false, message: 'Too many attempts. Please request a new code.' });
+    }
+
+    const ok = await bcrypt.compare(code, rec.otpHash);
+    if (!ok) {
+      await EmailChangeRequest.updateOne({ _id: rec._id }, { $inc: { attempts: 1 } }).catch(() => {});
+      return res.status(400).json({ success: false, message: 'Invalid code' });
+    }
+
+    // Final check: ensure email not taken (race condition)
+    const taken = await User.findOne({ email });
+    if (taken) {
+      await EmailChangeRequest.deleteOne({ _id: rec._id }).catch(() => {});
+      return res.status(400).json({ success: false, message: 'Email already in use' });
+    }
+
+    user.email = email;
+    user.isEmailVerified = true;
+    await user.save();
+    await EmailChangeRequest.deleteMany({ user: user._id }).catch(() => {});
+
+    const payload = user.toJSON();
+    return res.json({ success: true, message: 'Email updated', user: payload });
+  } catch (error) {
+    console.error('Email change verify error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to verify email change' });
+  }
 });
 
 // Permanently delete the authenticated user's account
