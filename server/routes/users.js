@@ -823,7 +823,7 @@ router.post('/me/email/change/request', authenticate, async (_req, res) => {
     const existingReq = await EmailChangeRequest.findOne({ user: user._id, newEmail: email });
     if (existingReq && existingReq.lastSentAt && (now - new Date(existingReq.lastSentAt).getTime()) < 60_000) {
       const wait = Math.ceil((60_000 - (now - new Date(existingReq.lastSentAt).getTime())) / 1000);
-      return res.status(429).json({ success: false, message: `Please wait ${wait}s before requesting another code` });
+      return res.status(429).json({ success: false, message: `Please wait ${wait}s before requesting another code`, waitSeconds: wait });
     }
 
     // Generate 6-digit OTP

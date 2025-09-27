@@ -540,7 +540,13 @@ export const Settings: React.FC = () => {
                                       setEmailTestOtp(null);
                                     }
                                   } catch (err) {
-                                    const msg = (err as Error)?.message || '';
+                                    const anyErr: any = err;
+                                    const msg = (anyErr as Error)?.message || '';
+                                    if (typeof anyErr?.waitSeconds === 'number') {
+                                      setResendCooldown(Math.max(0, Math.ceil(anyErr.waitSeconds)));
+                                      toast.error(`Please wait ${anyErr.waitSeconds}s before requesting another code.`);
+                                      return;
+                                    }
                                     if (/endpoint not found/i.test(msg)) {
                                       try {
                                         await updateUser({ email: accountForm.email });

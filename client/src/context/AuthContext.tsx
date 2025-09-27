@@ -106,7 +106,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const data = await res.json().catch(() => ({}));
     if (!res.ok || data.success === false) {
       const extra = res.status === 404 ? ' Endpoint not found. Please configure VITE_EMAIL_CHANGE_REQUEST_PATH to match your backend.' : '';
-      throw new Error(data.message || ('Failed to send verification code.' + extra));
+      const err: any = new Error(data.message || ('Failed to send verification code.' + extra));
+      if (res.status === 429 && typeof data.waitSeconds === 'number') {
+        err.waitSeconds = data.waitSeconds;
+      }
+      throw err;
     }
     return data;
   };
