@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from '../components/ui/use-toast';
 import { useAuth } from '../context/AuthContext';
+import config from '@/lib/config';
 
 const AuthCallback = () => {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ const AuthCallback = () => {
         const params = new URLSearchParams(hash);
         const token = params.get('token');
         const next = params.get('next');
+        const welcome = params.get('welcome');
 
         if (!token) {
           throw new Error('No token found');
@@ -22,6 +24,18 @@ const AuthCallback = () => {
 
         // Store the token
         localStorage.setItem('token', token);
+
+        // Confirm verification on backend (works for welcome link and direct returns)
+        try {
+          await fetch(`${config.api.baseUrl}/auth/verify`, {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            },
+            credentials: 'include'
+          });
+        } catch {}
 
         // Refresh user data
         await refreshUser();
@@ -31,6 +45,11 @@ const AuthCallback = () => {
 
         // Redirect to the intended page (if provided) or home
         const redirectTo = next ? decodeURIComponent(next) : '/';
+        if (welcome === '1') {
+          try {
+            toast.success('Your email has been verified. Welcome to EarnByCode!');
+          } catch {}
+        }
         navigate(redirectTo);
       } catch (error) {
         console.error('Authentication error:', error);

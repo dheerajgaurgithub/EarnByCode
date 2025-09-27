@@ -1,13 +1,11 @@
 import express from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
-import User from '../models/User.js';
-import { generateRandomPassword } from '../config/auth.js';
 import config from '../config/config.js';
+import { sendEmail } from '../utils/mailer.js';
 
 const router = express.Router();
 
-// Google OAuth routes
 router.get('/google', (req, res, next) => {
   try {
     const { redirectTo = '/' } = req.query;
@@ -60,7 +58,9 @@ const handleOAuthSuccess = (req, res, user, redirectPath = '/') => {
     // Place token and optional next path in the URL hash for the SPA to parse
     const urlWithToken = new URL(callbackUrl);
     const nextParam = encodeURIComponent(redirectPath || '/');
-    urlWithToken.hash = `#token=${token}&next=${nextParam}&user=${encodeURIComponent(JSON.stringify({
+    // Include welcome=1 for newly created users so UI can show success message
+    const welcomeFlag = req.oauthNewUser ? '&welcome=1' : '';
+    urlWithToken.hash = `#token=${token}&next=${nextParam}${welcomeFlag}&user=${encodeURIComponent(JSON.stringify({
       id: user._id,
       email: user.email,
       username: user.username,
@@ -79,6 +79,35 @@ const handleOAuthSuccess = (req, res, user, redirectPath = '/') => {
     });
 
     console.log('Redirecting to:', urlWithToken.toString());
+
+    // Best-effort: if user just registered via Google, send a welcome/verification email with the same login link
+    if (req.oauthNewUser && user?.email) {
+      try {
+        const frontendUrl = config.FRONTEND_URL || 'http://localhost:5173';
+        const prettyLink = new URL('/auth/callback', frontendUrl);
+        prettyLink.hash = `#token=${token}&next=%2F&welcome=1`;
+        const html = `
+          <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;">
+            <h2>Welcome to EarnByCode, ${user.fullName || user.username || ''}!</h2>
+            <p>Your Google email <b>${user.email}</b> has been verified.</p>
+            <p>Click the button below to finish signing in:</p>
+            <p style="text-align:center;margin:24px 0;">
+              <a href="${prettyLink.toString()}" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;">Finish Sign-in</a>
+            </p>
+            <p>If the button doesn’t work, copy and paste this link into your browser:</p>
+            <p style="word-break:break-all;color:#2563EB;">${prettyLink.toString()}</p>
+            <p style="color:#666;font-size:12px;margin-top:24px">If you didn't request this, you can ignore this email.</p>
+          </div>`;
+        await sendEmail({
+          to: user.email,
+          subject: 'Welcome to EarnByCode — Sign-in link',
+          html,
+          text: `Welcome to EarnByCode! Open this link to finish signing in: ${prettyLink.toString()}`
+        });
+      } catch (e) {
+        console.warn('Welcome email failed:', e?.message || e);
+      }
+    }
     
     // Redirect to frontend /auth/callback with token in URL hash
     return res.redirect(urlWithToken.toString());

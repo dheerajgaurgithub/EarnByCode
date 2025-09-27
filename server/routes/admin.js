@@ -64,6 +64,50 @@ router.post('/daily-problem', async (req, res) => {
   }
 });
 
+// Backfill avatars for users linked with Google but missing avatarUrl
+// POST /api/admin/backfill/google-avatars?dryRun=true&limit=500
+router.post('/backfill/google-avatars', async (req, res) => {
+  try {
+    const dryRun = String(req.query.dryRun || '').toLowerCase() === 'true';
+    const lim = Math.min(5000, Math.max(1, parseInt(String(req.query.limit || '1000'))));
+
+    const candidates = await User.find({
+      $and: [
+        { $or: [ { googleProfile: { $exists: true } }, { googleId: { $exists: true, $ne: null } } ] },
+        { $or: [ { avatarUrl: { $in: [null, ''] } }, { avatarUrl: { $exists: false } } ] }
+      ]
+    })
+    .select('_id username email avatarUrl googleProfile')
+    .limit(lim)
+    .lean();
+
+    let updated = 0;
+    const changes = [];
+
+    for (const u of candidates) {
+      try {
+        const gp = u.googleProfile || {};
+        // Try common places for Google picture
+        const photo = gp.picture || (Array.isArray(gp.photos) && gp.photos[0]?.value) || '';
+        if (photo) {
+          changes.push({ userId: u._id, username: u.username, email: u.email, picture: photo });
+          if (!dryRun) {
+            await User.updateOne({ _id: u._id }, { $set: { avatarUrl: photo } });
+            updated += 1;
+          }
+        }
+      } catch (e) {
+        // keep going
+      }
+    }
+
+    return res.json({ success: true, dryRun, scanned: candidates.length, updated: dryRun ? 0 : updated, candidates: changes });
+  } catch (error) {
+    console.error('Backfill google avatars error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to backfill avatars' });
+  }
+});
+
 // Get global daily problem for a given date (YYYY-MM-DD). If omitted, returns today's UTC.
 router.get('/daily-problem', async (req, res) => {
   try {

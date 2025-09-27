@@ -22,6 +22,16 @@ const configurePassport = (passport) => {
       let user = await User.findOne({ googleId: profile.id });
 
       if (user) {
+        // If we have a Google photo and user has no avatar set, update it
+        const googlePhoto = Array.isArray(profile.photos) && profile.photos[0]?.value ? profile.photos[0].value : '';
+        if (!user.avatarUrl && googlePhoto) {
+          try {
+            user.avatarUrl = googlePhoto;
+            await user.save();
+          } catch {}
+        }
+        // Existing account, not a new user
+        try { req.oauthNewUser = false; } catch {}
         return done(null, user);
       }
 
@@ -33,7 +43,13 @@ const configurePassport = (passport) => {
         user.googleId = profile.id;
         user.googleProfile = profile._json;
         if (!user.isEmailVerified) user.isEmailVerified = true;
+        // Populate avatar if missing from Google profile
+        const googlePhoto = Array.isArray(profile.photos) && profile.photos[0]?.value ? profile.photos[0].value : '';
+        if (!user.avatarUrl && googlePhoto) {
+          user.avatarUrl = googlePhoto;
+        }
         await user.save();
+        try { req.oauthNewUser = false; } catch {}
         return done(null, user);
       }
 
@@ -41,6 +57,7 @@ const configurePassport = (passport) => {
       const username = await generateUniqueUsername(profile.emails[0].value.split('@')[0]);
       const password = generateRandomPassword();
       
+      const googlePhoto = Array.isArray(profile.photos) && profile.photos[0]?.value ? profile.photos[0].value : '';
       user = new User({
         username,
         email: profile.emails[0].value,
@@ -48,10 +65,13 @@ const configurePassport = (passport) => {
         fullName: profile.displayName || profile.emails[0].value.split('@')[0],
         googleId: profile.id,
         googleProfile: profile._json,
-        isEmailVerified: true
+        isEmailVerified: true,
+        avatarUrl: googlePhoto || ''
       });
 
       await user.save();
+      // Mark as newly created user for downstream logic (e.g., welcome email)
+      try { req.oauthNewUser = true; } catch {}
       done(null, user);
     } catch (error) {
       console.error('Passport Google Strategy Error:', error);

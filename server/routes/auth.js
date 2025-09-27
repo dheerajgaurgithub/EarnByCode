@@ -211,6 +211,24 @@ router.post('/verify-email', async (req, res) => {
   return res.status(410).json({ message: 'Email verification is not required.' });
 });
 
+// Verify account after clicking email link (used for Google welcome link)
+// Requires a valid Bearer token (the link we email contains a token)
+router.post('/verify', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id || req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    if (user.isEmailVerified) {
+      return res.json({ success: true, message: 'Email already verified', user: user.toJSON() });
+    }
+    user.isEmailVerified = true;
+    await user.save();
+    return res.json({ success: true, message: 'Email verified successfully', user: user.toJSON() });
+  } catch (error) {
+    console.error('Verify account error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to verify account' });
+  }
+});
+
       
 // Google OAuth routes are handled in oauth.js
 
