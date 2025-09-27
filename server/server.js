@@ -62,6 +62,7 @@ import User from './models/User.js';
 import Contest from './models/Contest.js';
 import { executeCode } from './utils/codeExecutor.js';
 import { sendEmail } from './utils/mailer.js';
+import { openaiChat } from './utils/ai/openai.js';
 
 // Initialize express app
 const app = express();
@@ -467,6 +468,59 @@ app.use('/api/oauth', oauthRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/blog', blogRoutes);
 
+// AI Chat endpoint (OpenAI-first). Supports streaming via SSE.
+app.post('/api/ai/chat', async (req, res) => {
+  try {
+    const body = req.body || {};
+    const messages = Array.isArray(body.messages) ? body.messages : [];
+    const model = body.model;
+    const stream = body.stream !== false; // default true
+    const temperature = typeof body.temperature === 'number' ? body.temperature : undefined;
+    const max_tokens = typeof body.max_tokens === 'number' ? body.max_tokens : undefined;
+
+    if (!messages.length) {
+      return res.status(400).json({ message: 'messages[] is required' });
+    }
+
+    if (!stream) {
+      const result = await openaiChat({ messages, model, temperature, max_tokens, stream: false });
+      return res.status(200).json({ provider: result.provider, model: result.model, content: result.content });
+    }
+
+    // Streaming mode: set SSE headers and pipe upstream chunks
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders && res.flushHeaders();
+
+    const controller = new AbortController();
+    const { stream: upstream } = await openaiChat({ messages, model, temperature, max_tokens, stream: true, signal: controller.signal });
+
+    const onClose = () => {
+      try { controller.abort(); } catch {}
+      try { upstream?.destroy?.(); } catch {}
+      try { res.end(); } catch {}
+    };
+    req.on('close', onClose);
+
+    upstream.on('data', (chunk) => {
+      try {
+        res.write(chunk);
+      } catch (_) {
+        onClose();
+      }
+    });
+    upstream.on('end', () => {
+      try { res.end(); } catch {}
+    });
+    upstream.on('error', () => {
+      try { res.end(); } catch {}
+    });
+  } catch (e) {
+    return res.status(500).json({ message: String(e?.message || e) });
+  }
+});
+
 // Backward-compatible aliases for legacy OAuth path (/api/auth/* -> /api/oauth/*)
 app.get('/api/auth/google', (req, res) => {
   const qsIndex = req.originalUrl.indexOf('?');
@@ -493,31 +547,9 @@ app.get('/api/debug/oauth-config', (req, res) => {
   }
 });
 
-// Lightweight flags endpoint: expose safe feature flags
-app.get('/api/config/flags', (req, res) => {
-  try {
-    const exposeOtp = String(process.env.EXPOSE_OTP || '').toLowerCase() === 'true';
-    return res.status(200).json({ exposeOtp });
-  } catch (e) {
-    return res.status(200).json({ exposeOtp: false });
-  }
-});
+// Removed: /api/config/flags (exposeOtp)
 
-// Debug: send a test email to verify provider delivery
-app.post('/api/debug/send-test-email', async (req, res) => {
-  try {
-    const body = req.body || {};
-    const to = body.to || req.query.to;
-    if (!to) return res.status(400).json({ ok: false, message: 'Provide { to } in body or ?to=' });
-    const subject = body.subject || 'AlgoBucks test email';
-    const text = body.text || 'This is a test email from AlgoBucks debug endpoint.';
-    const html = body.html || `<p>This is a <strong>test email</strong> from AlgoBucks debug endpoint.</p>`;
-    const result = await sendEmail({ to, subject, text, html });
-    return res.status(200).json({ ok: true, provider: result?.provider || 'unknown', raw: result?.raw ? true : false });
-  } catch (e) {
-    return res.status(500).json({ ok: false, error: String(e?.message || e) });
-  }
-});
+// Removed: /api/debug/send-test-email
 
 // --- Press Live Updates (SSE) ---
 // Simple in-memory feed and SSE broadcaster to support the Press page live updates

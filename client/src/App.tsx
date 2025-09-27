@@ -8,8 +8,8 @@ import { I18nProvider } from '@/context/I18nContext';
 // Import types
 import { Header } from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
-import Home from './pages/Home';
 import ChatbotWidget from './components/ChatbotWidget';
+import Home from './pages/Home';
 import { Problems } from './pages/Problems';
 import ProblemDetail from './pages/ProblemDetail';
 import { Contests } from './pages/Contests';
@@ -137,9 +137,10 @@ function App() {
     headerHiddenPrefixes.some((p) => pathname.startsWith(p)) ||
     headerHiddenExact.includes(pathname);
 
-  // Chatbot visibility logic: hide on problem details, contests, and help center
-  const chatbotHiddenPrefixes = ['/problems/', '/contests', '/help'];
-  const hideChatbot = chatbotHiddenPrefixes.some((p) => pathname.startsWith(p));
+  // Show chatbot widget on all pages except problem details and contest pages
+  const chatbotHiddenPrefixes = ['/problems/', '/contests/'];
+  const hideChatbot = chatbotHiddenPrefixes.some((p) => pathname.startsWith(p))
+    || pathname === '/contests';
 
   // Enhanced toast configuration with better dark mode support
   const getToastOptions = () => {
