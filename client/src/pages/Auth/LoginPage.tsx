@@ -46,50 +46,60 @@ export function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-sky-100 dark:from-black dark:via-gray-950 dark:to-green-950 flex items-center justify-center p-3 sm:p-4 lg:p-6 transition-colors duration-300">
-      <div className="w-full max-w-sm mx-auto">
-        {/* Main login card */}
-        <div className="bg-white/95 dark:bg-black/95 border border-sky-200 dark:border-green-800 rounded-xl shadow-xl shadow-sky-500/10 dark:shadow-green-900/20 backdrop-blur-xl p-4 sm:p-6 transition-all duration-300 hover:shadow-2xl hover:shadow-sky-500/15 dark:hover:shadow-green-900/25">
-          {/* Header section */}
-          <div className="text-center mb-4">
-            {/* Logo only */}
-            <img
-              src="/logo.png"
-              alt="EarnByCode Logo"
-              className="inline-block mb-3 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain"
-            />
+    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50 dark:from-gray-950 dark:via-black dark:to-green-950 flex items-center justify-center p-4 sm:p-6 lg:p-8 transition-all duration-500">
+      <div className="w-full max-w-md mx-auto">
+        {/* Main login card with enhanced styling */}
+        <div className="bg-white/90 dark:bg-black/90 border border-sky-100 dark:border-green-800/50 rounded-2xl shadow-2xl shadow-sky-500/10 dark:shadow-green-900/30 backdrop-blur-2xl p-6 sm:p-8 transition-all duration-500 hover:shadow-3xl hover:shadow-sky-500/20 dark:hover:shadow-green-900/40 hover:scale-[1.02] transform">
+          
+          {/* Header section with enhanced spacing */}
+          <div className="text-center mb-8">
+            {/* Logo with enhanced styling */}
+            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/30 dark:to-green-800/20 rounded-2xl mb-4 transition-all duration-300 hover:scale-110">
+              <img
+                src="/logo.png"
+                alt="EarnByCode Logo"
+                className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
+              />
+            </div>
             
-            <h1 className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 dark:text-green-400 mb-1 tracking-tight transition-colors duration-300">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-sky-600 to-blue-600 dark:from-green-400 dark:to-green-500 bg-clip-text text-transparent mb-2 tracking-tight">
               {t('login.title')}
             </h1>
             <p
-              className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm font-medium transition-colors duration-300"
-              dangerouslySetInnerHTML={{ __html: t('login.subtitle').replace('<b>', '<span class="text-sky-600 dark:text-green-400 font-bold">').replace('</b>', '</span>') }}
+              className="text-slate-600 dark:text-gray-300 text-sm sm:text-base font-medium leading-relaxed"
+              dangerouslySetInnerHTML={{ 
+                __html: t('login.subtitle')
+                  .replace('<b>', '<span class="text-sky-600 dark:text-green-400 font-bold">')
+                  .replace('</b>', '</span>') 
+              }}
             />
           </div>
 
-          {/* Error alert */}
+          {/* Error alert with enhanced styling */}
           {error && (
-            <div className="mb-3 p-2.5 sm:p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg backdrop-blur-sm transition-colors duration-300">
+            <div className="mb-6 p-4 bg-red-50/80 dark:bg-red-900/20 border border-red-200/60 dark:border-red-800/40 rounded-xl backdrop-blur-sm transition-all duration-300 animate-in slide-in-from-top-2">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
-                  <AlertCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 dark:text-red-400 mt-0.5" />
+                  <div className="w-5 h-5 bg-red-100 dark:bg-red-900/40 rounded-full flex items-center justify-center">
+                    <AlertCircle className="h-3 w-3 text-red-600 dark:text-red-400" />
+                  </div>
                 </div>
-                <p className="ml-2 text-red-700 dark:text-red-300 text-xs sm:text-sm font-medium">{error}</p>
+                <p className="ml-3 text-red-700 dark:text-red-300 text-sm font-medium leading-relaxed">{error}</p>
               </div>
             </div>
           )}
 
-          {/* Login form */}
-          <form onSubmit={handleSubmit} className="space-y-3.5">
-            {/* Email field */}
-            <div>
-              <label htmlFor="email" className="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 tracking-wide transition-colors duration-300">
+          {/* Login form with enhanced spacing */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            
+            {/* Email field with modern styling */}
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-semibold text-slate-700 dark:text-gray-300 tracking-wide">
                 {t('login.email')}
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                  <Mail className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-400 dark:text-green-500" />
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-all duration-300 group-focus-within:text-sky-500 dark:group-focus-within:text-green-500">
+                  <Mail className="h-5 w-5 text-slate-400 dark:text-green-600 group-focus-within:text-sky-500 dark:group-focus-within:text-green-400 transition-colors" />
                 </div>
                 <Input
                   id="email"
@@ -99,20 +109,20 @@ export function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full pl-8 sm:pl-9 pr-3 py-2 sm:py-2.5 bg-sky-50/50 dark:bg-green-950/30 border border-sky-200 dark:border-green-800 rounded-lg text-gray-800 dark:text-green-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50 dark:focus:ring-green-400/50 focus:border-sky-400 dark:focus:border-green-500 hover:border-sky-300 dark:hover:border-green-700 transition-all duration-300 font-medium text-xs sm:text-sm backdrop-blur-sm"
+                  className="w-full pl-12 pr-4 py-3 sm:py-4 bg-sky-50/50 dark:bg-green-950/20 border border-sky-200/60 dark:border-green-800/40 rounded-xl text-slate-800 dark:text-green-400 placeholder-slate-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:focus:ring-green-400/30 focus:border-sky-400 dark:focus:border-green-500 hover:border-sky-300 dark:hover:border-green-600 transition-all duration-300 font-medium text-sm sm:text-base backdrop-blur-sm hover:bg-sky-100/30 dark:hover:bg-green-950/30"
                   placeholder={t('login.email')}
                 />
               </div>
             </div>
 
-            {/* Password field */}
-            <div>
-              <label htmlFor="password" className="block text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 mb-1.5 tracking-wide transition-colors duration-300">
+            {/* Password field with modern styling */}
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-sm font-semibold text-slate-700 dark:text-gray-300 tracking-wide">
                 {t('login.password')}
               </label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
-                  <Lock className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-400 dark:text-green-500" />
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-all duration-300 group-focus-within:text-sky-500 dark:group-focus-within:text-green-500">
+                  <Lock className="h-5 w-5 text-slate-400 dark:text-green-600 group-focus-within:text-sky-500 dark:group-focus-within:text-green-400 transition-colors" />
                 </div>
                 <Input
                   id="password"
@@ -122,69 +132,69 @@ export function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full pl-8 sm:pl-9 pr-10 py-2 sm:py-2.5 bg-sky-50/50 dark:bg-green-950/30 border border-sky-200 dark:border-green-800 rounded-lg text-gray-800 dark:text-green-400 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/50 dark:focus:ring-green-400/50 focus:border-sky-400 dark:focus:border-green-500 hover:border-sky-300 dark:hover:border-green-700 transition-all duration-300 font-medium text-xs sm:text-sm backdrop-blur-sm"
+                  className="w-full pl-12 pr-12 py-3 sm:py-4 bg-sky-50/50 dark:bg-green-950/20 border border-sky-200/60 dark:border-green-800/40 rounded-xl text-slate-800 dark:text-green-400 placeholder-slate-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:focus:ring-green-400/30 focus:border-sky-400 dark:focus:border-green-500 hover:border-sky-300 dark:hover:border-green-600 transition-all duration-300 font-medium text-sm sm:text-base backdrop-blur-sm hover:bg-sky-100/30 dark:hover:bg-green-950/30"
                   placeholder={t('login.password')}
                 />
                 <button
                   type="button"
-                  className="absolute inset-y-0 right-0 pr-2.5 flex items-center hover:bg-sky-50 dark:hover:bg-green-900/30 rounded-r-lg transition-colors duration-200"
+                  className="absolute inset-y-0 right-0 pr-4 flex items-center hover:bg-sky-100/40 dark:hover:bg-green-900/30 rounded-r-xl transition-all duration-200 group"
                   onClick={() => setShowPassword(!showPassword)}
                 >
                   {showPassword ? (
-                    <EyeOff className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-400 dark:text-green-500 hover:text-sky-600 dark:hover:text-green-400 transition-colors" />
+                    <EyeOff className="h-5 w-5 text-slate-400 dark:text-green-600 group-hover:text-sky-600 dark:group-hover:text-green-400 transition-colors" />
                   ) : (
-                    <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-sky-400 dark:text-green-500 hover:text-sky-600 dark:hover:text-green-400 transition-colors" />
+                    <Eye className="h-5 w-5 text-slate-400 dark:text-green-600 group-hover:text-sky-600 dark:group-hover:text-green-400 transition-colors" />
                   )}
                 </button>
               </div>
             </div>
 
-            {/* Remember me & Forgot password */}
-            <div className="flex flex-col space-y-2 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pt-0.5">
+            {/* Remember me & Forgot password with enhanced styling */}
+            <div className="flex flex-col space-y-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0 pt-2">
               <div className="flex items-center">
                 <input
                   id="remember-me"
                   name="remember-me"
                   type="checkbox"
-                  className="h-3.5 w-3.5 text-sky-600 dark:text-green-500 focus:ring-sky-500 dark:focus:ring-green-400 bg-sky-50 dark:bg-green-950 border-sky-300 dark:border-green-700 rounded transition-all duration-200"
+                  className="h-4 w-4 text-sky-600 dark:text-green-500 focus:ring-sky-500/30 dark:focus:ring-green-400/30 bg-sky-50 dark:bg-green-950 border-sky-300 dark:border-green-700 rounded transition-all duration-200 hover:scale-105"
                 />
-                <label htmlFor="remember-me" className="ml-2 block text-xs font-medium text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 transition-colors">
+                <label htmlFor="remember-me" className="ml-3 block text-sm font-medium text-slate-600 dark:text-gray-300 hover:text-slate-800 dark:hover:text-gray-100 transition-colors cursor-pointer">
                   {t('login.remember')}
                 </label>
               </div>
 
               <Link 
                 to="/forgot-password" 
-                className="text-xs font-semibold text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-colors duration-200 underline-offset-4 hover:underline"
+                className="text-sm font-semibold text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-all duration-200 underline-offset-4 hover:underline hover:scale-105 inline-block"
               >
                 {t('login.forgot')}
               </Link>
             </div>
 
-            {/* Submit button */}
-            <div className="space-y-3 pt-1">
+            {/* Submit button with enhanced styling */}
+            <div className="space-y-4 pt-2">
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full bg-gradient-to-r from-sky-500 to-sky-600 dark:from-green-500 dark:to-green-600 hover:from-sky-600 hover:to-sky-700 dark:hover:from-green-600 dark:hover:to-green-700 active:from-sky-700 active:to-sky-800 dark:active:from-green-700 dark:active:to-green-800 text-white font-bold py-2.5 sm:py-3 px-3 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-xs sm:text-sm tracking-wide shadow-lg shadow-sky-500/25 dark:shadow-green-900/25 hover:shadow-xl hover:shadow-sky-500/30 dark:hover:shadow-green-900/30 transform hover:scale-[1.02] active:scale-[0.98]"
+                className="w-full bg-gradient-to-r from-sky-500 via-sky-600 to-blue-600 dark:from-green-500 dark:via-green-600 dark:to-green-700 hover:from-sky-600 hover:via-sky-700 hover:to-blue-700 dark:hover:from-green-600 dark:hover:via-green-700 dark:hover:to-green-800 active:from-sky-700 active:to-blue-800 dark:active:from-green-700 dark:active:to-green-900 text-white font-bold py-3.5 sm:py-4 px-4 rounded-xl transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base tracking-wide shadow-lg shadow-sky-500/30 dark:shadow-green-900/30 hover:shadow-xl hover:shadow-sky-500/40 dark:hover:shadow-green-900/40 transform hover:scale-[1.02] active:scale-[0.98] hover:-translate-y-0.5"
               >
                 {isLoading ? (
-                  <div className="flex items-center justify-center space-x-2">
-                    <div className="w-3.5 h-3.5 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                    <span className="font-semibold text-xs sm:text-sm">{t('login.submit')}</span>
+                  <div className="flex items-center justify-center space-x-3">
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span className="font-semibold">{t('login.submit')}</span>
                   </div>
                 ) : (
-                  <span className="text-xs sm:text-sm font-semibold">{t('login.submit')}</span>
+                  <span className="font-semibold tracking-wide">{t('login.submit')}</span>
                 )}
               </button>
               
-              {/* Divider */}
-              <div className="relative my-3">
+              {/* Divider with enhanced styling */}
+              <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-sky-200 dark:border-green-800"></div>
+                  <div className="w-full border-t border-sky-200/60 dark:border-green-800/40"></div>
                 </div>
-                <div className="relative flex justify-center text-xs">
-                  <span className="px-3 py-1.5 bg-white dark:bg-black text-gray-600 dark:text-gray-300 font-medium rounded-full border border-sky-200 dark:border-green-800 shadow-sm transition-colors duration-300">
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-4 py-2 bg-white/80 dark:bg-black/80 text-slate-600 dark:text-gray-300 font-medium rounded-xl border border-sky-200/60 dark:border-green-800/40 shadow-sm backdrop-blur-sm transition-all duration-300 hover:bg-white dark:hover:bg-black hover:scale-105">
                     {t('login.continue_with')}
                   </span>
                 </div>
@@ -194,20 +204,24 @@ export function LoginPage() {
             </div>
           </form>
 
-          {/* Sign up link */}
-          <div className="mt-4 pt-3 border-t border-sky-200 dark:border-green-800 text-center transition-colors duration-300">
-            <p className="text-gray-600 dark:text-gray-300 text-xs font-medium transition-colors duration-300">
+          {/* Sign up link with enhanced styling */}
+          <div className="mt-6 pt-6 border-t border-sky-200/60 dark:border-green-800/40 text-center">
+            <p className="text-slate-600 dark:text-gray-300 text-sm font-medium leading-relaxed">
               {t('login.no_account')}{' '}
               <Link 
                 to="/register" 
-                className="font-bold text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-colors duration-200 underline-offset-4 hover:underline"
+                className="font-bold text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-all duration-200 underline-offset-4 hover:underline hover:scale-105 inline-block"
               >
                 {t('login.create_here')}
               </Link>
             </p>
           </div>
         </div>
+
+        {/* Additional decorative elements */}
+        <div className="absolute top-10 left-10 w-20 h-20 bg-sky-200/20 dark:bg-green-800/10 rounded-full blur-xl animate-pulse"></div>
+        <div className="absolute bottom-10 right-10 w-32 h-32 bg-blue-200/20 dark:bg-green-900/10 rounded-full blur-2xl animate-pulse delay-1000"></div>
       </div>
     </div>
-  );
+);
 }
