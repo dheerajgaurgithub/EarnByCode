@@ -147,8 +147,8 @@ class ApiService {
   }
 
   // HTTP methods
-  async post<T>(endpoint: string, data?: unknown): Promise<T> {
-    return this.request<T>('POST', endpoint, data);
+  async post<T>(endpoint: string, data?: unknown, options?: { timeoutMs?: number; retries?: number; retryDelayMs?: number }): Promise<T> {
+    return this.request<T>('POST', endpoint, data, options);
   }
 
   // Auth methods
@@ -156,8 +156,17 @@ class ApiService {
     return this.request('POST', '/auth/login', { email, password });
   }
 
-  async register(username: string, email: string, password: string, fullName?: string): Promise<{ token: string }> {
-    return this.request<{ token: string }>('POST', '/auth/register', { username, email, password, fullName });
+  async register(username: string, email: string, password: string, fullName?: string): Promise<any> {
+    // Longer timeout and no retries to avoid AbortError loops during email send
+    return this.request<any>('POST', '/auth/register', { username, email, password, fullName }, { timeoutMs: 20000, retries: 0 });
+  }
+
+  async verifyEmail(email: string, otp: string): Promise<{ token?: string; message?: string; user?: User; requiresVerification?: boolean }> {
+    return this.request('POST', '/auth/verify-email', { email, otp }, { timeoutMs: 20000, retries: 0 });
+  }
+
+  async resendVerification(email: string): Promise<{ message: string; requiresVerification: boolean }> {
+    return this.request('POST', '/auth/resend-verification', { email }, { timeoutMs: 20000, retries: 0 });
   }
 
   async getCurrentUser(): Promise<User> {
