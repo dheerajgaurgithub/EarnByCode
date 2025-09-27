@@ -174,12 +174,12 @@ router.post('/register', async (req, res) => {
 
     setImmediate(async () => {
       try {
-        const subject = process.env.EMAIL_SUBJECT_VERIFY || 'AlgoBucks: Verify your email';
-        const text = `Welcome to AlgoBucks! Your verification code is ${otp}. It expires in 60 minutes.`;
+        const subject = process.env.EMAIL_SUBJECT_VERIFY || 'EarnByCode: Verify your email';
+        const text = `Welcome to EarnByCode! Your verification code is ${otp}. It expires in 60 minutes.`;
         const html = `
           <div style="font-family: Arial, sans-serif; line-height: 1.6;">
             <h2>Verify your email</h2>
-            <p>Use the following code to verify your email for <strong>AlgoBucks</strong>:</p>
+            <p>Use the following code to verify your email for <strong>EarnByCode</strong>:</p>
             <p style="font-size: 22px; font-weight: 700; letter-spacing: 2px;">${otp}</p>
             <p style="color:#555">This code expires in <strong>60 minutes</strong>.</p>
           </div>

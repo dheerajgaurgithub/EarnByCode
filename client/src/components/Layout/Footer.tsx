@@ -54,25 +54,15 @@ export default function Footer() {
               {/* Logo & Brand */}
               <div className="space-y-2 sm:space-y-3">
                 <div className="flex items-start space-x-2 group cursor-pointer">
-                  <div className="relative flex-shrink-0">
-                    {/* Glowing backdrop */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-sky-300/30 via-blue-400/25 to-cyan-400/35 dark:from-green-400/25 dark:via-emerald-500/20 dark:to-green-500/30 rounded-lg blur-md opacity-60 group-hover:opacity-90 transition-all duration-500"></div>
-                    {/* Logo container */}
-                    <div className="relative bg-gradient-to-br from-white/95 via-sky-50/90 to-blue-50/95 dark:from-gray-900/95 dark:via-gray-850/90 dark:to-green-950/95 p-1 sm:p-1.5 rounded-lg border border-sky-200/50 dark:border-green-700/50 group-hover:border-sky-300/70 dark:group-hover:border-green-600/70 transition-all duration-500 backdrop-blur-sm shadow-md">
-                      <img
-                        src="/logo.png"
-                        alt="Logo"
-                        className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 object-contain"
-                      />
-                    </div>
-                  </div>
+                  <img
+                    src="/logo.png"
+                    alt="EarnByCode Logo"
+                    className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 object-contain flex-shrink-0"
+                  />
                   <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">
                     <h1 className="text-lg sm:text-xl md:text-2xl lg:text-2xl xl:text-3xl font-black tracking-tight">
-                      <span className="bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 dark:from-gray-100 dark:via-white dark:to-gray-200 bg-clip-text text-transparent">
-                        Algo
-                      </span>
                       <span className="bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-300 bg-clip-text text-transparent">
-                        Bucks
+                        EarnByCode
                       </span>
                     </h1>
                     <p className="text-xs sm:text-sm md:text-sm text-gray-600 dark:text-green-300 font-medium tracking-wide transition-colors duration-300">
@@ -199,7 +189,7 @@ export default function Footer() {
               <div className="space-y-2 sm:space-y-3">
                 <p className="text-gray-700 dark:text-green-200 text-xs sm:text-sm md:text-sm font-medium tracking-wide transition-colors duration-300">
                   © 2025
-                  <span className="text-transparent bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-300 bg-clip-text font-bold mx-1">AlgoBucks</span>
+                  <span className="text-transparent bg-gradient-to-r from-sky-600 via-blue-600 to-cyan-600 dark:from-green-400 dark:via-emerald-400 dark:to-green-300 bg-clip-text font-bold mx-1">EarnByCode</span>
                   {t('common.all_rights_reserved')}
                 </p>
 

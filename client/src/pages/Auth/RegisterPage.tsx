@@ -101,14 +101,12 @@ export function RegisterPage() {
         <div className="bg-white/95 dark:bg-black/95 border border-sky-200 dark:border-green-800 rounded-xl shadow-xl shadow-sky-500/10 dark:shadow-green-900/20 backdrop-blur-xl p-4 sm:p-5 transition-all duration-300 hover:shadow-2xl hover:shadow-sky-500/15 dark:hover:shadow-green-900/25">
           {/* Header section */}
           <div className="text-center mb-4">
-            {/* Logo */}
-            <div className="inline-flex items-center justify-center w-12 h-12 mb-3 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-green-800/50 rounded-lg border border-sky-300/30 dark:border-green-700/30 backdrop-blur-sm shadow-md transition-all duration-300 hover:scale-105">
-              <img 
-                src="/logo.png" 
-                alt="AlgoBucks Logo" 
-                className="w-6 h-6 object-contain"
-              />
-            </div>
+            {/* Logo only */}
+            <img 
+              src="/logo.png" 
+              alt="EarnByCode Logo" 
+              className="inline-block mb-3 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain"
+            />
             
             <h1 className="text-xl sm:text-2xl font-bold text-gray-800 dark:text-green-400 mb-1 tracking-tight transition-colors duration-300">
               {t('register.title')}

@@ -366,9 +366,9 @@ export const Settings: React.FC = () => {
   };
 
   const onDeleteAccount = async () => {
-    const phrase = 'delete algobucks account';
+    const phrase = 'delete earnbycode account';
     if (deleteText.trim().toLowerCase() !== phrase) {
-      toast.error("Please type 'delete AlgoBucks account' exactly to confirm.");
+      toast.error("Please type 'delete EarnByCode account' exactly to confirm.");
       return;
     }
     if (!confirm('This action is permanent. Are you sure you want to delete your account?')) return;
@@ -870,20 +870,20 @@ export const Settings: React.FC = () => {
                       </h3>
                       <div className="mt-6 p-6 rounded-xl border border-rose-200 dark:border-rose-800 bg-rose-50/50 dark:bg-rose-900/20">
                         <h4 className="text-sm sm:text-base font-bold text-rose-700 dark:text-rose-300 mb-3">Delete My Account</h4>
-                        <p className="text-xs sm:text-sm text-rose-700 dark:text-rose-300 mb-4">This will permanently delete your AlgoBucks account and all associated data. This action cannot be undone.</p>
-                        <label className="block text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-300 mb-2">Type "delete AlgoBucks account" to confirm:</label>
+                        <p className="text-xs sm:text-sm text-rose-700 dark:text-rose-300 mb-4">This will permanently delete your EarnByCode account and all associated data. This action cannot be undone.</p>
+                        <label className="block text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-300 mb-2">Type "delete EarnByCode account" to confirm:</label>
                         <input
                           type="text"
                           value={deleteText}
                           onChange={(e) => setDeleteText(e.target.value)}
                           className="w-full sm:w-96 px-4 py-3 rounded-xl border border-rose-300 dark:border-rose-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
-                          placeholder="delete AlgoBucks account"
+                          placeholder="delete EarnByCode account"
                         />
                         <div className="mt-4">
                           <button
                             type="button"
                             onClick={onDeleteAccount}
-                            disabled={deleting || deleteText.trim().toLowerCase() !== 'delete algobucks account'}
+                            disabled={deleting || deleteText.trim().toLowerCase() !== 'delete earnbycode account'}
                             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 font-medium text-sm sm:text-base transition-all duration-200"
                           >
                             <Trash2 className="h-4 w-4" /> {deleting ? 'Deleting…' : 'Delete Account'}

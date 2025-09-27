@@ -122,7 +122,7 @@ const Press: React.FC = () => {
         <div className="text-center mb-12 sm:mb-16">
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold mb-2">Press</h1>
           <p className="text-sm sm:text-base text-slate-700 dark:text-green-300 max-w-2xl mx-auto px-4">
-            Live updates and media contact for AlgoBucks.
+            Live updates and media contact for EarnByCode.
           </p>
         </div>
 

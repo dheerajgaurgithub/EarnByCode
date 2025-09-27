@@ -22,12 +22,10 @@ export const Company: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white dark:from-gray-950 dark:to-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6">
       <div className="max-w-4xl mx-auto">
         <header className="text-center mb-6 sm:mb-8 lg:mb-10">
-          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-sky-100 dark:bg-green-900/30 mb-3 sm:mb-4 shadow-sm">
-            <img src="./logo.png" alt="AlgoBucks Logo" className="w-8 h-8 sm:w-10 sm:h-10 object-contain" />
-          </div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-green-100 mb-2">About AlgoBucks</h1>
+          <img src="/logo.png" alt="EarnByCode Logo" className="inline-block mb-3 sm:mb-4 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain" />
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-green-100 mb-2">About EarnByCode</h1>
           <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-green-300 mt-2 max-w-2xl mx-auto leading-relaxed px-2">
-            AlgoBucks is a coding practice and contests platform. Solve problems, compete in timed contests,
+            EarnByCode is a coding practice and contests platform. Solve problems, compete in timed contests,
             and track your progress with submissions and leaderboards.
           </p>
         </header>

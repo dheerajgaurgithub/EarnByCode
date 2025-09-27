@@ -61,7 +61,7 @@ const devConfig: Config = {
     timeout: 30000, // 30 seconds
   },
   app: {
-    name: import.meta.env.VITE_APP_NAME || 'AlgoBucks (Dev)',
+    name: import.meta.env.VITE_APP_NAME || 'EarnByCode (Dev)',
     version: import.meta.env.VITE_APP_VERSION || '1.0.0',
     environment: 'development',
   },
@@ -79,7 +79,7 @@ const prodConfig: Config = {
     timeout: 30000, // 30 seconds
   },
   app: {
-    name: 'AlgoBucks',
+    name: 'EarnByCode',
     version: import.meta.env.VITE_APP_VERSION || '1.0.0',
     environment: 'production',
   },

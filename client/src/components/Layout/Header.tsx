@@ -154,10 +154,10 @@ export const Header: React.FC = () => {
               aria-label="Home"
             >
               <div className="relative flex-shrink-0">
-                <div className="h-5 w-5 sm:h-6 sm:w-6 flex items-center justify-center relative">
+                <div className="h-6 w-6 sm:h-7 sm:w-7 md:h-8 md:w-8 lg:h-10 lg:w-10 flex items-center justify-center relative">
                   <img
                     src="/logo.png"
-                    alt="AlgoBucks Logo"
+                    alt="EarnByCode Logo"
                     className="h-full w-full object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-md"
                   />
                   {/* Glow effect */}
@@ -166,10 +166,10 @@ export const Header: React.FC = () => {
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="text-sm sm:text-base md:text-lg font-bold bg-gradient-to-r from-gray-700 via-gray-800 to-gray-900 dark:from-green-400 dark:via-emerald-500 dark:to-green-400 bg-clip-text text-transparent tracking-tight truncate">
-                  AlgoBucks
+                  EarnByCode
                 </span>
                 <span className="text-xs sm:text-sm text-gray-600 dark:text-green-300 hidden sm:block font-medium tracking-wide truncate transition-colors duration-300">
-                  Think smart. Code harder.
+                  Code Your Way to Earnings
                 </span>
               </div>
             </Link>

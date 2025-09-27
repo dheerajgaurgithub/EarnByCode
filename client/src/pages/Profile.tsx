@@ -279,8 +279,8 @@ export const Profile: React.FC = () => {
       earned: (user.solvedProblems?.length || 0) >= 10 
     },
     {
-      title: 'AlgoBucks 1000 Points Certified',
-      description: 'Reached 1000 points and earned your AlgoBucks certification',
+      title: 'EarnByCode 1000 Points Certified',
+      description: 'Reached 1000 points and earned your EarnByCode certification',
       earned: (user.points || 0) >= 1000,
     },
     {
@@ -677,7 +677,7 @@ export const Profile: React.FC = () => {
           {/* Admin Welcome Message */}
           {user.isAdmin ? (
             <div className="bg-gradient-to-r from-sky-50 to-sky-100 dark:from-green-900/20 dark:to-green-800/20 border-l-4 border-sky-500 dark:border-green-400 p-3 mb-3 rounded-r-lg transition-all duration-300 shadow-inner">
-              <h3 className="text-sm font-medium text-sky-800 dark:text-green-300">Welcome to the profile of Administrator of AlgoBucks</h3>
+              <h3 className="text-sm font-medium text-sky-800 dark:text-green-300">Welcome to the profile of Administrator of EarnByCode</h3>
               <p className="text-sky-600 dark:text-green-400 text-xs mt-0.5">You have full administrative access to the platform.</p>
             </div>
           ) : (

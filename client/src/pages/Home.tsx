@@ -65,7 +65,7 @@ export default function Home() {
                     <div className="absolute inset-0 h-5 w-5 sm:h-6 sm:w-6 md:h-7 md:w-7 bg-gradient-to-r from-sky-600 to-sky-800 dark:from-green-400 dark:to-green-600 blur-lg opacity-30"></div>
                   </div>
                   <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black bg-gradient-to-r from-sky-600 via-sky-700 to-sky-900 dark:from-green-400 dark:via-green-500 dark:to-green-600 bg-clip-text text-transparent leading-tight">
-                    AlgoBucks
+                    EarnByCode
                   </h1>
                 </div>
 
