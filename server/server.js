@@ -1437,17 +1437,15 @@ if (fs.existsSync(clientBuildPath)) {
   });
 }
 
-// MongoDB connection options
+// MongoDB connection options (MongoDB Node Driver v5 / Mongoose v7+)
+const isSrv = typeof config.MONGODB_URI === 'string' && config.MONGODB_URI.startsWith('mongodb+srv://');
 const mongooseOptions = {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
-  socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-  family: 4, // Use IPv4, skip trying IPv6
-  maxPoolSize: 10, // Maintain up to 10 socket connections
-  serverSelectionTimeoutMS: 5000, // Keep trying to send operations for 5 seconds
-  socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
-  heartbeatFrequencyMS: 10000, // Send a heartbeat every 10 seconds
+  // Modern driver options
+  serverSelectionTimeoutMS: 8000,
+  socketTimeoutMS: 45000,
+  heartbeatFrequencyMS: 10000,
+  // Enable Stable API when using SRV/Atlas
+  ...(isSrv ? { serverApi: { version: '1', strict: true, deprecationErrors: true } } : {}),
 };
 
 // Connect to MongoDB and start server
