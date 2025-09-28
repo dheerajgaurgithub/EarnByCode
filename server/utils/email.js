@@ -126,10 +126,14 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [] }) =
         }))
       };
       const [resp] = await sgMail.send(msg);
-      logEmail('SUCCESS_SENDGRID', { to, subject, statusCode: resp?.statusCode });
-      return { success: true, message: 'Email sent (SendGrid)', statusCode: resp?.statusCode };
+      const sgMessageId = resp?.headers?.['x-message-id'] || resp?.headers?.['x-message-id'.toLowerCase()];
+      logEmail('SUCCESS_SENDGRID', { to, subject, statusCode: resp?.statusCode, messageId: sgMessageId });
+      console.log(`📤 SendGrid accepted email (202). x-message-id=${sgMessageId || 'n/a'}`);
+      return { success: true, message: 'Email sent (SendGrid)', statusCode: resp?.statusCode, messageId: sgMessageId };
     } catch (error) {
-      console.error('❌ SendGrid send error:', error?.response?.body || error?.message || error);
+      const errBody = error?.response?.body || error?.message || error;
+      console.error('❌ SendGrid send error:', errBody);
+      logEmail('ERROR_SENDGRID', { to, subject, error: typeof errBody === 'object' ? errBody : String(errBody) });
       if (!isProd) {
         return { success: true, message: 'SendGrid failed, but continuing in dev mode' };
       }
