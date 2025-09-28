@@ -61,6 +61,19 @@ const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 const hashToken = (val) => crypto.createHash('sha256').update(String(val)).digest('hex');
 
+// In-memory cooldown maps (per email)
+const cooldowns = {
+  resend: new Map(), // registration verification resend
+  forgot: new Map(), // forgot-password request
+};
+const COOLDOWN_MS = 60 * 1000; // 60 seconds
+const isCoolingDown = (map, email) => {
+  const now = Date.now();
+  const last = map.get(email);
+  return typeof last === 'number' && (now - last) < COOLDOWN_MS;
+};
+const setCooldown = (map, email) => map.set(email, Date.now());
+
 // Register: create PendingUser and send verification OTP
 router.post('/register', async (req, res) => {
   try {
@@ -92,6 +105,7 @@ router.post('/register', async (req, res) => {
     await pending.save();
 
     // Send verification email with OTP
+    console.log('[Auth] Sending register OTP', { email, provider: process.env.EMAIL_PROVIDER || (process.env.SMTP_USER ? 'smtp' : 'none') });
     await sendEmail({
       to: email,
       subject: 'Verify your AlgoBucks account',
@@ -115,6 +129,11 @@ router.post('/resend-verification', async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ message: 'email is required' });
+    const emailKey = String(email).toLowerCase();
+    if (isCoolingDown(cooldowns.resend, emailKey)) {
+      const remaining = Math.ceil((COOLDOWN_MS - (Date.now() - cooldowns.resend.get(emailKey))) / 1000);
+      return res.status(429).json({ message: `Please wait ${remaining}s before requesting a new code.` });
+    }
     const pending = await PendingUser.findOne({ email: String(email).toLowerCase() });
     if (!pending) return res.status(404).json({ message: 'No pending registration found for this email' });
 
@@ -123,12 +142,14 @@ router.post('/resend-verification', async (req, res) => {
     pending.expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     await pending.save();
 
+    console.log('[Auth] Resend verification OTP', { email, provider: process.env.EMAIL_PROVIDER || (process.env.SMTP_USER ? 'smtp' : 'none') });
     await sendEmail({
       to: email,
       subject: 'Your AlgoBucks verification code',
       text: `Your verification code is ${otp}. It expires in 60 minutes.`,
       html: `<p>Your verification code is:</p><h2 style="letter-spacing:4px;">${otp}</h2><p>This code expires in 60 minutes.</p>`
     });
+    setCooldown(cooldowns.resend, emailKey);
 
     return res.json({ message: 'Verification code resent', requiresVerification: true, ...(isProd ? {} : { testOtp: otp }) });
   } catch (error) {
@@ -342,20 +363,27 @@ router.post('/forgot-password/request', async (req, res) => {
   try {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ message: 'email is required' });
-    const user = await User.findOne({ email: String(email).toLowerCase() });
+    const emailKey = String(email).toLowerCase();
+    const user = await User.findOne({ email: emailKey });
     // For security, always respond success; but only set token if user exists
     if (user) {
+      if (isCoolingDown(cooldowns.forgot, emailKey)) {
+        // Respond success without sending a new email, to avoid enumeration & abuse
+        return res.json({ message: 'If an account exists, an OTP has been sent to your email.' });
+      }
       const otp = generateOTP();
       user.resetPasswordToken = hashToken(otp);
       user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
       await user.save();
 
+      console.log('[Auth] Forgot-password OTP', { email, provider: process.env.EMAIL_PROVIDER || (process.env.SMTP_USER ? 'smtp' : 'none') });
       await sendEmail({
         to: email,
         subject: 'Your AlgoBucks password reset code',
         text: `Use this code to reset your password: ${otp}. It expires in 15 minutes.`,
         html: `<p>Use this code to reset your password:</p><h2 style="letter-spacing:4px;">${otp}</h2><p>This code expires in 15 minutes.</p>`
       });
+      setCooldown(cooldowns.forgot, emailKey);
 
       return res.json({ message: 'If an account exists, an OTP has been sent to your email.', ...(isProd ? {} : { testOtp: otp }) });
     }

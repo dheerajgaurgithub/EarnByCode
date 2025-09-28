@@ -106,6 +106,9 @@ if (hasSmtpCreds && transporter) {
  * @returns {Promise<Object>} - Result of the email sending operation
  */
 export const sendEmail = async ({ to, subject, text, html, attachments = [] }) => {
+  try {
+    logEmail('ATTEMPT', { to, subject, provider: EMAIL_PROVIDER || (hasSmtpCreds ? 'smtp' : 'none') });
+  } catch {}
   // Provider: SendGrid
   if (EMAIL_PROVIDER === 'sendgrid' && process.env.SENDGRID_API_KEY) {
     try {
