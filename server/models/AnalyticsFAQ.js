@@ -5,7 +5,6 @@ const AnalyticsFAQSchema = new mongoose.Schema(
     question: {
       type: String,
       required: true,
-      index: true,
       trim: true,
     },
     count: {

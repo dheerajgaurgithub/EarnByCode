@@ -16,3 +16,15 @@
 [2025-09-27T19:05:49.379Z] CONFIG_ERROR: {
   "error": "Client network socket disconnected before secure TLS connection was established"
 }
+[2025-09-28T06:30:14.622Z] CONFIG_ERROR: {
+  "error": "Connection timeout"
+}
+[2025-09-28T06:31:18.704Z] CONFIG_ERROR: {
+  "error": "Connection timeout"
+}
+[2025-09-28T06:31:48.465Z] CONFIG_ERROR: {
+  "error": "Connection timeout"
+}
+[2025-09-28T06:32:54.996Z] CONFIG_ERROR: {
+  "error": "Connection timeout"
+}

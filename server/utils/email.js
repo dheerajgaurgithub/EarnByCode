@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -33,6 +34,12 @@ const transporter = nodemailer.createTransport(SMTP_CONFIG);
 
 const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 const hasSmtpCreds = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
+const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || '').toLowerCase();
+
+// Configure SendGrid if selected
+if (EMAIL_PROVIDER === 'sendgrid' && process.env.SENDGRID_API_KEY) {
+  try { sgMail.setApiKey(process.env.SENDGRID_API_KEY); } catch {}
+}
 
 // Helper function to log email attempts
 const logEmail = (type, data) => {
@@ -74,6 +81,34 @@ if (hasSmtpCreds) {
  * @returns {Promise<Object>} - Result of the email sending operation
  */
 export const sendEmail = async ({ to, subject, text, html, attachments = [] }) => {
+  // Provider: SendGrid
+  if (EMAIL_PROVIDER === 'sendgrid' && process.env.SENDGRID_API_KEY) {
+    try {
+      const msg = {
+        to,
+        from: process.env.EMAIL_FROM || 'noreply@example.com',
+        subject,
+        text,
+        html,
+        attachments: attachments?.map(a => ({
+          filename: a.filename,
+          content: a.content?.toString('base64'),
+          type: a.contentType,
+          disposition: 'attachment',
+        }))
+      };
+      await sgMail.send(msg);
+      logEmail('SUCCESS_SENDGRID', { to, subject });
+      return { success: true, message: 'Email sent (SendGrid)' };
+    } catch (error) {
+      console.error('❌ SendGrid send error:', error?.response?.body || error?.message || error);
+      if (!isProd) {
+        return { success: true, message: 'SendGrid failed, but continuing in dev mode' };
+      }
+      return { success: false, message: 'SendGrid send failed', error: error?.message };
+    }
+  }
+
   // In development without SMTP credentials, do not attempt to send; log and return success fast
   if (!isProd && !hasSmtpCreds) {
     const mailOptions = { from: process.env.EMAIL_FROM || 'dev@localhost', to, subject, text, html };
