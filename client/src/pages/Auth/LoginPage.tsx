@@ -53,14 +53,12 @@ export function LoginPage() {
           
           {/* Header section with enhanced spacing */}
           <div className="text-center mb-8">
-            {/* Logo with enhanced styling */}
-            <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/30 dark:to-green-800/20 rounded-2xl mb-4 transition-all duration-300 hover:scale-110">
-              <img
-                src="/logo.png"
-                alt="EarnByCode Logo"
-                className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
-              />
-            </div>
+            {/* Logo (no wrapper) */}
+            <img
+              src="/logo.png"
+              alt="EarnByCode Logo"
+              className="mx-auto mb-4 w-24 h-24 sm:w-28 sm:h-28 object-contain"
+            />
             
             <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-sky-600 to-blue-600 dark:from-green-400 dark:to-green-500 bg-clip-text text-transparent mb-2 tracking-tight">
               {t('login.title')}
