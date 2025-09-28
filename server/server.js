@@ -78,13 +78,17 @@ dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 app.set('trust proxy', 1);
 
 // --- Robust CORS setup (must be BEFORE routes and sessions) ---
-const VERCELO = 'https://algobucks-tau.vercel.app';
+const extraOrigins = String(process.env.FRONTEND_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(s => s.trim())
+  .filter(Boolean);
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  VERCELO,
-  process.env.FRONTEND_ORIGIN,
+  config.FRONTEND_URL,
   process.env.FRONTEND_URL,
+  process.env.FRONTEND_ORIGIN,
+  ...extraOrigins,
 ].filter(Boolean);
 const dynamicCors = cors({
   origin: function (origin, callback) {
