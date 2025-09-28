@@ -29,17 +29,27 @@ if (!fs.existsSync(LOGS_DIR)) {
   fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
-// Create transporter with SMTP
-const transporter = nodemailer.createTransport(SMTP_CONFIG);
+// Create transporter with SMTP only if credentials exist and provider is not sendgrid
+let transporter = null;
 
 const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 const hasSmtpCreds = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
-const EMAIL_PROVIDER = (process.env.EMAIL_PROVIDER || '').toLowerCase();
+const RAW_PROVIDER = process.env.EMAIL_PROVIDER || '';
+let EMAIL_PROVIDER = RAW_PROVIDER.toLowerCase();
+if (!EMAIL_PROVIDER && process.env.SENDGRID_API_KEY) {
+  EMAIL_PROVIDER = 'sendgrid';
+}
+
+if (EMAIL_PROVIDER !== 'sendgrid' && hasSmtpCreds) {
+  transporter = nodemailer.createTransport(SMTP_CONFIG);
+}
 
 // Configure SendGrid if selected
 if (EMAIL_PROVIDER === 'sendgrid' && process.env.SENDGRID_API_KEY) {
   try { sgMail.setApiKey(process.env.SENDGRID_API_KEY); } catch {}
 }
+
+console.log(`[Email] Provider: ${EMAIL_PROVIDER || (hasSmtpCreds ? 'smtp' : 'none')} | Env: ${isProd ? 'production' : 'development'}`);
 
 // Helper function to log email attempts
 const logEmail = (type, data) => {
@@ -54,7 +64,7 @@ const logEmail = (type, data) => {
   });};
 
 // Verify connection configuration (only when SMTP creds exist)
-if (hasSmtpCreds) {
+if (hasSmtpCreds && transporter) {
   transporter.verify((error, success) => {
     if (error) {
       console.error('❌ Email configuration error:', error);
@@ -97,9 +107,9 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [] }) =
           disposition: 'attachment',
         }))
       };
-      await sgMail.send(msg);
-      logEmail('SUCCESS_SENDGRID', { to, subject });
-      return { success: true, message: 'Email sent (SendGrid)' };
+      const [resp] = await sgMail.send(msg);
+      logEmail('SUCCESS_SENDGRID', { to, subject, statusCode: resp?.statusCode });
+      return { success: true, message: 'Email sent (SendGrid)', statusCode: resp?.statusCode };
     } catch (error) {
       console.error('❌ SendGrid send error:', error?.response?.body || error?.message || error);
       if (!isProd) {
@@ -115,6 +125,14 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [] }) =
     console.log('📧 [DEV] Email not sent (no SMTP creds). Simulating success:', mailOptions);
     logEmail('DEV_SIMULATED_SEND', mailOptions);
     return { success: true, message: 'Simulated email send (dev mode, no SMTP configured)' };
+  }
+
+  // In production, if neither provider nor SMTP creds are configured, fail fast with a clear message
+  if (isProd && EMAIL_PROVIDER !== 'sendgrid' && !hasSmtpCreds) {
+    const reason = 'No email provider configured (set EMAIL_PROVIDER=sendgrid with SENDGRID_API_KEY or configure SMTP_* envs)';
+    console.error('❌ Email configuration error:', reason);
+    logEmail('CONFIG_MISSING', { reason });
+    return { success: false, message: reason };
   }
 
   const mailOptions = {
@@ -139,6 +157,7 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [] }) =
       });
     });
 
+    if (!transporter) throw new Error('SMTP transporter not initialized');
     const info = await sendWithTimeout(mailOptions);
     logEmail('SUCCESS', { 
       to, 
