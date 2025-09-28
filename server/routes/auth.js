@@ -109,9 +109,9 @@ router.post('/register', async (req, res) => {
     const istNow = new Date(Date.now() + 330 * 60000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     await sendEmail({
       to: email,
-      subject: 'Verify your AlgoBucks account',
-      text: `Your verification code is ${otp}. It expires in 60 minutes.\nSent (IST): ${istNow}`,
-      html: `<p>Thanks for registering on <b>AlgoBucks</b>!</p><p>Your verification code is:</p><h2 style=\"letter-spacing:4px;\">${otp}</h2><p>This code expires in 60 minutes.</p><p style=\"color:#666;\">Sent (IST): ${istNow}</p>`
+      subject: 'Your AlgoBucks code (valid 60 min)',
+      text: `Hi ${username || ''},\n\nYour AlgoBucks verification code is ${otp}. It expires in 60 minutes.\nIf you didn’t try to sign up, you can ignore this message.\n\nSent (IST): ${istNow}`,
+      html: `<p>Hi ${username || ''},</p><p>Your AlgoBucks verification code is:</p><h2 style=\"letter-spacing:4px;\">${otp}</h2><p>It expires in <b>60 minutes</b>. If you didn’t start this, you can safely ignore this email.</p><p style=\"color:#666;\">Sent (IST): ${istNow}</p>`
     });
 
     return res.status(201).json({
@@ -147,9 +147,9 @@ router.post('/resend-verification', async (req, res) => {
     const istNow2 = new Date(Date.now() + 330 * 60000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     await sendEmail({
       to: email,
-      subject: 'Your AlgoBucks verification code',
-      text: `Your verification code is ${otp}. It expires in 60 minutes.\nSent (IST): ${istNow2}`,
-      html: `<p>Your verification code is:</p><h2 style=\"letter-spacing:4px;\">${otp}</h2><p>This code expires in 60 minutes.</p><p style=\"color:#666;\">Sent (IST): ${istNow2}</p>`
+      subject: 'Your AlgoBucks code (valid 60 min)',
+      text: `Here’s a fresh AlgoBucks code: ${otp}. It expires in 60 minutes.\nIf you didn’t request this, feel free to ignore it.\n\nSent (IST): ${istNow2}`,
+      html: `<p>Here’s a fresh <b>AlgoBucks</b> code:</p><h2 style=\"letter-spacing:4px;\">${otp}</h2><p>It expires in <b>60 minutes</b>. If you didn’t request this, you can ignore it.</p><p style=\"color:#666;\">Sent (IST): ${istNow2}</p>`
     });
     setCooldown(cooldowns.resend, emailKey);
 
@@ -382,9 +382,9 @@ router.post('/forgot-password/request', async (req, res) => {
       const istNow3 = new Date(Date.now() + 330 * 60000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
       await sendEmail({
         to: email,
-        subject: 'Your AlgoBucks password reset code',
-        text: `Use this code to reset your password: ${otp}. It expires in 15 minutes.\nSent (IST): ${istNow3}`,
-        html: `<p>Use this code to reset your password:</p><h2 style=\"letter-spacing:4px;\">${otp}</h2><p>This code expires in 15 minutes.</p><p style=\"color:#666;\">Sent (IST): ${istNow3}</p>`
+        subject: 'Your AlgoBucks code (valid 15 min)',
+        text: `Use this code to reset your AlgoBucks password: ${otp}. It expires in 15 minutes.\nIf this wasn’t you, ignore this email.\n\nSent (IST): ${istNow3}`,
+        html: `<p>Use this code to reset your <b>AlgoBucks</b> password:</p><h2 style=\"letter-spacing:4px;\">${otp}</h2><p>It expires in <b>15 minutes</b>. If this wasn’t you, you can ignore this email.</p><p style=\"color:#666;\">Sent (IST): ${istNow3}</p>`
       });
       setCooldown(cooldowns.forgot, emailKey);
 
