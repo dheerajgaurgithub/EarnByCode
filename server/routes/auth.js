@@ -106,11 +106,12 @@ router.post('/register', async (req, res) => {
 
     // Send verification email with OTP
     console.log('[Auth] Sending register OTP', { email, provider: process.env.EMAIL_PROVIDER || (process.env.SMTP_USER ? 'smtp' : 'none') });
+    const istNow = new Date(Date.now() + 330 * 60000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     await sendEmail({
       to: email,
       subject: 'Verify your AlgoBucks account',
-      text: `Your verification code is ${otp}. It expires in 60 minutes.`,
-      html: `<p>Thanks for registering on <b>AlgoBucks</b>!</p><p>Your verification code is:</p><h2 style="letter-spacing:4px;">${otp}</h2><p>This code expires in 60 minutes.</p>`
+      text: `Your verification code is ${otp}. It expires in 60 minutes.\nSent (IST): ${istNow}`,
+      html: `<p>Thanks for registering on <b>AlgoBucks</b>!</p><p>Your verification code is:</p><h2 style=\"letter-spacing:4px;\">${otp}</h2><p>This code expires in 60 minutes.</p><p style=\"color:#666;\">Sent (IST): ${istNow}</p>`
     });
 
     return res.status(201).json({
@@ -143,11 +144,12 @@ router.post('/resend-verification', async (req, res) => {
     await pending.save();
 
     console.log('[Auth] Resend verification OTP', { email, provider: process.env.EMAIL_PROVIDER || (process.env.SMTP_USER ? 'smtp' : 'none') });
+    const istNow2 = new Date(Date.now() + 330 * 60000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
     await sendEmail({
       to: email,
       subject: 'Your AlgoBucks verification code',
-      text: `Your verification code is ${otp}. It expires in 60 minutes.`,
-      html: `<p>Your verification code is:</p><h2 style="letter-spacing:4px;">${otp}</h2><p>This code expires in 60 minutes.</p>`
+      text: `Your verification code is ${otp}. It expires in 60 minutes.\nSent (IST): ${istNow2}`,
+      html: `<p>Your verification code is:</p><h2 style=\"letter-spacing:4px;\">${otp}</h2><p>This code expires in 60 minutes.</p><p style=\"color:#666;\">Sent (IST): ${istNow2}</p>`
     });
     setCooldown(cooldowns.resend, emailKey);
 
@@ -377,11 +379,12 @@ router.post('/forgot-password/request', async (req, res) => {
       await user.save();
 
       console.log('[Auth] Forgot-password OTP', { email, provider: process.env.EMAIL_PROVIDER || (process.env.SMTP_USER ? 'smtp' : 'none') });
+      const istNow3 = new Date(Date.now() + 330 * 60000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
       await sendEmail({
         to: email,
         subject: 'Your AlgoBucks password reset code',
-        text: `Use this code to reset your password: ${otp}. It expires in 15 minutes.`,
-        html: `<p>Use this code to reset your password:</p><h2 style="letter-spacing:4px;">${otp}</h2><p>This code expires in 15 minutes.</p>`
+        text: `Use this code to reset your password: ${otp}. It expires in 15 minutes.\nSent (IST): ${istNow3}`,
+        html: `<p>Use this code to reset your password:</p><h2 style=\"letter-spacing:4px;\">${otp}</h2><p>This code expires in 15 minutes.</p><p style=\"color:#666;\">Sent (IST): ${istNow3}</p>`
       });
       setCooldown(cooldowns.forgot, emailKey);
 
