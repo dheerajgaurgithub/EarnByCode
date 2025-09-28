@@ -1,13 +1,11 @@
 import express from 'express';
 import User from '../models/User.js';
-import { sendEmail } from '../utils/email.js';
 import { authenticate } from '../middleware/auth.js';
 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import multer from 'multer';
 import cloudinary from 'cloudinary';
-import crypto from 'crypto';
 // OTP/email sending no longer used here
 import Submission from '../models/Submission.js';
 // Email change OTP flow removed
@@ -99,11 +97,6 @@ router.patch('/me/bank-details', authenticate, async (req, res) => {
     return res.status(500).json({ success: false, message: error.message || 'Failed to update bank details' });
   }
 });
-
-// --- Helpers for OTP ---
-const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
-const generateOTP = () => crypto.randomInt(100000, 999999).toString();
-const hashToken = (val) => crypto.createHash('sha256').update(String(val)).digest('hex');
 
 // Bank OTP flows removed
 router.post('/me/bank/otp/request', authenticate, async (_req, res) => {
@@ -809,84 +802,27 @@ router.post('/me/email/change/verify', authenticate, async (_req, res) => {
   return res.status(410).json({ success: false, message: 'Email change OTP flow is disabled.' });
 });
 
-// --- Account Deletion via OTP ---
-// Step 1: Request delete-account OTP
-router.post('/me/delete/request', authenticate, async (req, res) => {
+// Permanently delete the authenticated user's account
+router.delete('/me', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
-    // Throttle: minimum 60s between requests
-    const now = Date.now();
-    if (user.deleteAccountOtpRequestedAt && (now - new Date(user.deleteAccountOtpRequestedAt).getTime()) < 60 * 1000) {
-      const waitMs = 60 * 1000 - (now - new Date(user.deleteAccountOtpRequestedAt).getTime());
-      return res.status(429).json({ success: false, message: `Please wait ${Math.ceil(waitMs/1000)}s before requesting another code` });
-    }
-
-    const otp = generateOTP();
-    user.deleteAccountOtpHash = hashToken(otp);
-    user.deleteAccountOtpExpire = new Date(now + 15 * 60 * 1000); // 15 minutes
-    user.deleteAccountOtpRequestedAt = new Date(now);
-    await user.save();
-
-    const emailResult = await sendEmail({
-      to: user.email,
-      subject: 'Confirm deletion of your EarnByCode account',
-      text: `Your code to delete your EarnByCode account is ${otp}. It expires in 15 minutes.`,
-      html: `<p>We received a request to permanently delete your <b>EarnByCode</b> account.</p>
-             <p>Use this code to confirm deletion:</p>
-             <h2 style="letter-spacing:4px;">${otp}</h2>
-             <p>This code expires in 15 minutes. If you did not request this, you can ignore this email.</p>`
-    });
-
-    if (!emailResult?.success) {
-      console.error('Delete-account OTP email failed for', user.email, emailResult);
-      return res.status(500).json({ success: false, message: emailResult?.message || 'Failed to send deletion code' });
-    }
-
-    console.log('Delete-account OTP email queued for', user.email, { providerSuccess: emailResult?.success, providerMessage: emailResult?.message });
-    return res.json({ success: true, message: 'Deletion code sent to your email', ...(isProd ? {} : { testOtp: otp }) });
-  } catch (error) {
-    console.error('Delete-account request error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to send deletion code' });
-  }
-});
-
-// Step 2: Verify OTP and delete account
-router.post('/me/delete/verify', authenticate, async (req, res) => {
-  try {
-    const { otp } = req.body || {};
-    if (!otp) return res.status(400).json({ success: false, message: 'otp is required' });
-
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    const valid = user.deleteAccountOtpHash && user.deleteAccountOtpExpire &&
-      user.deleteAccountOtpHash === hashToken(otp) && new Date(user.deleteAccountOtpExpire).getTime() > Date.now();
-    if (!valid) return res.status(400).json({ success: false, message: 'Invalid or expired OTP' });
-
-    // Capture for confirmation email, then delete
-    const email = user.email;
     const publicId = user.avatarPublicId;
 
     await User.deleteOne({ _id: user._id });
+
     if (publicId) {
       cloudinary.v2.uploader.destroy(publicId).catch(() => {});
     }
 
-    // Best-effort confirmation email (no need to block on send failure)
-    sendEmail({
-      to: email,
-      subject: 'Your EarnByCode account was deleted successfully',
-      text: 'Your EarnByCode account has been deleted successfully. If this was not you, please contact support immediately.',
-      html: `<p>Your <b>EarnByCode</b> account has been deleted successfully.</p>
-             <p>If this was not you, please contact support immediately.</p>`
-    }).catch(() => {});
+    // TODO: If you have related collections (submissions, discussions, etc.),
+    // you may want to anonymize or delete those here as well.
 
     return res.json({ success: true, message: 'Account deleted' });
   } catch (error) {
-    console.error('Delete-account verify error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to delete account' });
+    console.error('Delete account error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to delete account' });
   }
 });
 

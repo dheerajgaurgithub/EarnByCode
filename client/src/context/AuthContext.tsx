@@ -15,8 +15,6 @@ interface AuthContextType {
   updatePreferences: (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR'; preferences?: any }) => Promise<void>;
   changePassword: (currentPassword: string, newPassword: string) => Promise<void>;
   deleteAccount: () => Promise<void>;
-  requestDeleteAccountOtp: () => Promise<{ message: string; testOtp?: string }>;
-  verifyDeleteAccountOtp: (otp: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -86,47 +84,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       if (!silent) setIsLoading(false);
     }
-  };
-
-  // Request delete-account OTP
-  const requestDeleteAccountOtp = async (): Promise<{ message: string; testOtp?: string }> => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('Not authenticated');
-    const res = await fetch(`${config.api.baseUrl}/users/me/delete/request`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      credentials: 'include'
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.success === false) {
-      throw new Error(data.message || 'Failed to request deletion OTP');
-    }
-    return { message: data.message || 'OTP sent', testOtp: data.testOtp };
-  };
-
-  // Verify delete-account OTP and delete account
-  const verifyDeleteAccountOtp = async (otp: string): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('Not authenticated');
-    const res = await fetch(`${config.api.baseUrl}/users/me/delete/verify`, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ otp }),
-      credentials: 'include'
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.success === false) {
-      throw new Error(data.message || 'Failed to delete account');
-    }
-    // Clear local session
-    localStorage.removeItem('token');
-    setUser(null);
   };
 
   // OTP-based email change removed; email updates happen via updateUser()
@@ -344,9 +301,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       removeAvatar,
       updatePreferences,
       changePassword,
-      deleteAccount,
-      requestDeleteAccountOtp,
-      verifyDeleteAccountOtp
+      deleteAccount
     }}>
       {children}
     </AuthContext.Provider>

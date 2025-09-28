@@ -2,7 +2,6 @@ import express from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import config from '../config/config.js';
-import { sendEmail } from '../utils/email.js';
 
 const router = express.Router();
 
@@ -50,40 +49,7 @@ const handleOAuthSuccess = async (req, res, user, redirectPath = '/') => {
   try {
     console.log('Handling OAuth success for user:', user.email);
     
-    const frontendUrl = config.FRONTEND_URL || 'http://localhost:5173';
-
-    // If email is not verified, send verification link and do NOT log in yet
-    if (!user.isEmailVerified) {
-      const verifyToken = jwt.sign(
-        { userId: user._id },
-        process.env.JWT_SECRET,
-        { expiresIn: '24h' }
-      );
-      const nextParam = encodeURIComponent(redirectPath || '/');
-      const verifyUrl = `${config.API_URL}/api/auth/verify-link?token=${encodeURIComponent(verifyToken)}&next=${nextParam}`;
-
-      try {
-        await sendEmail({
-          to: user.email,
-          subject: 'Verify your AlgoBucks account',
-          text: `Click the link to verify your email and finish sign-in: ${verifyUrl}`,
-          html: `<p>Welcome to <b>AlgoBucks</b>!</p><p>Click the button below to verify your email and finish sign-in.</p>
-                 <p><a href="${verifyUrl}" style="display:inline-block;padding:10px 16px;background:#2563eb;color:#fff;border-radius:6px;text-decoration:none;">Verify Email</a></p>
-                 <p>If the button doesn't work, copy and paste this URL into your browser:</p>
-                 <p><code>${verifyUrl}</code></p>`
-        });
-      } catch (e) {
-        console.error('Failed to send Google signup verification email:', e);
-      }
-
-      // Redirect user to login page with a notice to check email for verification
-      const noticeUrl = new URL('/login', frontendUrl);
-      noticeUrl.searchParams.set('verify', 'sent');
-      noticeUrl.searchParams.set('email', user.email);
-      return res.redirect(noticeUrl.toString());
-    }
-
-    // Otherwise proceed with normal login flow
+    // Generate JWT token
     const token = jwt.sign(
       { 
         userId: user._id,
@@ -94,10 +60,13 @@ const handleOAuthSuccess = async (req, res, user, redirectPath = '/') => {
       { expiresIn: process.env.JWT_EXPIRE || '7d' }
     );
 
+    const frontendUrl = config.FRONTEND_URL || 'http://localhost:5173';
     // Always redirect to frontend /auth/callback so the SPA can capture the token
     const callbackUrl = new URL('/auth/callback', frontendUrl);
+    // Place token and optional next path in the URL hash for the SPA to parse
     const urlWithToken = new URL(callbackUrl);
     const nextParam = encodeURIComponent(redirectPath || '/');
+    // Include welcome=1 for newly created users so UI can show success message
     const welcomeFlag = req.oauthNewUser ? '&welcome=1' : '';
     urlWithToken.hash = `#token=${token}&next=${nextParam}${welcomeFlag}&user=${encodeURIComponent(JSON.stringify({
       id: user._id,
@@ -112,11 +81,16 @@ const handleOAuthSuccess = async (req, res, user, redirectPath = '/') => {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       path: '/',
       domain: process.env.NODE_ENV === 'production' ? new URL(frontendUrl).hostname : undefined
     });
 
+    console.log('Redirecting to:', urlWithToken.toString());
+
+    // Emails disabled: skip welcome/verification email sending
+    
+    // Redirect to frontend /auth/callback with token in URL hash
     return res.redirect(urlWithToken.toString());
   } catch (error) {
     console.error('Error in handleOAuthSuccess:', error);
