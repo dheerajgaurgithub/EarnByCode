@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { google } from 'googleapis';
 
 let transporter;
 const debugEmail = (msg, ...args) => {
@@ -49,128 +50,69 @@ function createTransporter() {
 }
 
 export async function sendEmail({ to, subject, text, html }) {
-  const provider = (process.env.EMAIL_PROVIDER || '').toLowerCase();
-  const from = process.env.EMAIL_FROM || process.env.SMTP_USER;
-  if (!from) throw new Error('EMAIL_FROM or SMTP_USER must be set');
+  const from = process.env.EMAIL_FROM || process.env.GMAIL_SENDER;
+  if (!from) throw new Error('EMAIL_FROM or GMAIL_SENDER must be set');
 
-  // Helper: send via SendGrid HTTP API
-  const trySendGrid = async () => {
-    const key = process.env.SENDGRID_API_KEY;
-    if (!key) throw new Error('SENDGRID_API_KEY not set');
-    const content = [];
-    if (text) content.push({ type: 'text/plain', value: text });
-    if (html) content.push({ type: 'text/html', value: html });
-    const payload = {
-      personalizations: [
-        {
-          to: [{ email: to }],
-        },
-      ],
-      from: { email: from },
-      subject,
-      content: content.length ? content : [{ type: 'text/plain', value: text || '(no content)' }],
-    };
-    const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${key}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-    if (resp.status !== 202) {
-      const body = await resp.text();
-      throw new Error(`SendGrid API error: ${resp.status} ${body}`);
+  // Send via Gmail API (OAuth2) ONLY
+  const sendViaGmailApi = async () => {
+    const clientId = process.env.GMAIL_CLIENT_ID;
+    const clientSecret = process.env.GMAIL_CLIENT_SECRET;
+    const refreshToken = process.env.GMAIL_REFRESH_TOKEN;
+    const sender = process.env.GMAIL_SENDER || from;
+    if (!clientId || !clientSecret || !refreshToken || !sender) {
+      throw new Error('Gmail API env missing: GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET, GMAIL_REFRESH_TOKEN, GMAIL_SENDER');
     }
-    return { ok: true, provider: 'sendgrid', messageId: resp.headers.get('x-message-id') || 'sendgrid' };
+    const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret);
+    oAuth2Client.setCredentials({ refresh_token: refreshToken });
+    const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
+
+    // Build RFC 822 message
+    const boundary = 'mixed-' + Date.now();
+    const headers = [
+      `From: ${sender}`,
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      'MIME-Version: 1.0',
+      html
+        ? `Content-Type: multipart/alternative; boundary="${boundary}"`
+        : `Content-Type: text/plain; charset="UTF-8"`,
+      '',
+    ];
+    let body = '';
+    if (html) {
+      body = [
+        `--${boundary}`,
+        'Content-Type: text/plain; charset="UTF-8"',
+        'Content-Transfer-Encoding: 7bit',
+        '',
+        text || '',
+        '',
+        `--${boundary}`,
+        'Content-Type: text/html; charset="UTF-8"',
+        'Content-Transfer-Encoding: 7bit',
+        '',
+        html,
+        '',
+        `--${boundary}--`,
+        '',
+      ].join('\r\n');
+    } else {
+      body = text || '';
+    }
+    const raw = Buffer.from([...headers, body].join('\r\n'))
+      .toString('base64')
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+
+    const res = await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
+    if (res.status !== 200) {
+      throw new Error(`Gmail API error: ${res.status} ${res.statusText}`);
+    }
+    return { ok: true, provider: 'gmailapi', messageId: res.data.id };
   };
 
-  // If explicitly configured to use SendGrid, use it first
-  if (provider === 'sendgrid') {
-    return await trySendGrid();
-  }
-
-  const t = createTransporter();
-  try {
-    const info = await t.sendMail({ from, to, subject, text, html });
-    return { ok: true, provider: 'smtp', messageId: info.messageId };
-  } catch (err) {
-    const currentPort = t.options.port;
-    const isTimeout = err?.code === 'ETIMEDOUT' || /timed?out/i.test(err?.message || '');
-    // If we timed out on 465, retry once with 587 STARTTLS
-    if (isTimeout && currentPort === 465) {
-      try {
-        const fallback = nodemailer.createTransport({
-          host: t.options.host,
-          port: 587,
-          secure: false,
-          auth: t.options.auth,
-          connectionTimeout: 10000,
-          greetingTimeout: 10000,
-          socketTimeout: 20000,
-          tls: {
-            servername: t.options.host,
-            rejectUnauthorized: true,
-            minVersion: 'TLSv1.2',
-          },
-          pool: true,
-          maxConnections: 2,
-          maxMessages: 50,
-        });
-        const info = await fallback.sendMail({ from, to, subject, text, html });
-        // Cache fallback for future sends
-        transporter = fallback;
-        return { ok: true, provider: 'smtp', messageId: info.messageId };
-      } catch (e2) {
-        debugEmail('SMTP fallback (587) failed:', e2?.message || e2);
-        throw err;
-      }
-    }
-    // If we timed out on 587, try 465 SSL once
-    if (isTimeout && currentPort === 587) {
-      try {
-        const fallback = nodemailer.createTransport({
-          host: t.options.host,
-          port: 465,
-          secure: true,
-          auth: t.options.auth,
-          connectionTimeout: 10000,
-          greetingTimeout: 10000,
-          socketTimeout: 20000,
-          tls: {
-            servername: t.options.host,
-            rejectUnauthorized: true,
-            minVersion: 'TLSv1.2',
-          },
-          pool: true,
-          maxConnections: 2,
-          maxMessages: 50,
-        });
-        const info = await fallback.sendMail({ from, to, subject, text, html });
-        transporter = fallback;
-        return { ok: true, provider: 'smtp', messageId: info.messageId };
-      } catch (e2) {
-        debugEmail('SMTP fallback (465) failed:', e2?.message || e2);
-        // last resort: SendGrid, if available
-        if (process.env.SENDGRID_API_KEY) {
-          try {
-            return await trySendGrid();
-          } catch (e3) {
-            debugEmail('SendGrid fallback failed:', e3?.message || e3);
-          }
-        }
-        throw err;
-      }
-    }
-    // If SMTP failed due to timeout and Resend is configured, try Resend
-    if (isTimeout && process.env.SENDGRID_API_KEY) {
-      try {
-        return await trySendGrid();
-      } catch (e3) {
-        debugEmail('SendGrid fallback failed:', e3?.message || e3);
-      }
-    }
-    throw err;
-  }
+  // Always send using Gmail API only
+  return await sendViaGmailApi();
 }
 
