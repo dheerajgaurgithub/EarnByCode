@@ -2,7 +2,6 @@ import express from 'express';
 import passport from 'passport';
 import jwt from 'jsonwebtoken';
 import config from '../config/config.js';
-import { sendEmail } from '../utils/mailer.js';
 
 const router = express.Router();
 
@@ -89,34 +88,7 @@ const handleOAuthSuccess = async (req, res, user, redirectPath = '/') => {
 
     console.log('Redirecting to:', urlWithToken.toString());
 
-    // Best-effort: if user just registered via Google, send a welcome/verification email with the same login link
-    if (req.oauthNewUser && user?.email) {
-      try {
-        const apiUrl = config.API_URL || 'http://localhost:5000';
-        const verifyLink = new URL('/api/auth/verify-link', apiUrl);
-        verifyLink.searchParams.set('token', token);
-        verifyLink.searchParams.set('next', '/');
-        const html = `
-          <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;">
-            <h2>Welcome to EarnByCode, ${user.fullName || user.username || ''}!</h2>
-            <p>Verify your email <b>${user.email}</b> and finish signing in by clicking the button below:</p>
-            <p style="text-align:center;margin:24px 0;">
-              <a href="${verifyLink.toString()}" style="display:inline-block;background:#2563EB;color:#fff;text-decoration:none;padding:12px 18px;border-radius:8px;">Verify email & Sign in</a>
-            </p>
-            <p>If the button doesn’t work, copy and paste this link into your browser:</p>
-            <p style="word-break:break-all;color:#2563EB;">${verifyLink.toString()}</p>
-            <p style="color:#666;font-size:12px;margin-top:24px">If you didn't request this, you can ignore this email.</p>
-          </div>`;
-        await sendEmail({
-          to: user.email,
-          subject: 'Verify your email — EarnByCode',
-          html,
-          text: `Verify your email and finish signing in: ${verifyLink.toString()}`
-        });
-      } catch (e) {
-        console.warn('Welcome email failed:', e?.message || e);
-      }
-    }
+    // Emails disabled: skip welcome/verification email sending
     
     // Redirect to frontend /auth/callback with token in URL hash
     return res.redirect(urlWithToken.toString());

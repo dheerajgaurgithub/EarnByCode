@@ -61,7 +61,7 @@ import Submission from './models/Submission.js';
 import User from './models/User.js';
 import Contest from './models/Contest.js';
 import { executeCode } from './utils/codeExecutor.js';
-import { sendEmail } from './utils/mailer.js';
+import { sendEmail } from './utils/email.js';
 import { openaiChat } from './utils/ai/openai.js';
 
 // Initialize express app
@@ -74,8 +74,6 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Trust the first proxy (Render/NGINX) so req.protocol and req.hostname respect X-Forwarded-* headers
 // Do NOT set to true (all) to avoid permissive trust proxy issues
-app.set('trust proxy', 1);
-
 // --- Robust CORS setup (must be BEFORE routes and sessions) ---
 const VERCELO = 'https://algobucks-tau.vercel.app';
 const allowedOrigins = [
@@ -85,7 +83,6 @@ const allowedOrigins = [
   process.env.FRONTEND_ORIGIN,
   process.env.FRONTEND_URL,
 ].filter(Boolean);
-
 const dynamicCors = cors({
   origin: function (origin, callback) {
     if (!origin) return callback(null, true);

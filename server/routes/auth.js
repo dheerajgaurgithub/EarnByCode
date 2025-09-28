@@ -1,12 +1,13 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
-import User from '../models/User.js';
-import config from '../config/config.js';
-// OTP/email sending no longer used here
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
+import User from '../models/User.js';
+import PendingUser from '../models/PendingUser.js';
+import config from '../config/config.js';
+import { sendEmail } from '../utils/email.js';
 import { authenticate } from '../middleware/auth.js';
-// OTP/email flows removed; mailer and config not needed here
 
 // Helper: is user currently blocked (without modifying DB)
 const isCurrentlyBlocked = (user) => {
@@ -55,9 +56,12 @@ const autoUnblockIfExpired = async (user) => {
 
 const router = express.Router();
 
-// OTP-based password reset is deprecated
+// Helpers
+const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
+const generateOTP = () => crypto.randomInt(100000, 999999).toString();
+const hashToken = (val) => crypto.createHash('sha256').update(String(val)).digest('hex');
 
-// Register (simple: create user immediately, no OTP)
+// Register: create PendingUser and send verification OTP
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password, fullName } = req.body || {};
@@ -66,34 +70,39 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ message: 'username, email and password are required' });
     }
 
-    // Check if user already exists
+    // Check for existing in final users
     const existingUser = await User.findOne({ $or: [{ email }, { username }] });
     if (existingUser) {
       return res.status(400).json({ message: existingUser.email === email ? 'Email already registered' : 'Username already taken' });
     }
 
-    // Create real user; model should hash password on save if hook exists
-    const user = new User({
-      username,
-      email,
-      password,
-      fullName,
-      isEmailVerified: true,
-    });
-    await user.save();
+    // Also ensure no conflicting pending registration
+    const existingPending = await PendingUser.findOne({ $or: [{ email }, { username }] });
+    if (existingPending) {
+      // Allow re-initiate by deleting prior pending (same email/username)
+      await PendingUser.deleteOne({ _id: existingPending._id }).catch(() => {});
+    }
 
-    // Generate JWT token
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
+    // Hash password now and store only the hash in PendingUser
+    const passwordHash = await bcrypt.hash(String(password), 12);
+    const otp = generateOTP();
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    const pending = new PendingUser({ username, email: String(email).toLowerCase(), passwordHash, fullName, otp, expiresAt });
+    await pending.save();
+
+    // Send verification email with OTP
+    await sendEmail({
+      to: email,
+      subject: 'Verify your AlgoBucks account',
+      text: `Your verification code is ${otp}. It expires in 60 minutes.`,
+      html: `<p>Thanks for registering on <b>AlgoBucks</b>!</p><p>Your verification code is:</p><h2 style="letter-spacing:4px;">${otp}</h2><p>This code expires in 60 minutes.</p>`
+    });
 
     return res.status(201).json({
-      message: 'Registration successful',
-      token,
-      user: {
-        id: user._id,
-        username: user.username,
-        email: user.email,
-        isEmailVerified: user.isEmailVerified,
-      }
+      message: 'Verification code sent to your email. Please verify to complete registration.',
+      requiresVerification: true,
+      ...(isProd ? {} : { testOtp: otp })
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -101,9 +110,31 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Resend verification is disabled (no OTP needed)
+// Resend verification OTP for pending registration
 router.post('/resend-verification', async (req, res) => {
-  return res.status(410).json({ message: 'Email verification is not required.' });
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ message: 'email is required' });
+    const pending = await PendingUser.findOne({ email: String(email).toLowerCase() });
+    if (!pending) return res.status(404).json({ message: 'No pending registration found for this email' });
+
+    const otp = generateOTP();
+    pending.otp = otp;
+    pending.expiresAt = new Date(Date.now() + 60 * 60 * 1000);
+    await pending.save();
+
+    await sendEmail({
+      to: email,
+      subject: 'Your AlgoBucks verification code',
+      text: `Your verification code is ${otp}. It expires in 60 minutes.`,
+      html: `<p>Your verification code is:</p><h2 style="letter-spacing:4px;">${otp}</h2><p>This code expires in 60 minutes.</p>`
+    });
+
+    return res.json({ message: 'Verification code resent', requiresVerification: true, ...(isProd ? {} : { testOtp: otp }) });
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    return res.status(500).json({ message: 'Failed to resend verification code' });
+  }
 });
 
 // Login
@@ -207,9 +238,42 @@ router.put('/profile', authenticate, async (req, res) => {
   }
 });
 
-// Email verification is disabled (no OTP needed)
+// Verify email with OTP and create final user
 router.post('/verify-email', async (req, res) => {
-  return res.status(410).json({ message: 'Email verification is not required.' });
+  try {
+    const { email, otp } = req.body || {};
+    if (!email || !otp) return res.status(400).json({ message: 'email and otp are required' });
+
+    const pending = await PendingUser.findOne({ email: String(email).toLowerCase() });
+    if (!pending) return res.status(404).json({ message: 'No pending registration found' });
+    if (new Date(pending.expiresAt).getTime() < Date.now()) {
+      await PendingUser.deleteOne({ _id: pending._id }).catch(() => {});
+      return res.status(400).json({ message: 'OTP expired. Please register again.' });
+    }
+    if (String(pending.otp) !== String(otp)) {
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    // Create the real user
+    const user = new User({
+      username: pending.username,
+      email: pending.email,
+      password: pending.passwordHash, // pre-hashed
+      fullName: pending.fullName,
+      isEmailVerified: true,
+    });
+    await user.save();
+
+    // Remove pending record
+    await PendingUser.deleteOne({ _id: pending._id }).catch(() => {});
+
+    // Issue token
+    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
+    return res.json({ success: true, message: 'Email verified successfully', token, user: user.toJSON() });
+  } catch (error) {
+    console.error('Verify email error:', error);
+    return res.status(500).json({ message: 'Failed to verify email' });
+  }
 });
 
 // Verify account after clicking email link (used for Google welcome link)
@@ -274,18 +338,75 @@ router.get('/verify-link', async (req, res) => {
 // Google OAuth routes are handled in oauth.js
 
 // Forgot Password: Request OTP
-router.post('/forgot-password/request', async (_req, res) => {
-  return res.status(410).json({ message: 'OTP-based password reset has been removed.' });
+router.post('/forgot-password/request', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ message: 'email is required' });
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    // For security, always respond success; but only set token if user exists
+    if (user) {
+      const otp = generateOTP();
+      user.resetPasswordToken = hashToken(otp);
+      user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      await user.save();
+
+      await sendEmail({
+        to: email,
+        subject: 'Your AlgoBucks password reset code',
+        text: `Use this code to reset your password: ${otp}. It expires in 15 minutes.`,
+        html: `<p>Use this code to reset your password:</p><h2 style="letter-spacing:4px;">${otp}</h2><p>This code expires in 15 minutes.</p>`
+      });
+
+      return res.json({ message: 'If an account exists, an OTP has been sent to your email.', ...(isProd ? {} : { testOtp: otp }) });
+    }
+    return res.json({ message: 'If an account exists, an OTP has been sent to your email.' });
+  } catch (error) {
+    console.error('Forgot-password request error:', error);
+    return res.status(500).json({ message: 'Failed to process request' });
+  }
 });
 
 // Forgot Password: Verify OTP
-router.post('/forgot-password/verify', async (_req, res) => {
-  return res.status(410).json({ message: 'OTP-based password reset has been removed.' });
+router.post('/forgot-password/verify', async (req, res) => {
+  try {
+    const { email, otp } = req.body || {};
+    if (!email || !otp) return res.status(400).json({ message: 'email and otp are required' });
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user || !user.resetPasswordToken || !user.resetPasswordExpire) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+    const valid = user.resetPasswordToken === hashToken(otp) && new Date(user.resetPasswordExpire).getTime() > Date.now();
+    if (!valid) return res.status(400).json({ message: 'Invalid or expired OTP' });
+    return res.json({ message: 'OTP verified' });
+  } catch (error) {
+    console.error('Forgot-password verify error:', error);
+    return res.status(500).json({ message: 'Failed to verify OTP' });
+  }
 });
 
 // Forgot Password: Reset with OTP
-router.post('/forgot-password/reset', async (_req, res) => {
-  return res.status(410).json({ message: 'OTP-based password reset has been removed.' });
+router.post('/forgot-password/reset', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body || {};
+    if (!email || !otp || !newPassword) return res.status(400).json({ message: 'email, otp and newPassword are required' });
+    if (String(newPassword).length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user || !user.resetPasswordToken || !user.resetPasswordExpire) {
+      return res.status(400).json({ message: 'Invalid or expired OTP' });
+    }
+    const valid = user.resetPasswordToken === hashToken(otp) && new Date(user.resetPasswordExpire).getTime() > Date.now();
+    if (!valid) return res.status(400).json({ message: 'Invalid or expired OTP' });
+
+    user.password = String(newPassword); // will be hashed by pre-save hook
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    return res.json({ message: 'Password reset successfully' });
+  } catch (error) {
+    console.error('Forgot-password reset error:', error);
+    return res.status(500).json({ message: 'Failed to reset password' });
+  }
 });
 
 export default router;

@@ -2,13 +2,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, Hash, ArrowLeft } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
-
-const getApiBase = () => {
-  // Same pattern used elsewhere
-  const raw = (import.meta as any)?.env?.VITE_API_URL as string;
-  const base = raw || 'https://algobucks.onrender.com/api';
-  return base.replace(/\/$/, '');
-};
+import apiService from '@/services/api';
 
 const ForgotPassword: React.FC = () => {
   const [step, setStep] = React.useState<1 | 2 | 3>(1);
@@ -20,41 +14,49 @@ const ForgotPassword: React.FC = () => {
   const [message, setMessage] = React.useState('');
   const [testOtp, setTestOtp] = React.useState<string | null>(null);
   const navigate = useNavigate();
+  const [resendCooldown, setResendCooldown] = React.useState(0);
+
+  // Cooldown ticker
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const id = setInterval(() => setResendCooldown((v) => (v > 0 ? v - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, [resendCooldown]);
 
   const requestOtp = async () => {
     setError(''); setMessage(''); setLoading(true);
     try {
-      const res = await fetch(`${getApiBase()}/auth/forgot-password/request`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) {
-        setMessage('If an account exists, an OTP has been sent to your email.');
-        setStep(2);
-        if (data?.testOtp) setTestOtp(String(data.testOtp)); else setTestOtp(null);
-      } else {
-        setError(data?.message || 'Failed to request OTP');
-      }
+      const data = await apiService.requestForgotPasswordOtp(email);
+      setMessage(data?.message || 'If an account exists, an OTP has been sent to your email.');
+      setStep(2);
+      if (data?.testOtp) setTestOtp(String(data.testOtp)); else setTestOtp(null);
     } catch (e:any) {
       setError(e?.message || 'Network error');
     } finally { setLoading(false); }
   };
 
+  const resendOtp = async () => {
+    if (!email) return;
+    if (resendCooldown > 0) return;
+    setError(''); setMessage(''); setLoading(true);
+    try {
+      const data = await apiService.requestForgotPasswordOtp(email);
+      setMessage(data?.message || 'If an account exists, an OTP has been sent to your email.');
+      if (data?.testOtp) setTestOtp(String(data.testOtp)); else setTestOtp(null);
+      setResendCooldown(45);
+    } catch (e:any) {
+      setError(e?.message || 'Network error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const verifyOtp = async () => {
     setError(''); setMessage(''); setLoading(true);
     try {
-      const res = await fetch(`${getApiBase()}/auth/forgot-password/verify`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp }),
-      });
-      if (res.ok) {
-        setMessage('OTP verified. You can set a new password now.');
-        setStep(3);
-      } else {
-        const d = await res.json().catch(() => ({}));
-        setError(d?.message || 'Invalid or expired OTP');
-      }
+      await apiService.verifyForgotPasswordOtp(email, otp);
+      setMessage('OTP verified. You can set a new password now.');
+      setStep(3);
     } catch (e:any) {
       setError(e?.message || 'Network error');
     } finally { setLoading(false); }
@@ -63,17 +65,9 @@ const ForgotPassword: React.FC = () => {
   const resetPassword = async () => {
     setError(''); setMessage(''); setLoading(true);
     try {
-      const res = await fetch(`${getApiBase()}/auth/forgot-password/reset`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, otp, newPassword }),
-      });
-      if (res.ok) {
-        setMessage('Password reset successfully. Redirecting to login...');
-        setTimeout(() => navigate('/login'), 1200);
-      } else {
-        const d = await res.json().catch(() => ({}));
-        setError(d?.message || 'Failed to reset password');
-      }
+      await apiService.resetPasswordWithOtp(email, otp, newPassword);
+      setMessage('Password reset successfully. Redirecting to login...');
+      setTimeout(() => navigate('/login'), 1200);
     } catch (e:any) {
       setError(e?.message || 'Network error');
     } finally { setLoading(false); }
@@ -120,6 +114,12 @@ const ForgotPassword: React.FC = () => {
               <button disabled={loading || !otp} onClick={verifyOtp} className="w-full mt-2 bg-sky-600 hover:bg-sky-700 text-white rounded-lg px-4 py-2 text-sm font-semibold disabled:opacity-50">
                 {loading ? 'Verifying...' : 'Verify Code'}
               </button>
+              <div className="flex items-center justify-between">
+                <button type="button" onClick={resendOtp} disabled={loading || resendCooldown > 0} className="text-xs text-sky-600 hover:text-sky-800 disabled:opacity-50">
+                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend OTP'}
+                </button>
+                <button type="button" onClick={() => setStep(1)} className="text-xs text-slate-500 hover:text-slate-700">Change email</button>
+              </div>
             </div>
           )}
 
