@@ -547,31 +547,7 @@ app.get('/api/debug/oauth-config', (req, res) => {
   }
 });
 
-// Debug endpoint: send test email to verify provider configuration
-app.post('/api/debug/send-test-email', async (req, res) => {
-  try {
-    const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
-    const keyHeader = req.headers['x-debug-key'] || req.headers['x-debugkey'] || '';
-    const okAuth = !isProd || (process.env.DEBUG_KEY && String(keyHeader) === String(process.env.DEBUG_KEY));
-    if (!okAuth) {
-      return res.status(403).json({ ok: false, message: 'Forbidden: missing or invalid X-Debug-Key' });
-    }
-    const to = (req.body && req.body.to) || process.env.DEBUG_EMAIL_TO || process.env.EMAIL_FROM;
-    if (!to) return res.status(400).json({ ok: false, message: 'Provide { to } in body or set DEBUG_EMAIL_TO' });
-    const subject = (req.body && req.body.subject) || 'AlgoBucks Test Email';
-    const text = (req.body && req.body.text) || 'This is a test email from AlgoBucks debug endpoint.';
-    const html = (req.body && req.body.html) || `<p>${text}</p>`;
-
-    const result = await sendEmail({ to, subject, text, html });
-    return res.status(200).json({ ok: !!result?.success, provider: process.env.EMAIL_PROVIDER || (process.env.SMTP_USER ? 'smtp' : 'none'), result });
-  } catch (e) {
-    return res.status(500).json({ ok: false, message: String(e?.message || e) });
-  }
-});
-
 // Removed: /api/config/flags (exposeOtp)
-
-// Removed: /api/debug/send-test-email
 
 // --- Press Live Updates (SSE) ---
 // Simple in-memory feed and SSE broadcaster to support the Press page live updates
