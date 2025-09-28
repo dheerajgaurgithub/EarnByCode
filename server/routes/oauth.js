@@ -33,7 +33,16 @@ const handleOAuthError = (req, res, error) => {
   console.error('OAuth Error:', error);
   const frontendUrl = config.FRONTEND_URL || 'http://localhost:5173';
   const errorMessage = encodeURIComponent(error.message || 'Authentication failed');
-  return res.redirect(`${frontendUrl}/login?error=${errorMessage}`);
+  // Try to detect desired page from state.action
+  let action = 'login';
+  try {
+    if (req?.query?.state) {
+      const state = JSON.parse(Buffer.from(req.query.state, 'base64').toString());
+      if (state?.action) action = String(state.action);
+    }
+  } catch {}
+  const path = action === 'signup' ? '/register' : '/login';
+  return res.redirect(`${frontendUrl}${path}?error=${errorMessage}`);
 };
 
 // Handle OAuth success with token and redirect

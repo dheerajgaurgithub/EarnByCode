@@ -19,13 +19,14 @@ export function GoogleLoginButton({ isRegister = false, onSuccess, onError }: Go
     try {
       // Get the current path for redirect after login
       const currentPath = window.location.pathname;
+      const action = isRegister ? 'signup' : 'login';
       // Construct the OAuth URL without duplicating /api
       const oauthUrl = API_URL.endsWith('/api') 
         ? `${API_URL}/oauth/google`
         : `${API_URL}/api/oauth/google`;
       
       // Redirect to backend OAuth endpoint with redirect path
-      window.location.href = `${oauthUrl}?redirectTo=${encodeURIComponent(currentPath)}`;
+      window.location.href = `${oauthUrl}?redirectTo=${encodeURIComponent(currentPath)}&action=${encodeURIComponent(action)}`;
     } catch (error: any) {
       console.error('Error initiating Google OAuth:', error);
       const errorMessage = 'Failed to initiate Google login';

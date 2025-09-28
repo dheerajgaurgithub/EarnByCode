@@ -22,8 +22,8 @@ const GoogleOAuthButton: React.FC<GoogleOAuthButtonProps> = ({
 }) => {
   const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
   const oauthUrl = API_URL.endsWith('/api') 
-    ? `${API_URL}/auth/google`
-    : `${API_URL}/api/auth/google`;
+    ? `${API_URL}/oauth/google`
+    : `${API_URL}/api/oauth/google`;
   const navigate = useNavigate();
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -113,14 +113,9 @@ const GoogleOAuthButton: React.FC<GoogleOAuthButtonProps> = ({
     if (currentPath !== '/login' && currentPath !== '/register') {
       localStorage.setItem('redirectAfterLogin', currentPath);
     }
-    
-    // Encode the current path as state
-    const state = JSON.stringify({
-      redirectTo: currentPath
-    });
-    
-    // Redirect to the OAuth URL with the state parameter
-    window.location.href = `${oauthUrl}?state=${encodeURIComponent(state)}`;
+    // Build query with redirectTo and action for backend to form state
+    const action = isRegister ? 'signup' : 'login';
+    window.location.href = `${oauthUrl}?redirectTo=${encodeURIComponent(currentPath)}&action=${encodeURIComponent(action)}`;
   };
 
   return (
