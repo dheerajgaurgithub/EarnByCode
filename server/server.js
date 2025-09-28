@@ -69,8 +69,9 @@ const app = express();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables
-dotenv.config({ path: path.join(__dirname, '../.env') });
+// Load environment variables (prefer server/.env.local, then server/.env)
+dotenv.config({ path: path.join(__dirname, '.env.local') });
+dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 
 // Trust the first proxy (Render/NGINX) so req.protocol and req.hostname respect X-Forwarded-* headers
 // Do NOT set to true (all) to avoid permissive trust proxy issues

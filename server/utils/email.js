@@ -3,9 +3,17 @@ import sgMail from '@sendgrid/mail';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import dotenv from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Load env here so this module sees variables even if server loads dotenv later
+try {
+  // Prefer server/.env.local then server/.env
+  dotenv.config({ path: path.join(__dirname, '../.env.local') });
+  dotenv.config({ path: path.join(__dirname, '../.env'), override: true });
+} catch {}
 
 // SMTP Configuration - Using environment variables
 const SMTP_CONFIG = {
