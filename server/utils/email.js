@@ -103,7 +103,7 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [] }) =
     try {
       const msg = {
         to,
-        from: process.env.EMAIL_FROM || 'noreply@example.com',
+        from: process.env.EMAIL_FROM || 'replyearnbycode@gmail.com',
         subject,
         text,
         html,
