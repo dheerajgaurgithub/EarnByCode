@@ -8,11 +8,11 @@ const router = express.Router();
 
 router.get('/google', (req, res, next) => {
   try {
-    const { redirectTo = '/' } = req.query;
-    console.log('Initiating Google OAuth flow, redirectTo:', redirectTo);
+    const { redirectTo = '/', action = 'login' } = req.query;
+    console.log('Initiating Google OAuth flow, redirectTo:', redirectTo, 'action:', action);
     
     // Encode the redirectTo in state
-    const state = Buffer.from(JSON.stringify({ redirectTo })).toString('base64');
+    const state = Buffer.from(JSON.stringify({ redirectTo, action })).toString('base64');
     
     const authenticator = passport.authenticate('google', {
       scope: ['profile', 'email'],

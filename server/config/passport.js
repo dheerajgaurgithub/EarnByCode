@@ -18,6 +18,15 @@ const configurePassport = (passport) => {
     scope: ['profile', 'email']
   }, async (req, accessToken, refreshToken, profile, done) => {
     try {
+      // Extract action from OAuth state if present (default to 'login')
+      let action = 'login';
+      try {
+        if (req?.query?.state) {
+          const state = JSON.parse(Buffer.from(req.query.state, 'base64').toString());
+          if (state?.action) action = String(state.action);
+        }
+      } catch {}
+
       // Check if user already exists by Google ID
       let user = await User.findOne({ googleId: profile.id });
 
@@ -53,7 +62,12 @@ const configurePassport = (passport) => {
         return done(null, user);
       }
 
-      // Create new user
+      // If we're in 'login' action and user does not exist, do NOT auto-create
+      if (action === 'login') {
+        return done(null, false, { message: 'No account found for this Google email. Please sign up with Google first.' });
+      }
+
+      // Create new user (signup flow)
       const username = await generateUniqueUsername(profile.emails[0].value.split('@')[0]);
       const password = generateRandomPassword();
       
