@@ -112,12 +112,26 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [] }) =
   // Provider: SendGrid
   if (EMAIL_PROVIDER === 'sendgrid' && process.env.SENDGRID_API_KEY) {
     try {
+      const fromEmail = process.env.EMAIL_FROM || 'replyearnbycode@gmail.com';
       const msg = {
         to,
-        from: process.env.EMAIL_FROM || 'replyearnbycode@gmail.com',
+        from: { email: fromEmail, name: 'AlgoBucks' },
+        replyTo: fromEmail,
         subject,
         text,
         html,
+        categories: ['transactional', 'otp'],
+        mailSettings: {
+          sandboxMode: { enable: false },
+          bypassListManagement: { enable: true },
+          footer: { enable: false },
+          subscriptionTracking: { enable: false }
+        },
+        trackingSettings: {
+          clickTracking: { enable: false, enableText: false },
+          openTracking: { enable: false },
+          subscriptionTracking: { enable: false }
+        },
         attachments: attachments?.map(a => ({
           filename: a.filename,
           content: a.content?.toString('base64'),
