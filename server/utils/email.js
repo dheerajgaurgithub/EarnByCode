@@ -50,6 +50,13 @@ if (EMAIL_PROVIDER === 'sendgrid' && process.env.SENDGRID_API_KEY) {
 }
 
 console.log(`[Email] Provider: ${EMAIL_PROVIDER || (hasSmtpCreds ? 'smtp' : 'none')} | Env: ${isProd ? 'production' : 'development'}`);
+if (EMAIL_PROVIDER === 'sendgrid') {
+  const k = process.env.SENDGRID_API_KEY || '';
+  const masked = k ? `${k.slice(0, 3)}***${k.slice(-3)}` : 'none';
+  console.log(`[Email] SendGrid API key: ${k ? 'present' : 'missing'} (${masked}, len=${k.length})`);
+  const from = process.env.EMAIL_FROM || 'not-set';
+  console.log(`[Email] From: ${from}`);
+}
 
 // Helper function to log email attempts
 const logEmail = (type, data) => {
