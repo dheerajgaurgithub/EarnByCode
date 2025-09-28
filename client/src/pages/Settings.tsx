@@ -13,13 +13,18 @@ import api from '@/lib/api';
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
-  const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar, deleteAccount } = useAuth();
+  const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar, deleteAccount, requestDeleteAccountOtp, verifyDeleteAccountOtp } = useAuth();
   const { setTheme: setUiTheme } = useTheme();
   const { setLanguage, t } = useI18n();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState<'account' | 'notifications' | 'privacy' | 'preferences'>('account');
   const [isLoading, setIsLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [sendingDeleteOtp, setSendingDeleteOtp] = useState(false);
+  const [verifyingDelete, setVerifyingDelete] = useState(false);
+  const [deleteOtpSent, setDeleteOtpSent] = useState(false);
+  const [deleteOtp, setDeleteOtp] = useState('');
+  const [resendCooldown, setResendCooldown] = useState<number>(0);
   
   // Account settings
   const [accountForm, setAccountForm] = useState({
@@ -28,7 +33,7 @@ export const Settings: React.FC = () => {
     newPassword: '',
     confirmPassword: ''
   });
-  // OTP flow removed
+  // OTP flow removed (replaced by delete-account OTP below)
   const [deleteText, setDeleteText] = useState('');
   const [emailUpdated, setEmailUpdated] = useState(false);
   
@@ -284,7 +289,56 @@ export const Settings: React.FC = () => {
     }
   };
 
-  // OTP verify removed
+  // Handle Delete Account via OTP
+  useEffect(() => {
+    if (!deleteOtpSent || resendCooldown <= 0) return;
+    const id = setInterval(() => setResendCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [deleteOtpSent, resendCooldown]);
+
+  const onRequestDeleteOtp = async () => {
+    try {
+      // Require phrase confirmation before sending OTP
+      const phrase = 'delete earnbycode account';
+      if (deleteText.trim().toLowerCase() !== phrase) {
+        toast.error("Please type 'delete EarnByCode account' exactly to confirm.");
+        return;
+      }
+      setSendingDeleteOtp(true);
+      const tid = toast.loading('Sending deletion code…');
+      const resp = await requestDeleteAccountOtp();
+      toast.dismiss(tid);
+      toast.success(resp?.message || 'Code sent to your email');
+      setDeleteOtpSent(true);
+      setResendCooldown(60);
+      if ((resp as any)?.testOtp) {
+        console.log('[DEV] delete-account testOtp:', (resp as any).testOtp);
+      }
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to send code');
+    } finally {
+      setSendingDeleteOtp(false);
+    }
+  };
+
+  const onVerifyDeleteOtp = async () => {
+    try {
+      if (!deleteOtp || deleteOtp.length < 6) {
+        toast.error('Enter the 6-digit code from your email');
+        return;
+      }
+      setVerifyingDelete(true);
+      const tid = toast.loading('Deleting your account…');
+      await verifyDeleteAccountOtp(deleteOtp.trim());
+      toast.dismiss(tid);
+      toast.success('Account deleted');
+      navigate('/', { replace: true });
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete account');
+    } finally {
+      setVerifyingDelete(false);
+    }
+  };
 
   const onDeleteAccount = async () => {
     const phrase = 'delete earnbycode account';
@@ -647,16 +701,53 @@ export const Settings: React.FC = () => {
                           className="w-full sm:w-96 px-4 py-3 rounded-xl border border-rose-300 dark:border-rose-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm sm:text-base placeholder:text-gray-400 dark:placeholder:text-gray-500"
                           placeholder="delete EarnByCode account"
                         />
-                        <div className="mt-4">
-                          <button
-                            type="button"
-                            onClick={onDeleteAccount}
-                            disabled={deleting || deleteText.trim().toLowerCase() !== 'delete earnbycode account'}
-                            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 font-medium text-sm sm:text-base transition-all duration-200"
-                          >
-                            <Trash2 className="h-4 w-4" /> {deleting ? 'Deleting…' : 'Delete Account'}
-                          </button>
-                        </div>
+                        {!deleteOtpSent && (
+                          <div className="mt-4 flex items-center gap-3">
+                            <button
+                              type="button"
+                              onClick={onRequestDeleteOtp}
+                              disabled={sendingDeleteOtp || deleteText.trim().toLowerCase() !== 'delete earnbycode account'}
+                              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 font-medium text-sm sm:text-base transition-all duration-200"
+                            >
+                              <Trash2 className="h-4 w-4" /> {sendingDeleteOtp ? 'Sending…' : 'Send Deletion Code'}
+                            </button>
+                            {resendCooldown > 0 && (
+                              <span className="text-xs text-rose-700 dark:text-rose-300">Resend available in {resendCooldown}s</span>
+                            )}
+                          </div>
+                        )}
+                        {deleteOtpSent && (
+                          <div className="mt-5 space-y-3">
+                            <label className="block text-xs sm:text-sm font-bold text-rose-700 dark:text-rose-300">Enter 6-digit code</label>
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={6}
+                              value={deleteOtp}
+                              onChange={(e) => setDeleteOtp(e.target.value.replace(/\D/g, ''))}
+                              className="w-48 px-4 py-3 rounded-xl border border-rose-300 dark:border-rose-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm tracking-widest text-center"
+                              placeholder="••••••"
+                            />
+                            <div className="flex items-center gap-3">
+                              <button
+                                type="button"
+                                onClick={onVerifyDeleteOtp}
+                                disabled={verifyingDelete || deleteOtp.length !== 6}
+                                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 font-medium text-sm sm:text-base transition-all duration-200"
+                              >
+                                <Trash2 className="h-4 w-4" /> {verifyingDelete ? 'Deleting…' : 'Confirm Delete'}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={onRequestDeleteOtp}
+                                disabled={sendingDeleteOtp || resendCooldown > 0}
+                                className="px-4 py-3 rounded-xl bg-rose-100 dark:bg-rose-800 text-rose-700 dark:text-rose-200 disabled:opacity-50 text-sm"
+                              >
+                                {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
+                              </button>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </motion.div>

@@ -204,6 +204,10 @@ const userSchema = new mongoose.Schema({
   verificationTokenExpires: Date,
   resetPasswordToken: String,
   resetPasswordExpire: Date,
+  // Account deletion OTP
+  deleteAccountOtpHash: String,
+  deleteAccountOtpExpire: Date,
+  deleteAccountOtpRequestedAt: Date,
   googleId: String,
   googleProfile: Object,
   // Email change OTP fields removed
