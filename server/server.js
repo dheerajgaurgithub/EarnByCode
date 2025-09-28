@@ -74,6 +74,8 @@ dotenv.config({ path: path.join(__dirname, '../.env') });
 
 // Trust the first proxy (Render/NGINX) so req.protocol and req.hostname respect X-Forwarded-* headers
 // Do NOT set to true (all) to avoid permissive trust proxy issues
+app.set('trust proxy', 1);
+
 // --- Robust CORS setup (must be BEFORE routes and sessions) ---
 const VERCELO = 'https://algobucks-tau.vercel.app';
 const allowedOrigins = [
