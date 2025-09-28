@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import GoogleOAuthButton from '../../components/Auth/GoogleOAuthButton';
 import { Input } from '../../components/ui/input';
+import { Button } from '../../components/ui/button';
 import { toast } from '../../components/ui/use-toast';
 import apiService from '../../services/api';
 import { User, Mail, Lock, Eye, EyeOff, AlertCircle, UserCheck } from 'lucide-react';
@@ -98,11 +99,11 @@ export function RegisterPage() {
           
           {/* Header section */}
           <div className="text-center mb-8">
-            {/* Logo (no wrapper) */}
+            {/* Logo (wrapper removed, larger image) */}
             <img 
               src="/logo.png" 
               alt="EarnByCode Logo" 
-              className="mx-auto mb-4 w-24 h-24 sm:w-28 sm:h-28 object-contain"
+              className="mx-auto w-24 h-24 sm:w-28 sm:h-28 object-contain mb-4"
             />
             
             <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-sky-600 to-blue-600 dark:from-green-400 dark:to-green-500 bg-clip-text text-transparent mb-3 tracking-tight">

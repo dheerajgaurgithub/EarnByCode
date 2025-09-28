@@ -33,7 +33,7 @@ const config = {
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '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',
   
   // Frontend
-  FRONTEND_URL: process.env.FRONTEND_URL || 'https://earnbycode-snowy.vercel.app',
+  FRONTEND_URL: process.env.FRONTEND_URL || 'http://localhost:5173',
   
   // SMTP
   SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
