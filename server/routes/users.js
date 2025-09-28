@@ -829,7 +829,7 @@ router.post('/me/delete/request', authenticate, async (req, res) => {
     user.deleteAccountOtpRequestedAt = new Date(now);
     await user.save();
 
-    await sendEmail({
+    const emailResult = await sendEmail({
       to: user.email,
       subject: 'Confirm deletion of your EarnByCode account',
       text: `Your code to delete your EarnByCode account is ${otp}. It expires in 15 minutes.`,
@@ -839,6 +839,12 @@ router.post('/me/delete/request', authenticate, async (req, res) => {
              <p>This code expires in 15 minutes. If you did not request this, you can ignore this email.</p>`
     });
 
+    if (!emailResult?.success) {
+      console.error('Delete-account OTP email failed for', user.email, emailResult);
+      return res.status(500).json({ success: false, message: emailResult?.message || 'Failed to send deletion code' });
+    }
+
+    console.log('Delete-account OTP email queued for', user.email, { providerSuccess: emailResult?.success, providerMessage: emailResult?.message });
     return res.json({ success: true, message: 'Deletion code sent to your email', ...(isProd ? {} : { testOtp: otp }) });
   } catch (error) {
     console.error('Delete-account request error:', error);
@@ -881,30 +887,6 @@ router.post('/me/delete/verify', authenticate, async (req, res) => {
   } catch (error) {
     console.error('Delete-account verify error:', error);
     return res.status(500).json({ success: false, message: 'Failed to delete account' });
-  }
-});
-
-// Permanently delete the authenticated user's account
-router.delete('/me', authenticate, async (req, res) => {
-  try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    const publicId = user.avatarPublicId;
-
-    await User.deleteOne({ _id: user._id });
-
-    if (publicId) {
-      cloudinary.v2.uploader.destroy(publicId).catch(() => {});
-    }
-
-    // TODO: If you have related collections (submissions, discussions, etc.),
-    // you may want to anonymize or delete those here as well.
-
-    return res.json({ success: true, message: 'Account deleted' });
-  } catch (error) {
-    console.error('Delete account error:', error);
-    return res.status(500).json({ success: false, message: error.message || 'Failed to delete account' });
   }
 });
 
