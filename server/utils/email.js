@@ -1,5 +1,4 @@
 import nodemailer from 'nodemailer';
-import sgMail from '@sendgrid/mail';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -37,34 +36,21 @@ if (!fs.existsSync(LOGS_DIR)) {
   fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
-// Create transporter with SMTP only if credentials exist and provider is not sendgrid
+// Create transporter with SMTP only if credentials exist
 let transporter = null;
 
 const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 const hasSmtpCreds = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 const RAW_PROVIDER = process.env.EMAIL_PROVIDER || '';
 let EMAIL_PROVIDER = RAW_PROVIDER.toLowerCase();
-if (!EMAIL_PROVIDER && process.env.SENDGRID_API_KEY) {
-  EMAIL_PROVIDER = 'sendgrid';
-}
 
-if (EMAIL_PROVIDER !== 'sendgrid' && hasSmtpCreds) {
+if (hasSmtpCreds) {
   transporter = nodemailer.createTransport(SMTP_CONFIG);
 }
 
-// Configure SendGrid if selected
-if (EMAIL_PROVIDER === 'sendgrid' && process.env.SENDGRID_API_KEY) {
-  try { sgMail.setApiKey(process.env.SENDGRID_API_KEY); } catch {}
-}
-
-console.log(`[Email] Provider: ${EMAIL_PROVIDER || (hasSmtpCreds ? 'smtp' : 'none')} | Env: ${isProd ? 'production' : 'development'}`);
-if (EMAIL_PROVIDER === 'sendgrid') {
-  const k = process.env.SENDGRID_API_KEY || '';
-  const masked = k ? `${k.slice(0, 3)}***${k.slice(-3)}` : 'none';
-  console.log(`[Email] SendGrid API key: ${k ? 'present' : 'missing'} (${masked}, len=${k.length})`);
-  const from = process.env.EMAIL_FROM || 'not-set';
-  console.log(`[Email] From: ${from}`);
-}
+console.log(`[Email] Provider: ${hasSmtpCreds ? 'smtp' : 'none'} | Env: ${isProd ? 'production' : 'development'}`);
+const from = process.env.EMAIL_FROM || 'not-set';
+console.log(`[Email] From: ${from}`);
 
 // Helper function to log email attempts
 const logEmail = (type, data) => {
@@ -106,120 +92,45 @@ if (hasSmtpCreds && transporter) {
  * @returns {Promise<Object>} - Result of the email sending operation
  */
 export const sendEmail = async ({ to, subject, text, html, attachments = [] }) => {
-  try {
-    logEmail('ATTEMPT', { to, subject, provider: EMAIL_PROVIDER || (hasSmtpCreds ? 'smtp' : 'none') });
-  } catch {}
-  // Provider: SendGrid
-  if (EMAIL_PROVIDER === 'sendgrid' && process.env.SENDGRID_API_KEY) {
-    try {
-      const fromEmail = process.env.EMAIL_FROM || 'replyearnbycode@gmail.com';
-      const msg = {
-        to,
-        from: { email: fromEmail, name: 'AlgoBucks' },
-        replyTo: fromEmail,
-        subject,
-        text,
-        html,
-        categories: ['transactional', 'otp'],
-        mailSettings: {
-          sandboxMode: { enable: false },
-          bypassListManagement: { enable: true },
-          footer: { enable: false },
-          subscriptionTracking: { enable: false }
-        },
-        trackingSettings: {
-          clickTracking: { enable: false, enableText: false },
-          openTracking: { enable: false },
-          subscriptionTracking: { enable: false }
-        },
-        attachments: attachments?.map(a => ({
-          filename: a.filename,
-          content: a.content?.toString('base64'),
-          type: a.contentType,
-          disposition: 'attachment',
-        }))
-      };
-      const [resp] = await sgMail.send(msg);
-      const sgMessageId = resp?.headers?.['x-message-id'] || resp?.headers?.['x-message-id'.toLowerCase()];
-      logEmail('SUCCESS_SENDGRID', { to, subject, statusCode: resp?.statusCode, messageId: sgMessageId });
-      console.log(`📤 SendGrid accepted email (202). x-message-id=${sgMessageId || 'n/a'}`);
-      return { success: true, message: 'Email sent (SendGrid)', statusCode: resp?.statusCode, messageId: sgMessageId };
-    } catch (error) {
-      const errBody = error?.response?.body || error?.message || error;
-      console.error('❌ SendGrid send error:', errBody);
-      logEmail('ERROR_SENDGRID', { to, subject, error: typeof errBody === 'object' ? errBody : String(errBody) });
-      if (!isProd) {
-        return { success: true, message: 'SendGrid failed, but continuing in dev mode' };
-      }
-      return { success: false, message: 'SendGrid send failed', error: error?.message };
+  try { logEmail('ATTEMPT', { to, subject, provider: hasSmtpCreds ? 'smtp' : 'none' }); } catch {}
+
+  // If SMTP is not configured
+  if (!hasSmtpCreds) {
+    const reason = 'No email provider configured (configure SMTP_* envs for SMTP sending)';
+    if (!isProd) {
+      const devMail = { from: process.env.EMAIL_FROM || 'dev@localhost', to, subject, text, html };
+      console.log('📧 [DEV] Simulate email send:', devMail);
+      logEmail('DEV_SIMULATED_SEND', devMail);
+      return { success: true, message: 'Simulated email send (dev mode, no SMTP configured)' };
     }
-  }
-
-  // In development without SMTP credentials, do not attempt to send; log and return success fast
-  if (!isProd && !hasSmtpCreds) {
-    const mailOptions = { from: process.env.EMAIL_FROM || 'dev@localhost', to, subject, text, html };
-    console.log('📧 [DEV] Email not sent (no SMTP creds). Simulating success:', mailOptions);
-    logEmail('DEV_SIMULATED_SEND', mailOptions);
-    return { success: true, message: 'Simulated email send (dev mode, no SMTP configured)' };
-  }
-
-  // In production, if neither provider nor SMTP creds are configured, fail fast with a clear message
-  if (isProd && EMAIL_PROVIDER !== 'sendgrid' && !hasSmtpCreds) {
-    const reason = 'No email provider configured (set EMAIL_PROVIDER=sendgrid with SENDGRID_API_KEY or configure SMTP_* envs)';
     console.error('❌ Email configuration error:', reason);
     logEmail('CONFIG_MISSING', { reason });
     return { success: false, message: reason };
   }
 
-  const mailOptions = {
-    from: `${process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'replyearnbycode@gmail.com'}`,
-    to,
-    subject,
-    text,
-    html,
-    attachments
-  };
-
   try {
-    // Add a hard timeout to avoid long hangs
-    const sendWithTimeout = (opts) => new Promise((resolve, reject) => {
-      const timer = setTimeout(() => reject(new Error('Email send timeout')), 12000);
-      transporter.sendMail(opts).then((info) => {
-        clearTimeout(timer);
-        resolve(info);
-      }).catch((err) => {
-        clearTimeout(timer);
-        reject(err);
-      });
-    });
-
     if (!transporter) throw new Error('SMTP transporter not initialized');
-    const info = await sendWithTimeout(mailOptions);
-    logEmail('SUCCESS', { 
-      to, 
-      subject, 
-      messageId: info.messageId,
-      response: info.response 
-    });
-    
-    return { 
-      success: true, 
-      message: 'Email sent successfully',
-      messageId: info.messageId 
+    const mailOptions = {
+      from: `${process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'noreply@example.com'}`,
+      to,
+      subject,
+      text,
+      html,
+      attachments: attachments?.map(a => ({ filename: a.filename, content: a.content, contentType: a.contentType }))
     };
+
+    const timeout = 15000; // 15s
+    const info = await Promise.race([
+      transporter.sendMail(mailOptions),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('Email send timeout')), timeout))
+    ]);
+
+    logEmail('SUCCESS_SMTP', { to, subject, messageId: info?.messageId, response: info?.response });
+    return { success: true, message: 'Email sent (SMTP)', messageId: info?.messageId };
   } catch (error) {
     console.error('❌ Email send error:', error);
-    logEmail('ERROR', { 
-      to, 
-      subject, 
-      error: error.message,
-      stack: error.stack 
-    });
-    
-    // In non-prod, don't block flows on email errors
-    if (!isProd) {
-      return { success: true, message: 'Email send failed, but continuing in dev mode' };
-    }
-    return { success: false, message: 'Failed to send email', error: error.message };
+    logEmail('ERROR_SMTP', { to, subject, error: error?.message || String(error) });
+    if (!isProd) return { success: true, message: 'SMTP failed, continuing in dev mode' };
+    return { success: false, message: 'Failed to send email', error: error?.message || String(error) };
   }
 };

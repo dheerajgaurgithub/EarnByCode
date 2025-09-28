@@ -20,11 +20,7 @@ export function RegisterPage() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [requiresVerification, setRequiresVerification] = useState(false);
-  const [otp, setOtp] = useState('');
-  const [info, setInfo] = useState('');
-  const [devTestOtp, setDevTestOtp] = useState<string | null>(null);
-  const [resendCooldown, setResendCooldown] = useState(0);
+  // OTP flow removed
   const navigate = useNavigate();
   const { t } = useI18n();
 
@@ -40,7 +36,7 @@ export function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setInfo('');
+    // OTP flow removed
     
     // Basic validation
     if (!formData.fullName || !formData.username || !formData.email || !formData.password || !formData.confirmPassword) {
@@ -60,20 +56,13 @@ export function RegisterPage() {
 
     setIsLoading(true);
     try {
-      // Send registration request (may require OTP verification)
+      // Send registration request (direct create)
       const response: any = await apiService.register(
         formData.username,
         formData.email,
         formData.password,
         formData.fullName
       );
-
-      if (response?.requiresVerification) {
-        setRequiresVerification(true);
-        setInfo('We sent a 6-digit code to your email. Enter it below to verify.');
-        if (response?.testOtp) setDevTestOtp(String(response.testOtp)); else setDevTestOtp(null);
-        return;
-      }
 
       if (response?.token) {
         localStorage.setItem('token', response.token);
@@ -100,52 +89,7 @@ export function RegisterPage() {
     }
   };
 
-  const handleVerifyOtp = async () => {
-    setError('');
-    setInfo('');
-    if (!otp) {
-      setError('Enter the 6-digit code sent to your email.');
-      return;
-    }
-    setIsLoading(true);
-    try {
-      const resp: any = await apiService.verifyEmail(formData.email, otp);
-      if (resp?.token) {
-        localStorage.setItem('token', resp.token);
-        toast.success('Email verified successfully');
-        navigate('/dashboard');
-        return;
-      }
-      setInfo(resp?.message || 'Verified. You can now log in.');
-    } catch (e: any) {
-      setError(e?.message || 'Invalid or expired code');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResend = async () => {
-    setError('');
-    setInfo('');
-    setIsLoading(true);
-    try {
-      const resp: any = await apiService.resendVerification(formData.email);
-      setInfo(resp?.message || 'Verification code resent');
-      if (resp?.testOtp) setDevTestOtp(String(resp.testOtp)); else setDevTestOtp(null);
-      setResendCooldown(45);
-    } catch (e: any) {
-      setError(e?.message || 'Failed to resend code');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Cooldown ticker for resend OTP
-  React.useEffect(() => {
-    if (resendCooldown <= 0) return;
-    const id = setInterval(() => setResendCooldown((v) => (v > 0 ? v - 1 : 0)), 1000);
-    return () => clearInterval(id);
-  }, [resendCooldown]);
+  // OTP flow removed
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50 dark:from-gray-950 dark:via-black dark:to-green-950 flex items-center justify-center p-4 sm:p-6 lg:p-8 transition-all duration-500">
@@ -227,8 +171,7 @@ export function RegisterPage() {
             </div>
           </div>
 
-          {/* Registration Form or OTP Verification */}
-          {!requiresVerification ? (
+          {/* Registration Form (OTP removed) */}
           <form onSubmit={handleSubmit} className="space-y-5">
             
             {/* Full Name field */}
@@ -382,43 +325,7 @@ export function RegisterPage() {
               </button>
             </div>
           </form>
-          ) : (
-            <div className="space-y-5">
-              {info && (
-                <div className="p-3 bg-green-50/80 dark:bg-green-900/20 border border-green-200/60 dark:border-green-800/40 rounded-xl">
-                  <p className="text-sm text-green-700 dark:text-green-300">{info}</p>
-                </div>
-              )}
-              <div className="space-y-2">
-                <label className="block text-sm font-semibold text-slate-700 dark:text-gray-300 tracking-wide">
-                  Enter 6-digit verification code
-                </label>
-                <div className="relative group">
-                  <Input
-                    id="otp"
-                    name="otp"
-                    type="text"
-                    value={otp}
-                    onChange={(e)=> setOtp(e.target.value)}
-                    className="w-full pl-4 pr-4 py-3 sm:py-4 bg-sky-50/50 dark:bg-green-950/20 border border-sky-200/60 dark:border-green-800/40 rounded-xl text-slate-800 dark:text-green-400 placeholder-slate-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-sky-500/30 dark:focus:ring-green-400/30 focus:border-sky-400 dark:focus:border-green-500 hover:border-sky-300 dark:hover:border-green-600 transition-all duration-300 font-medium text-sm sm:text-base"
-                    placeholder="e.g. 123456"
-                  />
-                  {devTestOtp && (
-                    <p className="mt-1 text-xs text-amber-600">Dev test OTP: <code>{devTestOtp}</code></p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <Button onClick={handleVerifyOtp} disabled={isLoading || !otp} className="flex-1">
-                  {isLoading ? 'Verifying...' : 'Verify Email'}
-                </Button>
-                <button type="button" onClick={handleResend} disabled={isLoading || resendCooldown > 0} className="text-sm text-sky-600 dark:text-green-400 hover:underline disabled:opacity-50">
-                  {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
-                </button>
-              </div>
-              <div className="text-xs text-slate-500 dark:text-gray-400">Sent to {formData.email}. Check your spam folder if you don't see the email.</div>
-            </div>
-          )}
+          
 
           {/* Terms and Privacy */}
           <div className="mt-6 pt-6 border-t border-sky-200/60 dark:border-green-800/40 transition-colors duration-300">

@@ -161,30 +161,11 @@ class ApiService {
     return this.request<any>('POST', '/auth/register', { username, email, password, fullName }, { timeoutMs: 20000, retries: 0 });
   }
 
-  async verifyEmail(email: string, otp: string): Promise<{ token?: string; message?: string; user?: User; requiresVerification?: boolean }> {
-    return this.request('POST', '/auth/verify-email', { email, otp }, { timeoutMs: 20000, retries: 0 });
-  }
-
-  async resendVerification(email: string): Promise<{ message: string; requiresVerification: boolean }> {
-    return this.request('POST', '/auth/resend-verification', { email }, { timeoutMs: 20000, retries: 0 });
-  }
-
   async getCurrentUser(): Promise<User> {
     return this.request('GET', '/auth/me');
   }
 
-  // Forgot password (OTP) methods
-  async requestForgotPasswordOtp(email: string): Promise<{ message: string; testOtp?: string }> {
-    return this.request('POST', '/auth/forgot-password/request', { email }, { timeoutMs: 30000, retries: 0 });
-  }
-
-  async verifyForgotPasswordOtp(email: string, otp: string): Promise<{ message: string }> {
-    return this.request('POST', '/auth/forgot-password/verify', { email, otp }, { timeoutMs: 20000, retries: 0 });
-  }
-
-  async resetPasswordWithOtp(email: string, otp: string, newPassword: string): Promise<{ message: string }> {
-    return this.request('POST', '/auth/forgot-password/reset', { email, otp, newPassword }, { timeoutMs: 20000, retries: 0 });
-  }
+  // Forgot password OTP flow removed. Implement tokenized reset when ready.
 
   // Problem methods
   async getProblems(filters: { difficulty?: string; status?: string } = {}): Promise<Problem[]> {

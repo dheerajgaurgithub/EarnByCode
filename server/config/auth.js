@@ -1,37 +1,31 @@
 import crypto from "crypto";
-import sgMail from "@sendgrid/mail";
-
-// Set SendGrid API Key
-sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+import { sendEmail } from "../utils/email.js";
 
 // Generate OTP
 export const generateOTP = () => {
   return crypto.randomInt(100000, 999999).toString();
 };
 
-// Send verification email
+// Send verification email (via central provider)
 export const sendVerificationEmail = async (email, otp) => {
-  const msg = {
-    to: email,
-    from: process.env.FROM_EMAIL, // must be your verified sender email
-    subject: "Verify Your Email Address",
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Email Verification</h2>
-        <p>Thank you for registering! Please use the following OTP to verify your email address:</p>
-        <h1 style="text-align: center; font-size: 32px; letter-spacing: 5px; margin: 20px 0;">${otp}</h1>
-        <p>This OTP will expire in 1 hour.</p>
-        <p>If you didn't create an account, please ignore this email.</p>
-      </div>
-    `,
-  };
-
+  const istNow = new Date(Date.now() + 330 * 60000).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' });
+  const subject = 'Your AlgoBucks code (valid 60 min)';
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2>Email Verification</h2>
+      <p>Thanks for registering! Use this code to verify your email:</p>
+      <h1 style="text-align:center; font-size:32px; letter-spacing:5px; margin:20px 0;">${otp}</h1>
+      <p>It expires in <b>60 minutes</b>. If you didn’t start this, you can ignore this email.</p>
+      <p style="color:#666;">Sent (IST): ${istNow}</p>
+    </div>
+  `;
+  const text = `Your AlgoBucks verification code is ${otp}. It expires in 60 minutes.\nSent (IST): ${istNow}`;
   try {
-    await sgMail.send(msg);
-    console.log("✅ Verification email sent successfully!");
+    const result = await sendEmail({ to: email, subject, text, html });
+    console.log("✅ Verification email queued:", result?.messageId || result?.message || 'ok');
     return true;
   } catch (error) {
-    console.error("❌ Error sending verification email:", error.response?.body || error.message);
+    console.error("❌ Error sending verification email:", error?.message || error);
     return false;
   }
 };
