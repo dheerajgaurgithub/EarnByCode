@@ -16,7 +16,10 @@ const SMTP_CONFIG = {
     pass: process.env.SMTP_PASS
   },
   logger: false,
-  debug: false
+  debug: false,
+  connectionTimeout: 8000, // ms
+  greetingTimeout: 8000,
+  socketTimeout: 10000,
 };
 
 // Create logs directory if it doesn't exist
@@ -25,8 +28,11 @@ if (!fs.existsSync(LOGS_DIR)) {
   fs.mkdirSync(LOGS_DIR, { recursive: true });
 }
 
-// Create transporter with Gmail SMTP
+// Create transporter with SMTP
 const transporter = nodemailer.createTransport(SMTP_CONFIG);
+
+const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
+const hasSmtpCreds = Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 
 // Helper function to log email attempts
 const logEmail = (type, data) => {
@@ -40,15 +46,19 @@ const logEmail = (type, data) => {
     }
   });};
 
-// Verify connection configuration
-transporter.verify((error, success) => {
-  if (error) {
-    console.error('❌ Email configuration error:', error);
-    logEmail('CONFIG_ERROR', { error: error.message });
-  } else {
-    console.log('✅ Email server is ready to take our messages');
-  }
-});
+// Verify connection configuration (only when SMTP creds exist)
+if (hasSmtpCreds) {
+  transporter.verify((error, success) => {
+    if (error) {
+      console.error('❌ Email configuration error:', error);
+      logEmail('CONFIG_ERROR', { error: error.message });
+    } else {
+      console.log('✅ Email server is ready to take our messages');
+    }
+  });
+} else if (!isProd) {
+  console.warn('⚠️ SMTP credentials not set. Emails will be logged only (dev mode).');
+}
 
 /**
  * Send an email
@@ -64,6 +74,14 @@ transporter.verify((error, success) => {
  * @returns {Promise<Object>} - Result of the email sending operation
  */
 export const sendEmail = async ({ to, subject, text, html, attachments = [] }) => {
+  // In development without SMTP credentials, do not attempt to send; log and return success fast
+  if (!isProd && !hasSmtpCreds) {
+    const mailOptions = { from: process.env.EMAIL_FROM || 'dev@localhost', to, subject, text, html };
+    console.log('📧 [DEV] Email not sent (no SMTP creds). Simulating success:', mailOptions);
+    logEmail('DEV_SIMULATED_SEND', mailOptions);
+    return { success: true, message: 'Simulated email send (dev mode, no SMTP configured)' };
+  }
+
   const mailOptions = {
     from: `${process.env.EMAIL_FROM || process.env.FROM_EMAIL || 'replyearnbycode@gmail.com'}`,
     to,
@@ -74,7 +92,19 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [] }) =
   };
 
   try {
-    const info = await transporter.sendMail(mailOptions);
+    // Add a hard timeout to avoid long hangs
+    const sendWithTimeout = (opts) => new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('Email send timeout')), 12000);
+      transporter.sendMail(opts).then((info) => {
+        clearTimeout(timer);
+        resolve(info);
+      }).catch((err) => {
+        clearTimeout(timer);
+        reject(err);
+      });
+    });
+
+    const info = await sendWithTimeout(mailOptions);
     logEmail('SUCCESS', { 
       to, 
       subject, 
@@ -96,10 +126,10 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [] }) =
       stack: error.stack 
     });
     
-    return { 
-      success: false, 
-      message: 'Failed to send email',
-      error: error.message 
-    };
+    // In non-prod, don't block flows on email errors
+    if (!isProd) {
+      return { success: true, message: 'Email send failed, but continuing in dev mode' };
+    }
+    return { success: false, message: 'Failed to send email', error: error.message };
   }
 };

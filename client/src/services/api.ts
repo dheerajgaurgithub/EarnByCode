@@ -175,7 +175,7 @@ class ApiService {
 
   // Forgot password (OTP) methods
   async requestForgotPasswordOtp(email: string): Promise<{ message: string; testOtp?: string }> {
-    return this.request('POST', '/auth/forgot-password/request', { email }, { timeoutMs: 20000, retries: 0 });
+    return this.request('POST', '/auth/forgot-password/request', { email }, { timeoutMs: 30000, retries: 0 });
   }
 
   async verifyForgotPasswordOtp(email: string, otp: string): Promise<{ message: string }> {
