@@ -34,6 +34,7 @@ const EMAIL_CONFIG = {
   from: process.env.EMAIL_FROM || 'noreply@algobucks.app',
   useGmail: process.env.USE_GMAIL === 'true',
   useGmailOAuth: process.env.USE_GMAIL_OAUTH === 'true',
+  useGmailApi: process.env.USE_GMAIL_API === 'true' || (process.env.EMAIL_PROVIDER || '').toLowerCase() === 'gmailapi',
   useSendGrid: process.env.USE_SENDGRID === 'true' || !!process.env.SENDGRID_API_KEY,
   enableEmailSending: process.env.ENABLE_EMAIL_SENDING === 'true' || isProd,
   
@@ -82,6 +83,10 @@ if (EMAIL_CONFIG.useSendGrid && EMAIL_CONFIG.sendgrid.apiKey) {
 // Create transporter based on configuration
 const createTransporter = () => {
   try {
+    // If using Gmail HTTP API explicitly, do not initialize SMTP transporter
+    if (EMAIL_CONFIG.useGmailApi) {
+      return null;
+    }
     // Priority 0: Gmail OAuth2
     if (
       EMAIL_CONFIG.useGmailOAuth &&
@@ -518,6 +523,19 @@ if (EMAIL_CONFIG.enableEmailSending) {
   console.log(`   • Gmail (SMTP): ${EMAIL_CONFIG.useGmail ? '✅' : '❌'}`);
   console.log(`   • SMTP: ${!!transporter ? '✅' : '❌'}`);
   console.log(`   • From: ${EMAIL_CONFIG.from}`);
+  // Extra diagnostics to explain why OAuth2 may be inactive
+  if (EMAIL_CONFIG.useGmailOAuth) {
+    const missing = [];
+    if (!EMAIL_CONFIG.gmailOAuth.user) missing.push('GMAIL_USER');
+    if (!EMAIL_CONFIG.gmailOAuth.clientId) missing.push('GMAIL_OAUTH_CLIENT_ID');
+    if (!EMAIL_CONFIG.gmailOAuth.clientSecret) missing.push('GMAIL_OAUTH_CLIENT_SECRET');
+    if (!EMAIL_CONFIG.gmailOAuth.refreshToken) missing.push('GMAIL_OAUTH_REFRESH_TOKEN');
+    if (missing.length) {
+      console.warn('⚠️ Gmail OAuth2 requested but missing env:', missing.join(', '));
+    } else {
+      console.log('✅ Gmail OAuth2 configuration appears complete.');
+    }
+  }
   
   // Verify transporter in background
   if (transporter) {
