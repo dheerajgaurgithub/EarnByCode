@@ -318,7 +318,10 @@ router.post('/forgot-password/request', async (req, res) => {
     const subject = 'Your AlgoBucks password reset code';
     const text = `Your password reset code is ${otp}. It expires in 15 minutes.`;
     const html = `<p>Use the following code to reset your password:</p><h2 style="font-family:monospace">${otp}</h2><p>This code expires in 15 minutes.</p>`;
-    await sendEmailOrLog({ to: user.email, subject, text, html });
+    // Fire-and-forget to avoid delaying the response due to slow SMTP
+    Promise.resolve().then(() => sendEmailOrLog({ to: user.email, subject, text, html })).catch((e) => {
+      console.error('Background email/log failed:', e);
+    });
 
     setCooldown(cooldowns.forgot, email);
     return res.json({ success: true, message: 'If the email exists, an OTP has been sent.' });

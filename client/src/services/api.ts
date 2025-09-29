@@ -167,15 +167,15 @@ class ApiService {
 
   // Forgot password OTP flow
   async requestPasswordOtp(email: string): Promise<{ success: boolean; message: string }> {
-    return this.request('POST', '/auth/forgot-password/request', { email });
+    return this.request('POST', '/auth/forgot-password/request', { email }, { timeoutMs: 25000, retries: 0 });
   }
 
   async verifyPasswordOtp(email: string, otp: string): Promise<{ valid: boolean; message?: string }> {
-    return this.request('POST', '/auth/forgot-password/verify', { email, otp });
+    return this.request('POST', '/auth/forgot-password/verify', { email, otp }, { timeoutMs: 15000, retries: 0 });
   }
 
   async resetPasswordWithOtp(email: string, otp: string, newPassword: string): Promise<{ success: boolean; message: string }> {
-    return this.request('POST', '/auth/forgot-password/reset', { email, otp, newPassword });
+    return this.request('POST', '/auth/forgot-password/reset', { email, otp, newPassword }, { timeoutMs: 25000, retries: 0 });
   }
 
   // Problem methods
