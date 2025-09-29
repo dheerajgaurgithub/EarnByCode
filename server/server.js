@@ -2,7 +2,6 @@ import express from 'express';
 import { Script, createContext } from 'node:vm';
 import os from 'os';
 import { spawn, spawnSync, exec } from 'child_process';
-import ts from 'typescript';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import session from 'express-session';
@@ -31,6 +30,16 @@ const getFetch = async () => {
   if (typeof fetch !== 'undefined') return fetch;
   const mod = await import('node-fetch');
   return mod.default;
+};
+
+// Lazy-load TypeScript only when needed so production can run without devDependency
+const loadTS = async () => {
+  try {
+    const mod = await import('typescript');
+    return mod.default || mod;
+  } catch {
+    return null;
+  }
 };
 
 // Import configurations
@@ -281,9 +290,13 @@ app.post('/api/code/run', async (req, res) => {
       return;
     }
 
-    // Transpile TS to JS if needed, and convert JS ESM import/export to CJS
+    // Transpile TS to JS if needed, and convert JS ESM import/export to CJS (best-effort)
     let code = source;
     if (language === 'typescript') {
+      const ts = await loadTS();
+      if (!ts) {
+        return res.status(500).json({ message: 'TypeScript compiler not available on server' });
+      }
       const result = ts.transpileModule(source, {
         compilerOptions: {
           module: ts.ModuleKind.CommonJS,
@@ -294,16 +307,19 @@ app.post('/api/code/run', async (req, res) => {
       });
       code = result.outputText;
     } else if (language === 'javascript' && /(^|\s)(import\s|export\s)/.test(source)) {
-      const result = ts.transpileModule(source, {
-        compilerOptions: {
-          allowJs: true,
-          module: ts.ModuleKind.CommonJS,
-          target: ts.ScriptTarget.ES2019,
-          esModuleInterop: true,
-        },
-        fileName: 'user_code.js'
-      });
-      code = result.outputText;
+      const ts = await loadTS();
+      if (ts) {
+        const result = ts.transpileModule(source, {
+          compilerOptions: {
+            allowJs: true,
+            module: ts.ModuleKind.CommonJS,
+            target: ts.ScriptTarget.ES2019,
+            esModuleInterop: true,
+          },
+          fileName: 'user_code.js'
+        });
+        code = result.outputText;
+      }
     }
 
     const stdout = [];
