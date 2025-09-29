@@ -75,7 +75,7 @@ const createTransporter = () => {
     // Priority 1: Gmail SMTP
     if (EMAIL_CONFIG.useGmail && EMAIL_CONFIG.gmail.user && EMAIL_CONFIG.gmail.password) {
       console.log('📧 Using Gmail SMTP configuration');
-      return nodemailer.createTransporter({
+      return nodemailer.createTransport({
         service: 'gmail',
         auth: {
           user: EMAIL_CONFIG.gmail.user,
@@ -90,7 +90,7 @@ const createTransporter = () => {
     // Priority 2: General SMTP
     if (EMAIL_CONFIG.smtp.host && EMAIL_CONFIG.smtp.user && EMAIL_CONFIG.smtp.password) {
       console.log('📧 Using general SMTP configuration');
-      return nodemailer.createTransporter({
+      return nodemailer.createTransport({
         host: EMAIL_CONFIG.smtp.host,
         port: EMAIL_CONFIG.smtp.port,
         secure: EMAIL_CONFIG.smtp.secure,
