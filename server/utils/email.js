@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
+import { google } from 'googleapis';
 import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
 
@@ -32,6 +33,7 @@ const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 const EMAIL_CONFIG = {
   from: process.env.EMAIL_FROM || 'noreply@algobucks.app',
   useGmail: process.env.USE_GMAIL === 'true',
+  useGmailOAuth: process.env.USE_GMAIL_OAUTH === 'true',
   useSendGrid: process.env.USE_SENDGRID === 'true' || !!process.env.SENDGRID_API_KEY,
   enableEmailSending: process.env.ENABLE_EMAIL_SENDING === 'true' || isProd,
   
@@ -39,6 +41,14 @@ const EMAIL_CONFIG = {
   gmail: {
     user: process.env.GMAIL_USER,
     password: process.env.GMAIL_APP_PASSWORD, // App-specific password
+  },
+  // Gmail OAuth2 Configuration
+  gmailOAuth: {
+    user: process.env.GMAIL_USER,
+    clientId: process.env.GMAIL_OAUTH_CLIENT_ID,
+    clientSecret: process.env.GMAIL_OAUTH_CLIENT_SECRET,
+    refreshToken: process.env.GMAIL_OAUTH_REFRESH_TOKEN,
+    redirectUri: process.env.GMAIL_OAUTH_REDIRECT_URI || 'https://developers.google.com/oauthplayground',
   },
   
   // General SMTP Configuration
@@ -72,6 +82,35 @@ if (EMAIL_CONFIG.useSendGrid && EMAIL_CONFIG.sendgrid.apiKey) {
 // Create transporter based on configuration
 const createTransporter = () => {
   try {
+    // Priority 0: Gmail OAuth2
+    if (
+      EMAIL_CONFIG.useGmailOAuth &&
+      EMAIL_CONFIG.gmailOAuth.user &&
+      EMAIL_CONFIG.gmailOAuth.clientId &&
+      EMAIL_CONFIG.gmailOAuth.clientSecret &&
+      EMAIL_CONFIG.gmailOAuth.refreshToken
+    ) {
+      console.log('📧 Using Gmail OAuth2 configuration');
+      const oAuth2Client = new google.auth.OAuth2(
+        EMAIL_CONFIG.gmailOAuth.clientId,
+        EMAIL_CONFIG.gmailOAuth.clientSecret,
+        EMAIL_CONFIG.gmailOAuth.redirectUri
+      );
+      oAuth2Client.setCredentials({ refresh_token: EMAIL_CONFIG.gmailOAuth.refreshToken });
+
+      // Nodemailer can generate access tokens automatically if refreshToken is provided
+      return nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+          type: 'OAuth2',
+          user: EMAIL_CONFIG.gmailOAuth.user,
+          clientId: EMAIL_CONFIG.gmailOAuth.clientId,
+          clientSecret: EMAIL_CONFIG.gmailOAuth.clientSecret,
+          refreshToken: EMAIL_CONFIG.gmailOAuth.refreshToken,
+        },
+      });
+    }
+
     // Priority 1: Gmail SMTP
     if (EMAIL_CONFIG.useGmail && EMAIL_CONFIG.gmail.user && EMAIL_CONFIG.gmail.password) {
       console.log('📧 Using Gmail SMTP configuration');
@@ -475,7 +514,8 @@ if (EMAIL_CONFIG.enableEmailSending) {
   console.log(`📧 Email system initialized:`);
   console.log(`   • Environment: ${isProd ? 'production' : 'development'}`);
   console.log(`   • SendGrid: ${EMAIL_CONFIG.useSendGrid ? '✅' : '❌'}`);
-  console.log(`   • Gmail: ${EMAIL_CONFIG.useGmail ? '✅' : '❌'}`);
+  console.log(`   • Gmail (OAuth2): ${EMAIL_CONFIG.useGmailOAuth ? '✅' : '❌'}`);
+  console.log(`   • Gmail (SMTP): ${EMAIL_CONFIG.useGmail ? '✅' : '❌'}`);
   console.log(`   • SMTP: ${!!transporter ? '✅' : '❌'}`);
   console.log(`   • From: ${EMAIL_CONFIG.from}`);
   
