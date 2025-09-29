@@ -259,11 +259,16 @@ router.post('/resend-verification', async (req, res) => {
       user.verificationToken = otpHash;
       user.verificationTokenExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
       await user.save();
-      
-      // Send OTP email
-      const emailResult = await sendOTPEmail(normalizedEmail, otp, 'email-verification');
-      
-      console.log('📧 Verification OTP resent:', emailResult);
+
+      // Send OTP email in background to avoid blocking response
+      setImmediate(async () => {
+        try {
+          const emailResult = await sendOTPEmail(normalizedEmail, otp, 'email-verification');
+          console.log('📧 Verification OTP resent (bg):', emailResult);
+        } catch (emailError) {
+          console.error('Failed to resend verification email (bg):', emailError?.message || emailError);
+        }
+      });
       
       setCooldown(cooldowns.resend, normalizedEmail);
       
@@ -273,7 +278,7 @@ router.post('/resend-verification', async (req, res) => {
       });
       
     } catch (emailError) {
-      console.error('Failed to resend verification email:', emailError);
+      console.error('Failed to prepare verification email:', emailError);
       setCooldown(cooldowns.resend, normalizedEmail);
       
       return res.status(500).json({ 
@@ -493,10 +498,15 @@ router.post('/forgot-password/request', async (req, res) => {
       user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
       await user.save();
 
-      // Send OTP email
-      const emailResult = await sendOTPEmail(normalizedEmail, otp, 'password-reset');
-      
-      console.log('📧 Password reset OTP sent:', emailResult);
+      // Send OTP email in background to avoid blocking response
+      setImmediate(async () => {
+        try {
+          const emailResult = await sendOTPEmail(normalizedEmail, otp, 'password-reset');
+          console.log('📧 Password reset OTP sent (bg):', emailResult);
+        } catch (emailError) {
+          console.error('Failed to send password reset email (bg):', emailError?.message || emailError);
+        }
+      });
 
       return res.json({ 
         success: true, 
@@ -505,7 +515,7 @@ router.post('/forgot-password/request', async (req, res) => {
       });
       
     } catch (emailError) {
-      console.error('Failed to send password reset email:', emailError);
+      console.error('Failed to prepare password reset email:', emailError);
       
       return res.json({ 
         success: true, 
