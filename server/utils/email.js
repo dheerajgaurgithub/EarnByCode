@@ -200,6 +200,40 @@ const logEmail = (type, data, result = null) => {
   }
 };
 
+// Build RFC822 MIME message for Gmail API
+const buildGmailMime = ({ from, to, subject, text, html }) => {
+  const boundary = 'mixed_' + Math.random().toString(16).slice(2);
+  if (html && text) {
+    return [
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      `From: ${from}`,
+      `To: ${to}`,
+      `Subject: ${subject}`,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/plain; charset=UTF-8',
+      '',
+      text,
+      `--${boundary}`,
+      'Content-Type: text/html; charset=UTF-8',
+      '',
+      html,
+      `--${boundary}--`
+    ].join('\r\n');
+  }
+  const isHtml = !!html;
+  const body = isHtml ? html : (text || '');
+  const contentType = isHtml ? 'text/html; charset=UTF-8' : 'text/plain; charset=UTF-8';
+  return [
+    `Content-Type: ${contentType}`,
+    `From: ${from}`,
+    `To: ${to}`,
+    `Subject: ${subject}`,
+    '',
+    body
+  ].join('\r\n');
+};
+
 // Email templates for OTP
 const createOTPEmailTemplate = (otp, type = 'password-reset') => {
   const templates = {
@@ -354,6 +388,44 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [], typ
     }
     
     let result = null;
+    
+    // Try Gmail HTTP API if explicitly selected
+    if (EMAIL_CONFIG.useGmailApi) {
+      try {
+        console.log('📧 Attempting to send via Gmail API to:', to);
+        const { clientId, clientSecret, refreshToken, user } = EMAIL_CONFIG.gmailOAuth;
+        if (!clientId || !clientSecret || !refreshToken || !user) {
+          throw new Error('Gmail API selected but OAuth2 credentials are incomplete');
+        }
+        const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret, EMAIL_CONFIG.gmailOAuth.redirectUri);
+        oAuth2Client.setCredentials({ refresh_token: refreshToken });
+        const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
+
+        const rawMime = buildGmailMime({
+          from: EMAIL_CONFIG.from,
+          to,
+          subject,
+          text,
+          html,
+        });
+        const raw = Buffer.from(rawMime).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+        const resp = await gmail.users.messages.send({ userId: 'me', requestBody: { raw } });
+        result = {
+          success: true,
+          provider: 'gmailapi',
+          messageId: resp?.data?.id || 'gmailapi-sent',
+          deliveryTime: Date.now() - startTime,
+        };
+        console.log('✅ Email sent successfully via Gmail API');
+        logEmail('GMAIL_API_SUCCESS', emailData, result);
+        return result;
+      } catch (error) {
+        console.error('❌ Gmail API send failed:', error.message);
+        logEmail('GMAIL_API_ERROR', emailData, { success: false, error: error.message });
+        // Fall through to other providers if any
+      }
+    }
     
     // Try SendGrid first if configured
     if (EMAIL_CONFIG.useSendGrid && sgMail) {
@@ -519,6 +591,7 @@ if (EMAIL_CONFIG.enableEmailSending) {
   console.log(`📧 Email system initialized:`);
   console.log(`   • Environment: ${isProd ? 'production' : 'development'}`);
   console.log(`   • SendGrid: ${EMAIL_CONFIG.useSendGrid ? '✅' : '❌'}`);
+  console.log(`   • Gmail (API): ${EMAIL_CONFIG.useGmailApi ? '✅' : '❌'}`);
   console.log(`   • Gmail (OAuth2): ${EMAIL_CONFIG.useGmailOAuth ? '✅' : '❌'}`);
   console.log(`   • Gmail (SMTP): ${EMAIL_CONFIG.useGmail ? '✅' : '❌'}`);
   console.log(`   • SMTP: ${!!transporter ? '✅' : '❌'}`);
