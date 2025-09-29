@@ -41,7 +41,6 @@ import config from './config/config.js';
 // Import routes
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
-
 import problemRoutes from './routes/problems.js';
 import contestRoutes from './routes/contests.js';
 import submissionRoutes from './routes/submissions.js';
@@ -55,6 +54,7 @@ import analyticsRoutes from './routes/analytics.js';
 import blogRoutes from './routes/blog.js';
 import oauthRoutes from './routes/oauth.js';
 import walletRoutes from './routes/wallet.js';
+import emailTestRoutes from './routes/email-test.js';
 import { authenticate } from './middleware/auth.js';
 import Problem from './models/Problem.js';
 import Submission from './models/Submission.js';
@@ -78,11 +78,11 @@ dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 app.set('trust proxy', 1);
 
 // --- Robust CORS setup (must be BEFORE routes and sessions) ---
-const VERCELO = 'https://algobucks-tau.vercel.app';
+const VERCEL = 'https://algobucks-tau.vercel.app';
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
-  VERCELO,
+  VERCEL,
   process.env.FRONTEND_ORIGIN,
   process.env.FRONTEND_URL,
 ].filter(Boolean);
@@ -182,11 +182,6 @@ app.post('/api/code/run', async (req, res) => {
       compile.on('error', (e) => {
         const errMsg = `Failed to start Java compiler (${javac}). ${e?.code === 'ENOENT' ? 'javac not found in PATH. Install JDK or set JAVAC_BIN.' : String(e?.message || e)}`;
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-        return done(errMsg, 1);
-      });
-      compile.on('error', (e) => {
-        const errMsg = `Failed to start Java compiler (${javac}). ${e?.code === 'ENOENT' ? 'javac not found in PATH. Install JDK or set JAVAC_BIN.' : String(e?.message || e)}`;
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
         return res.status(200).json({ run: { output: '', stderr: errMsg } });
       });
 
@@ -237,11 +232,6 @@ app.post('/api/code/run', async (req, res) => {
       const compile = spawn(gxx, ['-std=c++17', '-O2', srcFile, '-o', exeFile]);
       const compileErr = [];
       compile.stderr.on('data', d => compileErr.push(d));
-      compile.on('error', (e) => {
-        const errMsg = `Failed to start C++ compiler (${gxx}). ${e?.code === 'ENOENT' ? 'Compiler not found in PATH. Install MinGW-w64/LLVM or set GXX_BIN.' : String(e?.message || e)}`;
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-        return done(errMsg, 1);
-      });
       compile.on('error', (e) => {
         const errMsg = `Failed to start C++ compiler (${gxx}). ${e?.code === 'ENOENT' ? 'g++ not found in PATH. Install MinGW-w64/LLVM or set GXX_BIN.' : String(e?.message || e)}`;
         try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
@@ -357,7 +347,6 @@ app.post('/api/code/run', async (req, res) => {
 
 // Middleware
 app.use(helmet());
-// Legacy CORS block removed — using dynamicCors defined near the top.
 
 // Important: Razorpay webhook needs raw body for signature verification
 app.use('/api/payments/razorpay/webhook', express.raw({ type: '*/*' }));
@@ -369,8 +358,6 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
   contentSecurityPolicy: false,
 }));
-
-// Note: CORS is configured earlier via dynamicCors
 
 // Rate limit high-risk routes
 const authLimiter = rateLimit({
@@ -433,7 +420,6 @@ app.use(passport.session());
 // Serve static files from public directory
 const publicPath = path.join(__dirname, '../../public');
 
-
 // Serve static files with cache control
 const staticOptions = {
   maxAge: '1y',
@@ -448,8 +434,6 @@ const staticOptions = {
 
 // Serve static files from the public directory
 app.use(express.static(publicPath, staticOptions));
-
-// Note: Avatar uploads and /uploads static serving have been removed.
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -467,6 +451,7 @@ app.use('/api/contest-problems', contestProblemRoutes);
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/blog', blogRoutes);
+app.use('/api/email-test', emailTestRoutes); // Add email test routes
 
 // AI Chat endpoint (OpenAI-first). Supports streaming via SSE.
 app.post('/api/ai/chat', async (req, res) => {
@@ -546,8 +531,6 @@ app.get('/api/debug/oauth-config', (req, res) => {
     return res.status(200).json({ error: true });
   }
 });
-
-// Removed: /api/config/flags (exposeOtp)
 
 // --- Press Live Updates (SSE) ---
 // Simple in-memory feed and SSE broadcaster to support the Press page live updates
@@ -1236,103 +1219,6 @@ app.post('/api/execute', async (req, res) => {
   }
 });
 
-// Compatibility endpoint for code execution
-app.post('/api/code/run', async (req, res) => {
-  try {
-    const payload = req.body || {};
-    const language = (payload.language || '').toString().toLowerCase();
-    const files = Array.isArray(payload.files) ? payload.files : [];
-    const source = files[0]?.content ?? payload.code ?? '';
-
-    if (!source || !['javascript', 'typescript', 'python', 'java', 'cpp'].includes(language)) {
-      return res.status(400).json({
-        message: 'Only JavaScript, TypeScript, Python, Java and C++ are supported',
-      });
-    }
-
-    if (language === 'python') {
-      const tmpFile = path.join(os.tmpdir(), `algobucks-${Date.now()}-${Math.random().toString(36).slice(2)}.py`);
-      fs.writeFileSync(tmpFile, source, 'utf8');
-      const pythonBin = process.env.PYTHON_BIN || 'python';
-
-      const child = spawn(pythonBin, [tmpFile], { stdio: ['pipe', 'pipe', 'pipe'] });
-      const stdoutChunks = [];
-      const stderrChunks = [];
-      const stdinStr = typeof payload.stdin === 'string' ? payload.stdin : '';
-      if (stdinStr) child.stdin.write(stdinStr);
-      child.stdin.end();
-
-      let killed = false;
-      const killTimer = setTimeout(() => {
-        killed = true;
-        child.kill('SIGKILL');
-      }, 3000);
-
-      child.stdout.on('data', (d) => stdoutChunks.push(d));
-      child.stderr.on('data', (d) => stderrChunks.push(d));
-
-      child.on('close', (code) => {
-        clearTimeout(killTimer);
-        try { fs.unlinkSync(tmpFile); } catch {}
-        const out = Buffer.concat(stdoutChunks).toString('utf8');
-        const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
-        return res.status(200).json({
-          run: { output: out, stderr: err }
-        });
-      });
-      return;
-    }
-
-    // Transpile TS to JS if needed
-    let code = source;
-    if (language === 'typescript') {
-      const result = ts.transpileModule(source, {
-        compilerOptions: {
-          module: ts.ModuleKind.CommonJS,
-          target: ts.ScriptTarget.ES2019,
-          strict: false,
-          esModuleInterop: true,
-        },
-      });
-      code = result.outputText;
-    }
-
-    const stdout = [];
-    const stderr = [];
-
-    // Create a sandboxed context with limited globals and captured console
-    const sandbox = {
-      console: {
-        log: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
-        error: (...args) => stderr.push(args.map(a => String(a)).join(' ')),
-        warn: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
-      },
-      setTimeout,
-      setInterval,
-      clearTimeout,
-      clearInterval,
-    };
-    const context = createContext(sandbox);
-
-    try {
-      const script = new Script(code, { filename: 'user_code.js' });
-      script.runInContext(context, { timeout: 3000 });
-    } catch (e) {
-      stderr.push(String(e && e.message ? e.message : e));
-    }
-
-    return res.status(200).json({
-      run: {
-        output: stdout.join('\n'),
-        stderr: stderr.join('\n'),
-      },
-    });
-  } catch (err) {
-    console.error('Error executing code:', err);
-    return res.status(500).json({ message: 'Execution service error' });
-  }
-});
-
 // Health check endpoint
 app.get('/api/health', (req, res) => {
   res.status(200).json({
@@ -1388,13 +1274,9 @@ if (fs.existsSync(clientBuildPath)) {
   ];
 
   app.use(express.static(clientBuildPath, {
- 
     index: false,
-  
     etag: true,
-
     lastModified: true,
- 
     maxAge: '1y'
   }));
   

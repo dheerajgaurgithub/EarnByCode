@@ -5,11 +5,10 @@ import crypto from 'crypto';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import nodemailer from 'nodemailer';
-import sgMail from '@sendgrid/mail';
 import User from '../models/User.js';
 import config from '../config/config.js';
 import { authenticate } from '../middleware/auth.js';
+import { sendOTPEmail } from '../utils/email.js';
 
 // Helper: is user currently blocked (without modifying DB)
 const isCurrentlyBlocked = (user) => {
@@ -44,7 +43,6 @@ const autoUnblockIfExpired = async (user) => {
         }
       });
 
-// Debug email/OTP endpoints removed
       // Reload the user to reflect updates
       const refreshed = await User.findById(user._id);
       return refreshed || user;
@@ -74,39 +72,219 @@ const isCoolingDown = (map, email) => {
 };
 const setCooldown = (map, email) => map.set(email, Date.now());
 
-// Register: create PendingUser and send verification OTP
+// Register: create user and send verification OTP if email verification is enabled
 router.post('/register', async (req, res) => {
   try {
     const { username, email, password, fullName } = req.body || {};
     if (!username || !email || !password) {
       return res.status(400).json({ message: 'username, email and password are required' });
     }
-    // Check existing
-    const existingUser = await User.findOne({ $or: [{ email: String(email).toLowerCase() }, { username }] });
+    
+    // Check existing user
+    const existingUser = await User.findOne({ 
+      $or: [
+        { email: String(email).toLowerCase() }, 
+        { username }
+      ] 
+    });
+    
     if (existingUser) {
-      return res.status(400).json({ message: existingUser.email === String(email).toLowerCase() ? 'Email already registered' : 'Username already taken' });
+      return res.status(400).json({ 
+        message: existingUser.email === String(email).toLowerCase() 
+          ? 'Email already registered' 
+          : 'Username already taken' 
+      });
     }
-    // Create real user directly (assumes pre-save hashing on User model)
+    
+    const normalizedEmail = String(email).toLowerCase();
+    
+    // Check if email verification is required
+    const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
+    
+    // Create user
     const user = new User({
       username,
-      email: String(email).toLowerCase(),
+      email: normalizedEmail,
       password: String(password),
       fullName,
-      isEmailVerified: true,
+      isEmailVerified: !requireEmailVerification, // Auto-verify if not required
     });
+    
     await user.save();
-
-    const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
-    return res.status(201).json({ message: 'Registration successful', token, user: user.toJSON() });
+    
+    // If email verification is required, send OTP
+    if (requireEmailVerification) {
+      try {
+        // Generate 6-digit OTP
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+        
+        // Store OTP in user record
+        user.verificationToken = otpHash;
+        user.verificationTokenExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+        await user.save();
+        
+        // Send OTP email
+        const emailResult = await sendOTPEmail(normalizedEmail, otp, 'email-verification');
+        
+        console.log('📧 Verification OTP sent:', emailResult);
+        
+        return res.status(201).json({
+          message: 'Registration successful! Please check your email for verification code.',
+          requiresVerification: true,
+          email: normalizedEmail,
+          ...((!isProd || process.env.OTP_DEBUG === 'true') ? { debugOtp: otp } : {})
+        });
+        
+      } catch (emailError) {
+        console.error('Failed to send verification email:', emailError);
+        
+        // If email fails, still create the user but mark as unverified
+        return res.status(201).json({
+          message: 'Registration successful! However, we could not send the verification email. Please contact support.',
+          requiresVerification: true,
+          emailError: true
+        });
+      }
+    } else {
+      // Auto-login if verification not required
+      const token = jwt.sign(
+        { userId: user._id }, 
+        process.env.JWT_SECRET, 
+        { expiresIn: process.env.JWT_EXPIRE || '7d' }
+      );
+      
+      return res.status(201).json({ 
+        message: 'Registration successful', 
+        token, 
+        user: user.toJSON() 
+      });
+    }
+    
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ message: 'Server error during registration' });
   }
 });
 
-// Resend verification OTP for pending registration
-router.post('/resend-verification', async (_req, res) => {
-  return res.status(410).json({ message: 'Email verification via OTP has been disabled.' });
+// Verify email with OTP
+router.post('/verify-email', async (req, res) => {
+  try {
+    const { email, otp } = req.body || {};
+    
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email and OTP are required' });
+    }
+    
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user) {
+      return res.status(400).json({ message: 'User not found' });
+    }
+    
+    if (user.isEmailVerified) {
+      return res.status(200).json({ message: 'Email already verified' });
+    }
+    
+    if (!user.verificationToken || !user.verificationTokenExpires) {
+      return res.status(400).json({ message: 'No verification code found. Please request a new one.' });
+    }
+    
+    if (new Date(user.verificationTokenExpires).getTime() < Date.now()) {
+      return res.status(400).json({ message: 'Verification code expired. Please request a new one.' });
+    }
+    
+    const otpHash = crypto.createHash('sha256').update(String(otp)).digest('hex');
+    if (otpHash !== user.verificationToken) {
+      return res.status(400).json({ message: 'Invalid verification code' });
+    }
+    
+    // Verify the user
+    user.isEmailVerified = true;
+    user.verificationToken = undefined;
+    user.verificationTokenExpires = undefined;
+    await user.save();
+    
+    // Generate login token
+    const token = jwt.sign(
+      { userId: user._id }, 
+      process.env.JWT_SECRET, 
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    );
+    
+    return res.status(200).json({
+      message: 'Email verified successfully!',
+      token,
+      user: user.toJSON()
+    });
+    
+  } catch (error) {
+    console.error('Email verification error:', error);
+    return res.status(500).json({ message: 'Server error during verification' });
+  }
+});
+
+// Resend verification OTP
+router.post('/resend-verification', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    
+    if (!email) {
+      return res.status(400).json({ message: 'Email is required' });
+    }
+    
+    const normalizedEmail = String(email).toLowerCase();
+    
+    // Cooldown check
+    if (isCoolingDown(cooldowns.resend, normalizedEmail)) {
+      return res.status(429).json({ message: 'Please wait before requesting another code' });
+    }
+    
+    const user = await User.findOne({ email: normalizedEmail });
+    if (!user) {
+      // Don't reveal if user exists
+      setCooldown(cooldowns.resend, normalizedEmail);
+      return res.status(200).json({ message: 'If the email exists, a verification code has been sent.' });
+    }
+    
+    if (user.isEmailVerified) {
+      return res.status(400).json({ message: 'Email is already verified' });
+    }
+    
+    try {
+      // Generate new OTP
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+      
+      // Update user record
+      user.verificationToken = otpHash;
+      user.verificationTokenExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      await user.save();
+      
+      // Send OTP email
+      const emailResult = await sendOTPEmail(normalizedEmail, otp, 'email-verification');
+      
+      console.log('📧 Verification OTP resent:', emailResult);
+      
+      setCooldown(cooldowns.resend, normalizedEmail);
+      
+      return res.status(200).json({
+        message: 'Verification code sent successfully!',
+        ...((!isProd || process.env.OTP_DEBUG === 'true') ? { debugOtp: otp } : {})
+      });
+      
+    } catch (emailError) {
+      console.error('Failed to resend verification email:', emailError);
+      setCooldown(cooldowns.resend, normalizedEmail);
+      
+      return res.status(500).json({ 
+        message: 'Failed to send verification email. Please try again later.' 
+      });
+    }
+    
+  } catch (error) {
+    console.error('Resend verification error:', error);
+    return res.status(500).json({ message: 'Server error' });
+  }
 });
 
 // Login
@@ -124,6 +302,16 @@ router.post('/login', async (req, res) => {
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
       return res.status(400).json({ message: 'Invalid credentials' });
+    }
+
+    // Check if email verification is required and user is not verified
+    const requireEmailVerification = process.env.REQUIRE_EMAIL_VERIFICATION === 'true';
+    if (requireEmailVerification && !user.isEmailVerified) {
+      return res.status(403).json({
+        message: 'Please verify your email address before logging in',
+        requiresVerification: true,
+        email: user.email
+      });
     }
 
     // Blocked check with auto-unblock if expired
@@ -165,7 +353,9 @@ router.get('/me', authenticate, async (req, res) => {
     let user = await User.findById(req.user._id)
       .populate('solvedProblems', 'title difficulty')
       .populate('contestsParticipated', 'title status');
+      
     if (!user) return res.status(404).json({ message: 'User not found' });
+    
     // Auto-clear block if expired
     user = await autoUnblockIfExpired(user);
     const blocked = isCurrentlyBlocked(user);
@@ -210,22 +400,20 @@ router.put('/profile', authenticate, async (req, res) => {
   }
 });
 
-// Verify email with OTP and create final user
-router.post('/verify-email', async (_req, res) => {
-  return res.status(410).json({ message: 'Email verification via OTP has been disabled.' });
-});
-
 // Verify account after clicking email link (used for Google welcome link)
 // Requires a valid Bearer token (the link we email contains a token)
 router.post('/verify', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user._id || req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    
     if (user.isEmailVerified) {
       return res.json({ success: true, message: 'Email already verified', user: user.toJSON() });
     }
+    
     user.isEmailVerified = true;
     await user.save();
+    
     return res.json({ success: true, message: 'Email verified successfully', user: user.toJSON() });
   } catch (error) {
     console.error('Verify account error:', error);
@@ -234,76 +422,42 @@ router.post('/verify', authenticate, async (req, res) => {
 });
 
 // Email verification link handler: GET with token in query
-// Example: GET /api/auth/verify-link?token=...&next=%2F&welcome=1
-router.get('/verify-link', async (_req, res) => {
-  return res.status(410).send('Email verification is disabled.');
+router.get('/verify-link', async (req, res) => {
+  try {
+    const { token, next = '/', welcome } = req.query;
+    
+    if (!token) {
+      return res.status(400).send('Invalid verification link');
+    }
+    
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
+    
+    if (!user) {
+      return res.status(404).send('User not found');
+    }
+    
+    if (user.isEmailVerified) {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      return res.redirect(`${frontendUrl}${next}?verified=already`);
+    }
+    
+    // Verify the user
+    user.isEmailVerified = true;
+    await user.save();
+    
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const redirectUrl = `${frontendUrl}${next}?verified=success${welcome ? '&welcome=1' : ''}`;
+    
+    return res.redirect(redirectUrl);
+    
+  } catch (error) {
+    console.error('Email verification link error:', error);
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    return res.redirect(`${frontendUrl}/login?verified=error`);
+  }
 });
-
-      
-// Google OAuth routes are handled in oauth.js
-
-// ----------------------- Forgot Password via OTP -----------------------
-// Email sender (Nodemailer if configured, else log to file)
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const LOGS_DIR = path.join(__dirname, '../..', 'logs');
-if (!fs.existsSync(LOGS_DIR)) {
-  try { fs.mkdirSync(LOGS_DIR, { recursive: true }); } catch {}
-}
-
-// Prefer SendGrid where outbound SMTP may be blocked by host
-const useSendgrid = !!process.env.SENDGRID_API_KEY;
-if (useSendgrid) {
-  try {
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
-  } catch (e) {
-    console.error('Failed to init SendGrid:', e);
-  }
-}
-
-const transporter = (() => {
-  try {
-    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
-      return nodemailer.createTransport({
-        host: process.env.SMTP_HOST,
-        port: Number(process.env.SMTP_PORT || 587),
-        secure: String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true',
-        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
-      });
-    }
-  } catch (e) {
-    console.error('Failed to init SMTP transporter:', e);
-  }
-  return null;
-})();
-
-const sendEmailOrLog = async ({ to, subject, html, text }) => {
-  try {
-    const from = process.env.EMAIL_FROM || 'no-reply@algobucks.app';
-    if (useSendgrid && process.env.SENDGRID_API_KEY) {
-      await sgMail.send({ to, from, subject, html, text });
-      return { delivered: true, provider: 'sendgrid' };
-    }
-    if (transporter) {
-      await transporter.sendMail({ from, to, subject, html, text });
-      return { delivered: true, provider: 'smtp' };
-    }
-  } catch (e) {
-    console.error('Email send failed, falling back to log:', e);
-  }
-  // Fallback: log email content
-  try {
-    const logFile = path.join(LOGS_DIR, 'email-logs.json');
-    const logData = fs.existsSync(logFile) ? JSON.parse(fs.readFileSync(logFile, 'utf8')) : [];
-    const entry = { timestamp: new Date().toISOString(), to, subject, html: html?.slice(0, 2000), text: text?.slice(0, 2000), type: 'forgot_password_otp' };
-    logData.push(entry);
-    fs.writeFileSync(logFile, JSON.stringify(logData, null, 2));
-    return { delivered: false, logged: true };
-  } catch (e) {
-    console.error('Failed to log email:', e);
-  }
-  return { delivered: false };
-};
 
 // Forgot Password: Request OTP
 router.post('/forgot-password/request', async (req, res) => {
@@ -311,40 +465,55 @@ router.post('/forgot-password/request', async (req, res) => {
     const { email } = req.body || {};
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
+    const normalizedEmail = String(email).toLowerCase();
+
     // Cooldown per email
-    if (isCoolingDown(cooldowns.forgot, email)) {
+    if (isCoolingDown(cooldowns.forgot, normalizedEmail)) {
       return res.status(429).json({ message: 'Please wait before requesting another OTP' });
     }
 
-    const user = await User.findOne({ email: String(email).toLowerCase() });
-    // Respond with 200 to avoid email enumeration even if user not found
+    const user = await User.findOne({ email: normalizedEmail });
+    
+    // Always respond with success to prevent email enumeration
+    setCooldown(cooldowns.forgot, normalizedEmail);
+    
     if (!user) {
-      setCooldown(cooldowns.forgot, email);
-      return res.json({ success: true, message: 'If the email exists, an OTP has been sent.' });
+      return res.json({ 
+        success: true, 
+        message: 'If the email exists, an OTP has been sent.' 
+      });
     }
 
-    // Generate 6-digit OTP and store hash in resetPasswordToken
-    const otp = (Math.floor(100000 + Math.random() * 900000)).toString();
-    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-    user.resetPasswordToken = otpHash;
-    user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-    await user.save();
+    try {
+      // Generate 6-digit OTP and store hash in resetPasswordToken
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+      
+      user.resetPasswordToken = otpHash;
+      user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+      await user.save();
 
-    const subject = 'Your AlgoBucks password reset code';
-    const text = `Your password reset code is ${otp}. It expires in 15 minutes.`;
-    const html = `<p>Use the following code to reset your password:</p><h2 style="font-family:monospace">${otp}</h2><p>This code expires in 15 minutes.</p>`;
-    // Fire-and-forget to avoid delaying the response due to slow SMTP
-    Promise.resolve().then(() => sendEmailOrLog({ to: user.email, subject, text, html })).catch((e) => {
-      console.error('Background email/log failed:', e);
-    });
+      // Send OTP email
+      const emailResult = await sendOTPEmail(normalizedEmail, otp, 'password-reset');
+      
+      console.log('📧 Password reset OTP sent:', emailResult);
 
-    setCooldown(cooldowns.forgot, email);
-    const debug = (process.env.NODE_ENV !== 'production') || String(process.env.OTP_DEBUG || '').toLowerCase() === 'true';
-    return res.json({ 
-      success: true, 
-      message: 'If the email exists, an OTP has been sent.',
-      ...(debug ? { debugOtp: otp } : {})
-    });
+      return res.json({ 
+        success: true, 
+        message: 'If the email exists, an OTP has been sent.',
+        ...((!isProd || process.env.OTP_DEBUG === 'true') ? { debugOtp: otp } : {})
+      });
+      
+    } catch (emailError) {
+      console.error('Failed to send password reset email:', emailError);
+      
+      return res.json({ 
+        success: true, 
+        message: 'If the email exists, an OTP has been sent.',
+        // Don't reveal email sending failures to prevent enumeration
+      });
+    }
+    
   } catch (error) {
     console.error('Forgot-password request error:', error);
     return res.status(500).json({ message: 'Failed to process request' });
@@ -356,17 +525,21 @@ router.post('/forgot-password/verify', async (req, res) => {
   try {
     const { email, otp } = req.body || {};
     if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
+    
     const user = await User.findOne({ email: String(email).toLowerCase() });
     if (!user || !user.resetPasswordToken || !user.resetPasswordExpire) {
       return res.status(400).json({ valid: false, message: 'Invalid or expired code' });
     }
+    
     if (new Date(user.resetPasswordExpire).getTime() < Date.now()) {
       return res.status(400).json({ valid: false, message: 'Code expired' });
     }
+    
     const hash = crypto.createHash('sha256').update(String(otp)).digest('hex');
     if (hash !== user.resetPasswordToken) {
       return res.status(400).json({ valid: false, message: 'Invalid code' });
     }
+    
     return res.json({ valid: true, message: 'OTP verified' });
   } catch (error) {
     console.error('Forgot-password verify error:', error);
@@ -381,13 +554,16 @@ router.post('/forgot-password/reset', async (req, res) => {
     if (!email || !otp || !newPassword) {
       return res.status(400).json({ message: 'Email, OTP and newPassword are required' });
     }
+    
     const user = await User.findOne({ email: String(email).toLowerCase() });
     if (!user || !user.resetPasswordToken || !user.resetPasswordExpire) {
       return res.status(400).json({ message: 'Invalid or expired code' });
     }
+    
     if (new Date(user.resetPasswordExpire).getTime() < Date.now()) {
       return res.status(400).json({ message: 'Code expired' });
     }
+    
     const hash = crypto.createHash('sha256').update(String(otp)).digest('hex');
     if (hash !== user.resetPasswordToken) {
       return res.status(400).json({ message: 'Invalid code' });
