@@ -86,10 +86,20 @@ const allowedOrigins = [
   process.env.FRONTEND_ORIGIN,
   process.env.FRONTEND_URL,
 ].filter(Boolean);
+const isAllowedOrigin = (origin) => {
+  if (!origin) return true; // same-origin/non-browser
+  if (allowedOrigins.includes(origin)) return true;
+  try {
+    const u = new URL(origin);
+    // Allow any Vercel preview/domain by default
+    if (u.hostname.endsWith('.vercel.app')) return true;
+  } catch {}
+  return false;
+};
+
 const dynamicCors = cors({
   origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (isAllowedOrigin(origin)) return callback(null, true);
     console.warn('CORS blocked origin:', origin);
     return callback(new Error('Not allowed by CORS'));
   },
@@ -102,11 +112,14 @@ const dynamicCors = cors({
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
+  if (origin && isAllowedOrigin(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, x-application, X-Application, x-debug-key, X-Debug-Key');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
   }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
   next();
 });
 app.use(dynamicCors);
