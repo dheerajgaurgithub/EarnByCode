@@ -58,6 +58,12 @@ export const Problems: React.FC = () => {
     fetchProblems();
   }, []);
 
+  // Refetch from server when search/filters/sort change so server applies sorting
+  useEffect(() => {
+    fetchProblems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedSearch, difficulty, category, sortBy]);
+
   // Apply filters when they change
   useEffect(() => {
     applyFilters();
@@ -75,8 +81,17 @@ export const Problems: React.FC = () => {
   const fetchProblems = async () => {
     try {
       setLoading(true);
+      // Build query params so server handles sorting and filtering
+      const params = new URLSearchParams();
+      if (debouncedSearch) params.set('search', debouncedSearch);
+      if (difficulty && difficulty !== 'All') params.set('difficulty', difficulty);
+      if (category && category !== 'All') params.set('category', category);
+      if (sortBy) params.set('sortBy', sortBy);
+
       // Use fetch directly to avoid authentication requirements
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/problems`);
+      const baseUrl = `${import.meta.env.VITE_API_URL || 'http://localhost:5000/api'}/problems`;
+      const url = params.toString() ? `${baseUrl}?${params.toString()}` : baseUrl;
+      const response = await fetch(url);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

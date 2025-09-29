@@ -165,7 +165,18 @@ class ApiService {
     return this.request('GET', '/auth/me');
   }
 
-  // Forgot password OTP flow removed. Implement tokenized reset when ready.
+  // Forgot password OTP flow
+  async requestPasswordOtp(email: string): Promise<{ success: boolean; message: string }> {
+    return this.request('POST', '/auth/forgot-password/request', { email });
+  }
+
+  async verifyPasswordOtp(email: string, otp: string): Promise<{ valid: boolean; message?: string }> {
+    return this.request('POST', '/auth/forgot-password/verify', { email, otp });
+  }
+
+  async resetPasswordWithOtp(email: string, otp: string, newPassword: string): Promise<{ success: boolean; message: string }> {
+    return this.request('POST', '/auth/forgot-password/reset', { email, otp, newPassword });
+  }
 
   // Problem methods
   async getProblems(filters: { difficulty?: string; status?: string } = {}): Promise<Problem[]> {

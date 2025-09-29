@@ -2,6 +2,10 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import crypto from 'crypto';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import nodemailer from 'nodemailer';
 import User from '../models/User.js';
 import config from '../config/config.js';
 import { authenticate } from '../middleware/auth.js';
@@ -55,7 +59,6 @@ const router = express.Router();
 
 // Helpers
 const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
-// OTP flows disabled
 
 // In-memory cooldown maps (per email)
 const cooldowns = {
@@ -238,19 +241,146 @@ router.get('/verify-link', async (_req, res) => {
       
 // Google OAuth routes are handled in oauth.js
 
+// ----------------------- Forgot Password via OTP -----------------------
+// Email sender (Nodemailer if configured, else log to file)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const LOGS_DIR = path.join(__dirname, '../..', 'logs');
+if (!fs.existsSync(LOGS_DIR)) {
+  try { fs.mkdirSync(LOGS_DIR, { recursive: true }); } catch {}
+}
+
+const transporter = (() => {
+  try {
+    if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
+      return nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port: Number(process.env.SMTP_PORT || 587),
+        secure: String(process.env.SMTP_SECURE || 'false').toLowerCase() === 'true',
+        auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
+      });
+    }
+  } catch (e) {
+    console.error('Failed to init SMTP transporter:', e);
+  }
+  return null;
+})();
+
+const sendEmailOrLog = async ({ to, subject, html, text }) => {
+  try {
+    if (transporter) {
+      const from = process.env.EMAIL_FROM || 'no-reply@algobucks.app';
+      await transporter.sendMail({ from, to, subject, html, text });
+      return { delivered: true };
+    }
+  } catch (e) {
+    console.error('Email send failed, falling back to log:', e);
+  }
+  // Fallback: log email content
+  try {
+    const logFile = path.join(LOGS_DIR, 'email-logs.json');
+    const logData = fs.existsSync(logFile) ? JSON.parse(fs.readFileSync(logFile, 'utf8')) : [];
+    const entry = { timestamp: new Date().toISOString(), to, subject, html: html?.slice(0, 2000), text: text?.slice(0, 2000), type: 'forgot_password_otp' };
+    logData.push(entry);
+    fs.writeFileSync(logFile, JSON.stringify(logData, null, 2));
+    return { delivered: false, logged: true };
+  } catch (e) {
+    console.error('Failed to log email:', e);
+  }
+  return { delivered: false };
+};
+
 // Forgot Password: Request OTP
-router.post('/forgot-password/request', async (_req, res) => {
-  return res.status(410).json({ message: 'Password reset via OTP has been disabled.' });
+router.post('/forgot-password/request', async (req, res) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    // Cooldown per email
+    if (isCoolingDown(cooldowns.forgot, email)) {
+      return res.status(429).json({ message: 'Please wait before requesting another OTP' });
+    }
+
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    // Respond with 200 to avoid email enumeration even if user not found
+    if (!user) {
+      setCooldown(cooldowns.forgot, email);
+      return res.json({ success: true, message: 'If the email exists, an OTP has been sent.' });
+    }
+
+    // Generate 6-digit OTP and store hash in resetPasswordToken
+    const otp = (Math.floor(100000 + Math.random() * 900000)).toString();
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+    user.resetPasswordToken = otpHash;
+    user.resetPasswordExpire = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    await user.save();
+
+    const subject = 'Your AlgoBucks password reset code';
+    const text = `Your password reset code is ${otp}. It expires in 15 minutes.`;
+    const html = `<p>Use the following code to reset your password:</p><h2 style="font-family:monospace">${otp}</h2><p>This code expires in 15 minutes.</p>`;
+    await sendEmailOrLog({ to: user.email, subject, text, html });
+
+    setCooldown(cooldowns.forgot, email);
+    return res.json({ success: true, message: 'If the email exists, an OTP has been sent.' });
+  } catch (error) {
+    console.error('Forgot-password request error:', error);
+    return res.status(500).json({ message: 'Failed to process request' });
+  }
 });
 
-// Forgot Password: Verify OTP
-router.post('/forgot-password/verify', async (_req, res) => {
-  return res.status(410).json({ message: 'Password reset via OTP has been disabled.' });
+// Forgot Password: Verify OTP (optional pre-check)
+router.post('/forgot-password/verify', async (req, res) => {
+  try {
+    const { email, otp } = req.body || {};
+    if (!email || !otp) return res.status(400).json({ message: 'Email and OTP are required' });
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user || !user.resetPasswordToken || !user.resetPasswordExpire) {
+      return res.status(400).json({ valid: false, message: 'Invalid or expired code' });
+    }
+    if (new Date(user.resetPasswordExpire).getTime() < Date.now()) {
+      return res.status(400).json({ valid: false, message: 'Code expired' });
+    }
+    const hash = crypto.createHash('sha256').update(String(otp)).digest('hex');
+    if (hash !== user.resetPasswordToken) {
+      return res.status(400).json({ valid: false, message: 'Invalid code' });
+    }
+    return res.json({ valid: true, message: 'OTP verified' });
+  } catch (error) {
+    console.error('Forgot-password verify error:', error);
+    return res.status(500).json({ message: 'Failed to verify code' });
+  }
 });
 
 // Forgot Password: Reset with OTP
-router.post('/forgot-password/reset', async (_req, res) => {
-  return res.status(410).json({ message: 'Password reset via OTP has been disabled.' });
+router.post('/forgot-password/reset', async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body || {};
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ message: 'Email, OTP and newPassword are required' });
+    }
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user || !user.resetPasswordToken || !user.resetPasswordExpire) {
+      return res.status(400).json({ message: 'Invalid or expired code' });
+    }
+    if (new Date(user.resetPasswordExpire).getTime() < Date.now()) {
+      return res.status(400).json({ message: 'Code expired' });
+    }
+    const hash = crypto.createHash('sha256').update(String(otp)).digest('hex');
+    if (hash !== user.resetPasswordToken) {
+      return res.status(400).json({ message: 'Invalid code' });
+    }
+
+    // Set new password; pre-save hook will hash if needed
+    user.password = String(newPassword);
+    user.resetPasswordToken = undefined;
+    user.resetPasswordExpire = undefined;
+    await user.save();
+
+    return res.json({ success: true, message: 'Password reset successful' });
+  } catch (error) {
+    console.error('Forgot-password reset error:', error);
+    return res.status(500).json({ message: 'Failed to reset password' });
+  }
 });
 
 export default router;
