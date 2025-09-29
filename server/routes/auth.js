@@ -6,6 +6,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import nodemailer from 'nodemailer';
+import sgMail from '@sendgrid/mail';
 import User from '../models/User.js';
 import config from '../config/config.js';
 import { authenticate } from '../middleware/auth.js';
@@ -250,6 +251,16 @@ if (!fs.existsSync(LOGS_DIR)) {
   try { fs.mkdirSync(LOGS_DIR, { recursive: true }); } catch {}
 }
 
+// Prefer SendGrid where outbound SMTP may be blocked by host
+const useSendgrid = !!process.env.SENDGRID_API_KEY;
+if (useSendgrid) {
+  try {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+  } catch (e) {
+    console.error('Failed to init SendGrid:', e);
+  }
+}
+
 const transporter = (() => {
   try {
     if (process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS) {
@@ -268,10 +279,14 @@ const transporter = (() => {
 
 const sendEmailOrLog = async ({ to, subject, html, text }) => {
   try {
+    const from = process.env.EMAIL_FROM || 'no-reply@algobucks.app';
+    if (useSendgrid && process.env.SENDGRID_API_KEY) {
+      await sgMail.send({ to, from, subject, html, text });
+      return { delivered: true, provider: 'sendgrid' };
+    }
     if (transporter) {
-      const from = process.env.EMAIL_FROM || 'no-reply@algobucks.app';
       await transporter.sendMail({ from, to, subject, html, text });
-      return { delivered: true };
+      return { delivered: true, provider: 'smtp' };
     }
   } catch (e) {
     console.error('Email send failed, falling back to log:', e);
@@ -324,7 +339,12 @@ router.post('/forgot-password/request', async (req, res) => {
     });
 
     setCooldown(cooldowns.forgot, email);
-    return res.json({ success: true, message: 'If the email exists, an OTP has been sent.' });
+    const debug = (process.env.NODE_ENV !== 'production') || String(process.env.OTP_DEBUG || '').toLowerCase() === 'true';
+    return res.json({ 
+      success: true, 
+      message: 'If the email exists, an OTP has been sent.',
+      ...(debug ? { debugOtp: otp } : {})
+    });
   } catch (error) {
     console.error('Forgot-password request error:', error);
     return res.status(500).json({ message: 'Failed to process request' });
