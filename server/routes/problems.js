@@ -7,7 +7,15 @@ import Contest from '../models/Contest.js';
 import { authenticate } from '../middleware/auth.js';
 import { checkProblemAccess } from '../middleware/contestAccess.js';
 import { executeCode } from '../utils/codeExecutor.js';
-import ts from 'typescript';
+// Lazy-load TypeScript only when needed so production can run without devDependency
+const loadTS = async () => {
+  try {
+    const mod = await import('typescript');
+    return mod.default || mod;
+  } catch {
+    return null;
+  }
+};
 
 const router = express.Router();
 
@@ -150,6 +158,8 @@ router.post('/:id/submit', authenticate, checkProblemAccess, async (req, res) =>
     // Normalize TypeScript: transpile to JS and run as JavaScript
     if ((language || '').toLowerCase() === 'typescript') {
       try {
+        const ts = await loadTS();
+        if (!ts) return res.status(500).json({ message: 'TypeScript compiler not available on server' });
         const result = ts.transpileModule(String(code || ''), {
           compilerOptions: {
             module: ts.ModuleKind.CommonJS,
