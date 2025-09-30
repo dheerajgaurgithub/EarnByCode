@@ -87,7 +87,7 @@ dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 app.set('trust proxy', 1);
 
 // --- Robust CORS setup (must be BEFORE routes and sessions) ---
-const VERCEL = 'https://algobucks-tau.vercel.app';
+const VERCEL = 'http://localhost:5173'
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',

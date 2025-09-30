@@ -64,6 +64,13 @@ export function RegisterPage() {
         formData.fullName
       );
 
+      // If server requires email verification, guide user to verification instructions
+      if (response?.requiresVerification) {
+        toast.success('Registration successful! Please verify your email.');
+        navigate(`/verify/check?email=${encodeURIComponent(formData.email)}`);
+        return;
+      }
+
       if (response?.token) {
         localStorage.setItem('token', response.token);
         toast.success(t('register.success'));

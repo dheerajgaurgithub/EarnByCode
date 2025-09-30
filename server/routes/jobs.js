@@ -58,6 +58,22 @@ router.get('/admin', [authenticate, requireAdmin], async (req, res) => {
   }
 });
 
+// @route   GET /api/jobs/:id
+// @desc    Get a single job (public)
+// @access  Public
+router.get('/:id', async (req, res) => {
+  try {
+    const job = await Job.findById(req.params.id).select('-applications');
+    if (!job) {
+      return res.status(404).json({ message: 'Job not found' });
+    }
+    res.json(job);
+  } catch (err) {
+    console.error(`Error fetching job ${req.params.id}:`, err);
+    return res.status(500).json({ message: 'Server error' });
+  }
+});
+
 // @route   POST /api/jobs
 // @desc    Create a new job posting
 // @access  Private/Admin

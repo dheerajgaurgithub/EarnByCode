@@ -25,7 +25,9 @@ import { Submissions } from './pages/Submissions';
 import SubmissionDetail from './pages/SubmissionDetail';
 import { LoginPage } from './pages/Auth/LoginPage';
 import { RegisterPage } from './pages/Auth/RegisterPage';
-import ForgotPassword from './pages/Auth/ForgotPassword';
+import ForgotPasswordRequest from './pages/Auth/ForgotPasswordRequest';
+import ForgotPasswordOtp from './pages/Auth/ForgotPasswordOtp';
+import ForgotPasswordReset from './pages/Auth/ForgotPasswordReset';
 import { Settings } from './pages/Settings';
 import About from './pages/About';
 import Company from './pages/Company';
@@ -35,6 +37,9 @@ import Contact from './pages/Contact';
 import Blog from './pages/Blog';
 import Community from './pages/Community';
 import HelpCenter from './pages/HelpCenter';
+import JobDetail from './pages/JobDetail';
+import EmailVerified from './pages/EmailVerified.tsx';
+import VerifyCheck from './pages/VerifyCheck';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
 import TermsOfService from './pages/legal/TermsOfService';
 import CookiesPolicy from './pages/legal/CookiesPolicy';
@@ -217,24 +222,43 @@ function App() {
               />
               {/* Register OTP flow removed; Forgot Password remains */}
               <Route
-                path="/forgot-password"
-                element={
-                  <PublicRoute>
-                    <ForgotPassword />
-                  </PublicRoute>
-                }
-              />
+                  path="/forgot-password"
+                  element={
+                    <PublicRoute>
+                      <ForgotPasswordRequest />
+                    </PublicRoute>
+                  }
+                />
+              <Route
+                  path="/forgot-password/otp"
+                  element={
+                    <PublicRoute>
+                      <ForgotPasswordOtp />
+                    </PublicRoute>
+                  }
+                />
+              <Route
+                  path="/forgot-password/reset"
+                  element={
+                    <PublicRoute>
+                      <ForgotPasswordReset />
+                    </PublicRoute>
+                  }
+                />
 
               {/* Public routes */}
               <Route path="/" element={<Home />} />
               <Route path="/about" element={<About />} />
               <Route path="/company" element={<Company />} />
               <Route path="/careers" element={<Careers />} />
+              <Route path="/jobs/:id" element={<JobDetail />} />
               <Route path="/press" element={<Press />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/blog" element={<Blog />} />
               <Route path="/community" element={<Community />} />
               <Route path="/help" element={<HelpCenter />} />
+              <Route path="/verify/check" element={<VerifyCheck />} />
+              <Route path="/verify/success" element={<EmailVerified />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/cookies" element={<CookiesPolicy />} />
