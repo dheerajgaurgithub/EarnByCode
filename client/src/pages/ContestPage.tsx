@@ -399,10 +399,14 @@ const ContestPage = () => {
       toast.error('Please agree to the guidelines first');
       return;
     }
-    if (contestEnded) {
-      toast.error('This contest has ended. You cannot start it now.');
-      return;
-    }
+    // Re-check using local time vs contest endTime to avoid stale flags
+    try {
+      const end = new Date((contest as any)?.endTime).getTime();
+      if (isFinite(end) && Date.now() > end) {
+        toast.error('This contest has ended. You cannot start it now.');
+        return;
+      }
+    } catch {}
     
     // Prefer the local problems state; if it's empty, try a fallback refetch of the populated contest
     let list = problems;

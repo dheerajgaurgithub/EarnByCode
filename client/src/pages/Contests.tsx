@@ -12,10 +12,23 @@ export const Contests: React.FC = () => {
   const [contests, setContests] = useState<IContest[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedTab, setSelectedTab] = useState<'all' | 'upcoming' | 'live' | 'ended'>('all');
+  const [nowTs, setNowTs] = useState<number>(Date.now()); // 1s ticker for instant UI updates
 
   useEffect(() => {
     fetchContests();
   }, [selectedTab]);
+
+  // Periodically refresh contests to auto-update UI without manual refresh
+  useEffect(() => {
+    const id = setInterval(fetchContests, 5000); // 5s (further reduced)
+    return () => clearInterval(id);
+  }, [selectedTab]);
+
+  // 1-second ticker so status flips instantly without polling whole list
+  useEffect(() => {
+    const id = setInterval(() => setNowTs(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const fetchContests = async () => {
     try {
@@ -41,21 +54,85 @@ export const Contests: React.FC = () => {
         });
       });
       
-      // Filter by selected tab (backend already filters for isPublic)
-      const filteredContests = response.filter((contest: IContest) => {
-        if (selectedTab === 'upcoming') return contest.status === 'upcoming';
-        if (selectedTab === 'live') return contest.status === 'ongoing';
-        if (selectedTab === 'ended') return contest.status === 'completed';
-        return true; // 'all' tab
-      });
-      
-      console.log('Filtered contests:', filteredContests);
-      setContests(filteredContests);
+      // Store raw contests; filtering and status will be computed live using nowTs
+      setContests(response as any);
     } catch (error) {
       console.error('Failed to fetch contests:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Render helpers
+  const renderStatus = (c: IContest) => {
+    const s = computeStatus(c, nowTs);
+    const label = getStatusDisplay(s);
+    const countdown = countdownText(c, nowTs);
+    return (
+      <>
+        {s === 'ongoing' && (
+          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse" aria-hidden="true" />
+        )}
+        <span className={`px-2 py-1 rounded-lg text-xs font-semibold capitalize border ${getStatusColor(String(s))}`}>
+          <span
+            title={s === 'upcoming' ? `Starts at ${formatDate((c as any).startTime as any)}` : undefined}
+          >
+            {label}
+          </span>
+        </span>
+        {countdown && (
+          <span className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 px-2 py-0.5 rounded-md">
+            {countdown}
+          </span>
+        )}
+      </>
+    );
+  };
+
+  const renderActions = (c: IContest) => {
+    const s = computeStatus(c, nowTs);
+    if (s === 'completed') {
+      return (
+        <Link
+          to={`/contests/${c._id}/results`}
+          className="w-full sm:w-auto px-3 py-2 text-sm bg-gradient-to-r from-gray-500 to-gray-600 dark:from-green-600 dark:to-green-700 text-white font-semibold rounded-lg hover:from-gray-600 hover:to-gray-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 text-center shadow-lg hover:shadow-xl transform hover:scale-105"
+        >
+          View Results
+        </Link>
+      );
+    }
+    if (s === 'ongoing') {
+      return isUserRegistered(c) ? (
+        <Link
+          to={`/contests/${c._id}`}
+          className="w-full sm:w-auto px-3 py-2 text-sm bg-gradient-to-r from-emerald-500 to-emerald-600 dark:from-green-600 dark:to-green-700 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-emerald-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 text-center shadow-lg hover:shadow-xl transform hover:scale-105"
+        >
+          Enter Contest
+        </Link>
+      ) : (
+        <span className="w-full sm:w-auto px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 font-semibold rounded-lg text-center border border-gray-200 dark:border-gray-600">
+          Registration Closed
+        </span>
+      );
+    }
+    // upcoming
+    return (
+      <>
+        {isUserRegistered(c) ? (
+          <span className="w-full sm:w-auto px-3 py-2 text-sm bg-emerald-50 dark:bg-green-900/20 text-emerald-700 dark:text-green-300 font-semibold rounded-lg text-center border border-emerald-200 dark:border-green-700">
+            ✓ Registered
+          </span>
+        ) : (
+          <button
+            onClick={() => handleJoinContest(c._id)}
+            disabled={!user}
+            className="w-full sm:w-auto px-3 py-2 text-sm bg-gradient-to-r from-sky-500 to-sky-600 dark:from-green-600 dark:to-green-700 text-white font-semibold rounded-lg hover:from-sky-600 hover:to-sky-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
+          >
+            Join Contest
+          </button>
+        )}
+      </>
+    );
   };
 
   // Lazy load Razorpay checkout script
@@ -203,6 +280,43 @@ export const Contests: React.FC = () => {
     }
   };
 
+  // Compute status based on current time
+  const computeStatus = (c: IContest, now: number = nowTs): 'upcoming' | 'ongoing' | 'completed' | 'unknown' => {
+    try {
+      const start = new Date(c.startTime as any).getTime();
+      const end = new Date(c.endTime as any).getTime();
+      if (isFinite(start) && isFinite(end)) {
+        if (now < start) return 'upcoming';
+        if (now <= end) return 'ongoing';
+        return 'completed';
+      }
+    } catch {}
+    const s = String((c as any).status || '').toLowerCase();
+    if (s === 'upcoming') return 'upcoming';
+    if (s === 'ongoing' || s === 'live') return 'ongoing';
+    if (s === 'completed' || s === 'ended') return 'completed';
+    return 'unknown';
+  };
+
+  const countdownText = (c: IContest, now: number = nowTs): string | null => {
+    try {
+      const start = new Date(c.startTime as any).getTime();
+      const end = new Date(c.endTime as any).getTime();
+      const status = computeStatus(c, now);
+      const target = status === 'upcoming' ? start : status === 'ongoing' ? end : null;
+      if (!target) return null;
+      let diff = Math.max(0, Math.floor((target - now) / 1000));
+      const h = Math.floor(diff / 3600);
+      diff %= 3600;
+      const m = Math.floor(diff / 60);
+      const s = diff % 60;
+      const hhmmss = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+      return status === 'upcoming' ? `Starts in ${hhmmss}` : `Ends in ${hhmmss}`;
+    } catch {
+      return null;
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       month: 'short',
@@ -319,7 +433,15 @@ export const Contests: React.FC = () => {
             </motion.div>
           ) : (
             <div className="space-y-3 sm:space-y-4">
-              {contests.map((contest, index) => (
+              {contests
+                .filter((c) => {
+                  const s = computeStatus(c, nowTs);
+                  if (selectedTab === 'upcoming') return s === 'upcoming';
+                  if (selectedTab === 'live') return s === 'ongoing';
+                  if (selectedTab === 'ended') return s === 'completed';
+                  return true;
+                })
+                .map((contest, index) => (
                 <motion.div
                   key={contest._id}
                   initial={{ opacity: 0, y: 30 }}
@@ -335,17 +457,7 @@ export const Contests: React.FC = () => {
                           <h3 className="text-base sm:text-lg lg:text-xl font-bold text-sky-900 dark:text-green-400 group-hover:text-sky-700 dark:group-hover:text-green-300 transition-colors duration-300">
                             {contest.title}
                           </h3>
-                          <div className="flex items-center space-x-2">
-                            <span className={`px-2 py-1 rounded-lg text-xs font-semibold capitalize border ${getStatusColor(contest.status)}`}>
-                              {getStatusDisplay(contest.status)}
-                            </span>
-                            {contest.status === 'ongoing' && (
-                              <div className="flex items-center space-x-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-700 rounded-lg">
-                                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
-                                <span className="text-xs font-bold text-red-600 dark:text-red-400">LIVE</span>
-                              </div>
-                            )}
-                          </div>
+                          <div className="flex items-center space-x-2">{renderStatus(contest)}</div>
                         </div>
                         <p className="text-sm text-sky-700 dark:text-green-300 mb-3 leading-relaxed font-medium">
                           {contest.description}
@@ -364,6 +476,9 @@ export const Contests: React.FC = () => {
                           <p className="text-sm font-bold text-sky-900 dark:text-green-400">
                             {formatDate(contest.startTime)}
                           </p>
+                          {computeStatus(contest, nowTs) === 'upcoming' && (
+                            <p className="text-[10px] sm:text-xs text-sky-700 dark:text-green-400">{countdownText(contest, nowTs)}</p>
+                          )}
                         </div>
                       </div>
                       
@@ -374,6 +489,9 @@ export const Contests: React.FC = () => {
                         <div>
                           <p className="text-xs text-purple-600 dark:text-green-300 font-semibold">Duration</p>
                           <p className="text-sm font-bold text-purple-900 dark:text-green-400">{contest.duration} min</p>
+                          {computeStatus(contest, nowTs) === 'ongoing' && (
+                            <p className="text-[10px] sm:text-xs text-purple-700 dark:text-green-400">{countdownText(contest, nowTs)}</p>
+                          )}
                         </div>
                       </div>
                       
@@ -413,45 +531,7 @@ export const Contests: React.FC = () => {
                         </div>
                       </div>
   
-                      <div className="flex items-center space-x-2">
-                        {contest.status === 'completed' ? (
-                          <Link
-                            to={`/contests/${contest._id}/results`}
-                            className="w-full sm:w-auto px-3 py-2 text-sm bg-gradient-to-r from-gray-500 to-gray-600 dark:from-green-600 dark:to-green-700 text-white font-semibold rounded-lg hover:from-gray-600 hover:to-gray-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 text-center shadow-lg hover:shadow-xl transform hover:scale-105"
-                          >
-                            View Results
-                          </Link>
-                        ) : contest.status === 'ongoing' ? (
-                          isUserRegistered(contest) ? (
-                            <Link
-                              to={`/contests/${contest._id}`}
-                              className="w-full sm:w-auto px-3 py-2 text-sm bg-gradient-to-r from-emerald-500 to-emerald-600 dark:from-green-600 dark:to-green-700 text-white font-semibold rounded-lg hover:from-emerald-600 hover:to-emerald-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 text-center shadow-lg hover:shadow-xl transform hover:scale-105"
-                            >
-                              Enter Contest
-                            </Link>
-                          ) : (
-                            <span className="w-full sm:w-auto px-3 py-2 text-sm bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 font-semibold rounded-lg text-center border border-gray-200 dark:border-gray-600">
-                              Registration Closed
-                            </span>
-                          )
-                        ) : (
-                          <>
-                            {isUserRegistered(contest) ? (
-                              <span className="w-full sm:w-auto px-3 py-2 text-sm bg-emerald-50 dark:bg-green-900/20 text-emerald-700 dark:text-green-300 font-semibold rounded-lg text-center border border-emerald-200 dark:border-green-700">
-                                ✓ Registered
-                              </span>
-                            ) : (
-                              <button
-                                onClick={() => handleJoinContest(contest._id)}
-                                disabled={!user}
-                                className="w-full sm:w-auto px-3 py-2 text-sm bg-gradient-to-r from-sky-500 to-sky-600 dark:from-green-600 dark:to-green-700 text-white font-semibold rounded-lg hover:from-sky-600 hover:to-sky-700 dark:hover:from-green-700 dark:hover:to-green-800 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:scale-105"
-                              >
-                                Join Contest
-                              </button>
-                            )}
-                          </>
-                        )}
-                      </div>
+                      <div className="flex items-center space-x-2">{renderActions(contest)}</div>
                     </div>
   
                     {/* Login Alert */}

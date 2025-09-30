@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useI18n } from '@/context/I18nContext';
 import {
@@ -84,6 +84,7 @@ export const Header: React.FC = () => {
   const { user, logout } = useAuth();
   const { t } = useI18n();
   const location = useLocation();
+  const navigate = useNavigate();
   const [showDropdown, setShowDropdown] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -437,6 +438,8 @@ export const Header: React.FC = () => {
                             onClick={() => {
                               logout();
                               setShowDropdown(false);
+                              // Navigate to home to ensure immediate UI update after logout
+                              try { navigate('/'); } catch {}
                             }}
                             className="flex w-full items-center px-2 sm:px-3 py-1.5 sm:py-2 text-gray-600 dark:text-green-300 hover:bg-red-500/5 dark:hover:bg-red-500/10 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200 group text-xs sm:text-sm"
                             role="menuitem"
