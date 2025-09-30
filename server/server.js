@@ -88,6 +88,7 @@ app.set('trust proxy', 1);
 
 // --- Robust CORS setup (must be BEFORE routes and sessions) ---
 const VERCEL = 'http://localhost:5173'
+const CORS_ALLOW_ALL = String(process.env.CORS_ALLOW_ALL || '').toLowerCase() === 'true';
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
@@ -96,6 +97,7 @@ const allowedOrigins = [
   process.env.FRONTEND_URL,
 ].filter(Boolean);
 const isAllowedOrigin = (origin) => {
+  if (CORS_ALLOW_ALL) return true;
   if (!origin) return true; // same-origin/non-browser
   if (allowedOrigins.includes(origin)) return true;
   try {
@@ -107,7 +109,7 @@ const isAllowedOrigin = (origin) => {
 };
 
 const dynamicCors = cors({
-  origin: function (origin, callback) {
+  origin: CORS_ALLOW_ALL ? true : function (origin, callback) {
     if (isAllowedOrigin(origin)) return callback(null, true);
     console.warn('CORS blocked origin:', origin);
     return callback(new Error('Not allowed by CORS'));
@@ -121,7 +123,7 @@ const dynamicCors = cors({
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  if (origin && isAllowedOrigin(origin)) {
+  if (CORS_ALLOW_ALL || (origin && isAllowedOrigin(origin))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
