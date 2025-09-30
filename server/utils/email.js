@@ -31,7 +31,7 @@ const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 
 // Email configuration
 const EMAIL_CONFIG = {
-  from: process.env.EMAIL_FROM || 'noreply@algobucks.app',
+  from: process.env.EMAIL_FROM || 'noreply@earnbycode.app',
   useGmail: process.env.USE_GMAIL === 'true',
   useGmailOAuth: process.env.USE_GMAIL_OAUTH === 'true',
   useGmailApi: process.env.USE_GMAIL_API === 'true' || (process.env.EMAIL_PROVIDER || '').toLowerCase() === 'gmailapi',
@@ -65,7 +65,7 @@ const EMAIL_CONFIG = {
   sendgrid: {
     apiKey: process.env.SENDGRID_API_KEY,
     fromEmail: process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_FROM,
-    fromName: process.env.SENDGRID_FROM_NAME || 'AlgoBucks',
+    fromName: process.env.SENDGRID_FROM_NAME || 'EarnByCode',
   }
 };
 
@@ -238,27 +238,27 @@ const buildGmailMime = ({ from, to, subject, text, html }) => {
 const createOTPEmailTemplate = (otp, type = 'password-reset') => {
   const templates = {
     'password-reset': {
-      subject: 'Your AlgoBucks Password Reset Code',
-      text: `Your password reset code is: ${otp}\n\nThis code expires in 15 minutes.\n\nIf you didn't request this, please ignore this email.\n\nBest regards,\nAlgoBucks Team`,
+      subject: 'Your EarnByCode Password Reset Code',
+      text: `Your password reset code is: ${otp}\n\nThis code expires in 15 minutes.\n\nIf you didn't request this, please ignore this email.\n\nBest regards,\nEarnByCode Team`,
       html: `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>Password Reset - AlgoBucks</title>
+          <title>Password Reset - EarnByCode</title>
         </head>
         <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
           <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #2563eb; margin: 0; font-size: 28px;">AlgoBucks</h1>
+              <h1 style="color: #2563eb; margin: 0; font-size: 28px;">EarnByCode</h1>
               <p style="color: #6b7280; margin-top: 5px;">Competitive Programming Platform</p>
             </div>
             
             <h2 style="color: #1f2937; margin-bottom: 20px;">Password Reset Code</h2>
             
             <p style="color: #374151; line-height: 1.6; margin-bottom: 25px;">
-              You requested a password reset for your AlgoBucks account. Use the following code to reset your password:
+              You requested a password reset for your EarnByCode account. Use the following code to reset your password:
             </p>
             
             <div style="text-align: center; margin: 30px 0;">
@@ -280,7 +280,7 @@ const createOTPEmailTemplate = (otp, type = 'password-reset') => {
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
             
             <div style="text-align: center; color: #9ca3af; font-size: 12px;">
-              <p>© 2025 AlgoBucks. All rights reserved.</p>
+              <p>© 2025 EarnByCode. All rights reserved.</p>
               <p>This is an automated message, please do not reply.</p>
             </div>
           </div>
@@ -289,27 +289,27 @@ const createOTPEmailTemplate = (otp, type = 'password-reset') => {
       `
     },
     'email-verification': {
-      subject: 'Verify Your AlgoBucks Email Address',
-      text: `Welcome to AlgoBucks!\n\nYour verification code is: ${otp}\n\nThis code expires in 15 minutes.\n\nBest regards,\nAlgoBucks Team`,
+      subject: 'Verify Your EarnByCode Email Address',
+      text: `Welcome to EarnByCode!\n\nYour verification code is: ${otp}\n\nThis code expires in 15 minutes.\n\nBest regards,\nEarnByCode Team`,
       html: `
         <!DOCTYPE html>
         <html>
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>Email Verification - AlgoBucks</title>
+          <title>Email Verification - EarnByCode</title>
         </head>
         <body style="margin: 0; padding: 0; font-family: Arial, sans-serif; background-color: #f5f5f5;">
           <div style="max-width: 600px; margin: 0 auto; background-color: white; padding: 20px; border-radius: 8px; margin-top: 20px;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="color: #2563eb; margin: 0; font-size: 28px;">Welcome to AlgoBucks!</h1>
+              <h1 style="color: #2563eb; margin: 0; font-size: 28px;">Welcome to EarnByCode!</h1>
               <p style="color: #6b7280; margin-top: 5px;">Competitive Programming Platform</p>
             </div>
             
             <h2 style="color: #1f2937; margin-bottom: 20px;">Verify Your Email Address</h2>
             
             <p style="color: #374151; line-height: 1.6; margin-bottom: 25px;">
-              Thanks for joining AlgoBucks! Please verify your email address using the code below:
+              Thanks for joining EarnByCode! Please verify your email address using the code below:
             </p>
             
             <div style="text-align: center; margin: 30px 0;">
@@ -327,7 +327,7 @@ const createOTPEmailTemplate = (otp, type = 'password-reset') => {
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
             
             <div style="text-align: center; color: #9ca3af; font-size: 12px;">
-              <p>© 2025 AlgoBucks. All rights reserved.</p>
+              <p>© 2025 EarnByCode. All rights reserved.</p>
               <p>This is an automated message, please do not reply.</p>
             </div>
           </div>

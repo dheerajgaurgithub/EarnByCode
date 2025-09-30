@@ -76,6 +76,8 @@ type UserDisplayInfo = {
   walletBalance?: number;
   points?: number;
   avatarUrl?: string;
+  fullName?: string;
+  name?: string;
 };
 
 export const Header: React.FC = () => {
@@ -89,6 +91,8 @@ export const Header: React.FC = () => {
   // OTP dev badge removed
 
   const userInfo = user as UserDisplayInfo | null;
+  const displayName = (userInfo?.fullName as any) || (userInfo as any)?.name || userInfo?.username || '';
+  const initial = (displayName?.[0] || 'U').toUpperCase();
 
   // Handle scroll effect for header
   useEffect(() => {
@@ -295,11 +299,11 @@ export const Header: React.FC = () => {
                   <span className="sr-only">{t('user.open_menu')}</span>
                   <div className="relative flex-shrink-0">
                     {userInfo.avatarUrl ? (
-                      <img src={userInfo.avatarUrl} alt={userInfo.username} className="h-4 w-4 sm:h-5 sm:w-5 rounded-full object-cover border border-sky-200 dark:border-green-700" />
+                      <img src={userInfo.avatarUrl} alt={displayName} className="h-4 w-4 sm:h-5 sm:w-5 rounded-full object-cover border border-sky-200 dark:border-green-700" />
                     ) : (
                       <div className="h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center border border-sky-200 dark:border-green-700">
                         <span className="text-sky-700 dark:text-green-400 font-semibold text-xs">
-                          {userInfo.username?.[0]?.toUpperCase() || 'U'}
+                          {initial}
                         </span>
                       </div>
                     )}
@@ -307,7 +311,7 @@ export const Header: React.FC = () => {
 
                   <div className="hidden sm:block min-w-0">
                     <div className="flex flex-col items-start">
-                      <span className="text-gray-800 dark:text-green-400 font-medium text-xs truncate max-w-16 sm:max-w-20 transition-colors duration-300">{userInfo.username}</span>
+                      <span className="text-gray-800 dark:text-green-400 font-medium text-xs truncate max-w-16 sm:max-w-20 transition-colors duration-300">{displayName}</span>
                       {userInfo.isAdmin && (
                         <span className="text-sky-600 dark:text-green-400 text-xs font-medium flex items-center">
                           <Shield className="w-2 h-2 mr-0.5" />
@@ -338,16 +342,16 @@ export const Header: React.FC = () => {
                       <div className="px-2 sm:px-3 py-2 border-b border-sky-200/50 dark:border-green-800/50">
                         <div className="flex items-center space-x-2">
                           {userInfo.avatarUrl ? (
-                            <img src={userInfo.avatarUrl} alt={userInfo.username} className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg object-cover border border-sky-200 dark:border-green-700 flex-shrink-0" />
+                            <img src={userInfo.avatarUrl} alt={displayName} className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg object-cover border border-sky-200 dark:border-green-700 flex-shrink-0" />
                           ) : (
                             <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-white dark:bg-gray-800 flex items-center justify-center border border-sky-200 dark:border-green-700 flex-shrink-0">
                               <span className="text-sky-700 dark:text-green-400 font-bold text-xs sm:text-sm">
-                                {userInfo.username?.[0]?.toUpperCase() || 'U'}
+                                {initial}
                               </span>
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="text-gray-800 dark:text-green-400 font-semibold truncate text-xs sm:text-sm transition-colors duration-300">{userInfo.username}</p>
+                            <p className="text-gray-800 dark:text-green-400 font-semibold truncate text-xs sm:text-sm transition-colors duration-300">{displayName}</p>
                             {userInfo.email && (
                               <p className="text-gray-600 dark:text-green-300 text-xs truncate transition-colors duration-300">{userInfo.email}</p>
                             )}
