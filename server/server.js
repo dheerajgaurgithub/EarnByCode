@@ -466,6 +466,26 @@ const staticOptions = {
 // Serve static files from the public directory
 app.use(express.static(publicPath, staticOptions));
 
+// Root health/redirect route
+app.get('/', (req, res) => {
+  try {
+    const fe = process.env.FRONTEND_URL || '';
+    // Redirect only if FRONTEND_URL is configured and is NOT localhost
+    if (fe && !/^https?:\/\/localhost(?::\d+)?\/?$/i.test(fe)) {
+      return res.redirect(302, fe);
+    }
+    return res.status(200).json({
+      status: 'ok',
+      service: 'earnbycode API',
+      env: process.env.NODE_ENV || 'development',
+      apiUrl: process.env.API_URL || 'http://localhost:5000',
+      time: new Date().toISOString(),
+    });
+  } catch (e) {
+    return res.status(200).json({ status: 'ok' });
+  }
+});
+
 // Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
