@@ -1,6 +1,6 @@
 {
     "private": true,
-    "name": "algobucks-client",
+    "name": "earnbycode-client",
     "version": "1.0.0",
     "scripts": {
         "preview": "cd client && npm run preview",
