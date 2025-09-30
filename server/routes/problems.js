@@ -155,6 +155,7 @@ router.get('/:id', checkProblemAccess, async (req, res) => {
 router.post('/:id/submit', authenticate, checkProblemAccess, async (req, res) => {
   try {
     let { code, language, contestId } = req.body;
+    const dryRun = String(req.query.dryRun || '').toLowerCase() === 'true';
     // Normalize TypeScript: transpile to JS and run as JavaScript
     if ((language || '').toLowerCase() === 'typescript') {
       try {
@@ -209,10 +210,30 @@ router.post('/:id/submit', authenticate, checkProblemAccess, async (req, res) =>
       }
     }
 
-    // Execute code against test cases
+    // Execute code against all test cases
     const result = await executeCode(code, language, problem.testCases);
 
     console.log('Code execution result:', result);
+
+    // If dryRun, return results without persisting
+    if (dryRun) {
+      return res.json({
+        dryRun: true,
+        result
+      });
+    }
+
+    // Enforce one submission per language per contest (or non-contest)
+    const subQuery = {
+      user: req.user._id,
+      problem: problemId,
+      language,
+    };
+    if (contestId) subQuery.contestId = contestId;
+    const existing = await Submission.findOne(subQuery).lean();
+    if (existing) {
+      return res.status(409).json({ message: 'You have already submitted this problem in this language.' });
+    }
 
     // Create submission record
     const submission = new Submission({
@@ -225,7 +246,8 @@ router.post('/:id/submit', authenticate, checkProblemAccess, async (req, res) =>
       memory: result.memory,
       testsPassed: result.testsPassed,
       totalTests: result.totalTests,
-      score: result.score
+      score: result.score,
+      ...(contestId ? { contestId } : {})
     });
 
     await submission.save();

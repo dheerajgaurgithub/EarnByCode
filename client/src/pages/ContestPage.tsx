@@ -231,7 +231,7 @@ const ContestPage = () => {
           return;
         }
         
-        if (now >= endTime) {
+        if (now.getTime() > endTime.getTime() + 1500) { // 1.5s grace beyond end
           // Contest has ended; mark ended but do not auto-navigate to completed page.
           // Let the user see guidelines and a disabled Start button.
           setContestEnded(true);
@@ -239,11 +239,11 @@ const ContestPage = () => {
           setTimeMode('untilEnd');
         } else if (now >= startTime) {
           setContestHasStarted(true);
-          const timeLeftInSeconds = Math.floor((endTime.getTime() - now.getTime()) / 1000);
-          setTimeLeft(timeLeftInSeconds);
+          const timeLeftInSeconds = Math.max(1, Math.ceil((endTime.getTime() - now.getTime()) / 1000));
+          setTimeLeft(timeLeftInSeconds); // ensure at least 1s to avoid instant end flip
           setTimeMode('untilEnd');
         } else {
-          const timeLeftInSeconds = Math.floor((startTime.getTime() - now.getTime()) / 1000);
+          const timeLeftInSeconds = Math.max(1, Math.ceil((startTime.getTime() - now.getTime()) / 1000));
           setTimeLeft(timeLeftInSeconds);
           setTimeMode('untilStart');
         }
@@ -260,7 +260,7 @@ const ContestPage = () => {
     fetchContestData();
   }, [id]);
 
-  // Handle timer
+  // Handle timer (with grace to avoid immediate end on boundary)
   useEffect(() => {
     if (!contest) return;
 
@@ -273,7 +273,7 @@ const ContestPage = () => {
             try {
               const now = new Date();
               const endTime = new Date((contest as any).endTime);
-              const secs = Math.max(0, Math.floor((endTime.getTime() - now.getTime()) / 1000));
+              const secs = Math.max(1, Math.ceil((endTime.getTime() - now.getTime()) / 1000));
               setContestHasStarted(true);
               setTimeMode('untilEnd');
               return secs;
@@ -282,12 +282,22 @@ const ContestPage = () => {
               return 0;
             }
           } else {
-            // Contest is over: only switch to completed if the user actually started this session
-            setContestEnded(true);
-            if (userStarted) {
-              setPhase('completed');
+            // Contest is over: mark ended only after slight grace
+            try {
+              const nowMs = Date.now();
+              const endMs = new Date((contest as any).endTime).getTime();
+              if (nowMs > endMs + 1500) { // 1.5s grace
+                setContestEnded(true);
+                // Do not auto-set phase to completed; user can submit feedback explicitly
+                return 0;
+              }
+              // still within grace, recompute remaining seconds to avoid flicker
+              const secs = Math.max(0, Math.ceil((endMs - nowMs) / 1000));
+              return secs;
+            } catch {
+              setContestEnded(true);
+              return 0;
             }
-            return 0;
           }
         }
         return prev - 1;
@@ -428,12 +438,20 @@ const ContestPage = () => {
       try {
         const starter = (list[0] as any)?.starterCode?.[language] || '';
         const pid = String(getProblemId(list[0]));
-        setUserCode((prev) => ({ ...prev, [pid]: starter }));
+        const key = `${pid}::${language}`;
+        setUserCode((prev) => ({ ...prev, [key]: starter }));
         setCurrentProblemCode(starter);
       } catch {}
       toast.success('Contest started!');
       setUserStarted(true);
       setPhase('problems');
+      // Ensure timer starts on enter (recompute from endTime now)
+      try {
+        const end = new Date((contest as any)?.endTime).getTime();
+        const secs = Math.max(1, Math.ceil((end - Date.now()) / 1000));
+        setTimeLeft(secs);
+        setTimeMode('untilEnd');
+      } catch {}
       return;
     } else {
       toast.error('No problems available in this contest');
@@ -445,20 +463,27 @@ const ContestPage = () => {
     const total = problems?.length ?? 0;
     if (index >= 0 && index < total) {
       setCurrentProblemIndex(index);
-      setCurrentProblem(problems[index]);
+      const p = problems[index];
+      setCurrentProblem(p);
+      try {
+        const pid = String(getProblemId(p));
+        const key = `${pid}::${language}`;
+        const saved = userCode[key];
+        const starter = (p as any)?.starterCode?.[language] || '';
+        setCurrentProblemCode(saved ?? starter ?? '');
+      } catch {}
     }
   }, [problems]);
 
   const handleCodeChange = useCallback((value: string) => {
     const currentProblemData = problems?.[currentProblemIndex];
     if (currentProblemData) {
-      setUserCode((prev) => ({
-        ...prev,
-        [String(getProblemId(currentProblemData))]: value,
-      }));
+      const pid = String(getProblemId(currentProblemData));
+      const key = `${pid}::${language}`;
+      setUserCode((prev) => ({ ...prev, [key]: value }));
     }
     setCurrentProblemCode(value);
-  }, [problems, currentProblemIndex, getProblemId]);
+  }, [problems, currentProblemIndex, getProblemId, language]);
 
   // Enrich current problem with full details (description, starterCode) if missing
   useEffect(() => {
@@ -481,8 +506,10 @@ const ContestPage = () => {
           setCurrentProblem((prev) => ({ ...(prev as any), ...prob } as any));
           const starter = prob?.starterCode?.[language];
           if (starter && !currentProblemCode) {
+            const pid = String(getProblemId(prob));
+            const key = `${pid}::${language}`;
             setCurrentProblemCode(starter);
-            setUserCode((prev) => ({ ...prev, [String(getProblemId(prob))]: starter }));
+            setUserCode((prev) => ({ ...prev, [key]: starter }));
           }
         } catch (e) {
           // ignore; will still render basic info
@@ -491,7 +518,7 @@ const ContestPage = () => {
     };
     enrich();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentProblemIndex, problems]);
+  }, [currentProblemIndex, problems, language]);
 
   const handleRunTests = useCallback(async (problemId?: string) => {
     const targetProblem = problemId ? problems.find(p => String(getProblemId(p)) === problemId) : currentProblem;
@@ -500,19 +527,19 @@ const ContestPage = () => {
     try {
       const pid = String(getProblemId(targetProblem));
       const t0 = performance.now();
-      const resp = await fetch('/compile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: userCode[pid] || '', lang: language.charAt(0).toUpperCase() + language.slice(1) }),
-      });
-      const data = await resp.json();
+      // Quick run against sample testcases
+      const data: any = await apiService.post<any>(
+        `/problems/${pid}/run`,
+        { code: userCode[`${pid}::${language}`] || '', language, contestId: id }
+      );
       const t1 = performance.now();
-      const out = data?.output ?? data?.run?.output ?? '';
+      const res = (data?.result || data);
+      const out = res?.output ?? res?.run?.output ?? '';
       const execMs = Math.max(0, Math.round(t1 - t0));
       setTestResults({
         results: [{ passed: true, output: out } as any],
-        passed: 0,
-        total: 0,
+        passed: Number(res?.testsPassed ?? 0),
+        total: Number(res?.totalTests ?? 0),
         executionTime: execMs,
       } as any);
       toast.success(`Ran in ${execMs} ms`);
@@ -523,6 +550,37 @@ const ContestPage = () => {
       setIsSubmitting(false);
     }
   }, [problems, currentProblem, userCode, language, getProblemId]);
+
+  const handleRunAllTests = useCallback(async () => {
+    if (!currentProblem) return;
+    setIsSubmitting(true);
+    try {
+      const pid = String(getProblemId(currentProblem));
+      const t0 = performance.now();
+      const data: any = await apiService.post<any>(
+        `/problems/${pid}/submit?dryRun=true`,
+        { code: userCode[`${pid}::${language}`] || '', language, contestId: id }
+      );
+      const t1 = performance.now();
+      const res = (data?.result || data);
+      const execMs = Math.max(0, Math.round(t1 - t0));
+      setTestResults({
+        results: [{ passed: res?.status === 'Accepted', output: res?.output ?? '' } as any],
+        passed: Number(res?.testsPassed ?? 0),
+        total: Number(res?.totalTests ?? 0),
+        executionTime: execMs,
+      } as any);
+      const summary = typeof res?.testsPassed === 'number' && typeof res?.totalTests === 'number'
+        ? `${res.testsPassed}/${res.totalTests} tests`
+        : 'All tests executed';
+      toast.success(`All tests: ${summary}`);
+    } catch (e: any) {
+      const msg = e?.message || 'Failed to run all tests';
+      toast.error(msg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [currentProblem, language, userCode, id, getProblemId]);
 
   const handleSubmitProblem = useCallback(async () => {
     if (!currentProblem) {
@@ -540,7 +598,7 @@ const ContestPage = () => {
 
       const currId = String(getProblemId(currentProblem));
       const response = await apiService.post<SubmitResponse>(`/problems/${currId}/submit`, {
-        code: userCode[currId] || '',
+        code: userCode[`${currId}::${language}`] || '',
         language,
         contestId: id
       });
@@ -643,9 +701,12 @@ const ContestPage = () => {
       const problem = problems[currentProblemIndex];
       setCurrentProblem(problem);
       const pid = String(getProblemId(problem));
-      setCurrentProblemCode(userCode[pid] || '');
+      const key = `${pid}::${language}`;
+      const saved = userCode[key];
+      const starter = (problem as any)?.starterCode?.[language] || '';
+      setCurrentProblemCode(saved ?? starter ?? '');
     }
-  }, [currentProblemIndex, problems, userCode, getProblemId]);
+  }, [currentProblemIndex, problems, userCode, getProblemId, language]);
 
   const isContestCompleted = contestEnded || phase === 'completed';
 
@@ -793,27 +854,9 @@ const ContestPage = () => {
           </div>
           
           {/* Main three-column layout: Left sidebar (problems), Center (tabs/content), Right sidebar (live) */}
-          <div className="grid grid-cols-1 xl:grid-cols-[220px_1fr_300px] gap-4 items-start">
-            {/* Left Sidebar: Problems list */}
-            <aside className="hidden xl:block bg-white rounded-lg border p-3 h-max sticky top-4">
-              <h3 className="font-semibold mb-2">Problems</h3>
-              <ol className="space-y-1">
-                {problems.map((p, idx) => {
-                  const pid = String(getProblemId(p));
-                  const active = idx === currentProblemIndex;
-                  return (
-                    <li key={pid}>
-                      <button
-                        onClick={() => { setCurrentProblemIndex(idx); setCurrentProblem(problems[idx]); }}
-                        className={`w-full text-left px-2 py-1 rounded ${active ? 'bg-blue-600 text-white' : 'hover:bg-blue-50'}`}
-                      >
-                        Problem {idx + 1}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ol>
-            </aside>
+          <div className="grid grid-cols-1 xl:grid-cols-[0px_1fr] gap-4 items-start">
+            {/* Left Sidebar: Problems list (hidden per request) */}
+            <aside className="hidden"></aside>
 
             {/* Center: Problems Tabs and content */}
             <Card className="shadow-lg border-blue-200">
@@ -968,11 +1011,11 @@ const ContestPage = () => {
                             variant="outline"
                             onClick={() => {
                               if (currentProblem) {
-                                setUserCode(prev => ({
-                                  ...prev,
-                                  [String(getProblemId(currentProblem))]: (currentProblem.starterCode as any)?.[language] || ''
-                                }));
-                                setCurrentProblemCode((currentProblem.starterCode as any)?.[language] || '');
+                                const pid = String(getProblemId(currentProblem));
+                                const key = `${pid}::${language}`;
+                                const starter = (currentProblem.starterCode as any)?.[language] || '';
+                                setUserCode(prev => ({ ...prev, [key]: starter }));
+                                setCurrentProblemCode(starter);
                               }
                             }}
                             className="flex-1 border-gray-300 hover:bg-gray-50"
@@ -996,6 +1039,24 @@ const ContestPage = () => {
                               <>
                                 <Play className="mr-2 h-4 w-4" />
                                 Run Tests
+                              </>
+                            )}
+                          </Button>
+
+                          <Button
+                            onClick={handleRunAllTests}
+                            disabled={isSubmitting}
+                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                          >
+                            {isSubmitting ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Running All...
+                              </>
+                            ) : (
+                              <>
+                                <Check className="mr-2 h-4 w-4" />
+                                Run All Tests
                               </>
                             )}
                           </Button>
@@ -1025,89 +1086,38 @@ const ContestPage = () => {
               </Tabs>
             </Card>
 
-            {/* Right Sidebar: Live Leaderboard & Clarifications */}
-            <aside className="hidden xl:block space-y-4 sticky top-4">
-              {/* Ask a Question */}
-              <div className="bg-white rounded-lg border p-3">
-                <h3 className="font-semibold mb-2">Ask a Question</h3>
-                <textarea
-                  value={askText}
-                  onChange={(e) => setAskText(e.target.value)}
-                  className="w-full border rounded p-2 text-sm mb-2"
-                  rows={3}
-                  placeholder="Type your question…"
-                />
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="text-sm">Visibility:</label>
-                  <select
-                    value={askVisibility}
-                    onChange={(e) => setAskVisibility(e.target.value as any)}
-                    className="border rounded px-2 py-1 text-sm"
-                  >
-                    <option value="all">All participants</option>
-                    <option value="team">Only my team</option>
-                  </select>
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  <input
-                    id="ask-private"
-                    type="checkbox"
-                    checked={askPrivate}
-                    onChange={(e) => setAskPrivate(e.target.checked)}
-                    className="h-4 w-4"
-                  />
-                  <label htmlFor="ask-private" className="text-sm">Mark as private</label>
-                </div>
-                <input
-                  type="text"
-                  value={askTags}
-                  onChange={(e) => setAskTags(e.target.value)}
-                  className="w-full border rounded p-2 text-sm mb-2"
-                  placeholder="Tags (comma separated)"
-                />
-                <Button disabled={askSubmitting} onClick={submitClarification} className="w-full">
-                  {askSubmitting ? 'Sending…' : 'Send'}
-                </Button>
-              </div>
+          </div>
 
-              <div className="bg-white rounded-lg border p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">Live Leaderboard</h3>
-                  {liveLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
-                </div>
-                <ol className="space-y-1 text-sm">
-                  {leaderboard.length === 0 ? (
-                    <li className="text-gray-500">No entries yet</li>
-                  ) : (
-                    leaderboard.slice(0, 10).map((e, i) => (
+          {/* Bottom panel: Live Leaderboard only */}
+          <div className="mt-4">
+            <div className="bg-white rounded-lg border p-3">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="font-semibold">Live Leaderboard</h3>
+                {liveLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+              </div>
+              <ol className="space-y-1 text-sm">
+                {leaderboard.length === 0 ? (
+                  <li className="text-gray-500">No entries yet</li>
+                ) : (
+                  leaderboard.slice(0, 20).map((e, i) => {
+                    let active = false;
+                    try {
+                      const ts = e.time ? new Date(e.time as any).getTime() : 0;
+                      active = ts > 0 && Date.now() - ts < 120000; // active within last 2 minutes
+                    } catch {}
+                    return (
                       <li key={i} className="flex items-center justify-between">
-                        <span className="truncate mr-2">{i + 1}. {e.username}</span>
+                        <div className="flex items-center min-w-0">
+                          <span className={`mr-2 inline-block w-2 h-2 rounded-full ${active ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} aria-hidden="true" />
+                          <span className="truncate mr-2">{i + 1}. {e.username}</span>
+                        </div>
                         <span className="font-semibold">{e.score}</span>
                       </li>
-                    ))
-                  )}
-                </ol>
-              </div>
-
-              <div className="bg-white rounded-lg border p-3">
-                <div className="flex items-center justify-between mb-2">
-                  <h3 className="font-semibold">Clarifications</h3>
-                </div>
-                <ul className="space-y-2 text-sm max-h-64 overflow-y-auto">
-                  {clarifications.length === 0 ? (
-                    <li className="text-gray-500">No clarifications yet</li>
-                  ) : (
-                    clarifications.map((c) => (
-                      <li key={c.id} className="border rounded p-2">
-                        <div className="font-medium">Q: {c.question}</div>
-                        {c.answer && <div className="text-green-700 mt-1">A: {c.answer}</div>}
-                        {c.at && <div className="text-xs text-gray-400 mt-1">{new Date(c.at).toLocaleString()}</div>}
-                      </li>
-                    ))
-                  )}
-                </ul>
-              </div>
-            </aside>
+                    );
+                  })
+                )}
+              </ol>
+            </div>
           </div>
         </div>
       </div>
