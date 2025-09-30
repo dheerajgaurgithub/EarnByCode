@@ -1,6 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
+import { sendOTPEmail } from '../utils/email.js';
 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -766,6 +767,44 @@ router.patch('/me/preferences', authenticate, async (req, res) => {
 
 // --- Email change via OTP ---
 // Step 1: Request change (send OTP to new email)
+router.post('/me/email/change/request', authenticate, async (req, res) => {
+  try {
+    const { newEmail } = req.body || {};
+    const email = String(newEmail || '').trim().toLowerCase();
+    if (!email) return res.status(400).json({ success: false, message: 'newEmail is required' });
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    if (email === String(user.email).toLowerCase()) {
+      return res.status(400).json({ success: false, message: 'New email must be different from current email' });
+    }
+
+    const existing = await User.findOne({ email });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'Email is already in use' });
+    }
+
+    // Generate 6-digit OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    user.emailChange = { newEmail: email, otp, expiresAt };
+    await user.save();
+
+    // Send OTP to the new email
+    try {
+      await sendOTPEmail(email, otp, 'email-verification');
+    } catch (e) {
+      // Even if email sending fails in dev, we keep the OTP stored; frontend can retry
+    }
+
+    return res.json({ success: true, message: 'OTP sent to new email' });
+  } catch (error) {
+    console.error('Email change request error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to request email change' });
+  }
+});
 
 // Change password
 router.patch('/me/password', authenticate, async (req, res) => {
@@ -791,16 +830,53 @@ router.patch('/me/password', authenticate, async (req, res) => {
   }
 });
 
-router.post('/me/email/change/request', authenticate, async (_req, res) => {
-  return res.status(410).json({ success: false, message: 'Email change OTP flow is disabled.' });
+// Step 2: Verify OTP and commit email change
+router.post('/me/email/change/verify', authenticate, async (req, res) => {
+  try {
+    const { otp } = req.body || {};
+    const code = String(otp || '').trim();
+    if (!code || !/^[0-9]{6}$/.test(code)) {
+      return res.status(400).json({ success: false, message: 'Valid 6-digit otp is required' });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const change = user.emailChange || {};
+    if (!change.newEmail || !change.otp || !change.expiresAt) {
+      return res.status(400).json({ success: false, message: 'No pending email change' });
+    }
+    if (String(change.otp) !== code) {
+      return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    }
+    if (new Date(change.expiresAt).getTime() < Date.now()) {
+      return res.status(400).json({ success: false, message: 'OTP expired' });
+    }
+
+    // Ensure target email still free
+    const targetEmail = String(change.newEmail).toLowerCase();
+    const existing = await User.findOne({ email: targetEmail });
+    if (existing && String(existing._id) !== String(user._id)) {
+      return res.status(400).json({ success: false, message: 'Email already taken' });
+    }
+
+    user.email = targetEmail;
+    user.isEmailVerified = true; // mark verified after change
+    user.emailChange = { newEmail: null, otp: null, expiresAt: null };
+    await user.save();
+
+    // Return updated user (no new token required)
+    const payload = user.toJSON();
+    return res.json({ success: true, message: 'Email updated successfully', user: payload });
+  } catch (error) {
+    console.error('Email change verify error:', error);
+    return res.status(500).json({ success: false, message: error.message || 'Failed to verify email change' });
+  }
 });
 
 // Get user activity (per-day accepted submission counts)
 // (Removed duplicate '/users/me/activity' route)
 
-router.post('/me/email/change/verify', authenticate, async (_req, res) => {
-  return res.status(410).json({ success: false, message: 'Email change OTP flow is disabled.' });
-});
 
 // Permanently delete the authenticated user's account
 router.delete('/me', authenticate, async (req, res) => {

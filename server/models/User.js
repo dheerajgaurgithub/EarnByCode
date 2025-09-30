@@ -206,7 +206,12 @@ const userSchema = new mongoose.Schema({
   resetPasswordExpire: Date,
   googleId: String,
   googleProfile: Object,
-  // Email change OTP fields removed
+  // Pending email change (OTP-based)
+  emailChange: {
+    newEmail: { type: String, default: null },
+    otp: { type: String, default: null },
+    expiresAt: { type: Date, default: null },
+  },
   // Profile avatar fields
   avatarUrl: {
     type: String,

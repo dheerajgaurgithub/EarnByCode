@@ -13,7 +13,7 @@ import api from '@/lib/api';
 
 export const Settings: React.FC = () => {
   const navigate = useNavigate();
-  const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar, deleteAccount } = useAuth();
+  const { user, updateUser, updatePreferences, changePassword, uploadAvatar, removeAvatar, deleteAccount, refreshUser } = useAuth();
   const { setTheme: setUiTheme } = useTheme();
   const { setLanguage, t } = useI18n();
   const toast = useToast();
@@ -31,6 +31,11 @@ export const Settings: React.FC = () => {
   // OTP flow removed
   const [deleteText, setDeleteText] = useState('');
   const [emailUpdated, setEmailUpdated] = useState(false);
+  // Email change OTP flow
+  const [emailOtpRequested, setEmailOtpRequested] = useState(false);
+  const [emailOtp, setEmailOtp] = useState('');
+  const [requestingEmailOtp, setRequestingEmailOtp] = useState(false);
+  const [verifyingEmailOtp, setVerifyingEmailOtp] = useState(false);
   
   // Notification settings
   const [notifications, setNotifications] = useState({
@@ -247,9 +252,18 @@ export const Settings: React.FC = () => {
     
     try {
       const updates: any = {};
-      // Direct email update (OTP removed)
+      // Email change now OTP-based: request OTP if email changed
       if (accountForm.email && accountForm.email !== user.email) {
-        updates.email = accountForm.email;
+        setRequestingEmailOtp(true);
+        try {
+          await api.post('/users/me/email/change/request', { newEmail: accountForm.email });
+          setEmailOtpRequested(true);
+          toast.success('We sent a 6-digit code to your new email. Enter it below to confirm.');
+        } catch (err: any) {
+          toast.error(err?.message || 'Failed to send verification code');
+        } finally {
+          setRequestingEmailOtp(false);
+        }
       }
       
       if (accountForm.newPassword) {
@@ -284,7 +298,26 @@ export const Settings: React.FC = () => {
     }
   };
 
-  // OTP verify removed
+  // Verify email change OTP
+  const verifyEmailChange = async () => {
+    if (!emailOtp || !/^\d{6}$/.test(emailOtp)) {
+      toast.error('Enter the 6-digit code sent to your new email');
+      return;
+    }
+    try {
+      setVerifyingEmailOtp(true);
+      await api.post('/users/me/email/change/verify', { otp: emailOtp.trim() });
+      try { await refreshUser(true); } catch {}
+      setEmailUpdated(true);
+      setEmailOtpRequested(false);
+      setEmailOtp('');
+      toast.success('Email updated successfully');
+    } catch (e: any) {
+      toast.error(e?.message || 'Invalid or expired code');
+    } finally {
+      setVerifyingEmailOtp(false);
+    }
+  };
 
   const onDeleteAccount = async () => {
     const phrase = 'delete earnbycode account';
@@ -427,7 +460,53 @@ export const Settings: React.FC = () => {
                             <CheckCircle className="h-4 w-4" /> Email updated
                           </p>
                         )}
-                        {/* OTP flow removed */}
+                        {/* Email change OTP UI */}
+                        {accountForm.email !== user.email && (
+                          <div className="mt-3 space-y-2">
+                            {!emailOtpRequested ? (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    setRequestingEmailOtp(true);
+                                    await api.post('/users/me/email/change/request', { newEmail: accountForm.email });
+                                    setEmailOtpRequested(true);
+                                    toast.success('Verification code sent');
+                                  } catch (e: any) {
+                                    toast.error(e?.message || 'Failed to send code');
+                                  } finally {
+                                    setRequestingEmailOtp(false);
+                                  }
+                                }}
+                                disabled={requestingEmailOtp}
+                                className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-xs sm:text-sm"
+                              >
+                                {requestingEmailOtp ? 'Sending…' : 'Send verification code'}
+                              </button>
+                            ) : (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]{6}"
+                                  maxLength={6}
+                                  value={emailOtp}
+                                  onChange={(e) => setEmailOtp(e.target.value)}
+                                  className="w-28 px-3 py-2 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 text-gray-900 dark:text-white text-sm"
+                                  placeholder="6-digit"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={verifyEmailChange}
+                                  disabled={verifyingEmailOtp}
+                                  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-xs sm:text-sm"
+                                >
+                                  {verifyingEmailOtp ? 'Verifying…' : 'Verify & update'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
 
                       {/* Avatar management */}
