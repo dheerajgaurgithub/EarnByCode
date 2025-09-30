@@ -11,6 +11,7 @@ const userSchema = new mongoose.Schema({
     minlength: 3,
     maxlength: 20
   },
+  usernameLastChangedAt: { type: Date, default: null },
   email: {
     type: String,
     required: true,
@@ -182,7 +183,10 @@ const userSchema = new mongoose.Schema({
     upiId: { type: String, trim: true },
     verified: { type: Boolean, default: false },
     lastUpdatedAt: { type: Date },
-    // OTP fields removed
+    // OTP and pending update for secure changes
+    bankOtp: { type: String, default: null },
+    bankOtpExpires: { type: Date, default: null },
+    pendingUpdate: { type: Object, default: null },
   },
   isAdmin: {
     type: Boolean,
@@ -211,6 +215,12 @@ const userSchema = new mongoose.Schema({
     newEmail: { type: String, default: null },
     otp: { type: String, default: null },
     expiresAt: { type: Date, default: null },
+  },
+  // Account deletion OTP
+  accountDeletion: {
+    otp: { type: String, default: null },
+    expiresAt: { type: Date, default: null },
+    requestedAt: { type: Date, default: null },
   },
   // Profile avatar fields
   avatarUrl: {

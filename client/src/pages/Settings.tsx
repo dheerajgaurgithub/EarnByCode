@@ -92,7 +92,11 @@ export const Settings: React.FC = () => {
   const [bankVerified, setBankVerified] = useState<boolean>(false);
   const [bankLastUpdated, setBankLastUpdated] = useState<string | null>(null);
   const [savingBank, setSavingBank] = useState(false);
-  // Bank OTP flow removed
+  // Bank OTP flow
+  const [bankOtpRequested, setBankOtpRequested] = useState(false);
+  const [bankOtp, setBankOtp] = useState('');
+  const [requestingBankOtp, setRequestingBankOtp] = useState(false);
+  const [verifyingBankOtp, setVerifyingBankOtp] = useState(false);
 
   const languageOptions = useMemo(() => {
     try {
@@ -209,8 +213,6 @@ export const Settings: React.FC = () => {
     loadBankDetails();
   }, []);
 
-  // Bank OTP flow removed
-
   const saveBankDetails = async () => {
     // Basic IFSC validation
     const ifscOk = /^[A-Z]{4}0[A-Z0-9]{6}$/i.test(bankForm.ifsc.trim());
@@ -227,7 +229,7 @@ export const Settings: React.FC = () => {
       return;
     }
     try {
-      setSavingBank(true);
+      setRequestingBankOtp(true);
       const payload = {
         bankAccountName: bankForm.bankAccountName.trim(),
         bankAccountNumber: bankForm.bankAccountNumber.trim() || undefined,
@@ -235,14 +237,33 @@ export const Settings: React.FC = () => {
         bankName: bankForm.bankName.trim() || undefined,
         upiId: bankForm.upiId.trim() || undefined
       };
-      await api.patch('/users/me/bank-details', payload);
-      toast.success('Bank details saved');
+      await api.post('/users/me/bank/otp/request', payload);
+      setBankOtpRequested(true);
+      toast.success('We sent a 6-digit code to your email. Enter it to confirm bank update.');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to send verification code');
+    } finally {
+      setRequestingBankOtp(false);
+    }
+  };
+
+  const verifyBankOtp = async () => {
+    if (!/^\d{6}$/.test(bankOtp)) {
+      toast.error('Enter the 6-digit code sent to your email');
+      return;
+    }
+    try {
+      setVerifyingBankOtp(true);
+      await api.post('/users/me/bank/otp/verify', { otp: bankOtp });
+      toast.success('Bank details updated');
       setBankForm((p) => ({ ...p, bankAccountNumber: '' }));
+      setBankOtp('');
+      setBankOtpRequested(false);
       setBankLastUpdated(new Date().toISOString());
     } catch (e: any) {
-      toast.error(e?.message || 'Failed to save bank details');
+      toast.error(e?.message || 'Invalid or expired code');
     } finally {
-      setSavingBank(false);
+      setVerifyingBankOtp(false);
     }
   };
 
@@ -319,25 +340,49 @@ export const Settings: React.FC = () => {
     }
   };
 
+  // Account deletion OTP flow
+  const [deleteOtpRequested, setDeleteOtpRequested] = useState(false);
+  const [deleteOtp, setDeleteOtp] = useState('');
+  const [requestingDeleteOtp, setRequestingDeleteOtp] = useState(false);
+  const [verifyingDeleteOtp, setVerifyingDeleteOtp] = useState(false);
+
   const onDeleteAccount = async () => {
     const phrase = 'delete earnbycode account';
     if (deleteText.trim().toLowerCase() !== phrase) {
       toast.error("Please type 'delete EarnByCode account' exactly to confirm.");
       return;
     }
+    if (!deleteOtpRequested) {
+      try {
+        setRequestingDeleteOtp(true);
+        await api.post('/users/me/delete/request');
+        setDeleteOtpRequested(true);
+        toast.success('We sent a 6-digit code to your email. Enter it to confirm deletion.');
+      } catch (e: any) {
+        toast.error(e?.message || 'Failed to send OTP');
+      } finally {
+        setRequestingDeleteOtp(false);
+      }
+      return;
+    }
+    // If already requested, require OTP input
+    if (!/^\d{6}$/.test(deleteOtp)) {
+      toast.error('Enter the 6-digit code sent to your email');
+      return;
+    }
     if (!confirm('This action is permanent. Are you sure you want to delete your account?')) return;
     try {
-      setDeleting(true);
+      setVerifyingDeleteOtp(true);
       const tid = toast.loading('Deleting your account…');
-      await deleteAccount();
+      await api.post('/users/me/delete/verify', { otp: deleteOtp.trim() });
       toast.dismiss(tid);
       toast.success('Account deleted');
-      // Redirect to home page after deletion
+      localStorage.removeItem('token');
       navigate('/', { replace: true });
-    } catch (err) {
-      toast.error((err as Error)?.message || 'Failed to delete account');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to delete account');
     } finally {
-      setDeleting(false);
+      setVerifyingDeleteOtp(false);
     }
   };
 
@@ -636,10 +681,10 @@ export const Settings: React.FC = () => {
                           <button
                             type="button"
                             onClick={saveBankDetails}
-                            disabled={savingBank}
+                            disabled={requestingBankOtp}
                             className="px-6 py-3 bg-gradient-to-r from-sky-500 to-sky-600 dark:from-emerald-500 dark:to-emerald-600 text-white rounded-xl disabled:opacity-60 font-medium text-sm sm:text-base transition-all duration-200 hover:shadow-lg"
                           >
-                            {savingBank ? 'Saving…' : 'Save Bank Details'}
+                            {requestingBankOtp ? 'Sending code…' : 'Save Bank Details'}
                           </button>
                           {bankVerified && (
                             <span className="text-xs sm:text-sm text-emerald-600 dark:text-emerald-400 font-medium">Verified</span>
@@ -648,6 +693,28 @@ export const Settings: React.FC = () => {
                             <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Last updated: {new Date(bankLastUpdated).toLocaleString()}</span>
                           )}
                         </div>
+                        {bankOtpRequested && (
+                          <div className="mt-4 flex items-center gap-3">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]{6}"
+                              maxLength={6}
+                              value={bankOtp}
+                              onChange={(e) => setBankOtp(e.target.value)}
+                              className="w-28 px-3 py-2 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 text-gray-900 dark:text-white text-sm"
+                              placeholder="6-digit"
+                            />
+                            <button
+                              type="button"
+                              onClick={verifyBankOtp}
+                              disabled={verifyingBankOtp}
+                              className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white rounded-md text-xs sm:text-sm"
+                            >
+                              {verifyingBankOtp ? 'Verifying…' : 'Verify & update'}
+                            </button>
+                          </div>
+                        )}
                       </div>
 
                       <div className="border-t border-slate-200 dark:border-gray-600 pt-8">
@@ -727,14 +794,31 @@ export const Settings: React.FC = () => {
                           placeholder="delete EarnByCode account"
                         />
                         <div className="mt-4">
-                          <button
-                            type="button"
-                            onClick={onDeleteAccount}
-                            disabled={deleting || deleteText.trim().toLowerCase() !== 'delete earnbycode account'}
-                            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 font-medium text-sm sm:text-base transition-all duration-200"
-                          >
-                            <Trash2 className="h-4 w-4" /> {deleting ? 'Deleting…' : 'Delete Account'}
-                          </button>
+                          <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
+                            {deleteOtpRequested && (
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]{6}"
+                                maxLength={6}
+                                value={deleteOtp}
+                                onChange={(e) => setDeleteOtp(e.target.value)}
+                                className="w-32 px-3 py-2 rounded-lg border border-rose-300 dark:border-rose-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                                placeholder="6-digit OTP"
+                              />
+                            )}
+                            <button
+                              type="button"
+                              onClick={onDeleteAccount}
+                              disabled={verifyingDeleteOtp || requestingDeleteOtp || deleteText.trim().toLowerCase() !== 'delete earnbycode account'}
+                              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 font-medium text-sm sm:text-base transition-all duration-200"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                              {deleteOtpRequested
+                                ? (verifyingDeleteOtp ? 'Verifying…' : 'Verify OTP & Delete')
+                                : (requestingDeleteOtp ? 'Sending code…' : 'Delete Account')}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

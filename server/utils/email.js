@@ -544,6 +544,52 @@ export const sendOTPEmail = async (to, otp, type = 'password-reset') => {
   return sendEmail({ to, otp, type });
 };
 
+// Email: Email change confirmed (sent to new email)
+export const sendEmailChangeSuccessEmail = async (to, oldEmail) => {
+  const subject = 'Your EarnByCode email has been updated';
+  const text = `Your account email has been changed from ${oldEmail} to ${to}.
+
+If you did not make this change, contact support immediately.
+
+— EarnByCode`;
+  const html = `
+    <!doctype html>
+    <html><body style="font-family: Arial, sans-serif;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;border:1px solid #e5e7eb;">
+        <h2 style="color:#1f2937;margin-top:0;">Email Updated</h2>
+        <p>Your account email has been changed from <strong>${oldEmail}</strong> to <strong>${to}</strong>.</p>
+        <p>If you did not make this change, please contact support immediately.</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+        <p style="color:#6b7280;font-size:12px">© ${new Date().getFullYear()} EarnByCode</p>
+      </div>
+    </body></html>
+  `;
+  return sendEmail({ to, subject, text, html });
+};
+
+// Email: Account deleted confirmation
+export const sendAccountDeletedEmail = async (to) => {
+  const subject = 'Your EarnByCode account has been deleted';
+  const text = `This is a confirmation that your EarnByCode account associated with ${to} has been deleted.
+
+We’re sorry to see you go. If this was not you, please contact support immediately.
+
+— EarnByCode`;
+  const html = `
+    <!doctype html>
+    <html><body style="font-family: Arial, sans-serif;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;border:1px solid #e5e7eb;">
+        <h2 style="color:#1f2937;margin-top:0;">Account Deleted</h2>
+        <p>This is a confirmation that your EarnByCode account has been deleted.</p>
+        <p>If this was not you, please contact support immediately.</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+        <p style="color:#6b7280;font-size:12px">© ${new Date().getFullYear()} EarnByCode</p>
+      </div>
+    </body></html>
+  `;
+  return sendEmail({ to, subject, text, html });
+};
+
 /**
  * Test email configuration
  * @returns {Promise<Object>} - Configuration test results

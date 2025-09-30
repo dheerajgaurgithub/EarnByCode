@@ -1,7 +1,7 @@
 import express from 'express';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
-import { sendOTPEmail } from '../utils/email.js';
+import { sendOTPEmail, sendEmailChangeSuccessEmail, sendAccountDeletedEmail } from '../utils/email.js';
 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -46,66 +46,108 @@ router.get('/me/bank-details', authenticate, async (req, res) => {
   }
 });
 
-// Update bank details (OTP no longer required)
+// Update bank details (now via OTP verify endpoint)
 // Body: { bankAccountName, bankAccountNumber, ifsc, bankName, upiId }
 router.patch('/me/bank-details', authenticate, async (req, res) => {
   try {
-    const user = await User.findById(req.user.id);
-    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
-
-    const details = user.bankDetails || {};
-    // OTP verification removed: proceed with validation-only update
-
-    const { bankAccountName, bankAccountNumber, ifsc, bankName, upiId } = req.body || {};
-    // Basic validation
-    if (!bankAccountName || !(ifsc || upiId)) {
-      return res.status(400).json({ success: false, message: 'bankAccountName and IFSC or UPI are required' });
-    }
-
-    details.bankAccountName = String(bankAccountName).trim();
-    if (ifsc) details.ifsc = String(ifsc).trim().toUpperCase();
-    if (bankName) details.bankName = String(bankName).trim();
-    if (upiId) details.upiId = String(upiId).trim();
-
-    if (bankAccountNumber) {
-      const acc = String(bankAccountNumber).replace(/\s+/g, '');
-      const last4 = acc.slice(-4);
-      details.bankAccountNumberLast4 = last4;
-      // Do not store full number in plain text; if you add encryption later, set bankAccountNumberEnc
-      details.bankAccountNumberEnc = ''; // placeholder (consider encrypting server-side)
-    }
-
-    details.lastUpdatedAt = new Date();
-    // Clear legacy OTP markers if present
-    details.bankOtp = null;
-    details.bankOtpExpires = null;
-    user.bankDetails = details;
-    user.markModified('bankDetails');
-    await user.save();
-
-    const safe = {
-      bankAccountName: details.bankAccountName || '',
-      bankAccountNumberLast4: details.bankAccountNumberLast4 || '',
-      ifsc: details.ifsc || '',
-      bankName: details.bankName || '',
-      upiId: details.upiId || '',
-      verified: !!details.verified,
-      lastUpdatedAt: details.lastUpdatedAt || null,
-    };
-    return res.json({ success: true, message: 'Bank details updated', bankDetails: safe });
+    return res.status(400).json({ success: false, message: 'Use OTP flow: /users/me/bank/otp/request then /users/me/bank/otp/verify' });
   } catch (error) {
     console.error('Update bank details error:', error);
     return res.status(500).json({ success: false, message: error.message || 'Failed to update bank details' });
   }
 });
 
-// Bank OTP flows removed
-router.post('/me/bank/otp/request', authenticate, async (_req, res) => {
-  return res.status(410).json({ success: false, message: 'Bank OTP flow has been removed.' });
+// Bank OTP flows
+// Request OTP with pending update snapshot
+router.post('/me/bank/otp/request', authenticate, async (req, res) => {
+  try {
+    const { bankAccountName, bankAccountNumber, ifsc, bankName, upiId } = req.body || {};
+    if (!bankAccountName || !(ifsc || upiId)) {
+      return res.status(400).json({ success: false, message: 'bankAccountName and IFSC or UPI are required' });
+    }
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const pending = {
+      bankAccountName: String(bankAccountName).trim(),
+      ifsc: ifsc ? String(ifsc).trim().toUpperCase() : undefined,
+      bankName: bankName ? String(bankName).trim() : undefined,
+      upiId: upiId ? String(upiId).trim() : undefined,
+    };
+    if (bankAccountNumber) {
+      const acc = String(bankAccountNumber).replace(/\s+/g, '');
+      pending.bankAccountNumberLast4 = acc.slice(-4);
+      pending.bankAccountNumberEnc = ''; // TODO: encrypt
+    }
+
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const expires = new Date(Date.now() + 15 * 60 * 1000);
+
+    user.bankDetails = user.bankDetails || {};
+    user.bankDetails.pendingUpdate = pending;
+    user.bankDetails.bankOtp = otp;
+    user.bankDetails.bankOtpExpires = expires;
+    user.markModified('bankDetails');
+    await user.save();
+
+    // Send OTP to current email
+    try {
+      await sendOTPEmail(user.email, otp, 'email-verification');
+    } catch {}
+
+    return res.json({ success: true, message: 'OTP sent to your email to confirm bank update' });
+  } catch (error) {
+    console.error('Bank OTP request error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to request bank update' });
+  }
 });
 
-router.post('/me/bank/otp/verify', authenticate, async (_req, res) => {
-  return res.status(410).json({ success: false, message: 'Bank OTP flow has been removed.' });
+router.post('/me/bank/otp/verify', authenticate, async (req, res) => {
+  try {
+    const { otp } = req.body || {};
+    const code = String(otp || '').trim();
+    if (!/^[0-9]{6}$/.test(code)) return res.status(400).json({ success: false, message: 'Valid 6-digit otp is required' });
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+
+    const bd = user.bankDetails || {};
+    if (!bd.pendingUpdate || !bd.bankOtp || !bd.bankOtpExpires) {
+      return res.status(400).json({ success: false, message: 'No pending bank update' });
+    }
+    if (String(bd.bankOtp) !== code) return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    if (new Date(bd.bankOtpExpires).getTime() < Date.now()) return res.status(400).json({ success: false, message: 'OTP expired' });
+
+    // Commit pending to actual fields
+    const pending = bd.pendingUpdate || {};
+    bd.bankAccountName = pending.bankAccountName || bd.bankAccountName || '';
+    if (pending.ifsc) bd.ifsc = pending.ifsc;
+    if (pending.bankName) bd.bankName = pending.bankName;
+    if (pending.upiId) bd.upiId = pending.upiId;
+    if (pending.bankAccountNumberLast4) bd.bankAccountNumberLast4 = pending.bankAccountNumberLast4;
+    if (pending.bankAccountNumberEnc !== undefined) bd.bankAccountNumberEnc = pending.bankAccountNumberEnc;
+    bd.lastUpdatedAt = new Date();
+    bd.pendingUpdate = null;
+    bd.bankOtp = null;
+    bd.bankOtpExpires = null;
+    user.bankDetails = bd;
+    user.markModified('bankDetails');
+    await user.save();
+
+    const safe = {
+      bankAccountName: bd.bankAccountName || '',
+      bankAccountNumberLast4: bd.bankAccountNumberLast4 || '',
+      ifsc: bd.ifsc || '',
+      bankName: bd.bankName || '',
+      upiId: bd.upiId || '',
+      verified: !!bd.verified,
+      lastUpdatedAt: bd.lastUpdatedAt || null,
+    };
+    return res.json({ success: true, message: 'Bank details updated', bankDetails: safe });
+  } catch (error) {
+    console.error('Bank OTP verify error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to verify bank update' });
+  }
 });
 
 // Get current user's daily problem (today in UTC)
@@ -625,7 +667,7 @@ router.patch('/me', authenticate, async (req, res) => {
   try {
     const updates = req.body;
     const allowedUpdates = [
-      'email',
+      'email', 'username',
       'fullName', 'bio', 'location', 'website', 
       'github', 'linkedin', 'twitter', 'company',
       'school'
@@ -658,9 +700,37 @@ router.patch('/me', authenticate, async (req, res) => {
       });
     }
 
-    // Update fields
+    // Handle username change with 14-day cooldown
+    if (typeof filteredUpdates.username === 'string' && filteredUpdates.username.trim() && filteredUpdates.username !== user.username) {
+      const desired = String(filteredUpdates.username).trim();
+      // Basic format check
+      const valid = /^[a-zA-Z0-9_]{3,20}$/.test(desired);
+      if (!valid) {
+        return res.status(400).json({ success: false, message: 'Username must be 3-20 characters, letters/numbers/underscore only' });
+      }
+      // Enforce 14-day gap
+      const last = user.usernameLastChangedAt ? new Date(user.usernameLastChangedAt).getTime() : 0;
+      const now = Date.now();
+      const TWO_WEEKS = 14 * 24 * 60 * 60 * 1000;
+      if (last && (now - last) < TWO_WEEKS) {
+        const remainingMs = TWO_WEEKS - (now - last);
+        const remainingDays = Math.ceil(remainingMs / (24 * 60 * 60 * 1000));
+        return res.status(400).json({ success: false, message: `Username can be changed again in ${remainingDays} day(s)` });
+      }
+      // Ensure availability
+      const exists = await User.findOne({ username: desired });
+      if (exists && String(exists._id) !== String(user._id)) {
+        return res.status(400).json({ success: false, message: 'Username is already taken' });
+      }
+      user.username = desired;
+      user.usernameLastChangedAt = new Date();
+    }
+
+    // Other fields
     Object.keys(filteredUpdates).forEach(update => {
-      user[update] = filteredUpdates[update];
+      if (update !== 'username') {
+        user[update] = filteredUpdates[update];
+      }
     });
 
     // Save the updated user
@@ -860,6 +930,7 @@ router.post('/me/email/change/verify', authenticate, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email already taken' });
     }
 
+    const oldEmail = user.email;
     user.email = targetEmail;
     user.isEmailVerified = true; // mark verified after change
     user.emailChange = { newEmail: null, otp: null, expiresAt: null };
@@ -867,6 +938,8 @@ router.post('/me/email/change/verify', authenticate, async (req, res) => {
 
     // Return updated user (no new token required)
     const payload = user.toJSON();
+    // Send confirmation to new email (best-effort)
+    try { await sendEmailChangeSuccessEmail(targetEmail, oldEmail); } catch {}
     return res.json({ success: true, message: 'Email updated successfully', user: payload });
   } catch (error) {
     console.error('Email change verify error:', error);
@@ -878,19 +951,65 @@ router.post('/me/email/change/verify', authenticate, async (req, res) => {
 // (Removed duplicate '/users/me/activity' route)
 
 
-// Permanently delete the authenticated user's account
+// Request OTP for account deletion
+router.post('/me/delete/request', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    user.accountDeletion = { otp, expiresAt, requestedAt: new Date() };
+    await user.save();
+    try { await sendOTPEmail(user.email, otp, 'email-verification'); } catch {}
+    return res.json({ success: true, message: 'Deletion OTP sent to your email' });
+  } catch (error) {
+    console.error('Delete request OTP error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to request account deletion' });
+  }
+});
+
+// Verify OTP and delete account
+router.post('/me/delete/verify', authenticate, async (req, res) => {
+  try {
+    const { otp } = req.body || {};
+    const code = String(otp || '').trim();
+    if (!/^[0-9]{6}$/.test(code)) return res.status(400).json({ success: false, message: 'Valid 6-digit otp is required' });
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const del = user.accountDeletion || {};
+    if (!del.otp || !del.expiresAt) return res.status(400).json({ success: false, message: 'No pending deletion' });
+    if (String(del.otp) !== code) return res.status(400).json({ success: false, message: 'Invalid OTP' });
+    if (new Date(del.expiresAt).getTime() < Date.now()) return res.status(400).json({ success: false, message: 'OTP expired' });
+
+    const publicId = user.avatarPublicId;
+    const email = user.email;
+    await User.deleteOne({ _id: user._id });
+    if (publicId) { cloudinary.v2.uploader.destroy(publicId).catch(() => {}); }
+    try { await sendAccountDeletedEmail(email); } catch {}
+    return res.json({ success: true, message: 'Account deleted' });
+  } catch (error) {
+    console.error('Delete verify error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to verify account deletion' });
+  }
+});
+
+// Permanently delete the authenticated user's account (legacy direct)
 router.delete('/me', authenticate, async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
 
     const publicId = user.avatarPublicId;
+    const email = user.email;
 
     await User.deleteOne({ _id: user._id });
 
     if (publicId) {
       cloudinary.v2.uploader.destroy(publicId).catch(() => {});
     }
+
+    // Best-effort deletion email
+    try { await sendAccountDeletedEmail(email); } catch {}
 
     // TODO: If you have related collections (submissions, discussions, etc.),
     // you may want to anonymize or delete those here as well.
