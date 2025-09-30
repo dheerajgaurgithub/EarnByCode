@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import User from '../models/User.js';
 import config from '../config/config.js';
 import { authenticate } from '../middleware/auth.js';
-import { sendOTPEmail } from '../utils/email.js';
+import { sendOTPEmail, sendVerificationLinkEmail } from '../utils/email.js';
 
 // Helper: is user currently blocked (without modifying DB)
 const isCurrentlyBlocked = (user) => {
@@ -112,28 +112,27 @@ router.post('/register', async (req, res) => {
     
     await user.save();
     
-    // If email verification is required, send OTP
+    // If email verification is required, send verification LINK (instead of OTP)
     if (requireEmailVerification) {
       try {
-        // Generate 6-digit OTP
-        const otp = Math.floor(100000 + Math.random() * 900000).toString();
-        const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
-        
-        // Store OTP in user record
-        user.verificationToken = otpHash;
-        user.verificationTokenExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
-        await user.save();
-        
-        // Send OTP email
-        const emailResult = await sendOTPEmail(normalizedEmail, otp, 'email-verification');
-        
-        console.log('📧 Verification OTP sent:', emailResult);
-        
+        // Create a short-lived link token to verify account
+        const linkToken = jwt.sign(
+          { userId: user._id },
+          process.env.JWT_SECRET,
+          { expiresIn: '1d' }
+        );
+
+        const apiUrl = config.API_URL || `${req.protocol}://${req.get('host')}`;
+        const verifyLink = `${apiUrl}/auth/verify-link?token=${encodeURIComponent(linkToken)}&next=${encodeURIComponent('/welcome')}&welcome=1`;
+
+        const emailResult = await sendVerificationLinkEmail(normalizedEmail, verifyLink);
+        console.log('📧 Verification link sent:', emailResult);
+
         return res.status(201).json({
-          message: 'Registration successful! Please check your email for verification code.',
+          message: 'Registration successful! Please check your email for the verification link.',
           requiresVerification: true,
           email: normalizedEmail,
-          ...((!isProd || process.env.OTP_DEBUG === 'true') ? { debugOtp: otp } : {})
+          linkSent: true
         });
         
       } catch (emailError) {
@@ -443,18 +442,23 @@ router.get('/verify-link', async (req, res) => {
       return res.status(404).send('User not found');
     }
     
-    if (user.isEmailVerified) {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-      return res.redirect(`${frontendUrl}${next}?verified=already`);
+    let alreadyVerified = false;
+    if (!user.isEmailVerified) {
+      user.isEmailVerified = true;
+      await user.save();
+    } else {
+      alreadyVerified = true;
     }
-    
-    // Verify the user
-    user.isEmailVerified = true;
-    await user.save();
-    
+
+    // Auto-login: generate auth token and send to frontend as query param
+    const authToken = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    );
+
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
-    const redirectUrl = `${frontendUrl}${next}?verified=success${welcome ? '&welcome=1' : ''}`;
-    
+    const redirectUrl = `${frontendUrl}${next}?verified=${alreadyVerified ? 'already' : 'success'}${welcome ? '&welcome=1' : ''}&token=${encodeURIComponent(authToken)}`;
     return res.redirect(redirectUrl);
     
   } catch (error) {

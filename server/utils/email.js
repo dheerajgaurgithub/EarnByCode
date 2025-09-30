@@ -69,6 +69,29 @@ const EMAIL_CONFIG = {
   }
 };
 
+// Email: Registration verification link
+export const sendVerificationLinkEmail = async (to, linkUrl) => {
+  const subject = 'Verify your EarnByCode account';
+  const text = `Welcome to EarnByCode!\n\nPlease click the link below to verify your account:\n${linkUrl}\n\nIf you did not create this account, please ignore this email.`;
+  const html = `
+    <!doctype html>
+    <html><body style="font-family: Arial, sans-serif;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;border:1px solid #e5e7eb;">
+        <h2 style="color:#1f2937;margin-top:0;">Verify your account</h2>
+        <p>Welcome to <strong>EarnByCode</strong>! Please click the button below to verify your email and complete your registration.</p>
+        <p style="margin:22px 0;">
+          <a href="${linkUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;">Verify my account</a>
+        </p>
+        <p>Or open this link in your browser:</p>
+        <p><a href="${linkUrl}">${linkUrl}</a></p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+        <p style="color:#6b7280;font-size:12px">© ${new Date().getFullYear()} EarnByCode</p>
+      </div>
+    </body></html>
+  `;
+  return sendEmail({ to, subject, text, html });
+};
+
 // Initialize SendGrid if configured
 if (EMAIL_CONFIG.useSendGrid && EMAIL_CONFIG.sendgrid.apiKey) {
   try {

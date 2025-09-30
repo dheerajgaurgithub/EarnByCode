@@ -46,6 +46,7 @@ import CookiesPolicy from './pages/legal/CookiesPolicy';
 import AuthCallback from './pages/AuthCallback';
 import { TestConnectionPage } from './pages/TestConnectionPage';
 import PublicProfile from './pages/PublicProfile';
+import Welcome from './pages/Welcome';
 const ContestPage = React.lazy(() => import('./pages/ContestPage'));
 
 // Sync theme with user preferences globally (auto->system)
@@ -259,6 +260,7 @@ function App() {
               <Route path="/help" element={<HelpCenter />} />
               <Route path="/verify/check" element={<VerifyCheck />} />
               <Route path="/verify/success" element={<EmailVerified />} />
+              <Route path="/welcome" element={<Welcome />} />
               <Route path="/privacy" element={<PrivacyPolicy />} />
               <Route path="/terms" element={<TermsOfService />} />
               <Route path="/cookies" element={<CookiesPolicy />} />
