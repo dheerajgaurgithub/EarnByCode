@@ -31,7 +31,7 @@ router.get('/', async (req, res) => {
 
     // First get the discussions with basic author info
     let discussions = await Discussion.find(query)
-      .populate('author', 'username avatarUrl')
+      .populate('author', 'username avatarUrl isAdmin')
       .populate('problem', 'title')
       .sort(sortOptions)
       .limit(limit * 1)
@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
       if (discussion.replies && discussion.replies.length > 0) {
         const populatedReplies = await Discussion.populate(discussion.replies, {
           path: 'author',
-          select: 'username avatarUrl'
+          select: 'username avatarUrl isAdmin'
         });
         return { ...discussion, replies: populatedReplies };
       }
@@ -134,8 +134,8 @@ router.post('/', authenticate, async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const discussion = await Discussion.findById(req.params.id)
-      .populate('author', 'username avatarUrl')
-      .populate('replies.author', 'username avatarUrl')
+      .populate('author', 'username avatarUrl isAdmin')
+      .populate('replies.author', 'username avatarUrl isAdmin')
       .lean();
 
     if (!discussion) {

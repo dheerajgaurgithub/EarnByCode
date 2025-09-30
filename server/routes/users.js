@@ -362,8 +362,16 @@ router.get('/username/:username', optionalAuth, async (req, res) => {
 
     const isOwner = req.user && String(req.user._id || req.user.id) === String(target._id);
     const isAdmin = req.user && req.user.isAdmin;
-    const privacy = (target.preferences && target.preferences.privacy) || {};
-    const visibility = privacy.profileVisibility || 'public';
+    const rawPrivacy = (target.preferences && target.preferences.privacy) || {};
+    const privacy = {
+      profileVisibility: rawPrivacy.profileVisibility || 'public',
+      showEmail: rawPrivacy.showEmail === true, // default false
+      showSolvedProblems: rawPrivacy.showSolvedProblems !== false, // default true
+      showContestHistory: rawPrivacy.showContestHistory !== false, // default true
+      showBio: rawPrivacy.showBio !== false, // default true
+      showSocialLinks: rawPrivacy.showSocialLinks !== false // default true
+    };
+    const visibility = privacy.profileVisibility;
 
     if (isOwner || isAdmin) {
       return res.json({ user: target });

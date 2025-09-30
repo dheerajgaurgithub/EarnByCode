@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, MessageCircle, ThumbsUp, MessageSquare, Send, X, Loader2 } from 'lucide-react';
+import { Plus, MessageCircle, ThumbsUp, MessageSquare, Send, X, Loader2, BadgeCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import api from '@/lib/api';
 import { useAuth } from '@/context/AuthContext';
@@ -11,6 +11,7 @@ interface UserInfo {
   username: string;
   fullName?: string;
   avatarUrl?: string;
+  isAdmin?: boolean;
 }
 
 interface Reply {
@@ -158,7 +159,8 @@ const Discuss: React.FC = () => {
           replies: response.data.data.replies || [],
           author: response.data.data.author || { 
             _id: user?._id || '', 
-            username: user?.username || 'Anonymous'
+            username: user?.username || 'Anonymous',
+            isAdmin: (user as any)?.isAdmin === true
           },
           isLiked: false,
           showReplies: false,
@@ -502,13 +504,25 @@ const Discuss: React.FC = () => {
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1">
-                            <h3 className="text-sm font-bold text-sky-800 dark:text-green-400 transition-colors duration-300">
+                            <h3 className="flex items-center gap-1.5 text-sm font-bold text-sky-800 dark:text-green-400 transition-colors duration-300">
                               <Link to={`/u/${discussion.author?.username || ''}`} className="hover:text-sky-600 dark:hover:text-green-300">
                                 {discussion.author?.fullName || discussion.author?.username || 'Anonymous'}
                               </Link>
+                              {discussion.author?.isAdmin && (
+                                <span title="Admin">
+                                  <BadgeCheck className="h-4 w-4 text-amber-500" />
+                                </span>
+                              )}
                             </h3>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-md transition-colors duration-300">
-                              {formatDate(discussion.createdAt)}
+                            <span className="flex items-center gap-2">
+                              {discussion.author?.isAdmin && (
+                                <span className="inline-flex items-center gap-1 text-[10px] sm:text-xs font-semibold text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/30 px-2 py-0.5 rounded-md">
+                                  By Admin
+                                </span>
+                              )}
+                              <span className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded-md transition-colors duration-300">
+                                {formatDate(discussion.createdAt)}
+                              </span>
                             </span>
                           </div>
                           <h2 className="text-sm font-bold mt-1 text-gray-900 dark:text-green-300 transition-colors duration-300 leading-tight">

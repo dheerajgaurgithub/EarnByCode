@@ -161,7 +161,9 @@ const userSchema = new mongoose.Schema({
       profileVisibility: { type: String, enum: ['public', 'registered', 'private'], default: 'public' },
       showEmail: { type: Boolean, default: false },
       showSolvedProblems: { type: Boolean, default: true },
-      showContestHistory: { type: Boolean, default: true }
+      showContestHistory: { type: Boolean, default: true },
+      showBio: { type: Boolean, default: true },
+      showSocialLinks: { type: Boolean, default: true }
     },
     editor: {
       fontSize: { type: Number, default: 14, min: 10, max: 24 },
