@@ -261,9 +261,9 @@ function App() {
               <Route path="/verify/check" element={<VerifyCheck />} />
               <Route path="/verify/success" element={<EmailVerified />} />
               <Route path="/welcome" element={<Welcome />} />
-              <Route path="/privacy" element={<PrivacyPolicy />} />
-              <Route path="/terms" element={<TermsOfService />} />
-              <Route path="/cookies" element={<CookiesPolicy />} />
+              <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+              <Route path="/terms-of-service" element={<TermsOfService />} />
+              <Route path="/cookie-policy" element={<CookiesPolicy />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/test-connection" element={<TestConnectionPage />} />
               <Route path="/u/:username" element={<PublicProfile />} />
