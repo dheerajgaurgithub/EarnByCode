@@ -1,7 +1,7 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiService } from '@/lib/api';
-import { Loader2, MapPin, Trophy, Award } from 'lucide-react';
+import { Loader2, MapPin, Trophy, Award, BadgeCheck } from 'lucide-react';
 import { useI18n } from '@/context/I18nContext';
 
 interface PublicUser {
@@ -19,6 +19,7 @@ interface PublicUser {
   solvedProblems?: Array<{ _id: string; title: string; difficulty: string }>;
   contestsParticipated?: Array<{ _id: string; title: string; status: string }>;
   message?: string; // privacy messages
+  isAdmin?: boolean;
 }
 
 const PublicProfile: React.FC = () => {
@@ -101,10 +102,18 @@ return (
           
           {/* User Info */}
           <div className="flex-1 min-w-0 w-full sm:w-auto">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-sky-800 dark:text-green-400 break-words mb-1">
-              {user.fullName || user.username}
-            </h1>
-            <div className="text-sm sm:text-base text-sky-600 dark:text-green-300 mb-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-sky-800 dark:text-green-400 break-words">
+                {user.fullName || user.username}
+              </h1>
+              {user.isAdmin && (
+                <span title="Admin of Platform" className="inline-flex items-center gap-1 text-xs sm:text-sm font-semibold text-amber-700 bg-amber-100 dark:text-amber-300 dark:bg-amber-900/30 px-2 py-1 rounded-lg">
+                  <BadgeCheck className="w-4 h-4 text-amber-500" />
+                  Admin of Platform
+                </span>
+              )}
+            </div>
+            <div className="text-sm sm:text-base text-sky-600 dark:text-green-300 mb-2 flex items-center gap-1">
               @{user.username}
             </div>
             
@@ -135,7 +144,8 @@ return (
         )}
       </div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid: hidden for admin profiles */}
+      {!user.isAdmin && (
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 lg:gap-6 mb-4 sm:mb-6 lg:mb-8">
         {/* CodeCoins */}
         <div className="bg-white/90 dark:bg-gray-900/95 backdrop-blur-sm p-3 sm:p-4 lg:p-6 rounded-xl sm:rounded-2xl border border-sky-200/50 dark:border-green-800/30 text-center hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
@@ -189,9 +199,10 @@ return (
           </p>
         </div>
       </div>
+      )}
 
-      {/* Recent Solved Problems */}
-      {Array.isArray(user.solvedProblems) && user.solvedProblems.length > 0 && (
+      {/* Recent Solved Problems: hidden for admin profiles */}
+      {!user.isAdmin && Array.isArray(user.solvedProblems) && user.solvedProblems.length > 0 && (
         <div className="bg-white/90 dark:bg-gray-900/95 backdrop-blur-sm rounded-2xl shadow-xl border border-sky-200/50 dark:border-green-800/30 p-4 sm:p-6 lg:p-8 mb-4 sm:mb-6 lg:mb-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 lg:mb-6">
             <div className="bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 p-2 sm:p-2.5 rounded-lg">
@@ -221,8 +232,8 @@ return (
         </div>
       )}
 
-      {/* Recent Contests */}
-      {Array.isArray(user.contestsParticipated) && user.contestsParticipated.length > 0 && (
+      {/* Recent Contests: hidden for admin profiles */}
+      {!user.isAdmin && Array.isArray(user.contestsParticipated) && user.contestsParticipated.length > 0 && (
         <div className="bg-white/90 dark:bg-gray-900/95 backdrop-blur-sm rounded-2xl shadow-xl border border-sky-200/50 dark:border-green-800/30 p-4 sm:p-6 lg:p-8 hover:shadow-2xl transition-all duration-300">
           <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 lg:mb-6">
             <div className="bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900/50 dark:to-gray-800/50 p-2 sm:p-2.5 rounded-lg">

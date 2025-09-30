@@ -419,6 +419,15 @@ router.get('/username/:username', optionalAuth, async (req, res) => {
       delete filtered.twitter;
     }
 
+    // If viewing an admin profile (and requester is not owner or admin), hide stats regardless of privacy
+    if (target.isAdmin && !(isOwner || isAdmin)) {
+      delete filtered.codecoins;
+      delete filtered.points;
+      delete filtered.ranking;
+      delete filtered.solvedProblems;
+      delete filtered.totalSolved;
+    }
+
     return res.json({ user: filtered });
   } catch (error) {
     console.error('Get user by username error:', error);
