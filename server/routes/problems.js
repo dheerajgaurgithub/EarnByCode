@@ -211,16 +211,30 @@ router.post('/:id/submit', authenticate, checkProblemAccess, async (req, res) =>
     }
 
     // Execute code against all test cases
-    const result = await executeCode(code, language, problem.testCases);
+    let result = await executeCode(code, language, problem.testCases);
+
+    // Attach hidden flags to each test case result
+    try {
+      const withHidden = (result.results || []).map((r, i) => ({
+        ...r,
+        hidden: Boolean(problem.testCases?.[i]?.hidden),
+      }));
+      // If dryRun, mask hidden test case details (input/expected)
+      if (dryRun) {
+        result = {
+          ...result,
+          results: withHidden.map((r) => r.hidden ? { ...r, input: undefined, expectedOutput: undefined } : r),
+        };
+      } else {
+        result = { ...result, results: withHidden };
+      }
+    } catch {}
 
     console.log('Code execution result:', result);
 
     // If dryRun, return results without persisting
     if (dryRun) {
-      return res.json({
-        dryRun: true,
-        result
-      });
+      return res.json({ dryRun: true, result });
     }
 
     // Enforce one submission per language per contest (or non-contest)
@@ -343,9 +357,13 @@ router.post('/:id/run', authenticate, checkProblemAccess, async (req, res) => {
       }
     }
 
-    // Execute code against sample test cases only
+    // Execute code against sample test cases only (non-hidden)
     const sampleTestCases = problem.testCases.filter(tc => !tc.hidden).slice(0, 3);
-    const result = await executeCode(code, language, sampleTestCases);
+    let result = await executeCode(code, language, sampleTestCases);
+    try {
+      // Tag as not hidden explicitly
+      result = { ...result, results: (result.results || []).map((r) => ({ ...r, hidden: false })) };
+    } catch {}
 
     res.json({ result });
   } catch (error) {

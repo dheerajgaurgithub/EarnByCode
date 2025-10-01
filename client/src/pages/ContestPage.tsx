@@ -110,6 +110,10 @@ const ContestPage = () => {
   const [askVisibility, setAskVisibility] = useState<'all' | 'team'>('all');
   const [askTags, setAskTags] = useState<string>('');
   const [askSubmitting, setAskSubmitting] = useState<boolean>(false);
+  // Server time offset (serverNow - clientNow)
+  const [clockOffsetMs, setClockOffsetMs] = useState<number>(0);
+  // Public (non-hidden) testcases for current problem
+  const [publicTestcases, setPublicTestcases] = useState<Array<{ input: string; expectedOutput: string }>>([]);
 
   // Helper to normalize problem identifier (_id preferred, fallback to id)
   const getProblemId = useCallback((p: Partial<Problem> | { _id?: unknown; id?: unknown } | null | undefined): string | undefined => {
@@ -260,55 +264,57 @@ const ContestPage = () => {
     fetchContestData();
   }, [id]);
 
-  // Handle timer (with grace to avoid immediate end on boundary)
+  // Sync server time once to compute offset
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await apiService.get<any>('/time');
+        const serverNow = Number((res?.now ?? res?.data?.now));
+        if (Number.isFinite(serverNow)) {
+          setClockOffsetMs(serverNow - Date.now());
+        }
+      } catch {}
+    })();
+  }, []);
+
+  // Handle timer by computing from start/end every tick (robust against drift and stale state)
   useEffect(() => {
     if (!contest) return;
 
-    const tick = () => {
-      setTimeLeft(prev => {
-        // No negative time
-        if (prev <= 0) {
-          if (timeMode === 'untilStart') {
-            // Switch to contest running window
-            try {
-              const now = new Date();
-              const endTime = new Date((contest as any).endTime);
-              const secs = Math.max(1, Math.ceil((endTime.getTime() - now.getTime()) / 1000));
-              setContestHasStarted(true);
-              setTimeMode('untilEnd');
-              return secs;
-            } catch {
-              setTimeMode('untilEnd');
-              return 0;
-            }
-          } else {
-            // Contest is over: mark ended only after slight grace
-            try {
-              const nowMs = Date.now();
-              const endMs = new Date((contest as any).endTime).getTime();
-              if (nowMs > endMs + 1500) { // 1.5s grace
-                setContestEnded(true);
-                // Do not auto-set phase to completed; user can submit feedback explicitly
-                return 0;
-              }
-              // still within grace, recompute remaining seconds to avoid flicker
-              const secs = Math.max(0, Math.ceil((endMs - nowMs) / 1000));
-              return secs;
-            } catch {
-              setContestEnded(true);
-              return 0;
-            }
-          }
+    const computeAndSet = () => {
+      try {
+        const nowMs = Date.now() + clockOffsetMs;
+        const startMs = new Date((contest as any).startTime).getTime();
+        const endMs = new Date((contest as any).endTime).getTime();
+        if (!isFinite(startMs) || !isFinite(endMs)) return;
+        if (nowMs >= endMs + 1500) {
+          setContestHasStarted(true);
+          setContestEnded(true);
+          setTimeMode('untilEnd');
+          setTimeLeft(0);
+          return;
         }
-        return prev - 1;
-      });
+        if (nowMs < startMs) {
+          setContestHasStarted(false);
+          setContestEnded(false);
+          setTimeMode('untilStart');
+          setTimeLeft(Math.max(1, Math.ceil((startMs - nowMs) / 1000)));
+          return;
+        }
+        // between start and end
+        setContestHasStarted(true);
+        setContestEnded(false);
+        setTimeMode('untilEnd');
+        setTimeLeft(Math.max(1, Math.ceil((endMs - nowMs) / 1000)));
+      } catch {}
     };
 
-    timerRef.current = setInterval(tick, 1000);
+    computeAndSet(); // set immediately on mount
+    timerRef.current = setInterval(computeAndSet, 1000);
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [contest, timeMode, userStarted]);
+  }, [contest, clockOffsetMs]);
 
   // Poll live leaderboard and clarifications during contest
   useEffect(() => {
@@ -520,6 +526,23 @@ const ContestPage = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentProblemIndex, problems, language]);
 
+  // Fetch public (non-hidden) testcases for the current problem
+  useEffect(() => {
+    const fetchPublicTests = async () => {
+      try {
+        const p = problems?.[currentProblemIndex];
+        if (!p) { setPublicTestcases([]); return; }
+        const pid = String(getProblemId(p));
+        const res = await apiService.get<any>(`/problems/${pid}/testcases`);
+        const list = (res?.testCases || res || []) as Array<{ input: string; expectedOutput: string }>;
+        setPublicTestcases(Array.isArray(list) ? list : []);
+      } catch {
+        setPublicTestcases([]);
+      }
+    };
+    fetchPublicTests();
+  }, [problems, currentProblemIndex, getProblemId]);
+
   const handleRunTests = useCallback(async (problemId?: string) => {
     const targetProblem = problemId ? problems.find(p => String(getProblemId(p)) === problemId) : currentProblem;
     if (!targetProblem) return;
@@ -536,10 +559,11 @@ const ContestPage = () => {
       const res = (data?.result || data);
       const out = res?.output ?? res?.run?.output ?? '';
       const execMs = Math.max(0, Math.round(t1 - t0));
+      const detailed = Array.isArray(res?.results) ? res.results : [{ passed: true, output: out }];
       setTestResults({
-        results: [{ passed: true, output: out } as any],
-        passed: Number(res?.testsPassed ?? 0),
-        total: Number(res?.totalTests ?? 0),
+        results: detailed as any,
+        passed: Number(res?.testsPassed ?? (detailed.filter((r:any)=>r.passed).length)),
+        total: Number(res?.totalTests ?? detailed.length),
         executionTime: execMs,
       } as any);
       toast.success(`Ran in ${execMs} ms`);
@@ -564,10 +588,11 @@ const ContestPage = () => {
       const t1 = performance.now();
       const res = (data?.result || data);
       const execMs = Math.max(0, Math.round(t1 - t0));
+      const detailed = Array.isArray(res?.results) ? res.results : [{ passed: res?.status === 'Accepted', output: res?.output ?? '' }];
       setTestResults({
-        results: [{ passed: res?.status === 'Accepted', output: res?.output ?? '' } as any],
-        passed: Number(res?.testsPassed ?? 0),
-        total: Number(res?.totalTests ?? 0),
+        results: detailed as any,
+        passed: Number(res?.testsPassed ?? (detailed.filter((r:any)=>r.passed).length)),
+        total: Number(res?.totalTests ?? detailed.length),
         executionTime: execMs,
       } as any);
       const summary = typeof res?.testsPassed === 'number' && typeof res?.totalTests === 'number'
@@ -838,9 +863,9 @@ const ContestPage = () => {
   if (phase === 'problems') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-4 max-w-7xl">
           {/* Contest Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-white rounded-lg shadow-md p-4 border border-blue-200">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-white rounded-lg shadow-md p-4 border border-blue-200 sticky top-2 z-30">
             <div className="mb-4 sm:mb-0">
               <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">{contest.title}</h1>
               <p className="text-sm sm:text-base text-gray-600 mt-1">
@@ -853,10 +878,8 @@ const ContestPage = () => {
             </div>
           </div>
           
-          {/* Main three-column layout: Left sidebar (problems), Center (tabs/content), Right sidebar (live) */}
-          <div className="grid grid-cols-1 xl:grid-cols-[0px_1fr] gap-4 items-start">
-            {/* Left Sidebar: Problems list (hidden per request) */}
-            <aside className="hidden"></aside>
+          {/* Main layout: single column center content */}
+          <div className="grid grid-cols-1 gap-4 items-start">
 
             {/* Center: Problems Tabs and content */}
             <Card className="shadow-lg border-blue-200">
@@ -872,7 +895,7 @@ const ContestPage = () => {
                     <TabsTrigger 
                       key={String(getProblemId(problem))}
                       value={String(getProblemId(problem))}
-                      className="flex-1 min-w-[120px] py-2 px-3 text-sm sm:text-base data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                      className="py-2 px-3 text-sm sm:text-base whitespace-nowrap data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                     >
                       Problem {index + 1}
                     </TabsTrigger>
@@ -881,9 +904,9 @@ const ContestPage = () => {
                 
                 {problems.map((problem) => (
                   <TabsContent key={String(getProblemId(problem))} value={String(getProblemId(problem))} className="p-0">
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 sm:p-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-4 sm:p-6">
                       {/* Problem Description */}
-                      <div className="space-y-4">
+                      <div className="space-y-4 min-w-0 break-words">
                         <div>
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4">
                             <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2 sm:mb-0">{problem.title}</h2>
@@ -892,7 +915,19 @@ const ContestPage = () => {
                             </span>
                           </div>
                           
-                          <div className="prose max-w-none mb-6 text-gray-700 bg-blue-50 p-4 rounded-lg border border-blue-200">
+                          {/* Collapsible on small screens, full on lg+ */}
+                          <div className="lg:hidden mb-6">
+                            <details className="bg-blue-50 rounded-lg border border-blue-200">
+                              <summary className="cursor-pointer list-none px-4 py-2 font-medium text-blue-800 flex items-center justify-between">
+                                <span>Description</span>
+                                <span className="text-xs text-blue-600">tap to toggle</span>
+                              </summary>
+                              <div className="prose max-w-none text-gray-700 px-4 pb-4">
+                                <div dangerouslySetInnerHTML={{ __html: problem.description }} />
+                              </div>
+                            </details>
+                          </div>
+                          <div className="prose max-w-none mb-6 text-gray-700 bg-blue-50 p-4 rounded-lg border border-blue-200 hidden lg:block">
                             <div dangerouslySetInnerHTML={{ __html: problem.description }} />
                           </div>
                         </div>
@@ -928,50 +963,55 @@ const ContestPage = () => {
                         )}
 
                         {/* Test Results */}
-                        {testResults && testResults.results && testResults.results.length > 0 && (
-                          <div className="space-y-4">
-                            <h3 className="font-semibold text-lg text-gray-800">Test Results:</h3>
-                            <div className="space-y-2 max-h-64 overflow-y-auto">
-                              {testResults.results.map((result, index) => (
-                                <div key={index} className={`p-3 rounded-md ${result.passed ? 'bg-green-50' : 'bg-red-50'}`}>
-                                  <div className="flex items-center">
-                                    {result.passed ? (
-                                      <CheckCircle className="text-green-500 mr-2 flex-shrink-0" />
-                                    ) : (
-                                      <XCircle className="text-red-500 mr-2 flex-shrink-0" />
-                                    )}
-                                    <span className="font-medium">Test Case {index + 1} - {result.passed ? 'Passed' : 'Failed'}</span>
-                                  </div>
-                                  {!result.passed && (
-                                    <div className="mt-2 text-sm space-y-1 pl-6">
-                                      {result.input && (
+                        {testResults && Array.isArray(testResults.results) && testResults.results.length > 0 && (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold text-lg text-gray-800">Test Results</h3>
+                              <span className="text-sm text-gray-600">
+                                Passed <b>{testResults.passed}</b> / {testResults.total} • {testResults.executionTime} ms
+                              </span>
+                            </div>
+                            <div className="max-h-72 overflow-y-auto divide-y border rounded-md bg-white">
+                              {testResults.results.map((r:any, index:number) => {
+                                const hidden = Boolean(r.hidden);
+                                const expected = r.expected ?? r.expectedOutput;
+                                const actual = r.output ?? r.actualOutput;
+                                return (
+                                  <div key={index} className={`p-3 ${r.passed ? 'bg-green-50/40' : 'bg-red-50/40'}`}>
+                                    <div className="flex items-center gap-2">
+                                      {r.passed ? <CheckCircle className="text-green-600 h-4 w-4"/> : <XCircle className="text-red-600 h-4 w-4"/>}
+                                      <span className="font-medium">Test {index + 1}</span>
+                                      {hidden && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">hidden</span>}
+                                      <span className="ml-auto text-xs text-gray-500">{r.runtime || ''}</span>
+                                    </div>
+                                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+                                      {!hidden && (
                                         <div>
-                                          Input: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
-                                            {JSON.stringify(result.input)}
-                                          </code>
+                                          <div className="text-gray-500">Input</div>
+                                          <pre className="mt-1 p-2 bg-gray-50 rounded border overflow-x-auto">{typeof r.input === 'string' ? r.input : JSON.stringify(r.input)}</pre>
                                         </div>
                                       )}
-                                      <div>
-                                        Expected: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
-                                          {JSON.stringify(result.expected)}
-                                        </code>
-                                      </div>
-                                      <div>
-                                        Got: <code className="bg-white px-1.5 py-0.5 rounded border border-gray-200">
-                                          {result.error ? result.error : JSON.stringify(result.output)}
-                                        </code>
+                                      {!hidden && (
+                                        <div>
+                                          <div className="text-gray-500">Expected</div>
+                                          <pre className="mt-1 p-2 bg-gray-50 rounded border overflow-x-auto">{typeof expected === 'string' ? expected : JSON.stringify(expected)}</pre>
+                                        </div>
+                                      )}
+                                      <div className={`${hidden ? 'sm:col-span-3' : ''}`}>
+                                        <div className="text-gray-500">Actual</div>
+                                        <pre className="mt-1 p-2 bg-gray-50 rounded border overflow-x-auto">{r.error ? String(r.error) : (typeof actual === 'string' ? actual : JSON.stringify(actual))}</pre>
                                       </div>
                                     </div>
-                                  )}
-                                </div>
-                              ))}
+                                  </div>
+                                );
+                              })}
                             </div>
                           </div>
                         )}
                       </div>
                       
                       {/* Code Editor */}
-                      <div className="space-y-4">
+                      <div className="space-y-4 min-w-0">
                         <div className="flex flex-col sm:flex-row sm:items-center justify-between">
                           <h3 className="font-semibold text-lg text-gray-800 mb-2 sm:mb-0">Your Solution:</h3>
                           <div className="w-full sm:w-auto">
@@ -993,7 +1033,7 @@ const ContestPage = () => {
                             value={currentProblemCode}
                             onChange={handleCodeChange}
                             language={language}
-                            height="400px"
+                            height="600px"
                             theme="vs-dark"
                             options={{
                               minimap: { enabled: false },

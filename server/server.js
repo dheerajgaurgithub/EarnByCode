@@ -174,6 +174,16 @@ app.get('/api/env/check', (req, res) => {
   }
 });
 
+// Lightweight server time endpoint for client-side clock sync
+app.get('/api/time', (req, res) => {
+  try {
+    const now = Date.now();
+    return res.status(200).json({ now, iso: new Date(now).toISOString() });
+  } catch (e) {
+    return res.status(200).json({ now: Date.now() });
+  }
+});
+
 // Compatibility endpoint for legacy clients expecting /api/code/run
 app.post('/api/code/run', async (req, res) => {
   try {
@@ -421,16 +431,31 @@ app.use(hpp({
 }));
 
 // Rate limiting
+// Global limiter (skip wallet endpoints to allow their own limiter)
 const limiter = rateLimit({
   max: 100,
   windowMs: 60 * 60 * 1000,
-  standardHeaders: true, // Return rate limit info in the RateLimit-* headers
-  legacyHeaders: false,  // Disable the X-RateLimit-* headers
-  // Explicitly use Express's trust proxy setting; safe because we only trust 1 hop above
+  standardHeaders: true,
+  legacyHeaders: false,
   trustProxy: true,
-  message: 'Too many requests from this IP, please try again in an hour!'
+  message: 'Too many requests from this IP, please try again in an hour!',
+  skip: (req) => {
+    try {
+      // When mounted at /api, req.path begins with '/wallet/...'
+      const p = String(req.path || '');
+      return p.startsWith('/wallet');
+    } catch { return false; }
+  },
 });
 app.use('/api', limiter);
+
+// Dedicated wallet limiter: allow higher burst, shorter window
+const walletLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute window
+  max: 120,            // up to 120 req/min per IP for wallet endpoints
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Session configuration
 app.use(session({
@@ -492,6 +517,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/contests', contestRoutes);
 app.use('/api/submissions', submissionRoutes);
+// Apply higher-burst limiter for wallet APIs
+app.use('/api/wallet', walletLimiter);
 app.use('/api/wallet', walletRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
