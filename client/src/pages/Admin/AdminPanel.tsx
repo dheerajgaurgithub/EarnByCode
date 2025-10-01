@@ -3,7 +3,7 @@ import { useAuth } from '../../context/AuthContext';
 import { Navigate, Link } from 'react-router-dom';
 import { 
   Lock, Unlock, Search, Shield, Users, Code, Trophy, 
-  Plus, Edit, Trash2, Loader2, Calendar, Clock, Tag, Check, X, AlertCircle
+  Plus, Edit, Trash2, Loader2, Calendar, Clock, AlertCircle
 } from 'lucide-react';
 import { Switch } from '@headlessui/react';
 import { Dialog, Transition } from '@headlessui/react';

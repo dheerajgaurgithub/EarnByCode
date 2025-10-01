@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { Editor } from '@monaco-editor/react';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { CheckCircle, Trophy, Award, BookOpen, MessageCircle, Play, AlertCircle, Clock3, Settings, Bot, Flame, Check } from 'lucide-react';
+import { CheckCircle, Trophy, Award, Play, AlertCircle, Clock3, Settings, Bot, Flame } from 'lucide-react';
 import api from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
 
@@ -232,6 +232,13 @@ const ProblemDetail: React.FC = () => {
     defaultTimerMin: 25,
     openChatByDefault: false,
   });
+  // Strict Engine Mode state
+  const [strictMode, setStrictMode] = useState<boolean>(false);
+  const [strictReport, setStrictReport] = useState<string>('');
+  const [customTests, setCustomTests] = useState<string>('');
+  const [compareExpected, setCompareExpected] = useState<boolean>(false);
+  const [tleMs, setTleMs] = useState<number>(5000);
+  const [copied, setCopied] = useState<boolean>(false);
   
   // Track if user is trying to submit without being logged in
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -516,6 +523,176 @@ const ProblemDetail: React.FC = () => {
       setIsRunning(false);
     }
   }, [problem, code, selectedLanguage]);
+
+  // Strict execution engine per requested format
+  const executeStrict = useCallback(async () => {
+    if (!code.trim()) {
+      setStrictReport(
+        '**Status:** Compilation Error\n**Details:**\nCode cannot be empty.'
+      );
+      return;
+    }
+
+    // Build test inputs
+    const inputs: string[] = (() => {
+      const txt = customTests.trim();
+      if (txt.length > 0) {
+        // Split tests by double newlines; fallback to single block
+        const parts = txt.split(/\n\n+/).map(s => s.replace(/\s+$/,'')).filter(Boolean);
+        return parts.length > 0 ? parts : [txt];
+      }
+      // Fallback to problem testCases if present (string inputs only)
+      const fromProblem = (problem?.testCases || [])
+        .map(tc => (typeof tc.input === 'string' ? tc.input : ''))
+        .filter(Boolean);
+      return fromProblem.length > 0 ? fromProblem : [''];
+    })();
+    // Expected outputs aligned to inputs (only when not providing custom tests)
+    const expectedList: (string | undefined)[] = (() => {
+      if (customTests.trim().length > 0) return inputs.map(() => undefined);
+      const arr = (problem?.testCases || []).map(tc => (typeof tc.expectedOutput === 'string' ? tc.expectedOutput : undefined));
+      return arr;
+    })();
+
+    // Map file per language
+    const fileForLang = (lang: Language) => {
+      switch (lang) {
+        case 'javascript': return { name: 'index.js', content: code };
+        case 'python': return { name: 'main.py', content: code };
+        case 'java': return { name: 'Solution.java', content: code };
+        case 'cpp': return { name: 'main.cpp', content: code };
+      }
+    };
+    const pistonLang: Record<Language, string> = {
+      javascript: 'javascript',
+      python: 'python',
+      java: 'java',
+      cpp: 'cpp',
+    };
+
+    // First do a compilation check (where supported) with empty stdin
+    try {
+      const payload = {
+        language: pistonLang[selectedLanguage] || selectedLanguage,
+        version: '*',
+        files: [fileForLang(selectedLanguage)],
+        stdin: ''
+      } as any;
+      const pre = await fetch(getExecuteUrl(), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      const preData = await pre.json();
+      const compileErr = (preData?.compile?.stderr || '').toString();
+      const compileCode = Number(preData?.compile?.code || 0);
+      if (compileErr && compileCode !== 0) {
+        const details = compileErr.replace(/\r\n/g,'\n');
+        setStrictReport(`**Status:** Compilation Error\n**Details:**\n${details}`);
+        return;
+      }
+    } catch (e: any) {
+      setStrictReport(`**Status:** Compilation Error\n**Details:**\n${e?.message || 'Executor unavailable'}`);
+      return;
+    }
+
+    // Execute each test case
+    let report = '[START OF EXECUTION]\n\nCompilation Phase:\n';
+    report += 'On Success: proceeding to execution...\n\n';
+
+    let idx = 1;
+    for (const input of inputs) {
+      try {
+        const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        const payload = {
+          language: pistonLang[selectedLanguage] || selectedLanguage,
+          version: '*',
+          files: [fileForLang(selectedLanguage)],
+          ...(typeof input === 'string' ? { stdin: input } : {})
+        } as any;
+        // TLE with AbortController
+        const controller = new AbortController();
+        const timer = setTimeout(() => controller.abort(), Math.max(1000, Number(tleMs) || 5000));
+        let tle = false;
+        let resp: Response;
+        try {
+          resp = await fetch(getExecuteUrl(), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: controller.signal
+          });
+        } catch (err: any) {
+          if (err?.name === 'AbortError') {
+            tle = true;
+          } else {
+            throw err;
+          }
+        } finally {
+          clearTimeout(timer);
+        }
+        if (tle) {
+          const timeText = `${Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0)}ms`;
+          report += `---\n**Test Case #${idx}:**\n`;
+          report += `**Input:**\n${input || '[No input]'}\n\n`;
+          report += `**Your Output (stdout):**\n[No output]\n\n`;
+          report += `**Error Output (stderr):**\n[No errors]\n\n`;
+          report += `**Result:** Time Limit Exceeded\n`;
+          report += `**Execution Time:** ${timeText}\n`;
+          report += `**Memory Usage:** N/A\n\n`;
+          idx += 1;
+          continue;
+        }
+        const data = await resp!.json();
+        const stdout = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? '').toString();
+        const stderr = (data?.run?.stderr ?? data?.stderr ?? '').toString();
+        const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time);
+        const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory);
+        const parseMs = (v: any): number | undefined => {
+          if (v == null) return undefined; const n = typeof v === 'string' ? parseFloat(v) : Number(v); if (Number.isNaN(n)) return undefined; return n < 100 ? Math.round(n * 1000) : Math.round(n);
+        };
+        const parseKb = (v: any): number | undefined => {
+          if (v == null) return undefined; const n = typeof v === 'string' ? parseFloat(v) : Number(v); if (Number.isNaN(n)) return undefined; return n > 4096 ? Math.round(n / 1024) : Math.round(n);
+        };
+        const providedMs = parseMs(rawTime);
+        const measuredMs = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0));
+        const timeMs = providedMs ?? measuredMs;
+        const memKb = parseKb(rawMem);
+        const memText = typeof memKb === 'number' ? (memKb >= 1024 ? `${(memKb/1024).toFixed(1)} MB` : `${Math.round(memKb)} KB`) : 'N/A';
+        const timeText = `${Math.round(timeMs || 0)}ms`;
+        // Detect executor-side TLE heuristics
+        const killed = (data?.run?.signal === 'SIGKILL') || /time limit exceeded/i.test(stderr || '') || Number(data?.run?.code) === 137;
+        const result = killed ? 'Time Limit Exceeded' : (stderr ? 'Runtime Error' : 'Success');
+
+        report += `---\n**Test Case #${idx}:**\n`;
+        report += `**Input:**\n${input || '[No input]'}\n\n`;
+        report += `**Your Output (stdout):**\n${stdout ? stdout : '[No output]'}\n\n`;
+        report += `**Error Output (stderr):**\n${stderr ? stderr : '[No errors]'}\n\n`;
+        report += `**Result:** ${result}\n`;
+        report += `**Execution Time:** ${timeText}\n`;
+        report += `**Memory Usage:** ${memKb != null ? memText : 'N/A'}\n`;
+        if (compareExpected) {
+          const expected = expectedList[idx - 1];
+          if (typeof expected === 'string') {
+            const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
+            const passed = normalize(stdout) === normalize(expected);
+            report += `**Expected Output:**\n${expected}\n`;
+            report += `**Comparison:** ${passed ? 'Passed' : 'Failed'}\n`;
+          } else {
+            report += `**Comparison:** N/A\n`;
+          }
+        }
+        report += `\n`;
+      } catch (e: any) {
+        report += `---\n**Test Case #${idx}:**\n`;
+        report += `**Input:**\n${input || '[No input]'}\n\n`;
+        report += `**Your Output (stdout):**\n[No output]\n\n`;
+        report += `**Error Output (stderr):**\n${e?.message || 'Unknown error'}\n\n`;
+        report += `**Result:** Runtime Error\n`;
+        report += `**Execution Time:** 0ms\n`;
+        report += `**Memory Usage:** N/A\n\n`;
+      } finally {
+        idx += 1;
+      }
+    }
+
+    setStrictReport(report.trimEnd());
+  }, [code, customTests, problem?.testCases, selectedLanguage, compareExpected, tleMs]);
 
   // Handle code submission
   const handleSubmitCode = useCallback(async () => {
