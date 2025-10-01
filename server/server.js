@@ -241,11 +241,10 @@ dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 app.set('trust proxy', 1);
 
 // --- Robust CORS setup (must be BEFORE routes and sessions) ---
-const VERCEL = 'http://localhost:5173'
+const VERCEL =  'https://earnbycode-ebc.vercel.app'
 const CORS_ALLOW_ALL = String(process.env.CORS_ALLOW_ALL || '').toLowerCase() === 'true';
 const allowedOrigins = [
   'http://localhost:5173',
-  'http://localhost:3000',
   VERCEL,
   'https://earnbycode-ebc.vercel.app',
   process.env.FRONTEND_ORIGIN,

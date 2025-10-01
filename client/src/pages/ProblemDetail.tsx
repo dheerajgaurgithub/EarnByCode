@@ -310,11 +310,28 @@ const ProblemDetail: React.FC = () => {
       // Build optional stdin from first example if present
       const exampleInput = problem.examples?.[0]?.input ?? '';
       const exampleOutput = problem.examples?.[0]?.output ?? '';
-      const payload = {
-        language: selectedLanguage,
-        files: [{ content: code }],
-        ...(typeof exampleInput === 'string' ? { stdin: exampleInput } : {})
+      // Build payload compatible with external executors like Piston
+      const fileForLang = (lang: Language) => {
+        switch (lang) {
+          case 'javascript': return { name: 'index.js', content: code };
+          case 'python': return { name: 'main.py', content: code };
+          case 'java': return { name: 'Solution.java', content: code };
+          case 'cpp': return { name: 'main.cpp', content: code };
+        }
       };
+      // Map language IDs for external executors (Piston accepts these IDs)
+      const pistonLang: Record<Language, string> = {
+        javascript: 'javascript',
+        python: 'python',
+        java: 'java',
+        cpp: 'cpp',
+      };
+      const payload = {
+        language: pistonLang[selectedLanguage] || selectedLanguage,
+        version: '*',
+        files: [fileForLang(selectedLanguage)],
+        ...(typeof exampleInput === 'string' ? { stdin: exampleInput } : {})
+      } as any;
 
       const resp = await fetch(getExecuteUrl(), {
         method: 'POST',
@@ -322,8 +339,8 @@ const ProblemDetail: React.FC = () => {
         body: JSON.stringify(payload)
       });
       const data = await resp.json();
-      const out = (data?.run?.output ?? '').toString();
-      const err = (data?.run?.stderr ?? '').toString();
+      const out = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? '').toString();
+      const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
       // Normalize runtime and memory from sandbox responses
       const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time) as number | string | undefined;
       const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory) as number | string | undefined;
@@ -401,19 +418,34 @@ const ProblemDetail: React.FC = () => {
       let passedCount = 0;
 
       const runOne = async (stdin: string | undefined, expected: string | undefined) => {
-        const payload = {
-          language: selectedLanguage,
-          files: [{ content: code }],
-          ...(stdin ? { stdin } : {})
+        const fileForLang = (lang: Language) => {
+          switch (lang) {
+            case 'javascript': return { name: 'index.js', content: code };
+            case 'python': return { name: 'main.py', content: code };
+            case 'java': return { name: 'Solution.java', content: code };
+            case 'cpp': return { name: 'main.cpp', content: code };
+          }
         };
+        const pistonLang: Record<Language, string> = {
+          javascript: 'javascript',
+          python: 'python',
+          java: 'java',
+          cpp: 'cpp',
+        };
+        const payload = {
+          language: pistonLang[selectedLanguage] || selectedLanguage,
+          version: '*',
+          files: [fileForLang(selectedLanguage)],
+          ...(stdin ? { stdin } : {})
+        } as any;
         const resp = await fetch(getExecuteUrl(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
         const data = await resp.json();
-        const out = (data?.run?.output ?? '').toString();
-        const err = (data?.run?.stderr ?? '').toString();
+        const out = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? '').toString();
+        const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
         const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time) as number | string | undefined;
         const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory) as number | string | undefined;
         const parseMs = (v: any): number | undefined => {
