@@ -1157,7 +1157,21 @@ const ContestPage = () => {
                             <div className="flex items-center justify-between">
                               <h3 className="font-semibold text-lg text-gray-800">Test Results</h3>
                               <span className="text-sm text-gray-600">
-                                Passed <b>{testResults.passed}</b> / {testResults.total} • {testResults.executionTime} ms
+                                Passed <b>{testResults.passed}</b> / {testResults.total}
+                                {(() => {
+                                  const rt = (testResults as any).runtimeMs ?? (testResults as any).timeMs ?? (testResults as any).executionTime;
+                                  const mem = (testResults as any).memoryKb ?? (testResults as any).memory_kb ?? (testResults as any).memory;
+                                  return (
+                                    <>
+                                      {rt != null && typeof rt !== 'undefined' && (
+                                        <> • Runtime: {Math.round(Number(rt))} ms</>
+                                      )}
+                                      {mem != null && typeof mem !== 'undefined' && (
+                                        <> • Memory: {Math.round(Number(mem))} KB</>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </span>
                             </div>
                             <div className="max-h-72 overflow-y-auto divide-y border rounded-md bg-white">

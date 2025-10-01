@@ -5,6 +5,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Toaster } from './components/ui/toaster';
 import App from './App';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 import './index.css';
 
 // Get the base URL from environment variables or use root
@@ -55,6 +56,8 @@ createRoot(document.getElementById('root')!).render(
         <ThemeProvider>
           <AuthProvider>
             <App />
+            {/* Vercel Speed Insights */}
+            <SpeedInsights />
             <Toaster />
           </AuthProvider>
         </ThemeProvider>

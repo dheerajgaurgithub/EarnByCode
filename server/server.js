@@ -122,6 +122,7 @@ app.post('/api/execute', async (req, res) => {
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
           return res.status(200).json({ run: { output: '', stderr: err } });
         }
+        const start = Date.now();
         const child = spawn(java, ['-cp', tmpDir, 'Solution'], { stdio: ['pipe', 'pipe', 'pipe'] });
         const stdoutChunks = [];
         const stderrChunks = [];
@@ -143,7 +144,8 @@ app.post('/api/execute', async (req, res) => {
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
           const out = Buffer.concat(stdoutChunks).toString('utf8');
           const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
-          return res.status(200).json({ run: { output: out, stderr: err } });
+          const timeMs = Date.now() - start;
+          return res.status(200).json({ run: { output: out, stderr: err, timeMs }, timeMs });
         });
       });
       return;
@@ -170,6 +172,7 @@ app.post('/api/execute', async (req, res) => {
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
           return res.status(200).json({ run: { output: '', stderr: err } });
         }
+        const start = Date.now();
         const child = spawn(exeFile, [], { stdio: ['pipe', 'pipe', 'pipe'] });
         const stdoutChunks = [];
         const stderrChunks = [];
@@ -208,6 +211,8 @@ app.post('/api/execute', async (req, res) => {
 
     const stdout = [];
     const stderr = [];
+    const memBefore = process.memoryUsage().rss;
+    const tStart = Date.now();
     const stdin = typeof payload.stdin === 'string' ? unescapeHtmlLocal(payload.stdin) : '';
     const inputLines = stdin.split(/\r?\n/);
     let inputIndex = 0;
