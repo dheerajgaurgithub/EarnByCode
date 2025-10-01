@@ -132,6 +132,9 @@
   * {
     border-color: hsl(var(--border));
   }
+  /* Prevent layout jumps for images lacking intrinsic sizes */
+  img[width][height] { height: auto; }
+  img:not([width]):not([height]) { aspect-ratio: 16 / 9; }
   
   body {
     background-color: hsl(var(--background));

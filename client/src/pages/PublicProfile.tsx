@@ -94,7 +94,7 @@ return (
           {/* Avatar */}
           <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-28 lg:h-28 rounded-2xl overflow-hidden ring-4 ring-sky-200/60 dark:ring-green-600/40 bg-gradient-to-br from-sky-100 to-sky-200 dark:from-green-900 dark:to-gray-800 flex items-center justify-center text-sky-600 dark:text-green-400 text-lg sm:text-xl lg:text-2xl font-bold shadow-lg">
             {user.avatarUrl ? (
-              <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+              <img src={user.avatarUrl} alt={user.username} width={112} height={112} loading="eager" decoding="async" className="w-full h-full object-cover" />
             ) : (
               (user.username || 'U').charAt(0).toUpperCase()
             )}

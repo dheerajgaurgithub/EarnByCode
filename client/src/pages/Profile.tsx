@@ -352,7 +352,7 @@ export const Profile: React.FC = () => {
             <div className="flex flex-col sm:flex-row items-center sm:items-start space-y-2 sm:space-y-0 sm:space-x-4 w-full lg:w-auto">
               <div onClick={() => user.avatarUrl && setShowPreview(true)} className={`relative ${avatarShape === 'round' ? 'rounded-full' : 'rounded-lg'} overflow-hidden border-2 border-sky-200 dark:border-green-600 bg-white dark:bg-gray-800 flex items-center justify-center w-16 h-16 sm:w-18 sm:h-18 cursor-${user.avatarUrl ? 'zoom-in' : 'default'} transition-all duration-300 hover:scale-105 hover:border-sky-300 dark:hover:border-green-500`}>
                 {user.avatarUrl ? (
-                  <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+                  <img src={user.avatarUrl} alt={user.username} width={64} height={64} loading="eager" decoding="async" className="w-full h-full object-cover" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-sky-600 dark:text-green-400 text-lg font-bold">
                     {(user.username || 'U').charAt(0).toUpperCase()}
@@ -492,7 +492,7 @@ export const Profile: React.FC = () => {
           {showPreview && user.avatarUrl && (
             <div className="fixed inset-0 z-[90] flex items-center justify-center bg-black/70 p-3" onClick={() => setShowPreview(false)}>
               <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl border border-sky-200 dark:border-green-700 overflow-hidden transition-all duration-300" onClick={(e) => e.stopPropagation()}>
-                <img src={user.avatarUrl} alt={user.username} className="max-h-[80vh] max-w-[90vw] object-contain" />
+                <img src={user.avatarUrl} alt={user.username} loading="lazy" decoding="async" className="max-h-[80vh] max-w-[90vw] object-contain" />
                 <div className="p-2 text-center bg-sky-50 dark:bg-gray-800 text-sky-700 dark:text-green-400 text-xs">Click outside to close</div>
               </div>
             </div>

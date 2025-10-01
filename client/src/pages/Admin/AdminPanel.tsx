@@ -1849,6 +1849,10 @@ const AdminPanel: React.FC = () => {
                                   <img
                                     src={user.avatarUrl}
                                     alt={user.username}
+                                    width={32}
+                                    height={32}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="h-6 w-6 sm:h-8 sm:w-8 rounded-full object-cover ring-2 ring-blue-100 flex-shrink-0"
                                   />
                                 ) : (

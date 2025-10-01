@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Clock, Tag, User } from 'lucide-react';
 
 const Blog = () => {
@@ -97,7 +97,7 @@ const Blog = () => {
       <div className="max-w-7xl mx-auto px-4 py-8 lg:py-12">
         {/* Header */}
         <header className="text-center mb-12 lg:mb-16">
-          <img src="/logo.png" alt="EarnByCode Logo" className="inline-block mb-4 w-16 h-16 lg:w-24 lg:h-24 object-contain" />
+          <img src="/logo.png" alt="EarnByCode Logo" width={96} height={96} loading="eager" decoding="async" className="inline-block mb-4 w-16 h-16 lg:w-24 lg:h-24 object-contain" />
           <h1 className="text-3xl lg:text-5xl font-extrabold bg-gradient-to-r from-sky-600 to-sky-800 dark:from-green-400 dark:to-green-600 bg-clip-text text-transparent mb-4">
             EarnByCode Blog
           </h1>
@@ -119,6 +119,10 @@ const Blog = () => {
                   <img
                     src={post.image}
                     alt={post.title}
+                    width={1200}
+                    height={675}
+                    loading="lazy"
+                    decoding="async"
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

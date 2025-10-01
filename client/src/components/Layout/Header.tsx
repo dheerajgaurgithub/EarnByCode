@@ -167,6 +167,10 @@ export const Header: React.FC = () => {
                   <img
                     src="/logo.png"
                     alt="EarnByCode Logo"
+                    width={48}
+                    height={48}
+                    loading="eager"
+                    decoding="async"
                     className="h-full w-full object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-md"
                   />
                   {/* Glow effect */}
@@ -300,7 +304,7 @@ export const Header: React.FC = () => {
                   <span className="sr-only">{t('user.open_menu')}</span>
                   <div className="relative flex-shrink-0">
                     {userInfo.avatarUrl ? (
-                      <img src={userInfo.avatarUrl} alt={displayName} className="h-4 w-4 sm:h-5 sm:w-5 rounded-full object-cover border border-sky-200 dark:border-green-700" />
+                      <img src={userInfo.avatarUrl} alt={displayName} width={20} height={20} loading="lazy" decoding="async" className="h-4 w-4 sm:h-5 sm:w-5 rounded-full object-cover border border-sky-200 dark:border-green-700" />
                     ) : (
                       <div className="h-4 w-4 sm:h-5 sm:w-5 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center border border-sky-200 dark:border-green-700">
                         <span className="text-sky-700 dark:text-green-400 font-semibold text-xs">
@@ -343,7 +347,7 @@ export const Header: React.FC = () => {
                       <div className="px-2 sm:px-3 py-2 border-b border-sky-200/50 dark:border-green-800/50">
                         <div className="flex items-center space-x-2">
                           {userInfo.avatarUrl ? (
-                            <img src={userInfo.avatarUrl} alt={displayName} className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg object-cover border border-sky-200 dark:border-green-700 flex-shrink-0" />
+                            <img src={userInfo.avatarUrl} alt={displayName} width={32} height={32} loading="lazy" decoding="async" className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg object-cover border border-sky-200 dark:border-green-700 flex-shrink-0" />
                           ) : (
                             <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-lg bg-white dark:bg-gray-800 flex items-center justify-center border border-sky-200 dark:border-green-700 flex-shrink-0">
                               <span className="text-sky-700 dark:text-green-400 font-bold text-xs sm:text-sm">

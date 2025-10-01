@@ -1,6 +1,5 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Building } from 'lucide-react';
 import imgDheeraj from './Honors/dheeraj.png';
 import imgManish from './Honors/manish.png';
 import imgMukul from './Honors/mukul.png';
@@ -22,7 +21,7 @@ export const Company: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white dark:from-gray-950 dark:to-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6">
       <div className="max-w-4xl mx-auto">
         <header className="text-center mb-6 sm:mb-8 lg:mb-10">
-          <img src="/logo.png" alt="EarnByCode Logo" className="inline-block mb-3 sm:mb-4 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain" />
+          <img src="/logo.png" alt="EarnByCode Logo" width={80} height={80} loading="eager" decoding="async" className="inline-block mb-3 sm:mb-4 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain" />
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-green-100 mb-2">About EarnByCode</h1>
           <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-green-300 mt-2 max-w-2xl mx-auto leading-relaxed px-2">
             EarnByCode is a coding practice and contests platform. Solve problems, compete in timed contests,
@@ -107,7 +106,7 @@ export const Company: React.FC = () => {
           <div className="flex justify-center mb-6 sm:mb-8">
             <div className="text-center p-4 sm:p-6 bg-white dark:bg-gray-900 border border-sky-200 dark:border-green-800 rounded-xl max-w-xs shadow-sm hover:shadow-md transition-shadow">
               <div className="relative inline-block mb-3 sm:mb-4">
-                <img src={ceo.image} alt={ceo.name} className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-3 border-sky-200 dark:border-green-700 shadow-sm" />
+                <img src={ceo.image} alt={ceo.name} width={80} height={80} loading="eager" decoding="async" className="w-16 h-16 sm:w-20 sm:h-20 rounded-full object-cover border-3 border-sky-200 dark:border-green-700 shadow-sm" />
                 <div className="absolute -bottom-1 -right-1 w-5 h-5 sm:w-6 sm:h-6 bg-sky-500 dark:bg-green-500 rounded-full border-2 border-white dark:border-gray-900 flex items-center justify-center">
                   <span className="text-white text-xs sm:text-sm font-bold">👑</span>
                 </div>
@@ -127,7 +126,7 @@ export const Company: React.FC = () => {
               {otherTeamMembers.map((member) => (
                 <div key={member.name} className="text-center group">
                   <div className="relative inline-block mb-2 sm:mb-3">
-                    <img src={member.image} alt={member.name} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-sky-200 dark:border-green-700 group-hover:border-sky-300 dark:group-hover:border-green-600 transition-colors shadow-sm" />
+                    <img src={member.image} alt={member.name} width={64} height={64} loading="lazy" decoding="async" className="w-12 h-12 sm:w-16 sm:h-16 rounded-full object-cover border-2 border-sky-200 dark:border-green-700 group-hover:border-sky-300 dark:group-hover:border-green-600 transition-colors shadow-sm" />
                   </div>
                   <h4 className="text-xs sm:text-sm lg:text-base font-semibold text-gray-900 dark:text-green-100 mb-1 leading-tight">{member.name}</h4>
                   <p className="text-xs text-gray-600 dark:text-green-400 mb-2 leading-tight">{member.role}</p>

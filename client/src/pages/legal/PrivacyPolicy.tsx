@@ -5,7 +5,7 @@ const PrivacyPolicy = () => {
   const sections = [
     {
       title: '1. Introduction',
-      content: 'Welcome to AlgoBucks. We respect your privacy and are committed to protecting your personal data.',
+      content: 'Welcome to EarnByCode. We respect your privacy and are committed to protecting your personal data.',
     },
     {
       title: '2. Information We Collect',
@@ -26,33 +26,33 @@ const PrivacyPolicy = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900/10 to-slate-900 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-32 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-40 -left-32 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl"></div>
-      </div>
-
+    <div className="min-h-screen bg-white dark:bg-black transition-colors duration-300 py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
       <div className="max-w-4xl mx-auto relative z-10">
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-purple-500/20 mb-4">
-            <ShieldCheck className="w-8 h-8 text-purple-400" />
+        <div className="text-center mb-8 sm:mb-12">
+          <div className="inline-flex items-center justify-center w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-blue-100 dark:bg-blue-900/30 transition-colors duration-300 mb-4">
+            <ShieldCheck className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600 dark:text-blue-400 transition-colors duration-300" />
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent mb-4">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-black dark:text-blue-500 transition-colors duration-300 mb-3 sm:mb-4 px-4">
             Privacy Policy
           </h1>
-          <p className="text-slate-400">Last updated: September 1, 2025</p>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-blue-400/80 transition-colors duration-300">Last updated: September 1, 2025</p>
         </div>
 
-        <div className="bg-slate-800/50 backdrop-blur-sm rounded-2xl p-6 sm:p-8 border border-slate-700/50">
+        <div className="bg-gray-50 dark:bg-gray-900/50 backdrop-blur-sm rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 border border-gray-200 dark:border-gray-800 transition-colors duration-300">
           <div className="prose prose-invert max-w-none">
             {sections.map((section, index) => (
-              <section key={index} className="mb-8">
-                <h2 className="text-2xl font-bold text-white mb-4">{section.title}</h2>
-                <p className="text-slate-300">{section.content}</p>
+              <section key={index} className="mb-6 sm:mb-8">
+                <h2 className="text-xl sm:text-2xl font-bold text-black dark:text-blue-500 transition-colors duration-300 mb-3 sm:mb-4">
+                  {section.title}
+                </h2>
+                <p className="text-sm sm:text-base text-gray-700 dark:text-blue-400/90 transition-colors duration-300 leading-relaxed">
+                  {section.content}
+                </p>
               </section>
             ))}
-            <div className="mt-12 pt-6 border-t border-slate-700/50">
-              <p className="text-slate-400 text-sm">
+
+            <div className="mt-8 sm:mt-12 pt-4 sm:pt-6 border-t border-gray-200 dark:border-gray-700/50 transition-colors duration-300">
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-blue-400/70 transition-colors duration-300 leading-relaxed">
                 For any questions about this Privacy Policy, please contact us at replyearnbycode@gmail.com
               </p>
             </div>

@@ -57,6 +57,10 @@ export function LoginPage() {
             <img
               src="/logo.png"
               alt="EarnByCode Logo"
+              width={112}
+              height={112}
+              loading="eager"
+              decoding="async"
               className="mx-auto w-24 h-24 sm:w-28 sm:h-28 object-contain mb-4"
             />
             

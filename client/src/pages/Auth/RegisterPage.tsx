@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import GoogleOAuthButton from '../../components/Auth/GoogleOAuthButton';
 import { Input } from '../../components/ui/input';
-import { Button } from '../../components/ui/button';
 import { toast } from '../../components/ui/use-toast';
 import apiService from '../../services/api';
 import { User, Mail, Lock, Eye, EyeOff, AlertCircle, UserCheck } from 'lucide-react';
@@ -110,6 +109,10 @@ export function RegisterPage() {
             <img 
               src="/logo.png" 
               alt="EarnByCode Logo" 
+              width={112}
+              height={112}
+              loading="eager"
+              decoding="async"
               className="mx-auto w-24 h-24 sm:w-28 sm:h-28 object-contain mb-4"
             />
             

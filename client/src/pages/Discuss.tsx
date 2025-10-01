@@ -495,7 +495,7 @@ const Discuss: React.FC = () => {
                           <Link to={`/u/${discussion.author?.username || ''}`} className="block">
                             <div className="h-9 w-9 rounded-full overflow-hidden ring-2 ring-sky-200 dark:ring-green-600 bg-gradient-to-r from-sky-100 to-sky-200 dark:from-gray-700 dark:to-gray-600 flex items-center justify-center text-sky-600 dark:text-green-400 font-bold text-sm transition-all duration-300 hover:ring-sky-300 dark:hover:ring-green-500 hover:scale-110">
                               {discussion.author?.avatarUrl ? (
-                                <img src={discussion.author.avatarUrl} alt={discussion.author.username} className="w-full h-full object-cover" />
+                                <img src={discussion.author.avatarUrl} alt={discussion.author.username} width={36} height={36} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                               ) : (
                                 discussion.author?.username?.charAt(0).toUpperCase() || 'U'
                               )}
@@ -609,7 +609,7 @@ const Discuss: React.FC = () => {
                                               <Link to={`/u/${username}`} className="block">
                                                 <div className="h-7 w-7 rounded-full overflow-hidden ring-2 ring-sky-200 dark:ring-green-600 bg-gradient-to-r from-sky-100 to-sky-200 dark:from-gray-600 dark:to-gray-500 flex items-center justify-center text-sky-600 dark:text-green-400 text-xs font-bold flex-shrink-0 transition-all duration-300 hover:ring-sky-300 dark:hover:ring-green-500">
                                                   {author?.avatarUrl ? (
-                                                    <img src={author.avatarUrl} alt={username} className="w-full h-full object-cover" />
+                                                    <img src={author.avatarUrl} alt={username} width={28} height={28} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                                                   ) : (
                                                     userInitial
                                                   )}

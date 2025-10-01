@@ -59,6 +59,10 @@ export default function Footer() {
                   <img
                     src="/logo.png"
                     alt="EarnByCode Logo"
+                    width={64}
+                    height={64}
+                    loading="lazy"
+                    decoding="async"
                     className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 object-contain flex-shrink-0"
                   />
                   <div className="space-y-0.5 sm:space-y-1 min-w-0 flex-1">

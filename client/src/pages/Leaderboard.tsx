@@ -396,7 +396,7 @@ export const Leaderboard: React.FC = () => {
                 <Link to={`/u/${podium[1]?.username}`} className="block">
                   <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center ring-3 ring-slate-300 dark:ring-green-700 overflow-hidden bg-slate-100 dark:bg-green-900">
                     {podium[1]?.avatarUrl ? (
-                      <img src={podium[1]?.avatarUrl} alt={podium[1]?.username} className="w-full h-full object-cover" />
+                      <img src={podium[1]?.avatarUrl} alt={podium[1]?.username} width={48} height={48} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-slate-700 dark:text-green-200 font-bold text-base">{podium[1]?.username?.[0]?.toUpperCase() || 'U'}</span>
                     )}
@@ -431,7 +431,7 @@ export const Leaderboard: React.FC = () => {
                 <Link to={`/u/${podium[0]?.username}`} className="block">
                   <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center ring-3 ring-amber-300 dark:ring-green-500 overflow-hidden bg-amber-100 dark:bg-green-800">
                     {podium[0]?.avatarUrl ? (
-                      <img src={podium[0]?.avatarUrl} alt={podium[0]?.username} className="w-full h-full object-cover" />
+                      <img src={podium[0]?.avatarUrl} alt={podium[0]?.username} width={64} height={64} loading="eager" decoding="async" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-amber-800 dark:text-green-100 font-extrabold text-xl">{podium[0]?.username?.[0]?.toUpperCase() || 'U'}</span>
                     )}
@@ -467,7 +467,7 @@ export const Leaderboard: React.FC = () => {
                 <Link to={`/u/${podium[2]?.username}`} className="block">
                   <div className="w-12 h-12 rounded-full mx-auto flex items-center justify-center ring-3 ring-orange-200 dark:ring-green-700 overflow-hidden bg-orange-100 dark:bg-green-900">
                     {podium[2]?.avatarUrl ? (
-                      <img src={podium[2]?.avatarUrl} alt={podium[2]?.username} className="w-full h-full object-cover" />
+                      <img src={podium[2]?.avatarUrl} alt={podium[2]?.username} width={48} height={48} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                     ) : (
                       <span className="text-orange-800 dark:text-green-200 font-bold text-base">{podium[2]?.username?.[0]?.toUpperCase() || 'U'}</span>
                     )}
@@ -546,7 +546,7 @@ export const Leaderboard: React.FC = () => {
                         <Link to={`/u/${user.username}`} className="block">
                           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center ring-2 ring-sky-200 dark:ring-green-700 overflow-hidden bg-sky-100 dark:bg-green-900 hover:ring-sky-400 dark:hover:ring-green-500 transition-all duration-300">
                             {user.avatarUrl ? (
-                              <img src={user.avatarUrl} alt={user.username} className="w-full h-full object-cover" />
+                              <img src={user.avatarUrl} alt={user.username} width={40} height={40} loading="lazy" decoding="async" className="w-full h-full object-cover" />
                             ) : (
                               <span className="text-sky-700 dark:text-green-200 font-bold text-sm">{user.username?.[0]?.toUpperCase() || 'U'}</span>
                             )}

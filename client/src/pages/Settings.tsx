@@ -561,7 +561,7 @@ export const Settings: React.FC = () => {
                         </label>
                         <div className="flex items-center gap-6">
                           {user?.avatarUrl ? (
-                            <img src={user.avatarUrl} alt="Avatar" className="w-20 h-20 rounded-full border-2 border-sky-200 dark:border-emerald-200 object-cover shadow-lg" />
+                            <img src={user.avatarUrl} alt="Avatar" width={80} height={80} loading="lazy" decoding="async" className="w-20 h-20 rounded-full border-2 border-sky-200 dark:border-emerald-200 object-cover shadow-lg" />
                           ) : (
                             <div className="w-20 h-20 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-500 dark:text-gray-400 text-xs sm:text-sm">
                               No Avatar
