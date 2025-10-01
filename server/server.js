@@ -247,6 +247,7 @@ const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
   VERCEL,
+  'https://earnbycode-ebc.vercel.app',
   process.env.FRONTEND_ORIGIN,
   process.env.FRONTEND_URL,
 ].filter(Boolean);
@@ -289,6 +290,13 @@ app.use((req, res, next) => {
 });
 app.use(dynamicCors);
 app.options('*', dynamicCors);
+
+// Ensure /api/execute passes through CORS and reuses /api/code/run logic
+app.use('/api/execute', (req, res, next) => {
+  // Forward to the canonical handler while preserving method/body
+  req.url = '/api/code/run';
+  next();
+});
 
 // Environment check endpoint
 app.get('/api/env/check', (req, res) => {
