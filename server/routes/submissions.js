@@ -9,7 +9,9 @@ const router = express.Router();
 // Get user submissions
 router.get('/', authenticate, async (req, res) => {
   try {
-    const { problemId, status, page = 1, limit = 20, sort } = req.query;
+    const { problemId, status, language, sort } = req.query;
+    const page = parseInt(String(req.query.page || 1), 10) || 1;
+    const limit = parseInt(String(req.query.limit || 20), 10) || 20;
     
     let query = { user: req.user._id };
     
@@ -18,7 +20,19 @@ router.get('/', authenticate, async (req, res) => {
     }
     
     if (status && status !== 'all') {
-      query.status = status;
+      const map = {
+        accepted: 'Accepted',
+        wrong_answer: 'Wrong Answer',
+        time_limit_exceeded: 'Time Limit Exceeded',
+        runtime_error: 'Runtime Error',
+        compilation_error: 'Compilation Error',
+      };
+      const key = String(status).toLowerCase();
+      query.status = map[key] || status; // accept exact matches too
+    }
+
+    if (language && language !== 'all') {
+      query.language = String(language).toLowerCase();
     }
 
     // Server-side sorting
@@ -46,7 +60,7 @@ router.get('/', authenticate, async (req, res) => {
     const submissions = await Submission.find(query)
       .populate('problem', 'title difficulty')
       .sort(sortOptions)
-      .limit(limit * 1)
+      .limit(limit)
       .skip((page - 1) * limit);
 
     const total = await Submission.countDocuments(query);
