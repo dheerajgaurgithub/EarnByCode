@@ -237,17 +237,9 @@ router.post('/:id/submit', authenticate, checkProblemAccess, async (req, res) =>
       return res.json({ dryRun: true, result });
     }
 
-    // Enforce one submission per language per contest (or non-contest)
-    const subQuery = {
-      user: req.user._id,
-      problem: problemId,
-      language,
-    };
-    if (contestId) subQuery.contestId = contestId;
-    const existing = await Submission.findOne(subQuery).lean();
-    if (existing) {
-      return res.status(409).json({ message: 'You have already submitted this problem in this language.' });
-    }
+    // Allow multiple submissions per language (contest or non-contest)
+    // Previously: we enforced uniqueness by (user, problem, language [, contestId]).
+    // That restriction is removed to let users resubmit in the same language.
 
     // Create submission record
     const submission = new Submission({

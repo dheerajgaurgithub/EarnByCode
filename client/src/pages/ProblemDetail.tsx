@@ -239,6 +239,7 @@ const ProblemDetail: React.FC = () => {
   const [compareExpected, setCompareExpected] = useState<boolean>(false);
   const [tleMs, setTleMs] = useState<number>(5000);
   const [copied, setCopied] = useState<boolean>(false);
+  const [normalizeJavaDecimals, setNormalizeJavaDecimals] = useState<boolean>(true);
   
   // Track if user is trying to submit without being logged in
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
@@ -602,11 +603,14 @@ const ProblemDetail: React.FC = () => {
     for (const input of inputs) {
       try {
         const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
+        const stdinToUse = (selectedLanguage === 'java' && normalizeJavaDecimals && typeof input === 'string')
+          ? input.replace(/(\d),(?=\d)/g, '$1.')
+          : input;
         const payload = {
           language: pistonLang[selectedLanguage] || selectedLanguage,
           version: '*',
           files: [fileForLang(selectedLanguage)],
-          ...(typeof input === 'string' ? { stdin: input } : {})
+          ...(typeof stdinToUse === 'string' ? { stdin: stdinToUse } : {})
         } as any;
         // TLE with AbortController
         const controller = new AbortController();
