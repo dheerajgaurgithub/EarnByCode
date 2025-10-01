@@ -65,6 +65,9 @@ interface BaseCodeResponse {
   totalTests?: number;
   runtimeMs?: number;
   memoryKb?: number;
+  // Optional human-formatted strings from executor/server, e.g., '121ms', '16.4MB'
+  runtimeText?: string;
+  memoryText?: string;
   isSubmission?: boolean;
   earnedCodecoin?: boolean;
 }
@@ -333,6 +336,7 @@ const ProblemDetail: React.FC = () => {
         ...(typeof exampleInput === 'string' ? { stdin: exampleInput } : {})
       } as any;
 
+      const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
       const resp = await fetch(getExecuteUrl(), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -344,6 +348,8 @@ const ProblemDetail: React.FC = () => {
       // Normalize runtime and memory from sandbox responses
       const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time) as number | string | undefined;
       const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory) as number | string | undefined;
+      const timeText = (data?.run?.runtime ?? data?.runtime ?? data?.run?.timeText ?? data?.timeText) as string | undefined;
+      const memText = (data?.run?.memory_text ?? data?.memory_text ?? data?.run?.memory ?? data?.memory) as string | undefined;
       const parseMs = (v: any): number | undefined => {
         if (v == null) return undefined;
         const n = typeof v === 'string' ? parseFloat(v) : Number(v);
@@ -358,8 +364,12 @@ const ProblemDetail: React.FC = () => {
         // If appears to be bytes (very large), convert to KB
         return n > 4096 ? Math.round(n / 1024) : Math.round(n);
       };
-      const runtimeMs = parseMs(rawTime);
+      const providedMs = parseMs(rawTime);
+      const measuredMs = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0));
+      const runtimeMs = providedMs ?? measuredMs;
       const memoryKb = parseKb(rawMem);
+      const runtimeText = timeText || (runtimeMs != null ? `${Math.round(runtimeMs)}ms` : undefined);
+      const memoryText = memText || (typeof memoryKb === 'number' ? (memoryKb >= 1024 ? `${(memoryKb/1024).toFixed(1)}MB` : `${Math.round(memoryKb)}KB`) : undefined);
 
       const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
       const hasExpected = typeof exampleOutput === 'string' && exampleOutput.trim().length > 0;
@@ -416,6 +426,7 @@ const ProblemDetail: React.FC = () => {
     try {
       const results: TestCaseResult[] = [];
       let passedCount = 0;
+      let totalMs = 0;
 
       const runOne = async (stdin: string | undefined, expected: string | undefined) => {
         const fileForLang = (lang: Language) => {
@@ -438,6 +449,7 @@ const ProblemDetail: React.FC = () => {
           files: [fileForLang(selectedLanguage)],
           ...(stdin ? { stdin } : {})
         } as any;
+        const tCase0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
         const resp = await fetch(getExecuteUrl(), {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -448,6 +460,8 @@ const ProblemDetail: React.FC = () => {
         const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
         const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time) as number | string | undefined;
         const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory) as number | string | undefined;
+        const timeText = (data?.run?.runtime ?? data?.runtime ?? data?.run?.timeText ?? data?.timeText) as string | undefined;
+        const memText = (data?.run?.memory_text ?? data?.memory_text ?? data?.run?.memory ?? data?.memory) as string | undefined;
         const parseMs = (v: any): number | undefined => {
           if (v == null) return undefined;
           const n = typeof v === 'string' ? parseFloat(v) : Number(v);
@@ -460,13 +474,16 @@ const ProblemDetail: React.FC = () => {
           if (Number.isNaN(n)) return undefined;
           return n > 4096 ? Math.round(n / 1024) : Math.round(n);
         };
-        const runtimeMs = parseMs(rawTime);
+        const providedMs = parseMs(rawTime);
+        const measuredMs = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - tCase0));
+        const runtimeMs = providedMs ?? measuredMs;
         const memoryKb = parseKb(rawMem);
         const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
         const hasExpected = typeof expected === 'string' && expected.trim().length > 0;
         const passed = hasExpected ? normalize(out) === normalize(expected!) : err.length === 0;
         if (passed) passedCount++;
         results.push({ input: stdin, expectedOutput: expected, actualOutput: out, passed, error: err || undefined, runtime: runtimeMs });
+        if (runtimeMs) totalMs += runtimeMs;
       };
 
       for (const tc of problem.testCases) {
@@ -481,7 +498,9 @@ const ProblemDetail: React.FC = () => {
         results,
         testsPassed: passedCount,
         totalTests: problem.testCases.length,
-        isSubmission: false
+        isSubmission: false,
+        runtimeMs: totalMs > 0 ? totalMs : undefined,
+        runtimeText: totalMs > 0 ? `${Math.round(totalMs)}ms` : undefined
       });
     } catch (e: any) {
       setTestResults({
@@ -726,13 +745,16 @@ const ProblemDetail: React.FC = () => {
   };
 
   // Format helpers for runtime and memory
-  const formatRuntime = (ms?: number) => {
-    if (ms == null || Number.isNaN(ms)) return '--';
+  const formatRuntime = (ms?: number, text?: string) => {
+    if (text && typeof text === 'string') return text; // prefer server-provided string like '121ms'
+    if (ms == null || Number.isNaN(ms)) return 'N/A';
     return `${Math.round(ms)} ms`;
   };
-  const formatMemory = (kb?: number) => {
-    if (kb == null || Number.isNaN(kb)) return '--';
-    // Show in KB with no decimals if >= 1KB, else show in bytes
+  const formatMemory = (kb?: number, text?: string) => {
+    if (text && typeof text === 'string') return text; // prefer server-provided string like '16.4MB'
+    if (kb == null || Number.isNaN(kb)) return 'N/A';
+    // Prefer MB with one decimal if >= 1024 KB
+    if (kb >= 1024) return `${(kb / 1024).toFixed(1)} MB`;
     if (kb < 1) return `${Math.round(kb * 1024)} B`;
     return `${Math.round(kb)} KB`;
   };
@@ -1041,8 +1063,8 @@ const ProblemDetail: React.FC = () => {
                       {testResults.isSubmission ? 'Submission Results' : 'Test Results'}
                     </h3>
                     <div className="flex items-center gap-4 text-xs text-slate-700 dark:text-green-300">
-                      <span><span className="font-bold">Runtime:</span> {formatRuntime(testResults.runtimeMs)}</span>
-                      <span><span className="font-bold">Memory:</span> {formatMemory(testResults.memoryKb)}</span>
+                      <span><span className="font-bold">Runtime:</span> {formatRuntime(testResults.runtimeMs as any, (testResults as any).runtimeText as any)}</span>
+                      <span><span className="font-bold">Memory:</span> {formatMemory(testResults.memoryKb as any, (testResults as any).memoryText as any)}</span>
                     </div>
                   </div>
                 </div>

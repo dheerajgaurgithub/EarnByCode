@@ -123,7 +123,22 @@ app.post('/api/execute', async (req, res) => {
           return res.status(200).json({ run: { output: '', stderr: err } });
         }
         const start = Date.now();
+        const startMs = Date.now();
         const child = spawn(java, ['-cp', tmpDir, 'Solution'], { stdio: ['pipe', 'pipe', 'pipe'] });
+        // Sample VmRSS from /proc when available (Linux) to approximate peak memory
+        let maxRssKb = 0;
+        const rssTimer = setInterval(() => {
+          try {
+            if (child.pid && process.platform === 'linux') {
+              const txt = fs.readFileSync(`/proc/${child.pid}/status`, 'utf8');
+              const m = txt.match(/VmRSS:\s*(\d+)\s*kB/i);
+              if (m) {
+                const kb = parseInt(m[1], 10);
+                if (Number.isFinite(kb) && kb > maxRssKb) maxRssKb = kb;
+              }
+            }
+          } catch {}
+        }, 60);
         const stdoutChunks = [];
         const stderrChunks = [];
         const stdinStr = typeof payload.stdin === 'string' ? unescapeHtmlLocal(payload.stdin) : '';
@@ -185,10 +200,13 @@ app.post('/api/execute', async (req, res) => {
         child.stderr.on('data', d => stderrChunks.push(d));
         child.on('close', () => {
           clearTimeout(killTimer);
+          clearInterval(rssTimer);
           try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
           const out = Buffer.concat(stdoutChunks).toString('utf8');
           const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
-          return res.status(200).json({ run: { output: out, stderr: err } });
+          const timeMs = Date.now() - startMs;
+          const memoryKb = maxRssKb || undefined;
+          return res.status(200).json({ run: { output: out, stderr: err, timeMs, memoryKb }, timeMs, memoryKb });
         });
       });
       return;
@@ -445,7 +463,22 @@ app.post('/api/code/run', async (req, res) => {
         }
 
         const cmd = process.platform === 'win32' ? exeFile : exeFile;
+        const startMs = Date.now();
         const child = spawn(cmd, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+        // Sample VmRSS for C++ as well
+        let maxRssKb = 0;
+        const rssTimer = setInterval(() => {
+          try {
+            if (child.pid && process.platform === 'linux') {
+              const txt = fs.readFileSync(`/proc/${child.pid}/status`, 'utf8');
+              const m = txt.match(/VmRSS:\s*(\d+)\s*kB/i);
+              if (m) {
+                const kb = parseInt(m[1], 10);
+                if (Number.isFinite(kb) && kb > maxRssKb) maxRssKb = kb;
+              }
+            }
+          } catch {}
+        }, 60);
         const stdoutChunks = [];
         const stderrChunks = [];
         const stdinStr = typeof payload.stdin === 'string' ? payload.stdin : '';

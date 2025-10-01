@@ -1159,16 +1159,20 @@ const ContestPage = () => {
                               <span className="text-sm text-gray-600">
                                 Passed <b>{testResults.passed}</b> / {testResults.total}
                                 {(() => {
+                                  const rtText = (testResults as any).runtimeText ?? (testResults as any).runtime;
+                                  const memText = (testResults as any).memoryText ?? (testResults as any).memory_text ?? (testResults as any).memoryStr;
                                   const rt = (testResults as any).runtimeMs ?? (testResults as any).timeMs ?? (testResults as any).executionTime;
                                   const mem = (testResults as any).memoryKb ?? (testResults as any).memory_kb ?? (testResults as any).memory;
+                                  const safeNum = (v:any) => {
+                                    const n = Number(v);
+                                    return Number.isFinite(n) ? Math.round(n) : undefined;
+                                  };
+                                  const rtVal = safeNum(rt);
+                                  const memVal = safeNum(mem);
                                   return (
                                     <>
-                                      {rt != null && typeof rt !== 'undefined' && (
-                                        <> • Runtime: {Math.round(Number(rt))} ms</>
-                                      )}
-                                      {mem != null && typeof mem !== 'undefined' && (
-                                        <> • Memory: {Math.round(Number(mem))} KB</>
-                                      )}
+                                      <> • Runtime: {rtText ? rtText : (rtVal != null ? `${rtVal} ms` : 'N/A')}</>
+                                      <> • Memory: {memText ? memText : (memVal != null ? `${memVal} KB` : 'N/A')}</>
                                     </>
                                   );
                                 })()}
