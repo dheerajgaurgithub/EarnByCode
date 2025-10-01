@@ -100,6 +100,10 @@ const ContestPage = () => {
   const [showFeedback, setShowFeedback] = useState(false);
   const [isWinner, setIsWinner] = useState<boolean>(false);
   const [myRank, setMyRank] = useState<number | null>(null);
+  const isAdmin = (() => {
+    const u: any = user as any;
+    return Boolean(u?.isAdmin) || String(u?.role || '').toLowerCase() === 'admin';
+  })();
   // Live contest side-panels
   const [leaderboard, setLeaderboard] = useState<Array<{ username: string; score: number; time?: string }>>([]);
   const [clarifications, setClarifications] = useState<Array<{ id: string; question: string; answer?: string; at?: string }>>([]);
@@ -288,6 +292,18 @@ const ContestPage = () => {
       setTimerAnchorMs(stored);
       setUserStarted(true);
     }
+  }, [contest, id]);
+
+  // Dev/admin: reset timer anchor
+  const handleResetTimer = useCallback(() => {
+    try {
+      const key = `contestTimerStartedAt::${(contest as any)?._id || id}`;
+      localStorage.removeItem(key);
+      setTimerAnchorMs(null);
+      setUserStarted(false);
+      setTimeLeft(0);
+      toast.success('Timer reset. Click Start Contest to begin again.');
+    } catch {}
   }, [contest, id]);
 
   // Handle timer: prefer duration-based countdown from persisted anchor; otherwise use start/end
