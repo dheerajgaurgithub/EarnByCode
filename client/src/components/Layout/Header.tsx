@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import config from '@/lib/config';
 
 type NavItem = {
   nameKey: string;
@@ -171,6 +170,7 @@ export const Header: React.FC = () => {
                     height={48}
                     loading="eager"
                     decoding="async"
+                    fetchPriority="high"
                     className="h-full w-full object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-md"
                   />
                   {/* Glow effect */}

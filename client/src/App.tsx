@@ -11,16 +11,16 @@ import Footer from './components/Layout/Footer';
 import ChatbotWidget from './components/ChatbotWidget';
 import Home from './pages/Home';
 import { Problems } from './pages/Problems';
-import ProblemDetail from './pages/ProblemDetail';
 import { Contests } from './pages/Contests';
 import ContestProblemDetails from './pages/ContestProblemDetails';
 import ContestResults from './pages/ContestResults';
-import Wallet from './app/wallet/page';
-import { Profile } from './pages/Profile';
-import AdminPanel from './pages/Admin/AdminPanel';
+const Wallet = React.lazy(() => import('./app/wallet/page'));
+const Profile = React.lazy(() => import('./pages/Profile').then(m => ({ default: m.Profile })));
+const ProblemDetail = React.lazy(() => import('./pages/ProblemDetail'));
+const AdminPanel = React.lazy(() => import('./pages/Admin/AdminPanel'));
 import WalletDashboard from './pages/Admin/WalletDashboard';
-import { Leaderboard } from './pages/Leaderboard';
-import Discuss from './pages/Discuss';
+const Leaderboard = React.lazy(() => import('./pages/Leaderboard').then(m => ({ default: m.Leaderboard })));
+const Discuss = React.lazy(() => import('./pages/Discuss'));
 import { Submissions } from './pages/Submissions';
 import SubmissionDetail from './pages/SubmissionDetail';
 import { LoginPage } from './pages/Auth/LoginPage';
@@ -34,10 +34,10 @@ import Company from './pages/Company';
 import Careers from './pages/Careers';
 import Press from './pages/Press';
 import Contact from './pages/Contact';
-import Blog from './pages/Blog';
-import Community from './pages/Community';
-import HelpCenter from './pages/HelpCenter';
-import JobDetail from './pages/JobDetail';
+const Blog = React.lazy(() => import('./pages/Blog'));
+const Community = React.lazy(() => import('./pages/Community'));
+const HelpCenter = React.lazy(() => import('./pages/HelpCenter'));
+const JobDetail = React.lazy(() => import('./pages/JobDetail'));
 import EmailVerified from './pages/EmailVerified.tsx';
 import VerifyCheck from './pages/VerifyCheck';
 import PrivacyPolicy from './pages/legal/PrivacyPolicy';
@@ -193,6 +193,11 @@ function App() {
       <I18nProvider initialLang={(user?.preferences?.language as any) || 'en'}>
       <ThemeSync />
       <div className="min-h-screen flex flex-col transition-colors duration-200">
+        {/* Reserve space for toasts (fixed placeholder to avoid any potential reflow) */}
+        <div
+          aria-hidden
+          className="fixed bottom-2 right-2 w-[360px] h-[64px] pointer-events-none z-40"
+        />
         <Toaster
           position="bottom-right"
           toastOptions={getToastOptions()}
@@ -252,12 +257,45 @@ function App() {
               <Route path="/about" element={<About />} />
               <Route path="/company" element={<Company />} />
               <Route path="/careers" element={<Careers />} />
-              <Route path="/jobs/:id" element={<JobDetail />} />
+              <Route 
+                path="/jobs/:id" 
+                element={
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
+                    </div>
+                  }>
+                    <JobDetail />
+                  </Suspense>
+                } 
+              />
               <Route path="/press" element={<Press />} />
               <Route path="/contact" element={<Contact />} />
               <Route path="/blog" element={<Blog />} />
-              <Route path="/community" element={<Community />} />
-              <Route path="/help" element={<HelpCenter />} />
+              <Route 
+                path="/community" 
+                element={
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
+                    </div>
+                  }>
+                    <Community />
+                  </Suspense>
+                } 
+              />
+              <Route 
+                path="/help" 
+                element={
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
+                    </div>
+                  }>
+                    <HelpCenter />
+                  </Suspense>
+                } 
+              />
               <Route path="/verify/check" element={<VerifyCheck />} />
               <Route path="/verify/success" element={<EmailVerified />} />
               <Route path="/welcome" element={<Welcome />} />
@@ -270,7 +308,18 @@ function App() {
 
               {/* Public problem routes */}
               <Route path="/problems" element={<Problems />} />
-              <Route path="/problems/:id" element={<ProblemDetail />} />
+              <Route 
+                path="/problems/:id" 
+                element={
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
+                    </div>
+                  }>
+                    <ProblemDetail />
+                  </Suspense>
+                } 
+              />
               <Route path="/contests" element={<Contests />} />
               <Route
                 path="/contests/:contestId/problems/:problemId"
@@ -324,9 +373,15 @@ function App() {
               <Route
                 path="/admin"
                 element={
-                  <AdminRoute>
-                    <AdminPanel />
-                  </AdminRoute>
+                  <Suspense fallback={
+                    <div className="flex items-center justify-center min-h-screen bg-white dark:bg-gray-900 transition-colors duration-200">
+                      <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
+                    </div>
+                  }>
+                    <AdminRoute>
+                      <AdminPanel />
+                    </AdminRoute>
+                  </Suspense>
                 }
               />
               <Route
