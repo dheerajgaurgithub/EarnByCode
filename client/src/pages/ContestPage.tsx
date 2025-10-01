@@ -114,6 +114,8 @@ const ContestPage = () => {
   const [clockOffsetMs, setClockOffsetMs] = useState<number>(0);
   // Public (non-hidden) testcases for current problem
   const [publicTestcases, setPublicTestcases] = useState<Array<{ input: string; expectedOutput: string }>>([]);
+  // Anchor start time for duration-based countdown (persisted)
+  const [timerAnchorMs, setTimerAnchorMs] = useState<number | null>(null);
 
   // Helper to normalize problem identifier (_id preferred, fallback to id)
   const getProblemId = useCallback((p: Partial<Problem> | { _id?: unknown; id?: unknown } | null | undefined): string | undefined => {
@@ -277,16 +279,53 @@ const ContestPage = () => {
     })();
   }, []);
 
-  // Handle timer by computing from start/end every tick (robust against drift and stale state)
+  // On load, only read existing anchor (resume after refresh). Do NOT start until user clicks Start.
+  useEffect(() => {
+    if (!contest) return;
+    const key = `contestTimerStartedAt::${(contest as any)._id || id}`;
+    const stored = Number(localStorage.getItem(key));
+    if (Number.isFinite(stored) && stored > 0) {
+      setTimerAnchorMs(stored);
+      setUserStarted(true);
+    }
+  }, [contest, id]);
+
+  // Handle timer: prefer duration-based countdown from persisted anchor; otherwise use start/end
   useEffect(() => {
     if (!contest) return;
 
     const computeAndSet = () => {
       try {
         const nowMs = Date.now() + clockOffsetMs;
-        const startMs = new Date((contest as any).startTime).getTime();
-        const endMs = new Date((contest as any).endTime).getTime();
-        if (!isFinite(startMs) || !isFinite(endMs)) return;
+        const durMin = Number((contest as any).duration);
+        if (Number.isFinite(durMin) && durMin > 0 && timerAnchorMs) {
+          // Duration-driven mode
+          const endMs = timerAnchorMs + durMin * 60 * 1000;
+          if (nowMs >= endMs + 1500) {
+            setContestHasStarted(true);
+            setContestEnded(true);
+            setTimeMode('untilEnd');
+            setTimeLeft(0);
+            return;
+          }
+          setContestHasStarted(true);
+          setContestEnded(false);
+          setTimeMode('untilEnd');
+          setTimeLeft(Math.max(1, Math.ceil((endMs - nowMs) / 1000)));
+          return;
+        }
+
+        // Start/end window mode
+        let startMs = new Date((contest as any).startTime).getTime();
+        let endMs = new Date((contest as any).endTime).getTime();
+        // Fallback if times are invalid or equal/reversed
+        if (!isFinite(startMs) || !isFinite(endMs) || endMs <= startMs) {
+          const durMs = 30 * 60 * 1000; // default 30m
+          startMs = nowMs;
+          endMs = nowMs + durMs;
+          setContestHasStarted(true);
+          setTimeMode('untilEnd');
+        }
         if (nowMs >= endMs + 1500) {
           setContestHasStarted(true);
           setContestEnded(true);
@@ -314,7 +353,7 @@ const ContestPage = () => {
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
-  }, [contest, clockOffsetMs]);
+  }, [contest, clockOffsetMs, timerAnchorMs]);
 
   // Poll live leaderboard and clarifications during contest
   useEffect(() => {
@@ -451,12 +490,16 @@ const ContestPage = () => {
       toast.success('Contest started!');
       setUserStarted(true);
       setPhase('problems');
-      // Ensure timer starts on enter (recompute from endTime now)
+      // Set duration anchor at start click if using duration and not already set
       try {
-        const end = new Date((contest as any)?.endTime).getTime();
-        const secs = Math.max(1, Math.ceil((end - Date.now()) / 1000));
-        setTimeLeft(secs);
-        setTimeMode('untilEnd');
+        const durMin = Number((contest as any)?.duration);
+        if (Number.isFinite(durMin) && durMin > 0 && !timerAnchorMs) {
+          const nowServer = Date.now() + clockOffsetMs;
+          const key = `contestTimerStartedAt::${(contest as any)?._id || id}`;
+          localStorage.setItem(key, String(nowServer));
+          setTimerAnchorMs(nowServer);
+          setTimeMode('untilEnd');
+        }
       } catch {}
       return;
     } else {
@@ -865,16 +908,27 @@ const ContestPage = () => {
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white">
         <div className="container mx-auto px-4 py-4 max-w-7xl">
           {/* Contest Header */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 bg-white rounded-lg shadow-md p-4 border border-blue-200 sticky top-2 z-30">
-            <div className="mb-4 sm:mb-0">
-              <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">{contest.title}</h1>
-              <p className="text-sm sm:text-base text-gray-600 mt-1">
-                Problem {currentProblemIndex + 1} of {problems.length}
-              </p>
+          <div className="mb-6 bg-white rounded-lg shadow-md p-4 border border-blue-200 sticky top-2 z-30">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+              <div className="mb-3 sm:mb-0">
+                <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">{contest.title}</h1>
+                <p className="text-sm sm:text-base text-gray-600 mt-1">
+                  Problem {currentProblemIndex + 1} of {problems.length}
+                </p>
+              </div>
             </div>
-            <div className="flex items-center bg-gradient-to-r from-yellow-100 to-orange-100 px-4 py-2 rounded-lg border border-yellow-300 shadow-sm">
-              <Clock className="h-5 w-5 mr-2 text-orange-600" />
-              <span className="font-mono font-bold text-orange-800 text-lg">{formatTime(timeLeft)}</span>
+            {/* New running clock bar */}
+            <div className="mt-3">
+              <div className="w-full flex items-center justify-between bg-gradient-to-r from-emerald-50 via-yellow-50 to-orange-50 border border-emerald-200 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 text-emerald-700 font-medium">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                  <span>{contestHasStarted && !contestEnded ? 'Time is running' : (timeMode === 'untilStart' ? 'Starts in' : 'Contest ended')}</span>
+                </div>
+                <div className="flex items-center">
+                  <Clock className="h-5 w-5 mr-2 text-orange-600" />
+                  <span className="font-mono font-bold text-orange-800 text-lg">{formatTime(Math.max(0, timeLeft))}</span>
+                </div>
+              </div>
             </div>
           </div>
           
