@@ -6,10 +6,9 @@ import { CheckCircle, Trophy, Award, BookOpen, MessageCircle, Play, AlertCircle,
 import api from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
 
-// Build normalized API bases
+// Build normalized API base (favor env, then production backend)
 const getApiBase = () => {
-  const raw = (import.meta.env.VITE_API_URL as string) || 'https://algobucks.onrender.com/api';
-  // 'http://localhost:5000';
+  const raw = (import.meta.env.VITE_API_URL as string) || 'https://earnbycode-mfs3.onrender.com/api';
   let base = raw.replace(/\/+$/, '');
   if (!/\/api$/.test(base)) base = `${base}/api`;
   return base;
@@ -30,25 +29,15 @@ const validateJavaSolution = (src: string) => /\bclass\s+Solution\b/.test(src);
 // Build a safe execute URL without duplicating /api.
 // Supports absolute VITE_EXECUTE_PATH (e.g., https://emkc.org/api/v2/piston/execute)
 const getExecuteUrl = () => {
-  const execPath = (import.meta.env.VITE_EXECUTE_PATH as string) || '';
+  const execPath = (import.meta.env.VITE_EXECUTE_PATH as string) || '/api/execute';
   // 1) If absolute override provided, use it
   if (/^https?:\/\//i.test(execPath)) return execPath;
-
-  // 2) If running locally in browser, prefer local backend to avoid CORS
-  if (typeof window !== 'undefined' && /localhost|127\.0\.0\.1/.test(window.location.hostname)) {
-    const local = (import.meta.env.VITE_LOCAL_API_URL as string) || 'http://localhost:5000';
-    const base = local.replace(/\/+$/, '').replace(/\/?api$/, '');
-    const normalized = (execPath || '/api/execute').startsWith('/') ? (execPath || '/api/execute') : `/${execPath || 'api/execute'}`;
-    return `${base}${normalized}`;
-  }
-
-  // 3) Default: use configured API base (production)
-  const raw = (import.meta.env.VITE_API_URL as string) || 'https://algobucks.onrender.com/api';
+  // 2) Default: use configured API base (production) and alias /api/execute (server supports it)
+  const raw = (import.meta.env.VITE_API_URL as string) || 'https://earnbycode-mfs3.onrender.com/api';
   let base = raw.replace(/\/+$/, '');
   base = base.replace(/\/?api$/, '');
-  const path = execPath || '/api/execute';
-  const normalized = path.startsWith('/') ? path : `/${path}`;
-  return `${base}${normalized}`;
+  const path = execPath.startsWith('/') ? execPath : `/${execPath}`;
+  return `${base}${path}`;
 };
 
 type Language = 'javascript' | 'python' | 'java' | 'cpp';

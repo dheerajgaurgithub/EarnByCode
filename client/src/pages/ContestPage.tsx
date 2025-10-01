@@ -88,6 +88,9 @@ const ContestPage = () => {
   const [contestHasStarted, setContestHasStarted] = useState<boolean>(false);
   const [contestEnded, setContestEnded] = useState<boolean>(false);
   const [userStarted, setUserStarted] = useState<boolean>(false);
+  // Separate busy flags so only one action runs at a time
+  const [isRunning, setIsRunning] = useState<boolean>(false);
+  const [isRunningAll, setIsRunningAll] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [timeMode, setTimeMode] = useState<'untilStart' | 'untilEnd'>('untilStart');
@@ -605,7 +608,8 @@ const ContestPage = () => {
   const handleRunTests = useCallback(async (problemId?: string) => {
     const targetProblem = problemId ? problems.find(p => String(getProblemId(p)) === problemId) : currentProblem;
     if (!targetProblem) return;
-    setIsSubmitting(true);
+    if (isRunning || isRunningAll || isSubmitting) return;
+    setIsRunning(true);
     try {
       const pid = String(getProblemId(targetProblem));
       const t0 = performance.now();
@@ -630,13 +634,14 @@ const ContestPage = () => {
       console.error('Error running code:', error);
       toast.error('Run failed');
     } finally {
-      setIsSubmitting(false);
+      setIsRunning(false);
     }
-  }, [problems, currentProblem, userCode, language, getProblemId]);
+  }, [problems, currentProblem, userCode, language, getProblemId, isRunning, isRunningAll, isSubmitting]);
 
   const handleRunAllTests = useCallback(async () => {
     if (!currentProblem) return;
-    setIsSubmitting(true);
+    if (isRunning || isRunningAll || isSubmitting) return;
+    setIsRunningAll(true);
     try {
       const pid = String(getProblemId(currentProblem));
       const t0 = performance.now();
@@ -662,9 +667,9 @@ const ContestPage = () => {
       const msg = e?.message || 'Failed to run all tests';
       toast.error(msg);
     } finally {
-      setIsSubmitting(false);
+      setIsRunningAll(false);
     }
-  }, [currentProblem, language, userCode, id, getProblemId]);
+  }, [currentProblem, language, userCode, id, getProblemId, isRunning, isRunningAll, isSubmitting]);
 
   const handleSubmitProblem = useCallback(async () => {
     if (!currentProblem) {
@@ -672,6 +677,7 @@ const ContestPage = () => {
       return;
     }
 
+    if (isRunning || isRunningAll || isSubmitting) return;
     setIsSubmitting(true);
     try {
       interface SubmitResponse {
@@ -706,7 +712,7 @@ const ContestPage = () => {
     } finally {
       setIsSubmitting(false);
     }
-  }, [currentProblem, userCode, language, id, currentProblemIndex, problems, getProblemId]);
+  }, [currentProblem, userCode, language, id, currentProblemIndex, problems, getProblemId, isRunning, isRunningAll, isSubmitting]);
 
   // Auto-submit/complete on unload or tab close
   useEffect(() => {
@@ -1032,52 +1038,7 @@ const ContestPage = () => {
                           </div>
                         )}
 
-                        {/* Test Results */}
-                        {testResults && Array.isArray(testResults.results) && testResults.results.length > 0 && (
-                          <div className="space-y-3">
-                            <div className="flex items-center justify-between">
-                              <h3 className="font-semibold text-lg text-gray-800">Test Results</h3>
-                              <span className="text-sm text-gray-600">
-                                Passed <b>{testResults.passed}</b> / {testResults.total} • {testResults.executionTime} ms
-                              </span>
-                            </div>
-                            <div className="max-h-72 overflow-y-auto divide-y border rounded-md bg-white">
-                              {testResults.results.map((r:any, index:number) => {
-                                const hidden = Boolean(r.hidden);
-                                const expected = r.expected ?? r.expectedOutput;
-                                const actual = r.output ?? r.actualOutput;
-                                return (
-                                  <div key={index} className={`p-3 ${r.passed ? 'bg-green-50/40' : 'bg-red-50/40'}`}>
-                                    <div className="flex items-center gap-2">
-                                      {r.passed ? <CheckCircle className="text-green-600 h-4 w-4"/> : <XCircle className="text-red-600 h-4 w-4"/>}
-                                      <span className="font-medium">Test {index + 1}</span>
-                                      {hidden && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">hidden</span>}
-                                      <span className="ml-auto text-xs text-gray-500">{r.runtime || ''}</span>
-                                    </div>
-                                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
-                                      {!hidden && (
-                                        <div>
-                                          <div className="text-gray-500">Input</div>
-                                          <pre className="mt-1 p-2 bg-gray-50 rounded border overflow-x-auto">{typeof r.input === 'string' ? r.input : JSON.stringify(r.input)}</pre>
-                                        </div>
-                                      )}
-                                      {!hidden && (
-                                        <div>
-                                          <div className="text-gray-500">Expected</div>
-                                          <pre className="mt-1 p-2 bg-gray-50 rounded border overflow-x-auto">{typeof expected === 'string' ? expected : JSON.stringify(expected)}</pre>
-                                        </div>
-                                      )}
-                                      <div className={`${hidden ? 'sm:col-span-3' : ''}`}>
-                                        <div className="text-gray-500">Actual</div>
-                                        <pre className="mt-1 p-2 bg-gray-50 rounded border overflow-x-auto">{r.error ? String(r.error) : (typeof actual === 'string' ? actual : JSON.stringify(actual))}</pre>
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
+                        
                       </div>
                       
                       {/* Code Editor */}
@@ -1137,10 +1098,10 @@ const ContestPage = () => {
                           <Button
                             onClick={() => handleRunTests()}
                             variant="secondary"
-                            disabled={isSubmitting}
-                            className="flex-1 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300"
+                            disabled={isRunning || isRunningAll || isSubmitting}
+                            className="flex-1 bg-blue-100 text-blue-700 hover:bg-blue-200 border-blue-300 disabled:opacity-60"
                           >
-                            {isSubmitting ? (
+                            {isRunning ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Running...
@@ -1155,10 +1116,10 @@ const ContestPage = () => {
 
                           <Button
                             onClick={handleRunAllTests}
-                            disabled={isSubmitting}
-                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white"
+                            disabled={isRunning || isRunningAll || isSubmitting}
+                            className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-60"
                           >
-                            {isSubmitting ? (
+                            {isRunningAll ? (
                               <>
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                                 Running All...
@@ -1173,8 +1134,8 @@ const ContestPage = () => {
                           
                           <Button
                             onClick={handleSubmitProblem}
-                            disabled={isSubmitting}
-                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold"
+                            disabled={isRunning || isRunningAll || isSubmitting}
+                            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold disabled:opacity-60"
                           >
                             {isSubmitting ? (
                               <>
@@ -1189,8 +1150,55 @@ const ContestPage = () => {
                             )}
                           </Button>
                         </div>
+
+                        {/* Test Results (moved under editor) */}
+                        {testResults && Array.isArray(testResults.results) && testResults.results.length > 0 && (
+                          <div className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h3 className="font-semibold text-lg text-gray-800">Test Results</h3>
+                              <span className="text-sm text-gray-600">
+                                Passed <b>{testResults.passed}</b> / {testResults.total} • {testResults.executionTime} ms
+                              </span>
+                            </div>
+                            <div className="max-h-72 overflow-y-auto divide-y border rounded-md bg-white">
+                              {testResults.results.map((r:any, index:number) => {
+                                const hidden = Boolean(r.hidden);
+                                const expected = r.expected ?? r.expectedOutput;
+                                const actual = r.output ?? r.actualOutput;
+                                return (
+                                  <div key={index} className={`p-3 ${r.passed ? 'bg-green-50/40' : 'bg-red-50/40'}`}>
+                                    <div className="flex items-center gap-2">
+                                      {r.passed ? <CheckCircle className="text-green-600 h-4 w-4"/> : <XCircle className="text-red-600 h-4 w-4"/>}
+                                      <span className="font-medium">Test {index + 1}</span>
+                                      {hidden && <span className="ml-2 text-xs px-2 py-0.5 rounded-full bg-gray-200 text-gray-700">hidden</span>}
+                                      <span className="ml-auto text-xs text-gray-500">{r.runtime || ''}</span>
+                                    </div>
+                                    <div className="mt-2 grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs sm:text-sm">
+                                      {!hidden && (
+                                        <div>
+                                          <div className="text-gray-500">Input</div>
+                                          <pre className="mt-1 p-2 bg-gray-50 rounded border overflow-x-auto">{typeof r.input === 'string' ? r.input : JSON.stringify(r.input)}</pre>
+                                        </div>
+                                      )}
+                                      {!hidden && (
+                                        <div>
+                                          <div className="text-gray-500">Expected</div>
+                                          <pre className="mt-1 p-2 bg-gray-50 rounded border overflow-x-auto">{typeof expected === 'string' ? expected : JSON.stringify(expected)}</pre>
+                                        </div>
+                                      )}
+                                      <div className={`${hidden ? 'sm:col-span-3' : ''}`}>
+                                        <div className="text-gray-500">Actual</div>
+                                        <pre className="mt-1 p-2 bg-gray-50 rounded border overflow-x-auto">{r.error ? String(r.error) : (typeof actual === 'string' ? actual : JSON.stringify(actual))}</pre>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                        </div>
                       </div>
-                    </div>
                   </TabsContent>
                 ))}
               </Tabs>

@@ -80,6 +80,160 @@ const __dirname = path.dirname(__filename);
 
 // Load environment variables (prefer server/.env.local, then server/.env)
 dotenv.config({ path: path.join(__dirname, '.env.local') });
+
+// Alias: some clients call /api/execute — route to the same handler logic as /api/code/run
+app.post('/api/execute', async (req, res) => {
+  try {
+    const payload = req.body || {};
+    const language = (payload.language || '').toString().toLowerCase();
+    let source = '';
+    if (typeof payload.code === 'string') source = payload.code;
+    else if (typeof payload.sourceCode === 'string') source = payload.sourceCode;
+    else if (Array.isArray(payload.files) && payload.files[0]?.content) source = payload.files[0].content;
+    // Unescape basic HTML entities if present
+    const unescapeHtmlLocal = (str = '') => String(str)
+      .replaceAll('&lt;', '<').replaceAll('&gt;', '>')
+      .replaceAll('&amp;', '&').replaceAll('&quot;', '"').replaceAll('&#39;', "'");
+    source = unescapeHtmlLocal(source);
+
+    if (!source || !['javascript', 'typescript', 'java', 'cpp'].includes(language)) {
+      return res.status(400).json({ message: 'Only JavaScript, TypeScript, Java and C++ are supported', language, received: Object.keys(payload || {}) });
+    }
+
+    // Reuse same branches as /api/code/run
+    // Java
+    if (language === 'java') {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-java-'));
+      const srcFile = path.join(tmpDir, 'Solution.java');
+      fs.writeFileSync(srcFile, source, 'utf8');
+      const javac = process.env.JAVAC_BIN || 'javac';
+      const java = process.env.JAVA_BIN || 'java';
+      const compile = spawn(javac, ['-d', tmpDir, srcFile]);
+      const compileErr = [];
+      compile.stderr.on('data', d => compileErr.push(d));
+      compile.on('error', (e) => {
+        const errMsg = `Failed to start Java compiler (${javac}). ${e?.code === 'ENOENT' ? 'javac not found in PATH. Install JDK or set JAVAC_BIN.' : String(e?.message || e)}`;
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+        return res.status(200).json({ run: { output: '', stderr: errMsg } });
+      });
+      compile.on('close', (code) => {
+        if (code !== 0) {
+          const err = Buffer.concat(compileErr).toString('utf8');
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          return res.status(200).json({ run: { output: '', stderr: err } });
+        }
+        const child = spawn(java, ['-cp', tmpDir, 'Solution'], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const stdoutChunks = [];
+        const stderrChunks = [];
+        const stdinStr = typeof payload.stdin === 'string' ? unescapeHtmlLocal(payload.stdin) : '';
+        if (stdinStr) child.stdin.write(stdinStr);
+        child.stdin.end();
+        let killed = false;
+        const killTimer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 3000);
+        child.stdout.on('data', d => stdoutChunks.push(d));
+        child.stderr.on('data', d => stderrChunks.push(d));
+        child.on('error', (e) => {
+          clearTimeout(killTimer);
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          const errMsg = `Failed to start Java runtime (${java}). ${e?.code === 'ENOENT' ? 'java not found in PATH. Install JRE/JDK or set JAVA_BIN.' : String(e?.message || e)}`;
+          return res.status(200).json({ run: { output: '', stderr: errMsg } });
+        });
+        child.on('close', () => {
+          clearTimeout(killTimer);
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          const out = Buffer.concat(stdoutChunks).toString('utf8');
+          const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
+          return res.status(200).json({ run: { output: out, stderr: err } });
+        });
+      });
+      return;
+    }
+
+    // C++
+    if (language === 'cpp') {
+      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-cpp-'));
+      const srcFile = path.join(tmpDir, 'main.cpp');
+      fs.writeFileSync(srcFile, source, 'utf8');
+      const exeFile = path.join(tmpDir, process.platform === 'win32' ? 'a.exe' : 'a.out');
+      const gxx = process.env.GXX_BIN || 'g++';
+      const compile = spawn(gxx, ['-std=c++17', '-O2', srcFile, '-o', exeFile]);
+      const compileErr = [];
+      compile.stderr.on('data', d => compileErr.push(d));
+      compile.on('error', (e) => {
+        const errMsg = `Failed to start C++ compiler (${gxx}). ${e?.code === 'ENOENT' ? 'g++ not found in PATH. Install MinGW-w64/LLVM or set GXX_BIN.' : String(e?.message || e)}`;
+        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+        return res.status(200).json({ run: { output: '', stderr: errMsg } });
+      });
+      compile.on('close', (code) => {
+        if (code !== 0) {
+          const err = Buffer.concat(compileErr).toString('utf8');
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          return res.status(200).json({ run: { output: '', stderr: err } });
+        }
+        const child = spawn(exeFile, [], { stdio: ['pipe', 'pipe', 'pipe'] });
+        const stdoutChunks = [];
+        const stderrChunks = [];
+        const stdinStr = typeof payload.stdin === 'string' ? payload.stdin : '';
+        if (stdinStr) child.stdin.write(stdinStr);
+        child.stdin.end();
+        let killed = false;
+        const killTimer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 3000);
+        child.stdout.on('data', d => stdoutChunks.push(d));
+        child.stderr.on('data', d => stderrChunks.push(d));
+        child.on('close', () => {
+          clearTimeout(killTimer);
+          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+          const out = Buffer.concat(stdoutChunks).toString('utf8');
+          const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
+          return res.status(200).json({ run: { output: out, stderr: err } });
+        });
+      });
+      return;
+    }
+
+    // TS/JS transpile compatibility
+    let code = source;
+    if (language === 'typescript') {
+      const ts = await loadTS();
+      if (!ts) return res.status(500).json({ message: 'TypeScript compiler not available on server' });
+      const result = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019, strict: false, esModuleInterop: true } });
+      code = result.outputText;
+    } else if (language === 'javascript' && /(^|\s)(import\s|export\s)/.test(source)) {
+      const ts = await loadTS();
+      if (ts) {
+        const result = ts.transpileModule(source, { compilerOptions: { allowJs: true, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019, esModuleInterop: true }, fileName: 'user_code.js' });
+        code = result.outputText;
+      }
+    }
+
+    const stdout = [];
+    const stderr = [];
+    const stdin = typeof payload.stdin === 'string' ? unescapeHtmlLocal(payload.stdin) : '';
+    const inputLines = stdin.split(/\r?\n/);
+    let inputIndex = 0;
+    const sandbox = {
+      console: { log: (...args) => stdout.push(args.map(a => String(a)).join(' ')), error: (...args) => stderr.push(args.map(a => String(a)).join(' ')), warn: (...args) => stdout.push(args.map(a => String(a)).join(' ')) },
+      readLine: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      gets: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      prompt: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
+      require: (name) => { if (name === 'fs') { return { readFileSync: () => stdin }; } throw new Error('Module not allowed'); },
+      setTimeout, setInterval, clearTimeout, clearInterval,
+    };
+    const context = createContext(sandbox);
+    try {
+      const script = new Script(code, { filename: 'user_code.js' });
+      script.runInContext(context, { timeout: 3000 });
+    } catch (e) {
+      stderr.push(String(e && e.message ? e.message : e));
+    }
+    const output = stdout.join('\n');
+    const err = stderr.join('\n');
+    return res.status(200).json({ success: true, stdout: output, stderr: err, output, run: { output, stderr: err } });
+  } catch (err) {
+    console.error('Error executing code (/api/execute):', err);
+    return res.status(500).json({ message: 'Execution service error' });
+  }
+});
 dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 
 // Trust the first proxy (Render/NGINX) so req.protocol and req.hostname respect X-Forwarded-* headers
