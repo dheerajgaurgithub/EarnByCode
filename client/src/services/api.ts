@@ -335,16 +335,44 @@ class ApiService {
       totalSubmissions: number;
     };
     message?: string;
-  }> {
+  }>
+  {
     return this.request('GET', '/admin/stats');
+  }
+
+  // Admin: users pending deletion within 24h window
+  async getAdminPendingDeletions(includeExpired: boolean = true): Promise<{
+    success: boolean;
+    users: Array<{
+      _id: string;
+      username: string;
+      email: string;
+      fullName?: string;
+      windowExpiresAt: string | null;
+      recoveryRequested: boolean;
+      recoveryRequestedAt: string | null;
+      expired: boolean;
+      requestedAt: string | null;
+    }>;
+  }> {
+    const query = new URLSearchParams({ includeExpired: String(includeExpired) }).toString();
+    return this.request('GET', `/admin/users/deletions/pending?${query}`);
+  }
+
+  // Admin: recover user within window
+  async adminRecoverUser(userId: string): Promise<{ success: boolean; message: string }> {
+    return this.request('POST', `/admin/users/${userId}/recover`);
+  }
+
+  // Admin: purge user after window expired
+  async adminPurgeUser(userId: string): Promise<{ success: boolean; message: string }> {
+    return this.request('POST', `/admin/users/${userId}/purge`);
   }
 
   // Admin wallet metrics
   async getAdminWalletMetrics(): Promise<{ success: boolean; metrics: { totalCollected: number; totalPayouts: number; adminBalance: number; } }> {
     return this.request('GET', '/wallet/admin/metrics');
   }
-
-  // Admin all transactions
   async getAdminAllTransactions(params: { page?: number; limit?: number; type?: string; status?: string; userId?: string } = {}): Promise<{
     success: boolean;
     transactions: any[];

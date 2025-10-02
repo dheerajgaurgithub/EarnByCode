@@ -11,6 +11,7 @@ import apiService from '../../services/api';
 import { walletService } from '../../services/walletService';
 import type { User } from '../../types';
 import ContestProblemManager from '../../components/Admin/ContestProblemManager';
+import RecentlyDeletedAccounts from '@/components/Admin/RecentlyDeletedAccounts';
 import JobsList from '@/components/Admin/Jobs/JobsList';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -155,7 +156,7 @@ const AdminPanel: React.FC = () => {
   const toast = useToast();
   
   // UI State
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'problems' | 'contests' | 'jobs'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'problems' | 'contests' | 'jobs' | 'deleted'>('overview');
   const [blockDialogOpen, setBlockDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<ExtendedUser | null>(null);
   const [showContestForm, setShowContestForm] = useState(false);
@@ -760,6 +761,7 @@ const AdminPanel: React.FC = () => {
           {[
             { key: 'overview', label: 'Overview', icon: Shield },
             { key: 'users', label: 'Users', icon: Users },
+            { key: 'deleted', label: 'Recently Deleted', icon: Trash2 },
             { key: 'problems', label: 'Problems', icon: Code },
             { key: 'contests', label: 'Contests', icon: Trophy },
             { key: 'jobs', label: 'Jobs', icon: Calendar }
@@ -1590,6 +1592,12 @@ const AdminPanel: React.FC = () => {
         {error && (
           <div className="mx-3 sm:mx-4 lg:mx-6 mt-3 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-xs">
             {error}
+          </div>
+        )}
+
+        {activeTab === 'deleted' && (
+          <div className="p-3 sm:p-4">
+            <RecentlyDeletedAccounts />
           </div>
         )}
 

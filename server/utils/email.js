@@ -69,6 +69,59 @@ const EMAIL_CONFIG = {
   }
 };
 
+// Email: Account deletion scheduled with 24h recovery link
+export const sendAccountDeletionScheduledEmail = async (to, recoverUrl, expiresAt) => {
+  const subject = 'Your EarnByCode account deletion is scheduled';
+  const text = `Your EarnByCode account associated with ${to} is scheduled for deletion.
+
+If this was not you, you can request recovery within 24 hours using this link:
+${recoverUrl}
+
+This link expires on ${new Date(expiresAt).toLocaleString()}.
+
+— EarnByCode`;
+  const html = `
+    <!doctype html>
+    <html><body style="font-family: Arial, sans-serif;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;border:1px solid #e5e7eb;">
+        <h2 style="color:#1f2937;margin-top:0;">Account Deletion Scheduled</h2>
+        <p>Your EarnByCode account is scheduled for deletion.</p>
+        <p>If this was not you, you can request recovery within <strong>24 hours</strong>.</p>
+        <p style="margin:22px 0;">
+          <a href="${recoverUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 18px;border-radius:8px;text-decoration:none;">Request Account Recovery</a>
+        </p>
+        <p>Or open this link in your browser:<br /><a href="${recoverUrl}">${recoverUrl}</a></p>
+        <p><em>Link expires:</em> ${new Date(expiresAt).toLocaleString()}</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+        <p style="color:#6b7280;font-size:12px">© ${new Date().getFullYear()} EarnByCode</p>
+      </div>
+    </body></html>
+  `;
+  return sendEmail({ to, subject, text, html });
+};
+
+// Email: Account recovered successfully
+export const sendAccountRecoveredEmail = async (to) => {
+  const subject = 'Your EarnByCode account has been recovered';
+  const text = `Good news! Your EarnByCode account associated with ${to} has been recovered successfully.
+
+You can now log in again.
+
+— EarnByCode`;
+  const html = `
+    <!doctype html>
+    <html><body style="font-family: Arial, sans-serif;">
+      <div style="max-width:600px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;border:1px solid #e5e7eb;">
+        <h2 style="color:#1f2937;margin-top:0;">Account Recovered</h2>
+        <p>Your account has been recovered successfully. You can now log in again.</p>
+        <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+        <p style="color:#6b7280;font-size:12px">© ${new Date().getFullYear()} EarnByCode</p>
+      </div>
+    </body></html>
+  `;
+  return sendEmail({ to, subject, text, html });
+};
+
 // Email: Registration verification link
 export const sendVerificationLinkEmail = async (to, linkUrl) => {
   const subject = 'Verify your EarnByCode account';
@@ -353,6 +406,46 @@ const createOTPEmailTemplate = (otp, type = 'password-reset') => {
               <p>© 2025 EarnByCode. All rights reserved.</p>
               <p>This is an automated message, please do not reply.</p>
             </div>
+          </div>
+        </body>
+        </html>
+      `
+    }
+    ,
+    'account-deletion': {
+      subject: 'Confirm Account Deletion - EarnByCode',
+      text: `This OTP is to delete your account. If you really want to leave EarnByCode then enter the OTP and your account will be deleted.\n\nIf you want to retrieve your account, you can do so within 24 hours after deletion only.\n\nThank you\nTeam @replyearnbycode@gmail.com\n\nOTP: ${otp}\n(This code expires in 15 minutes)`,
+      html: `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <title>Confirm Account Deletion - EarnByCode</title>
+        </head>
+        <body style="margin:0;padding:0;font-family:Arial, sans-serif;background:#f5f5f5;">
+          <div style="max-width:600px;margin:0 auto;background:#ffffff;padding:20px;border-radius:8px;margin-top:20px;border:1px solid #e5e7eb;">
+            <h2 style="color:#1f2937;margin:0 0 10px;">Confirm Account Deletion</h2>
+            <p style="color:#374151;line-height:1.6;">
+              This OTP is to <strong>delete your account</strong>. If you really want to leave EarnByCode, enter the code below to confirm deletion.
+            </p>
+            <div style="text-align:center;margin:24px 0;">
+              <div style="display:inline-block;background:#f3f4f6;padding:18px 28px;border-radius:8px;border:2px dashed #d1d5db;">
+                <span style="font-family:'Courier New', monospace;font-size:28px;font-weight:bold;color:#2563eb;letter-spacing:4px;">${otp}</span>
+              </div>
+              <div style="color:#6b7280;font-size:12px;margin-top:8px;">This code expires in 15 minutes</div>
+            </div>
+            <div style="background:#fff7ed;border-left:4px solid #f97316;padding:12px 14px;border-radius:6px;">
+              <p style="margin:0;color:#9a3412;">
+                You can <strong>retrieve your account within 24 hours after deletion only</strong>.
+              </p>
+            </div>
+            <p style="color:#374151;line-height:1.6;margin-top:18px;">
+              Thank you<br/>
+              <strong>Team</strong> <a href="mailto:replyearnbycode@gmail.com">@replyearnbycode@gmail.com</a>
+            </p>
+            <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+            <p style="color:#9ca3af;font-size:12px;">© ${new Date().getFullYear()} EarnByCode</p>
           </div>
         </body>
         </html>

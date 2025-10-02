@@ -223,6 +223,12 @@ const userSchema = new mongoose.Schema({
     otp: { type: String, default: null },
     expiresAt: { type: Date, default: null },
     requestedAt: { type: Date, default: null },
+    // 24-hour recovery window fields
+    pending: { type: Boolean, default: false }, // true after OTP-verified deletion is scheduled
+    token: { type: String, default: null }, // recovery token for support link
+    windowExpiresAt: { type: Date, default: null }, // deletion window expiry (e.g., +24h)
+    recoveryRequested: { type: Boolean, default: false }, // user clicked recovery link
+    recoveryRequestedAt: { type: Date, default: null },
   },
   // Profile avatar fields
   avatarUrl: {

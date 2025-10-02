@@ -1,7 +1,8 @@
 import express from 'express';
 import User from '../models/User.js';
 import { authenticate } from '../middleware/auth.js';
-import { sendOTPEmail, sendEmailChangeSuccessEmail, sendAccountDeletedEmail } from '../utils/email.js';
+import { sendOTPEmail, sendEmailChangeSuccessEmail, sendAccountDeletedEmail, sendAccountDeletionScheduledEmail } from '../utils/email.js';
+import config from '../config/config.js';
 
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -977,7 +978,7 @@ router.post('/me/delete/request', authenticate, async (req, res) => {
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     user.accountDeletion = { otp, expiresAt, requestedAt: new Date() };
     await user.save();
-    try { await sendOTPEmail(user.email, otp, 'email-verification'); } catch {}
+    try { await sendOTPEmail(user.email, otp, 'account-deletion'); } catch {}
     return res.json({ success: true, message: 'Deletion OTP sent to your email' });
   } catch (error) {
     console.error('Delete request OTP error:', error);
@@ -998,15 +999,69 @@ router.post('/me/delete/verify', authenticate, async (req, res) => {
     if (String(del.otp) !== code) return res.status(400).json({ success: false, message: 'Invalid OTP' });
     if (new Date(del.expiresAt).getTime() < Date.now()) return res.status(400).json({ success: false, message: 'OTP expired' });
 
-    const publicId = user.avatarPublicId;
-    const email = user.email;
-    await User.deleteOne({ _id: user._id });
-    if (publicId) { cloudinary.v2.uploader.destroy(publicId).catch(() => {}); }
-    try { await sendAccountDeletedEmail(email); } catch {}
-    return res.json({ success: true, message: 'Account deleted' });
+    // Schedule deletion with 24-hour recovery window
+    const windowMs = 24 * 60 * 60 * 1000;
+    const windowExpiresAt = new Date(Date.now() + windowMs);
+    const token = jwt.sign({ userId: user._id, action: 'recover' }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+    user.accountDeletion = {
+      otp: null,
+      expiresAt: null,
+      requestedAt: del.requestedAt || new Date(),
+      pending: true,
+      token,
+      windowExpiresAt,
+      recoveryRequested: false,
+      recoveryRequestedAt: null,
+    };
+    await user.save();
+
+    // Build recovery link
+    const apiUrl = config.API_URL || `${req.protocol}://${req.get('host')}`;
+    const recoverUrl = `${apiUrl}/users/recover-account?token=${encodeURIComponent(token)}`;
+
+    // Notify user with recovery link
+    setImmediate(async () => {
+      try {
+        await sendAccountDeletionScheduledEmail(user.email, recoverUrl, windowExpiresAt);
+      } catch (e) {
+        console.error('Failed to send deletion scheduled email (bg):', e?.message || e);
+      }
+    });
+
+    return res.json({ success: true, message: 'Account deletion scheduled. You can recover within 24 hours from the email link.' });
   } catch (error) {
     console.error('Delete verify error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to verify account deletion' });
+    return res.status(500).json({ success: false, message: 'Failed to schedule account deletion' });
+  }
+});
+
+// Public: recovery link endpoint (clicked from email)
+router.get('/recover-account', async (req, res) => {
+  try {
+    const { token } = req.query || {};
+    if (!token) return res.status(400).send('Invalid recovery link');
+    let decoded;
+    try {
+      decoded = jwt.verify(String(token), process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(400).send('Recovery link is expired or invalid');
+    }
+    const user = await User.findById(decoded.userId);
+    if (!user) return res.status(404).send('User not found');
+    const del = user.accountDeletion || {};
+    if (!del.pending || !del.windowExpiresAt) return res.status(400).send('No recoverable deletion found');
+    if (new Date(del.windowExpiresAt).getTime() < Date.now()) return res.status(400).send('Recovery link is expired');
+
+    // Mark recovery requested
+    user.accountDeletion.recoveryRequested = true;
+    user.accountDeletion.recoveryRequestedAt = new Date();
+    await user.save();
+
+    return res.status(200).send('Your account recovery request has been submitted. Your account will be recovered within 24 hrs by admin.');
+  } catch (error) {
+    console.error('Recover account link error:', error);
+    return res.status(500).send('Failed to process recovery request');
   }
 });
 

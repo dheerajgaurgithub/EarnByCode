@@ -6,6 +6,7 @@ import Submission from '../models/Submission.js';
 import Transaction from '../models/Transaction.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import DailyProblem from '../models/DailyProblem.js';
+import { sendAccountRecoveredEmail, sendAccountDeletedEmail } from '../utils/email.js';
 
 const router = express.Router();
 
@@ -820,9 +821,32 @@ router.get('/users/bank-details/export', async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename=${fileName}`);
     return res.status(200).send('\uFEFF' + csv); // BOM for Excel UTF-8
   } catch (error) {
-    console.error('Admin export bank details error:', error);
-    return res.status(500).json({ success: false, message: 'Failed to export bank details' });
+    console.error('Admin recover user error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to recover user' });
   }
 });
 
-export default router;
+// Purge a user after 24-hour window expired
+router.post('/users/:id/purge', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const del = user.accountDeletion || {};
+    if (!del.pending || !del.windowExpiresAt) return res.status(400).json({ success: false, message: 'User is not scheduled for purge' });
+    if (new Date(del.windowExpiresAt).getTime() > Date.now()) return res.status(400).json({ success: false, message: 'Purge not allowed before window expiry' });
+
+    const publicId = user.avatarPublicId;
+    const email = user.email;
+
+    await User.deleteOne({ _id: user._id });
+    if (publicId) { try { await cloudinary.v2.uploader.destroy(publicId); } catch {} }
+
+    // Optional: final confirmation email
+    setImmediate(async () => { try { await sendAccountDeletedEmail(email); } catch {} });
+
+    return res.json({ success: true, message: 'User permanently removed' });
+  } catch (error) {
+    console.error('Admin purge user error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to purge user' });
+  }
+});

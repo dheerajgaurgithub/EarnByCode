@@ -2,10 +2,12 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import passport from 'passport';
 import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import User from '../models/User.js';
+import PendingRegistration from '../models/PendingRegistration.js';
 import config from '../config/config.js';
 import { authenticate } from '../middleware/auth.js';
 import { sendOTPEmail, sendVerificationLinkEmail, sendEmail } from '../utils/email.js';
@@ -71,6 +73,164 @@ const isCoolingDown = (map, email) => {
   return typeof last === 'number' && (now - last) < COOLDOWN_MS;
 };
 const setCooldown = (map, email) => map.set(email, Date.now());
+
+// Registration (OTP-first) - Step 1: Request OTP
+router.post('/register/request-otp', async (req, res) => {
+  try {
+    const { username, email, password, fullName } = req.body || {};
+    if (!username || !email || !password) {
+      return res.status(400).json({ message: 'username, email and password are required' });
+    }
+
+    const normalizedEmail = String(email).toLowerCase();
+
+    // Check existing user conflicts
+    const existingUser = await User.findOne({
+      $or: [
+        { email: normalizedEmail },
+        { username }
+      ]
+    });
+    if (existingUser) {
+      return res.status(400).json({
+        message: existingUser.email === normalizedEmail
+          ? 'Email already registered'
+          : 'Username already taken'
+      });
+    }
+
+    // Generate OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpHash = crypto.createHash('sha256').update(otp).digest('hex');
+    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    // Hash password prior to storing pending record
+    const salt = await bcrypt.genSalt(12);
+    const passwordHash = await bcrypt.hash(String(password), salt);
+
+    // Upsert pending registration per email (replace any previous)
+    await PendingRegistration.findOneAndUpdate(
+      { email: normalizedEmail },
+      {
+        email: normalizedEmail,
+        username,
+        password: passwordHash,
+        fullName,
+        otpHash,
+        otpExpiresAt,
+        createdAt: new Date(),
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    // Send OTP email in background
+    setImmediate(async () => {
+      try {
+        const emailResult = await sendOTPEmail(normalizedEmail, otp, 'email-verification');
+        console.log('📧 Registration OTP sent (bg):', emailResult);
+      } catch (e) {
+        console.error('Failed to send registration OTP (bg):', e?.message || e);
+      }
+    });
+
+    return res.status(200).json({
+      message: 'OTP sent to your email address',
+      email: normalizedEmail,
+      ...((!isProd || process.env.OTP_DEBUG === 'true') ? { debugOtp: otp } : {})
+    });
+  } catch (error) {
+    console.error('Register request-otp error:', error);
+    return res.status(500).json({ message: 'Failed to send OTP' });
+  }
+});
+
+// Registration (OTP-first) - Step 2: Verify OTP and create account
+router.post('/register/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = req.body || {};
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'email and otp are required' });
+    }
+
+    const normalizedEmail = String(email).toLowerCase();
+
+    // Find pending registration
+    const pending = await PendingRegistration.findOne({ email: normalizedEmail });
+    if (!pending) {
+      return res.status(400).json({ message: 'No pending registration found for this email' });
+    }
+
+    if (new Date(pending.otpExpiresAt).getTime() < Date.now()) {
+      await PendingRegistration.deleteOne({ _id: pending._id }).catch(() => {});
+      return res.status(400).json({ message: 'OTP expired. Please request a new one.' });
+    }
+
+    const hash = crypto.createHash('sha256').update(String(otp)).digest('hex');
+    if (hash !== pending.otpHash) {
+      return res.status(400).json({ message: 'Invalid OTP' });
+    }
+
+    // Ensure still no conflicting user
+    const conflict = await User.findOne({
+      $or: [
+        { email: normalizedEmail },
+        { username: pending.username }
+      ]
+    });
+    if (conflict) {
+      // Cleanup pending since a user now exists
+      await PendingRegistration.deleteOne({ _id: pending._id }).catch(() => {});
+      return res.status(400).json({ message: 'Email or username already registered' });
+    }
+
+    // Create the user using pending data; password already hashed (User pre-save will skip rehash)
+    const user = new User({
+      username: pending.username,
+      email: normalizedEmail,
+      password: pending.password,
+      fullName: pending.fullName,
+      isEmailVerified: true,
+    });
+    await user.save();
+
+    // Cleanup pending record
+    await PendingRegistration.deleteOne({ _id: pending._id }).catch(() => {});
+
+    // Send welcome email in background
+    setImmediate(async () => {
+      try {
+        const subject = 'Your EarnByCode account is created successfully';
+        const text = `your earnbycode ${normalizedEmail} account is created successfully`;
+        const html = `<!doctype html><html><body style="font-family: Arial, sans-serif;">
+          <div style="max-width:600px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;border:1px solid #e5e7eb;">
+            <h2 style="color:#1f2937;margin-top:0;">Welcome to EarnByCode</h2>
+            <p>your earnbycode <strong>${normalizedEmail}</strong> account is created successfully.</p>
+            <p style="color:#6b7280;font-size:12px">© ${new Date().getFullYear()} EarnByCode</p>
+          </div>
+        </body></html>`;
+        await sendEmail({ to: normalizedEmail, subject, text, html });
+      } catch (e) {
+        console.error('Failed to send welcome email (bg):', e?.message || e);
+      }
+    });
+
+    // Generate auth token like normal login
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: process.env.JWT_EXPIRE || '7d' }
+    );
+
+    return res.status(201).json({
+      message: 'Registration completed successfully',
+      token,
+      user: user.toJSON()
+    });
+  } catch (error) {
+    console.error('Register verify-otp error:', error);
+    return res.status(500).json({ message: 'Failed to complete registration' });
+  }
+});
 
 // Register: create user and send verification OTP if email verification is enabled
 router.post('/register', async (req, res) => {
