@@ -828,6 +828,85 @@ router.get('/users/bank-details/export', async (req, res) => {
   }
 });
 
+// List users with scheduled deletions (24h recovery window)
+// GET /api/admin/users/deletions/pending?includeExpired=true
+router.get('/users/deletions/pending', async (req, res) => {
+  try {
+    const includeExpired = String(req.query.includeExpired || 'true').toLowerCase() === 'true';
+    const now = Date.now();
+    const filter = { 'accountDeletion.pending': true };
+    if (!includeExpired) {
+      filter['accountDeletion.windowExpiresAt'] = { $gt: new Date(now) };
+    }
+
+    const users = await User.find(filter)
+      .select('_id username email fullName accountDeletion')
+      .sort({ 'accountDeletion.requestedAt': -1, createdAt: -1 })
+      .lean();
+
+    const data = users.map(u => {
+      const del = u.accountDeletion || {};
+      const expAt = del.windowExpiresAt ? new Date(del.windowExpiresAt) : null;
+      const expired = expAt ? expAt.getTime() <= now : false;
+      return {
+        _id: String(u._id),
+        username: u.username,
+        email: u.email,
+        fullName: u.fullName,
+        windowExpiresAt: expAt ? expAt.toISOString() : null,
+        recoveryRequested: !!del.recoveryRequested,
+        recoveryRequestedAt: del.recoveryRequestedAt ? new Date(del.recoveryRequestedAt).toISOString() : null,
+        requestedAt: del.requestedAt ? new Date(del.requestedAt).toISOString() : null,
+        expired,
+      };
+    });
+
+    return res.json({ success: true, users: data });
+  } catch (error) {
+    console.error('Admin list pending deletions error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to list pending deletions' });
+  }
+});
+
+// Recover a user within the 24-hour window
+// POST /api/admin/users/:id/recover
+router.post('/users/:id/recover', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const del = user.accountDeletion || {};
+    if (!del.pending || !del.windowExpiresAt) return res.status(400).json({ success: false, message: 'User is not pending deletion' });
+
+    const now = Date.now();
+    if (new Date(del.windowExpiresAt).getTime() <= now) {
+      return res.status(400).json({ success: false, message: 'Recovery window expired' });
+    }
+
+    // Clear deletion flags
+    user.accountDeletion = {
+      otp: null,
+      expiresAt: null,
+      requestedAt: null,
+      pending: false,
+      token: null,
+      windowExpiresAt: null,
+      recoveryRequested: false,
+      recoveryRequestedAt: null,
+    };
+    await user.save();
+
+    // Notify user (best-effort)
+    setImmediate(async () => {
+      try { await sendAccountRecoveredEmail(user.email); } catch {}
+    });
+
+    return res.json({ success: true, message: 'User recovered successfully' });
+  } catch (error) {
+    console.error('Admin recover user error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to recover user' });
+  }
+});
+
 // Purge a user after 24-hour window expired
 router.post('/users/:id/purge', async (req, res) => {
   try {
