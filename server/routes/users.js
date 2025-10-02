@@ -1016,9 +1016,10 @@ router.post('/me/delete/verify', authenticate, async (req, res) => {
     };
     await user.save();
 
-    // Build recovery link
-    const apiUrl = config.API_URL || `${req.protocol}://${req.get('host')}`;
-    const recoverUrl = `${apiUrl}/users/recover-account?token=${encodeURIComponent(token)}`;
+    // Build recovery link (ensure '/api' prefix exists)
+    const rawBase = config.API_URL || `${req.protocol}://${req.get('host')}`;
+    const baseApi = rawBase.endsWith('/api') ? rawBase : `${rawBase.replace(/\/$/, '')}/api`;
+    const recoverUrl = `${baseApi}/users/recover-account?token=${encodeURIComponent(token)}`;
 
     // Notify user with recovery link
     setImmediate(async () => {
