@@ -6,6 +6,7 @@ import Submission from '../models/Submission.js';
 import Transaction from '../models/Transaction.js';
 import { authenticate, requireAdmin } from '../middleware/auth.js';
 import DailyProblem from '../models/DailyProblem.js';
+import cloudinary from 'cloudinary';
 import { sendAccountRecoveredEmail, sendAccountDeletedEmail } from '../utils/email.js';
 
 const router = express.Router();
@@ -34,6 +35,8 @@ router.get('/stats', async (req, res) => {
       // Don't include user-specific or transaction data that could be used for participation
       message: 'Admin access is restricted to platform management only.'
     });
+
+export default router;
 
 // Set global daily problem for a given UTC date (YYYY-MM-DD). If date is omitted, uses today's UTC date.
 router.post('/daily-problem', async (req, res) => {
