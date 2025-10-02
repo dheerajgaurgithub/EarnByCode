@@ -35,8 +35,11 @@ router.get('/stats', async (req, res) => {
       // Don't include user-specific or transaction data that could be used for participation
       message: 'Admin access is restricted to platform management only.'
     });
-
-export default router;
+  } catch (error) {
+    console.error('Admin stats error:', error);
+    res.status(500).json({ message: 'Failed to fetch admin stats' });
+  }
+});
 
 // Set global daily problem for a given UTC date (YYYY-MM-DD). If date is omitted, uses today's UTC date.
 router.post('/daily-problem', async (req, res) => {
@@ -159,11 +162,7 @@ router.post('/recalculate-points', authenticate, requireAdmin, async (req, res) 
     return res.status(500).json({ success: false, message: 'Failed to recalculate points' });
   }
 });
-  } catch (error) {
-    console.error('Admin stats error:', error);
-    res.status(500).json({ message: 'Failed to fetch admin stats' });
-  }
-});
+  
 
 // Get a single user's bank details (sanitized)
 router.get('/users/:id/bank-details', async (req, res) => {
@@ -853,3 +852,5 @@ router.post('/users/:id/purge', async (req, res) => {
     return res.status(500).json({ success: false, message: 'Failed to purge user' });
   }
 });
+
+export default router;
