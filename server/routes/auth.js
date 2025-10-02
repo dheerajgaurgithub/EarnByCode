@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url';
 import User from '../models/User.js';
 import config from '../config/config.js';
 import { authenticate } from '../middleware/auth.js';
-import { sendOTPEmail, sendVerificationLinkEmail } from '../utils/email.js';
+import { sendOTPEmail, sendVerificationLinkEmail, sendEmail } from '../utils/email.js';
 
 // Helper: is user currently blocked (without modifying DB)
 const isCurrentlyBlocked = (user) => {
@@ -111,6 +111,24 @@ router.post('/register', async (req, res) => {
     });
     
     await user.save();
+    
+    // Send welcome/confirmation email in background (non-blocking)
+    setImmediate(async () => {
+      try {
+        const subject = 'Your EarnByCode account is created successfully';
+        const text = `your earnbycode ${normalizedEmail} account is created successfully`;
+        const html = `<!doctype html><html><body style="font-family: Arial, sans-serif;">
+          <div style="max-width:600px;margin:0 auto;background:#fff;padding:20px;border-radius:8px;border:1px solid #e5e7eb;">
+            <h2 style="color:#1f2937;margin-top:0;">Welcome to EarnByCode</h2>
+            <p>your earnbycode <strong>${normalizedEmail}</strong> account is created successfully.</p>
+            <p style="color:#6b7280;font-size:12px">© ${new Date().getFullYear()} EarnByCode</p>
+          </div>
+        </body></html>`;
+        await sendEmail({ to: normalizedEmail, subject, text, html });
+      } catch (e) {
+        console.error('Failed to send welcome email (bg):', e?.message || e);
+      }
+    });
     
     // If email verification is required, send verification LINK (instead of OTP)
     if (requireEmailVerification) {
