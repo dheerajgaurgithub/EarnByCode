@@ -604,6 +604,36 @@ router.delete('/me/avatar', authenticate, async (req, res) => {
   }
 });
 
+// Public: recovery link endpoint (clicked from email)
+// Place BEFORE the catch-all '/:id' route to prevent accidental capture
+router.get('/recover-account', async (req, res) => {
+  try {
+    const { token } = req.query || {};
+    if (!token) return res.status(400).send('Invalid recovery link');
+    let decoded;
+    try {
+      decoded = jwt.verify(String(token), process.env.JWT_SECRET);
+    } catch (e) {
+      return res.status(400).send('Recovery link is expired or invalid');
+    }
+    const user = await User.findById(decoded.userId);
+    if (!user) return res.status(404).send('User not found');
+    const del = user.accountDeletion || {};
+    if (!del.pending || !del.windowExpiresAt) return res.status(400).send('No recoverable deletion found');
+    if (new Date(del.windowExpiresAt).getTime() < Date.now()) return res.status(400).send('Recovery link is expired');
+
+    // Mark recovery requested
+    user.accountDeletion.recoveryRequested = true;
+    user.accountDeletion.recoveryRequestedAt = new Date();
+    await user.save();
+
+    return res.status(200).send('Your account recovery request has been submitted. Your account will be recovered within 24 hrs by admin.');
+  } catch (error) {
+    console.error('Recover account link error:', error);
+    return res.status(500).send('Failed to process recovery request');
+  }
+});
+
 // Get user profile
 router.get('/:id', optionalAuth, async (req, res) => {
   try {
