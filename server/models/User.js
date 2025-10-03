@@ -142,6 +142,11 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0
   },
+  // Social graph
+  followers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  following: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  // Friends are mutual followers (we also persist for faster queries)
+  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   // User UI/UX preferences and settings
   preferences: {
     theme: { type: String, enum: ['light', 'dark', 'auto'], default: 'light' },

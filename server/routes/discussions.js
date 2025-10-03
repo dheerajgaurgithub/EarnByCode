@@ -2,6 +2,8 @@ import express from 'express';
 import { authenticate } from '../middleware/auth.js';
 import Discussion from '../models/Discussion.js';
 import Problem from '../models/Problem.js';
+import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
@@ -109,6 +111,28 @@ router.post('/', authenticate, async (req, res) => {
     });
 
     await discussion.save();
+
+    // If admin created this discussion, notify all users (persistent)
+    try {
+      const isAdmin = req.user?.isAdmin === true || req.user?.role === 'admin';
+      if (isAdmin) {
+        const users = await User.find({}).select('_id').lean();
+        const payload = users.map(u => ({
+          type: 'admin_discussion',
+          actor: req.user._id,
+          targetUser: u._id,
+          status: 'delivered',
+          metadata: {
+            discussionId: String(discussion._id),
+            title: discussion.title,
+            problemId: discussion.problem ? String(discussion.problem) : null
+          }
+        }));
+        if (payload.length) await Notification.insertMany(payload);
+      }
+    } catch (e) {
+      console.warn('Admin discussion notify failed:', e?.message || e);
+    }
 
     // Populate author and problem info for response
     await discussion.populate('author', 'username');

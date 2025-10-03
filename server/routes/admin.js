@@ -8,6 +8,7 @@ import { authenticate, requireAdmin } from '../middleware/auth.js';
 import DailyProblem from '../models/DailyProblem.js';
 import cloudinary from 'cloudinary';
 import { sendAccountRecoveredEmail, sendAccountDeletedEmail } from '../utils/email.js';
+import Notification from '../models/Notification.js';
 
 const router = express.Router();
 
@@ -316,6 +317,31 @@ router.post('/contests', async (req, res) => {
 
     const contest = new Contest(contestData);
     await contest.save();
+
+    // Notify all users about the new contest assignment
+    try {
+      const users = await User.find({}).select('_id').lean();
+      const start = contest.startTime ? new Date(contest.startTime) : null;
+      const end = contest.endTime ? new Date(contest.endTime) : null;
+      const payload = users.map(u => ({
+        type: 'contest_assigned',
+        actor: req.user._id,
+        targetUser: u._id,
+        status: 'delivered',
+        metadata: {
+          contestId: String(contest._id),
+          title: contest.title,
+          startTime: start ? start.toISOString() : null,
+          endTime: end ? end.toISOString() : null,
+          note: req.body?.note || ''
+        }
+      }));
+      if (payload.length) {
+        await Notification.insertMany(payload);
+      }
+    } catch (e) {
+      console.warn('Contest notify users failed:', e?.message || e);
+    }
 
     res.status(201).json({ 
       message: 'Contest created successfully', 

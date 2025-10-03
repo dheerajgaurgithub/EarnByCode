@@ -10,6 +10,7 @@ import multer from 'multer';
 import cloudinary from 'cloudinary';
 // OTP/email sending no longer used here
 import Submission from '../models/Submission.js';
+import Notification from '../models/Notification.js';
 // Email change OTP flow removed
 
 // Initialize router
@@ -22,6 +23,102 @@ cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
+// --- Social: follow / unfollow / lists / friends ---
+// Follow a user
+router.post('/:id/follow', authenticate, async (req, res) => {
+  try {
+    const meId = req.user.id;
+    const targetId = req.params.id;
+    if (String(meId) === String(targetId)) {
+      return res.status(400).json({ success: false, message: 'You cannot follow yourself' });
+    }
+    const target = await User.findById(targetId).select('_id');
+    if (!target) return res.status(404).json({ success: false, message: 'User not found' });
+
+    // Check if existing pending request to avoid duplicates
+    const existing = await Notification.findOne({ type: 'follow_request', actor: meId, targetUser: targetId, status: 'pending' });
+    if (!existing) {
+      await Notification.create({ type: 'follow_request', actor: meId, targetUser: targetId, status: 'pending', metadata: {} });
+    }
+
+    return res.json({ success: true, requested: true, message: 'Follow request sent' });
+  } catch (error) {
+    console.error('Follow user error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to follow user' });
+  }
+});
+
+// Unfollow a user
+router.post('/:id/unfollow', authenticate, async (req, res) => {
+  try {
+    const meId = req.user.id;
+    const targetId = req.params.id;
+    if (String(meId) === String(targetId)) {
+      return res.status(400).json({ success: false, message: 'You cannot unfollow yourself' });
+    }
+    const target = await User.findById(targetId).select('_id');
+    if (!target) return res.status(404).json({ success: false, message: 'User not found' });
+
+    await Promise.all([
+      User.updateOne({ _id: meId }, { $pull: { following: targetId, friends: targetId } }),
+      User.updateOne({ _id: targetId }, { $pull: { followers: meId, friends: meId } })
+    ]);
+
+    return res.json({ success: true, following: false, isFriend: false });
+  } catch (error) {
+    console.error('Unfollow user error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to unfollow user' });
+  }
+});
+
+// List followers of a user
+router.get('/:id/followers', optionalAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '50'))));
+    const skip = Math.max(0, parseInt(String(req.query.skip || '0')));
+    const user = await User.findById(id).select('followers').populate({ path: 'followers', select: 'username fullName avatarUrl' }).lean();
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const list = Array.isArray(user.followers) ? user.followers.slice(skip, skip + limit) : [];
+    return res.json({ success: true, followers: list });
+  } catch (error) {
+    console.error('List followers error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to list followers' });
+  }
+});
+
+// List following of a user
+router.get('/:id/following', optionalAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '50'))));
+    const skip = Math.max(0, parseInt(String(req.query.skip || '0')));
+    const user = await User.findById(id).select('following').populate({ path: 'following', select: 'username fullName avatarUrl' }).lean();
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const list = Array.isArray(user.following) ? user.following.slice(skip, skip + limit) : [];
+    return res.json({ success: true, following: list });
+  } catch (error) {
+    console.error('List following error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to list following' });
+  }
+});
+
+// List friends (mutual follows) of a user
+router.get('/:id/friends', optionalAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const limit = Math.min(100, Math.max(1, parseInt(String(req.query.limit || '50'))));
+    const skip = Math.max(0, parseInt(String(req.query.skip || '0')));
+    const user = await User.findById(id).select('friends').populate({ path: 'friends', select: 'username fullName avatarUrl' }).lean();
+    if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const list = Array.isArray(user.friends) ? user.friends.slice(skip, skip + limit) : [];
+    return res.json({ success: true, friends: list });
+  } catch (error) {
+    console.error('List friends error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to list friends' });
+  }
 });
 
 // Get current user's bank details (sanitized)

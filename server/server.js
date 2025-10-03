@@ -64,6 +64,7 @@ import blogRoutes from './routes/blog.js';
 import oauthRoutes from './routes/oauth.js';
 import walletRoutes from './routes/wallet.js';
 import emailTestRoutes from './routes/email-test.js';
+import notificationRoutes from './routes/notifications.js';
 import { authenticate } from './middleware/auth.js';
 import Problem from './models/Problem.js';
 import Submission from './models/Submission.js';
@@ -729,6 +730,7 @@ app.use('/api/oauth', oauthRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/email-test', emailTestRoutes); // Add email test routes
+app.use('/api/notifications', notificationRoutes);
 
 // AI Chat endpoint (OpenAI-first). Supports streaming via SSE.
 app.post('/api/ai/chat', async (req, res) => {

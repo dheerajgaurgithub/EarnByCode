@@ -91,13 +91,22 @@ const RecentlyDeletedAccounts: React.FC = () => {
   };
 
   const handlePurge = async (id: string) => {
+    const row = rows.find(r => r._id === id);
+    if (row && !row.expired) {
+      alert('Purge is only allowed after the 24h window expires.');
+      return;
+    }
     if (!window.confirm('Permanently remove this account? This cannot be undone.')) return;
     try {
-      await apiService.adminPurgeUser(id);
-      await fetchRows();
-    } catch (e) {
+      const res = await apiService.adminPurgeUser(id);
+      if (res?.success) {
+        await fetchRows();
+      } else {
+        alert(res?.message || 'Failed to purge user');
+      }
+    } catch (e: any) {
       console.error(e);
-      alert('Failed to purge user');
+      alert(e?.message || 'Failed to purge user');
     }
   };
 

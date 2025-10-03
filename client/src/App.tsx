@@ -47,6 +47,7 @@ import AuthCallback from './pages/AuthCallback';
 import { TestConnectionPage } from './pages/TestConnectionPage';
 import PublicProfile from './pages/PublicProfile';
 import Welcome from './pages/Welcome';
+import Notifications from './pages/Notifications';
 const ContestPage = React.lazy(() => import('./pages/ContestPage'));
 
 // Sync theme with user preferences globally (auto->system)
@@ -305,6 +306,14 @@ function App() {
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/test-connection" element={<TestConnectionPage />} />
               <Route path="/u/:username" element={<PublicProfile />} />
+              <Route
+                path="/notifications"
+                element={
+                  <ProtectedRoute>
+                    <Notifications />
+                  </ProtectedRoute>
+                }
+              />
 
               {/* Public problem routes */}
               <Route path="/problems" element={<Problems />} />

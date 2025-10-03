@@ -468,6 +468,61 @@ class ApiService {
   async joinContest(contestId: string): Promise<{ success: boolean; message?: string }> {
     return this.request('POST', `/contests/${contestId}/join`);
   }
+
+  // Social graph
+  async followUser(userId: string): Promise<{ success: boolean; following: boolean; isFriend: boolean }> {
+    return this.request('POST', `/users/${userId}/follow`);
+  }
+
+  async unfollowUser(userId: string): Promise<{ success: boolean; following: boolean; isFriend: boolean }> {
+    return this.request('POST', `/users/${userId}/unfollow`);
+  }
+
+  async getFollowers(userId: string, opts: { skip?: number; limit?: number } = {}): Promise<{ success: boolean; followers: Array<{ _id: string; username: string; fullName?: string; avatarUrl?: string }> }> {
+    const query = new URLSearchParams();
+    if (opts.skip != null) query.append('skip', String(opts.skip));
+    if (opts.limit != null) query.append('limit', String(opts.limit));
+    return this.request('GET', `/users/${userId}/followers?${query.toString()}`);
+  }
+
+  async getFollowing(userId: string, opts: { skip?: number; limit?: number } = {}): Promise<{ success: boolean; following: Array<{ _id: string; username: string; fullName?: string; avatarUrl?: string }> }> {
+    const query = new URLSearchParams();
+    if (opts.skip != null) query.append('skip', String(opts.skip));
+    if (opts.limit != null) query.append('limit', String(opts.limit));
+    return this.request('GET', `/users/${userId}/following?${query.toString()}`);
+  }
+
+  async getFriends(userId: string, opts: { skip?: number; limit?: number } = {}): Promise<{ success: boolean; friends: Array<{ _id: string; username: string; fullName?: string; avatarUrl?: string }> }> {
+    const query = new URLSearchParams();
+    if (opts.skip != null) query.append('skip', String(opts.skip));
+    if (opts.limit != null) query.append('limit', String(opts.limit));
+    return this.request('GET', `/users/${userId}/friends?${query.toString()}`);
+  }
+
+  // Notifications
+  async getNotifications(opts: { status?: 'unread' | 'all'; skip?: number; limit?: number } = {}) {
+    const query = new URLSearchParams();
+    if (opts.status) query.append('status', opts.status);
+    if (opts.skip != null) query.append('skip', String(opts.skip));
+    if (opts.limit != null) query.append('limit', String(opts.limit));
+    return this.request('GET', `/notifications?${query.toString()}`);
+  }
+
+  async getUnreadCount(): Promise<{ success: boolean; count: number }> {
+    return this.request('GET', `/notifications/unread-count`);
+  }
+
+  async markNotificationRead(id: string): Promise<{ success: boolean }> {
+    return this.request('POST', `/notifications/${id}/read`);
+  }
+
+  async approveFollowRequest(notificationId: string): Promise<{ success: boolean; approved: boolean; isFriend?: boolean }> {
+    return this.request('POST', `/notifications/follow-requests/${notificationId}/approve`);
+  }
+
+  async declineFollowRequest(notificationId: string): Promise<{ success: boolean; declined: boolean }> {
+    return this.request('POST', `/notifications/follow-requests/${notificationId}/decline`);
+  }
 }
 
 const apiService = new ApiService();

@@ -1,8 +1,10 @@
 import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { apiService } from '@/lib/api';
+import svcApi from '@/services/api';
 import { Loader2, MapPin, Trophy, Award, BadgeCheck } from 'lucide-react';
 import { useI18n } from '@/context/I18nContext';
+import { useAuth } from '@/context/AuthContext';
 
 interface PublicUser {
   _id: string;
@@ -28,6 +30,10 @@ const PublicProfile: React.FC = () => {
   const [loading, setLoading] = React.useState(true);
   const [error, setError] = React.useState<string | null>(null);
   const { t } = useI18n();
+  const { user: me } = useAuth();
+  const [isFollowing, setIsFollowing] = React.useState<boolean | null>(null);
+  const [followBusy, setFollowBusy] = React.useState(false);
+  const [requested, setRequested] = React.useState(false);
 
   React.useEffect(() => {
     let mounted = true;
@@ -47,6 +53,50 @@ const PublicProfile: React.FC = () => {
     })();
     return () => { mounted = false; };
   }, [username]);
+
+  // Determine initial following state once both me and user are known
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!me?._id || !user?._id) { setIsFollowing(null); return; }
+      if (String(me._id) === String(user._id)) { setIsFollowing(null); return; }
+      try {
+        // Fetch my following (small page) and check presence
+        const resp = await svcApi.getFollowing(me._id, { limit: 200 });
+        const list = resp?.following || [];
+        const found = list.some((u: any) => String(u._id) === String(user._id));
+        if (mounted) setIsFollowing(found);
+      } catch {
+        if (mounted) setIsFollowing(false);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [me?._id, user?._id]);
+
+  const handleFollowToggle = async () => {
+    if (!me?._id || !user?._id) return;
+    if (String(me._id) === String(user._id)) return;
+    try {
+      setFollowBusy(true);
+      if (isFollowing) {
+        const r = await svcApi.unfollowUser(user._id);
+        setIsFollowing(!r?.success ? isFollowing : false);
+        setRequested(false);
+      } else {
+        const r = await svcApi.followUser(user._id);
+        if (r && (r as any).requested) {
+          setRequested(true);
+          setIsFollowing(false);
+        } else {
+          setIsFollowing(!!r?.success);
+        }
+      }
+    } catch {
+      // ignore, keep previous state
+    } finally {
+      setFollowBusy(false);
+    }
+  };
 
   // Loading State
 if (loading) {
@@ -111,6 +161,24 @@ return (
                   <BadgeCheck className="w-4 h-4 text-amber-500" />
                   Admin of Platform
                 </span>
+              )}
+              {/* Follow/Unfollow button: show only when logged-in and viewing someone else */}
+              {me?._id && String(me._id) !== String(user._id) && (
+                <button
+                  onClick={handleFollowToggle}
+                  disabled={followBusy || isFollowing === null || requested}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm rounded-lg shadow-sm border transition-colors ${isFollowing ? 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50' : requested ? 'bg-gray-200 text-gray-600 border-gray-300 cursor-not-allowed' : 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700'}`}
+                >
+                  {followBusy ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : requested ? (
+                    <>Requested</>
+                  ) : isFollowing ? (
+                    <>Unfollow</>
+                  ) : (
+                    <>Follow</>
+                  )}
+                </button>
               )}
             </div>
             <div className="text-sm sm:text-base text-sky-600 dark:text-green-300 mb-2 flex items-center gap-1">
