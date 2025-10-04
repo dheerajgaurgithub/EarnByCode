@@ -30,7 +30,13 @@ const validateJavaSolution = (src: string) => /\bclass\s+Solution\b/.test(src);
 const getCompilerBase = () => {
   const env: any = (import.meta as any).env || {};
   const override = env.VITE_COMPILER_API as string | undefined;
-  if (override && override.trim()) return override.replace(/\/+$/, '');
+  if (override && override.trim()) {
+    let base = override.trim();
+    base = base.replace(/\/+$/, '');
+    // If someone sets full path ending with /compile, strip it to avoid /compile/compile
+    base = base.replace(/\/compile$/i, '');
+    return base;
+  }
   return '';
 };
 
