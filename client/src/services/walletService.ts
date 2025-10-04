@@ -140,6 +140,28 @@ export const walletService = {
   },
 
   /**
+   * Withdraw via Razorpay Payouts
+   * method: 'upi' | 'bank'
+   * details: for upi { upiId } ; for bank { accountName, accountNumber, ifsc }
+   */
+  async withdrawRazorpay(
+    amount: number,
+    method: 'upi' | 'bank',
+    details: Record<string, unknown>
+  ): Promise<{ success: boolean; transactionId?: string; balance?: number; message?: string; payout?: { id: string; status: string } }> {
+    try {
+      const response = await api.post('/payments/razorpay/payout', {
+        amount,
+        method,
+        details,
+      });
+      return response.data;
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  /**
    * Create Razorpay order for a wallet deposit
    */
   async createRazorpayOrder(amount: number): Promise<{ orderId: string; amount: number; currency: string; keyId: string; }> {

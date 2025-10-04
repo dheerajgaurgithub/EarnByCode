@@ -63,7 +63,14 @@ export const WalletDashboard = () => {
   // Action state
   const [depositAmount, setDepositAmount] = useState<string>('');
   const [paymentMethodId, setPaymentMethodId] = useState<string>('');
-  const [actionLoading, setActionLoading] = useState<{ deposit: boolean }>({ deposit: false });
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [withdrawMethod, setWithdrawMethod] = useState<'upi' | 'bank'>('upi');
+  const [withdrawAmount, setWithdrawAmount] = useState<string>('');
+  const [upiId, setUpiId] = useState<string>('');
+  const [bankName, setBankName] = useState<string>('');
+  const [accountName, setAccountName] = useState<string>('');
+  const [accountNumber, setAccountNumber] = useState<string>('');
+  const [ifsc, setIfsc] = useState<string>('');
   const isStripeConfigured = false;
   // Admin-only: contest pool stats
   const [contestPool, setContestPool] = useState<{ totalAmount: number; totalParticipants: number } | null>(null);
@@ -221,7 +228,96 @@ export const WalletDashboard = () => {
                 </p>
               </div>
             )}
-            {/* Withdraw UI removed per new policy */}
+            {/* Withdraw via Razorpay Payouts */}
+            {!user?.isAdmin && (
+              <div className="flex-1 lg:flex-none lg:min-w-[300px] bg-white dark:bg-gray-800 rounded-xl sm:rounded-2xl border border-rose-100 dark:border-gray-700 p-3 sm:p-4 space-y-2 sm:space-y-3 transition-all duration-500">
+                <h3 className="text-base sm:text-lg font-semibold text-rose-800 dark:text-rose-300">Withdraw</h3>
+                <div className="grid grid-cols-1 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      value={withdrawAmount}
+                      onChange={(e) => setWithdrawAmount(e.target.value)}
+                      placeholder="Amount (₹)"
+                      className="h-10 rounded-lg border-2 border-rose-100 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm"
+                    />
+                    <select
+                      value={withdrawMethod}
+                      onChange={(e) => setWithdrawMethod(e.target.value as 'upi' | 'bank')}
+                      className="h-10 rounded-lg border-2 border-rose-100 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm"
+                    >
+                      <option value="upi">UPI</option>
+                      <option value="bank">Bank</option>
+                    </select>
+                  </div>
+                  {withdrawMethod === 'upi' ? (
+                    <input
+                      value={upiId}
+                      onChange={(e) => setUpiId(e.target.value)}
+                      placeholder="UPI ID (e.g. username@bank)"
+                      className="h-10 rounded-lg border-2 border-rose-100 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm"
+                    />
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                      <input
+                        value={accountName}
+                        onChange={(e) => setAccountName(e.target.value)}
+                        placeholder="Account holder name"
+                        className="h-10 rounded-lg border-2 border-rose-100 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm"
+                      />
+                      <input
+                        value={accountNumber}
+                        onChange={(e) => setAccountNumber(e.target.value)}
+                        placeholder="Account number"
+                        className="h-10 rounded-lg border-2 border-rose-100 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm"
+                      />
+                      <input
+                        value={ifsc}
+                        onChange={(e) => setIfsc(e.target.value)}
+                        placeholder="IFSC"
+                        className="h-10 rounded-lg border-2 border-rose-100 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm"
+                      />
+                      <input
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        placeholder="Bank name (optional)"
+                        className="h-10 rounded-lg border-2 border-rose-100 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 text-sm"
+                      />
+                    </div>
+                  )}
+                  <Button
+                    onClick={async () => {
+                      const amt = parseFloat(withdrawAmount);
+                      if (!amt || amt < 1) { try { toast.error('Minimum withdrawal amount is ₹1'); } catch {}; return; }
+                      try {
+                        setWithdrawing(true);
+                        const details = withdrawMethod === 'upi'
+                          ? { upiId }
+                          : { accountName, accountNumber, ifsc, bankName };
+                        const res = await walletService.withdrawRazorpay(amt, withdrawMethod, details);
+                        if ((res as any)?.success) {
+                          try { toast.success('Withdrawal initiated'); } catch {}
+                          setWithdrawAmount(''); setUpiId(''); setAccountName(''); setAccountNumber(''); setIfsc(''); setBankName('');
+                          await refreshAll();
+                        } else {
+                          try { toast.error((res as any)?.message || 'Withdrawal failed'); } catch {}
+                        }
+                      } catch (e: any) {
+                        try { toast.error(e?.message || 'Withdrawal failed'); } catch {}
+                      } finally {
+                        setWithdrawing(false);
+                      }
+                    }}
+                    disabled={withdrawing}
+                    className="h-10"
+                  >
+                    {withdrawing ? 'Processing…' : 'Withdraw'}
+                  </Button>
+                  <p className="text-[11px] text-rose-600 dark:text-rose-300">Funds are deducted immediately and payout is processed via Razorpay.</p>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

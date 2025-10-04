@@ -11,6 +11,7 @@ const paymentsMode = (process.env.PAYMENTS_MODE || '').toLowerCase(); // 'mock' 
 const razorpayKeyId = process.env.RAZORPAY_KEY_ID || '';
 const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET || '';
 const razorpayWebhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET || '';
+const razorpayPayoutsEnabled = !!(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
 
 async function createRazorpayOrder(amountInRupees, userId) {
   const amountPaise = Math.round(Number(amountInRupees) * 100);
@@ -41,6 +42,76 @@ async function createRazorpayOrder(amountInRupees, userId) {
     console.error('Razorpay order error:', e);
     throw new Error('Failed to create payment order');
   }
+}
+
+async function getRazorpayInstance() {
+  const { default: Razorpay } = await import('razorpay');
+  return new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
+}
+
+async function ensureRzpContact(user) {
+  const instance = await getRazorpayInstance();
+  // Use user's existing razorpayContactId if stored in user doc
+  const u = await User.findById(user._id).select('razorpayContactId username email fullName').lean();
+  if (u?.razorpayContactId) return u.razorpayContactId;
+  const contact = await instance.contacts.create({
+    name: u.fullName || u.username || `user_${String(u._id).slice(-6)}`,
+    email: user.email,
+    type: 'customer',
+    reference_id: String(user._id),
+    notes: { platform: 'AlgoBucks' }
+  });
+  await User.findByIdAndUpdate(user._id, { razorpayContactId: contact.id });
+  return contact.id;
+}
+
+async function upsertFundAccount(user, method, details) {
+  const instance = await getRazorpayInstance();
+  const contactId = await ensureRzpContact(user);
+  if (method === 'upi') {
+    const vpa = String(details.upiId || details.vpa || '').trim();
+    if (!/^\w+[\.\w-]*@\w+$/.test(vpa)) throw new Error('Valid UPI ID is required');
+    const fa = await instance.fundAccount.create({
+      contact_id: contactId,
+      account_type: 'vpa',
+      vpa: { address: vpa },
+      notes: { userId: String(user._id) }
+    });
+    return { id: fa.id, mode: 'UPI' };
+  }
+  if (method === 'bank') {
+    const acc = String(details.accountNumber || '').replace(/\s+/g, '');
+    const ifsc = String(details.ifsc || '').toUpperCase();
+    const name = String(details.accountName || user.fullName || user.username || 'User');
+    if (!acc || !ifsc) throw new Error('Bank account number and IFSC are required');
+    const fa = await instance.fundAccount.create({
+      contact_id: contactId,
+      account_type: 'bank_account',
+      bank_account: {
+        name,
+        ifsc,
+        account_number: acc,
+      },
+      notes: { userId: String(user._id) }
+    });
+    return { id: fa.id, mode: 'IMPS' };
+  }
+  throw new Error('Unsupported withdrawal method');
+}
+
+async function createPayout(fundAccountId, amountPaise, mode = 'IMPS') {
+  const instance = await getRazorpayInstance();
+  const payout = await instance.payouts.create({
+    account_number: process.env.RAZORPAY_PAYOUT_SOURCE || undefined,
+    fund_account_id: fundAccountId,
+    amount: amountPaise,
+    currency: 'INR',
+    mode,
+    purpose: 'payout',
+    queue_if_low_balance: true,
+    notes: { ref: 'wallet_withdrawal' },
+  });
+  return payout;
 }
 
 function verifyRazorpaySignature({ order_id, payment_id, signature }) {
@@ -267,6 +338,90 @@ router.post('/withdraw', authenticate, async (req, res) => {
     success: false,
     message: 'Withdrawals are disabled. Winnings are paid to your saved bank/UPI details in your profile.'
   });
+});
+
+// Razorpay Payouts: Wallet withdrawal (UPI / Bank)
+router.post('/razorpay/payout', authenticate, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { amount, method = 'upi', details = {} } = req.body || {};
+    const amt = Math.floor(Number(amount));
+    if (!amt || isNaN(amt) || amt < 1) {
+      return res.status(400).json({ success: false, message: 'Minimum withdrawal amount is ₹1' });
+    }
+    if (!razorpayPayoutsEnabled) {
+      return res.status(503).json({ success: false, message: 'Razorpay payouts not configured' });
+    }
+
+    // Fetch user and ensure balance
+    const me = await User.findById(req.user._id).session(session);
+    if (!me) return res.status(404).json({ success: false, message: 'User not found' });
+    if ((me.walletBalance || 0) < amt) {
+      return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
+    }
+
+    // Hold funds: deduct and create pending withdrawal txn
+    me.walletBalance = parseFloat((Number(me.walletBalance) - amt).toFixed(2));
+    await me.save({ session });
+
+    const [txn] = await Transaction.create([
+      {
+        user: me._id,
+        type: 'withdrawal',
+        amount: -amt,
+        currency: 'INR',
+        description: 'Withdrawal initiated via Razorpay',
+        status: 'pending',
+        fee: 0,
+        netAmount: -amt,
+        balanceAfter: me.walletBalance,
+        metadata: { method, details },
+      },
+    ], { session });
+
+    // Create / update fund account and trigger payout
+    let fund;
+    try {
+      fund = await upsertFundAccount(me, method, details);
+    } catch (e) {
+      // Rollback funds & mark failed
+      me.walletBalance = parseFloat((Number(me.walletBalance) + amt).toFixed(2));
+      await me.save({ session });
+      txn.status = 'failed';
+      txn.description = `Withdrawal failed: ${(e?.message) || 'fund account error'}`;
+      await txn.save({ session });
+      await session.commitTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: txn.description });
+    }
+
+    try {
+      const payout = await createPayout(fund.id, amt * 100, fund.mode);
+      txn.metadata = { ...(txn.metadata || {}), payout_id: payout.id, payout_status: payout.status };
+      txn.status = payout.status === 'processed' ? 'completed' : (payout.status === 'rejected' ? 'failed' : 'processing');
+      txn.description = `Withdrawal ${txn.status}`;
+      await txn.save({ session });
+      await session.commitTransaction();
+      session.endSession();
+      return res.json({ success: true, transactionId: txn._id, balance: me.walletBalance, payout: { id: payout.id, status: txn.status } });
+    } catch (e) {
+      // On payout creation failure, revert funds and mark txn failed
+      me.walletBalance = parseFloat((Number(me.walletBalance) + amt).toFixed(2));
+      await me.save({ session });
+      txn.status = 'failed';
+      txn.description = `Withdrawal failed: ${(e?.message) || 'payout error'}`;
+      await txn.save({ session });
+      await session.commitTransaction();
+      session.endSession();
+      return res.status(400).json({ success: false, message: txn.description });
+    }
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Razorpay payout error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to process withdrawal' });
+  }
 });
 
 // Get transaction history with pagination
