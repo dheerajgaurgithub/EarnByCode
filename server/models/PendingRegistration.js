@@ -6,7 +6,7 @@ const pendingRegistrationSchema = new mongoose.Schema({
   password: { type: String, required: true }, // stored as bcrypt hash
   fullName: { type: String, trim: true, default: '' },
   otpHash: { type: String, required: true },
-  otpExpiresAt: { type: Date, required: true, index: true },
+  otpExpiresAt: { type: Date, required: true },
   createdAt: { type: Date, default: Date.now },
 }, {
   collection: 'pending_registrations'
