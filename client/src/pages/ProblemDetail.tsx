@@ -29,10 +29,9 @@ const validateJavaSolution = (src: string) => /\bclass\s+Solution\b/.test(src);
 // Resolve compiler API base for new Docker sandbox
 const getCompilerBase = () => {
   const env: any = (import.meta as any).env || {};
-  // In production builds, call same-origin '/compile'
-  if (env.PROD) return '';
-  // In dev, prefer explicit VITE_COMPILER_API or fallback to '' (same-origin)
-  return env.VITE_COMPILER_API || '';
+  const override = env.VITE_COMPILER_API as string | undefined;
+  if (override && override.trim()) return override.replace(/\/+$/, '');
+  return '';
 };
 
 type Language = 'javascript' | 'python' | 'java' | 'cpp';
@@ -309,6 +308,10 @@ const ProblemDetail: React.FC = () => {
       const resp = await fetch(`${getCompilerBase()}/compile`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
+      if (!resp.ok) {
+        const txt = await resp.text().catch(()=>'');
+        throw new Error(`Compile HTTP ${resp.status}: ${txt}`);
+      }
       const data = await resp.json();
       const out = (data?.stdout ?? data?.output ?? '').toString();
       const err = (data?.stderr ?? '').toString();
@@ -380,6 +383,10 @@ const ProblemDetail: React.FC = () => {
         const resp = await fetch(`${getCompilerBase()}/compile`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
+        if (!resp.ok) {
+          const txt = await resp.text().catch(()=> '');
+          throw new Error(`Compile HTTP ${resp.status}: ${txt}`);
+        }
         const data = await resp.json();
         const out = (data?.stdout ?? data?.output ?? '').toString();
         const err = (data?.stderr ?? '').toString();
