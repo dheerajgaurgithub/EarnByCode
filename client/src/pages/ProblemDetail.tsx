@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Editor } from '@monaco-editor/react';
+import CodeEditor from '@/components/common/CodeEditor';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle, Trophy, Award, Play, AlertCircle, Clock3, Settings, Bot, Flame } from 'lucide-react';
@@ -1200,11 +1200,11 @@ const ProblemDetail: React.FC = () => {
                 </div>
               </div>
               
-              {/* Code Editor (Monaco) */}
+              {/* Code Editor (with OnlineGDB toggle) */}
               <div className="relative">
-                <Editor
+                <CodeEditor
                   height="55vh"
-                  theme={editorTheme}
+                  theme={editorTheme as any}
                   language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage}
                   value={code}
                   onChange={(value) => setCode(value || '')}
