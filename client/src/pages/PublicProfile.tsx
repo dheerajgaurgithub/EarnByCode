@@ -75,6 +75,28 @@ const PublicProfile: React.FC = () => {
     return () => { mounted = false; };
   }, [me?._id, user?._id]);
 
+  // Load follower/following counts for the viewed user
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (!user?._id) { setFollowerCount(null); setFollowingCount(null); return; }
+      try {
+        const [fols, flw] = await Promise.all([
+          svcApi.getFollowers(user._id, { limit: 1 }),
+          svcApi.getFollowing(user._id, { limit: 1 })
+        ]);
+        if (!mounted) return;
+        setFollowerCount(fols?.count ?? 0);
+        setFollowingCount(flw?.count ?? 0);
+      } catch {
+        if (!mounted) return;
+        setFollowerCount(0);
+        setFollowingCount(0);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user?._id]);
+
   const handleFollowToggle = async () => {
     if (!me?._id || !user?._id) return;
     if (String(me._id) === String(user._id)) return;

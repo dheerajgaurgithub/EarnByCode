@@ -101,6 +101,9 @@ export const Profile: React.FC = () => {
   // Achievement modal
   const [showAchModal, setShowAchModal] = useState<boolean>(false);
   const [activeAchievement, setActiveAchievement] = useState<Achievement | null>(null);
+  // Followers/Following counts
+  const [followerCount, setFollowerCount] = useState<number | null>(null);
+  const [followingCount, setFollowingCount] = useState<number | null>(null);
 
   const onChooseAvatar = () => setShowCropper(true);
   const onAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -194,6 +197,25 @@ export const Profile: React.FC = () => {
     };
     fetchStreaks();
   }, []);
+
+  // Load follower/following counts for my profile
+  useEffect(() => {
+    const loadCounts = async () => {
+      if (!user?._id) { setFollowerCount(null); setFollowingCount(null); return; }
+      try {
+        const [fols, flw] = await Promise.all([
+          leaderboardApi.getFollowers(user._id, { limit: 1 }),
+          leaderboardApi.getFollowing(user._id, { limit: 1 })
+        ]);
+        setFollowerCount(fols?.count ?? 0);
+        setFollowingCount(flw?.count ?? 0);
+      } catch {
+        setFollowerCount(0);
+        setFollowingCount(0);
+      }
+    };
+    loadCounts();
+  }, [user?._id]);
 
   if (isAuthLoading) {
     return (
@@ -404,6 +426,11 @@ export const Profile: React.FC = () => {
                         className="text-sky-500 dark:text-gray-400 mb-1 text-xs"
                       />
                     )}
+                    <div className="flex items-center gap-2 text-[11px] text-sky-700 dark:text-green-300 mb-1">
+                      <span><strong>{followerCount ?? '—'}</strong> Followers</span>
+                      <span className="opacity-60">•</span>
+                      <span><strong>{followingCount ?? '—'}</strong> Following</span>
+                    </div>
                     {canShowBio && user.bio && (
                       <p className="text-sky-700 dark:text-green-300 mb-1 text-xs break-words">{user.bio}</p>
                     )}
