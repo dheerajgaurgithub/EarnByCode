@@ -66,6 +66,7 @@ import walletRoutes from './routes/wallet.js';
 import emailTestRoutes from './routes/email-test.js';
 import notificationRoutes from './routes/notifications.js';
 import { authenticate } from './middleware/auth.js';
+import admin from './middleware/admin.js';
 import Problem from './models/Problem.js';
 import Submission from './models/Submission.js';
 import User from './models/User.js';
@@ -73,6 +74,8 @@ import Contest from './models/Contest.js';
 import { executeCode } from './utils/codeExecutor.js';
 import { sendEmail } from './utils/email.js';
 import { openaiChat } from './utils/ai/openai.js';
+import cron from 'node-cron';
+import { grantStreakRewardsDaily, grantMonthlyLeaderboardRewards } from './services/rewards.js';
 
 // Initialize express app
 const app = express();
@@ -731,6 +734,43 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/email-test', emailTestRoutes); // Add email test routes
 app.use('/api/notifications', notificationRoutes);
+
+// --- Rewards: admin triggers for testing ---
+app.post('/api/admin/rewards/run-daily', authenticate, admin, async (req, res) => {
+  try {
+    const r = await grantStreakRewardsDaily();
+    return res.status(200).json({ success: true, result: r });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: String(e?.message || e) });
+  }
+});
+
+app.post('/api/admin/rewards/run-monthly', authenticate, admin, async (req, res) => {
+  try {
+    const { year, month } = req.body || {};
+    const y = typeof year === 'number' ? year : undefined;
+    const m = typeof month === 'number' ? month : undefined;
+    const r = await grantMonthlyLeaderboardRewards(y, m);
+    return res.status(200).json({ success: true, result: r });
+  } catch (e) {
+    return res.status(500).json({ success: false, message: String(e?.message || e) });
+  }
+});
+
+// --- Rewards: scheduled jobs ---
+try {
+  // Daily at 00:10 UTC: grant streak rewards for thresholds
+  cron.schedule('10 0 * * *', async () => {
+    try { await grantStreakRewardsDaily(); } catch (e) { console.error('cron daily rewards error:', e); }
+  }, { timezone: 'UTC' });
+
+  // Monthly on 1st at 00:20 UTC: grant previous month leaderboard rewards
+  cron.schedule('20 0 1 * *', async () => {
+    try { await grantMonthlyLeaderboardRewards(); } catch (e) { console.error('cron monthly rewards error:', e); }
+  }, { timezone: 'UTC' });
+} catch (e) {
+  console.error('Failed to schedule rewards cron:', e);
+}
 
 // AI Chat endpoint (OpenAI-first). Supports streaming via SSE.
 app.post('/api/ai/chat', async (req, res) => {

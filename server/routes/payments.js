@@ -27,6 +27,58 @@ async function createRazorpayOrder(amountInRupees, userId) {
   try {
     const { default: Razorpay } = await import('razorpay');
     const instance = new Razorpay({ key_id: razorpayKeyId, key_secret: razorpayKeySecret });
+
+// Convert codecoins to rupees at fixed tiers
+// Body: { codecoins: 100 | 250 | 500 }
+router.post('/convert/codecoins', authenticate, async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+  try {
+    const { codecoins } = req.body || {};
+    const cc = Number(codecoins);
+    const map = { 100: 2, 250: 5, 500: 10 };
+    if (!map[cc]) {
+      return res.status(400).json({ success: false, message: 'Invalid conversion tier. Use 100, 250 or 500 codecoins.' });
+    }
+
+    const me = await User.findById(req.user._id).session(session);
+    if (!me) return res.status(404).json({ success: false, message: 'User not found' });
+    if ((me.codecoins || 0) < cc) {
+      return res.status(400).json({ success: false, message: 'Not enough codecoins' });
+    }
+
+    // Apply conversion
+    const rupees = map[cc];
+    me.codecoins = (Number(me.codecoins) || 0) - cc;
+    me.walletBalance = parseFloat((Number(me.walletBalance || 0) + rupees).toFixed(2));
+    await me.save({ session });
+
+    // Record transaction
+    const [txn] = await Transaction.create([
+      {
+        user: me._id,
+        type: 'reward',
+        amount: rupees,
+        currency: 'INR',
+        description: `Converted ${cc} codecoins to ₹${rupees}`,
+        status: 'completed',
+        fee: 0,
+        netAmount: rupees,
+        balanceAfter: me.walletBalance,
+        metadata: { kind: 'codecoins_conversion', codecoins: cc }
+      }
+    ], { session });
+
+    await session.commitTransaction();
+    session.endSession();
+    return res.json({ success: true, balance: me.walletBalance, codecoins: me.codecoins, transactionId: txn._id });
+  } catch (e) {
+    await session.abortTransaction();
+    session.endSession();
+    console.error('Codecoins conversion error:', e);
+    return res.status(500).json({ success: false, message: 'Failed to convert codecoins' });
+  }
+});
     // Razorpay receipt must be <= 40 chars. Use compact, deterministic format.
     const uid = String(userId || '').slice(-8);
     const ts = Date.now().toString().slice(-10);

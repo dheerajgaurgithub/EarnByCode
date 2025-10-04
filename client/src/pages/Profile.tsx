@@ -104,6 +104,8 @@ export const Profile: React.FC = () => {
   // Followers/Following counts
   const [followerCount, setFollowerCount] = useState<number | null>(null);
   const [followingCount, setFollowingCount] = useState<number | null>(null);
+  // Codecoins conversion
+  const [convBusy, setConvBusy] = useState<boolean>(false);
 
   const onChooseAvatar = () => setShowCropper(true);
   const onAvatarSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -321,6 +323,33 @@ export const Profile: React.FC = () => {
       earned: streakMilestones.d1000,
     },
   ];
+
+  const conversionValue = React.useMemo(() => {
+    const cc = Number(user?.codecoins || 0);
+    let value = 0;
+    let remaining = cc;
+    // Greedy by highest tier to estimate potential value
+    while (remaining >= 500) { value += 10; remaining -= 500; }
+    while (remaining >= 250) { value += 5; remaining -= 250; }
+    while (remaining >= 100) { value += 2; remaining -= 100; }
+    return { cc, value };
+  }, [user?.codecoins]);
+
+  const convertCodecoins = async (tier: 100 | 250 | 500) => {
+    try {
+      if (!user?._id) return;
+      if ((user.codecoins || 0) < tier) { showError('Not enough codecoins'); return; }
+      setConvBusy(true);
+      const res = await apiService.post<any>('/payments/convert/codecoins', { codecoins: tier });
+      // Refresh user to reflect updated balance/codecoins
+      await refreshUser(true);
+      showSuccess(`Converted ${tier} codecoins`);
+    } catch (e: any) {
+      showError(e?.message || 'Conversion failed');
+    } finally {
+      setConvBusy(false);
+    }
+  };
 
   const openAchievement = (a: Achievement) => {
     setActiveAchievement(a);
@@ -752,6 +781,43 @@ export const Profile: React.FC = () => {
         </motion.div>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 sm:gap-4">
+          {/* Codecoins Conversion */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-sm rounded-xl shadow-lg border border-emerald-100 dark:border-green-800 p-3 sm:p-4"
+          >
+            <h2 className="text-sm sm:text-base font-semibold text-emerald-800 dark:text-emerald-400 mb-3 flex items-center">
+              <TrendingUp className="w-4 h-4 mr-1.5 text-emerald-500" />
+              Convert Codecoins
+            </h2>
+            <div className="text-xs text-emerald-700 dark:text-emerald-300 mb-2">
+              You have <strong>{user.codecoins ?? 0}</strong> codecoins.
+              {conversionValue.value > 0 && (
+                <span> Estimated value: <strong>₹{conversionValue.value}</strong></span>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {[100, 250, 500].map((tier) => (
+                <button
+                  key={tier}
+                  disabled={convBusy || (user.codecoins || 0) < tier}
+                  onClick={() => convertCodecoins(tier as 100 | 250 | 500)}
+                  className={`px-2 py-2 rounded-lg text-xs font-medium border transition-colors ${
+                    (user.codecoins || 0) >= tier
+                      ? 'bg-emerald-50 dark:bg-gray-800 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-green-700 hover:bg-emerald-100'
+                      : 'bg-gray-50 dark:bg-gray-800 text-gray-400 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                  }`}
+                >
+                  {tier} → ₹{tier === 100 ? 2 : tier === 250 ? 5 : 10}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-emerald-700/80 dark:text-emerald-300/80 mt-2">
+              Conversion adds INR to your wallet and deducts codecoins. Tiers: 100→₹2, 250→₹5, 500→₹10.
+            </p>
+          </motion.div>
+
           {/* Achievements */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
