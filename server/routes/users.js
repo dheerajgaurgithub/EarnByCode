@@ -25,6 +25,32 @@ cloudinary.v2.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
+// Get a user's leaderboard rank by ID (public; excludes admins)
+router.get('/:id/leaderboard-rank', optionalAuth, async (req, res) => {
+  try {
+    const { region = 'all', timeframe = 'all_time' } = req.query || {};
+    const target = await User.findById(req.params.id).select('points location isAdmin');
+    if (!target) return res.status(404).json({ success: false, message: 'User not found' });
+    if (target.isAdmin) return res.json({ success: true, rank: null, total: 0, region: String(region), timeframe: String(timeframe), note: 'Admins are excluded from leaderboard' });
+
+    const filter = { isAdmin: false };
+    if (region && String(region).toLowerCase() !== 'all') {
+      filter.location = { $regex: new RegExp(String(region).replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i') };
+    }
+
+    // Total users in scope
+    const total = await User.countDocuments(filter);
+    // Users with strictly higher points than target (ties share same rank)
+    const higher = await User.countDocuments({ ...filter, points: { $gt: target.points || 0 } });
+    const rank = total > 0 ? higher + 1 : null;
+
+    return res.json({ success: true, rank, total, region: String(region), timeframe: String(timeframe) });
+  } catch (error) {
+    console.error('Get user leaderboard rank error:', error);
+    return res.status(500).json({ success: false, message: 'Failed to compute rank' });
+  }
+});
+
 // --- Social: follow / unfollow / lists / friends ---
 // Follow a user
 router.post('/:id/follow', authenticate, async (req, res) => {

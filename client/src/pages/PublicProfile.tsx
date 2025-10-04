@@ -36,6 +36,7 @@ const PublicProfile: React.FC = () => {
   const [requested, setRequested] = React.useState(false);
   const [followerCount, setFollowerCount] = React.useState<number | null>(null);
   const [followingCount, setFollowingCount] = React.useState<number | null>(null);
+  const [rank, setRank] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -46,6 +47,8 @@ const PublicProfile: React.FC = () => {
         const res = await apiService.get<{ user: PublicUser }>(`/users/username/${username}`);
         if (!mounted) return;
         setUser(res.user);
+        // Reset rank until fetched
+        setRank(null);
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || 'Failed to load user');
@@ -92,6 +95,23 @@ const PublicProfile: React.FC = () => {
         if (!mounted) return;
         setFollowerCount(0);
         setFollowingCount(0);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user?._id]);
+
+  // Fetch leaderboard rank for this public user (exclude admins by backend)
+  React.useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        if (!user?._id) { setRank(null); return; }
+        const res = await apiService.get<{ success: boolean; rank: number | null }>(`/users/${user._id}/leaderboard-rank`);
+        if (!mounted) return;
+        setRank(res?.rank ?? null);
+      } catch {
+        if (!mounted) return;
+        setRank(null);
       }
     })();
     return () => { mounted = false; };
@@ -278,7 +298,7 @@ return (
             <span className="text-purple-600 dark:text-green-400 font-bold text-sm sm:text-base lg:text-lg">#</span>
           </div>
           <p className="text-lg sm:text-xl lg:text-2xl font-bold text-purple-600 dark:text-green-400 mb-1">
-            {typeof user.ranking === 'number' && user.ranking > 0 ? `${user.ranking}` : 'N/A'}
+            {typeof rank === 'number' && rank > 0 ? `${rank}` : 'N/A'}
           </p>
           <p className="text-xs sm:text-sm text-purple-500 dark:text-green-300 font-medium">
             {t('profile.rank')}
