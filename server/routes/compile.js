@@ -129,6 +129,44 @@ export async function runCodeSandboxed({ code, language, input }) {
   const timeAvailable = await hasCommand('/usr/bin/time');
   const useDocker = wantDocker && dockerAvailable;
 
+  // If not using Docker, ensure necessary toolchains exist; otherwise short-circuit with friendly error
+  if (!useDocker) {
+    const langReq = {
+      javascript: ['node'],
+      python: ['python', 'python3'],
+      cpp: ['g++'],
+      java: ['javac', 'java'],
+      csharp: ['dotnet'],
+    };
+    const cmds = langReq[chosen] || [];
+    let ok = true;
+    if (cmds.length > 0) {
+      let anyPython = false;
+      for (const c of cmds) {
+        const present = await hasCommand(c);
+        if (chosen === 'python') {
+          // Accept either python or python3
+          anyPython = anyPython || present;
+        } else if (!present) {
+          ok = false;
+        }
+      }
+      if (chosen === 'python') ok = anyPython;
+    }
+    if (!ok) {
+      // Compose message listing what's required
+      const needed = (langReq[chosen] || []).join(', ');
+      try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
+      return {
+        stdout: '',
+        stderr: `Language '${chosen}' unavailable on host. Required tools not found: ${needed}. Install toolchains or set USE_DOCKER=true on a Docker-capable host.`,
+        exitCode: 127,
+        runtimeMs: 0,
+        memoryKb: null,
+      };
+    }
+  }
+
   // Compile if required
   if (cfg.compile) {
     if (useDocker) {
