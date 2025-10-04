@@ -31,7 +31,17 @@ const Notifications: React.FC = () => {
       setLoading(true);
       setError(null);
       const res = await svcApi.getNotifications({ status: 'all', limit: 50 });
-      setItems((res as any)?.notifications || []);
+      const list: Note[] = (res as any)?.notifications || [];
+      setItems(list);
+      // Mark unread as read in background
+      const unread = list.filter(n => !n.readAt);
+      if (unread.length) {
+        try {
+          await Promise.all(unread.map(n => svcApi.markNotificationRead(n._id)));
+          // Inform header to refresh count immediately
+          window.dispatchEvent(new CustomEvent('notifications:updated'));
+        } catch {}
+      }
     } catch (e: any) {
       setError(e?.message || 'Failed to load notifications');
     } finally {

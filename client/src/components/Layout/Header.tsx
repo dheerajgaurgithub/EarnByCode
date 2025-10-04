@@ -152,11 +152,14 @@ export const Header: React.FC = () => {
     };
     load();
     const onFocus = () => load();
+    const onUpdated = () => load();
     window.addEventListener('focus', onFocus);
+    window.addEventListener('notifications:updated', onUpdated as any);
     pollRef.current = window.setInterval(load, 30000);
     return () => {
       canceled = true;
       window.removeEventListener('focus', onFocus);
+    window.removeEventListener('notifications:updated', onUpdated as any);
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
   }, [userInfo?.username]);

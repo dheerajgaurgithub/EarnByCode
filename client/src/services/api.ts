@@ -478,14 +478,14 @@ class ApiService {
     return this.request('POST', `/users/${userId}/unfollow`);
   }
 
-  async getFollowers(userId: string, opts: { skip?: number; limit?: number } = {}): Promise<{ success: boolean; followers: Array<{ _id: string; username: string; fullName?: string; avatarUrl?: string }> }> {
+  async getFollowers(userId: string, opts: { skip?: number; limit?: number } = {}): Promise<{ success: boolean; followers: Array<{ _id: string; username: string; fullName?: string; avatarUrl?: string }>, count: number }> {
     const query = new URLSearchParams();
     if (opts.skip != null) query.append('skip', String(opts.skip));
     if (opts.limit != null) query.append('limit', String(opts.limit));
     return this.request('GET', `/users/${userId}/followers?${query.toString()}`);
   }
 
-  async getFollowing(userId: string, opts: { skip?: number; limit?: number } = {}): Promise<{ success: boolean; following: Array<{ _id: string; username: string; fullName?: string; avatarUrl?: string }> }> {
+  async getFollowing(userId: string, opts: { skip?: number; limit?: number } = {}): Promise<{ success: boolean; following: Array<{ _id: string; username: string; fullName?: string; avatarUrl?: string }>, count: number }> {
     const query = new URLSearchParams();
     if (opts.skip != null) query.append('skip', String(opts.skip));
     if (opts.limit != null) query.append('limit', String(opts.limit));

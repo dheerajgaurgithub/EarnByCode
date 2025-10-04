@@ -34,6 +34,8 @@ const PublicProfile: React.FC = () => {
   const [isFollowing, setIsFollowing] = React.useState<boolean | null>(null);
   const [followBusy, setFollowBusy] = React.useState(false);
   const [requested, setRequested] = React.useState(false);
+  const [followerCount, setFollowerCount] = React.useState<number | null>(null);
+  const [followingCount, setFollowingCount] = React.useState<number | null>(null);
 
   React.useEffect(() => {
     let mounted = true;
@@ -181,8 +183,15 @@ return (
                 </button>
               )}
             </div>
-            <div className="text-sm sm:text-base text-sky-600 dark:text-green-300 mb-2 flex items-center gap-1">
-              @{user.username}
+            <div className="text-sm sm:text-base text-sky-600 dark:text-green-300 mb-2 flex items-center gap-3">
+              <span>@{user.username}</span>
+              <span className="text-xs sm:text-sm text-gray-600 dark:text-gray-300">•</span>
+              <span className="text-xs sm:text-sm">
+                <strong>{followerCount ?? '—'}</strong> Followers
+              </span>
+              <span className="text-xs sm:text-sm">
+                <strong>{followingCount ?? '—'}</strong> Following
+              </span>
             </div>
             
             {/* Location */}

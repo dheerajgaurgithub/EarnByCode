@@ -81,8 +81,9 @@ router.get('/:id/followers', optionalAuth, async (req, res) => {
     const skip = Math.max(0, parseInt(String(req.query.skip || '0')));
     const user = await User.findById(id).select('followers').populate({ path: 'followers', select: 'username fullName avatarUrl' }).lean();
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const total = Array.isArray(user.followers) ? user.followers.length : 0;
     const list = Array.isArray(user.followers) ? user.followers.slice(skip, skip + limit) : [];
-    return res.json({ success: true, followers: list });
+    return res.json({ success: true, followers: list, count: total });
   } catch (error) {
     console.error('List followers error:', error);
     return res.status(500).json({ success: false, message: 'Failed to list followers' });
@@ -97,8 +98,9 @@ router.get('/:id/following', optionalAuth, async (req, res) => {
     const skip = Math.max(0, parseInt(String(req.query.skip || '0')));
     const user = await User.findById(id).select('following').populate({ path: 'following', select: 'username fullName avatarUrl' }).lean();
     if (!user) return res.status(404).json({ success: false, message: 'User not found' });
+    const total = Array.isArray(user.following) ? user.following.length : 0;
     const list = Array.isArray(user.following) ? user.following.slice(skip, skip + limit) : [];
-    return res.json({ success: true, following: list });
+    return res.json({ success: true, following: list, count: total });
   } catch (error) {
     console.error('List following error:', error);
     return res.status(500).json({ success: false, message: 'Failed to list following' });
