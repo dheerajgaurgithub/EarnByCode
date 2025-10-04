@@ -7,6 +7,16 @@ import { spawn } from 'child_process';
 
 const router = express.Router();
 
+// Minimal HTML entity unescape for code payloads possibly sanitized by xss-clean
+function unescapeHtml(str = '') {
+  return String(str)
+    .replaceAll('&lt;', '<')
+    .replaceAll('&gt;', '>')
+    .replaceAll('&amp;', '&')
+    .replaceAll('&quot;', '"')
+    .replaceAll('&#39;', "'");
+}
+
 // Map language to Docker image and run commands
 const langConfig = {
   javascript: {
@@ -30,8 +40,10 @@ const langConfig = {
   java: {
     image: 'eclipse-temurin:17-jdk-jammy',
     filename: 'Main.java',
-    compile: (filename) => ['bash', '-lc', `javac ${filename} && echo __COMPILED__`],
-    run: () => ['java', 'Main'],
+    // Use urandom to avoid potential entropy stalls in container, and ensure class files go to CWD
+    compile: (filename) => ['bash', '-lc', `javac -J-Djava.security.egd=file:/dev/./urandom -d . ${filename} && echo __COMPILED__`],
+    // Explicit classpath '.' and the same urandom setting
+    run: () => ['java', '-Djava.security.egd=file:/dev/./urandom', '-cp', '.', 'Main'],
   },
   csharp: {
     image: 'mcr.microsoft.com/dotnet/sdk:8.0',
@@ -122,7 +134,7 @@ export async function runCodeSandboxed({ code, language, input }) {
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ab-compile-'));
   let filename = path.join(tmp, cfg.filename);
   let detectedJavaClass = null;
-  const source = String(code ?? '');
+  const source = unescapeHtml(String(code ?? ''));
   if (chosen === 'java') {
     // Detect `public class <Name>`; fallback to Main
     const m = source.match(/public\s+class\s+(\w+)/);
@@ -133,7 +145,9 @@ export async function runCodeSandboxed({ code, language, input }) {
 
   // Compile if required inside Docker
   if (cfg.compile) {
-    const compileArgs = dockerCmd(cfg.image, tmp, cfg.compile(cfg.filename));
+    // Use the actual filename we wrote (may be detected Java class)
+    const compileTarget = path.basename(filename);
+    const compileArgs = dockerCmd(cfg.image, tmp, cfg.compile(compileTarget));
     const compileRes = await runWithTimeout(compileArgs, '', 8000);
     if (compileRes.exitCode !== 0 || !/__COMPILED__/.test(compileRes.stdout)) {
       try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
@@ -151,7 +165,8 @@ export async function runCodeSandboxed({ code, language, input }) {
   // but fall back to plain run if /usr/bin/time is missing in the image.
   let baseRun = cfg.run(cfg.filename);
   if (chosen === 'java' && detectedJavaClass) {
-    baseRun = ['java', detectedJavaClass];
+    // Mirror the flags from cfg.run() but swap the main class
+    baseRun = ['java', '-Djava.security.egd=file:/dev/./urandom', '-cp', '.', detectedJavaClass];
   }
   const wrapped = ['bash','-lc', `/usr/bin/time -v -o time.txt ${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')}`];
   let runArgs = dockerCmd(cfg.image, tmp, wrapped);
