@@ -58,10 +58,10 @@ function dockerCmd(image, workdir, args) {
   return base;
 }
 
-async function runWithTimeout(command, stdinStr, timeoutMs = 3000) {
+async function runWithTimeout(command, stdinStr, timeoutMs = 3000, options = {}) {
   return new Promise((resolve) => {
     const startedAt = Date.now();
-    const child = spawn(command[0], command.slice(1), { stdio: 'pipe' });
+    const child = spawn(command[0], command.slice(1), { stdio: 'pipe', cwd: options.cwd });
     let stdout = '';
     let stderr = '';
     let killed = false;
@@ -95,6 +95,16 @@ async function runWithTimeout(command, stdinStr, timeoutMs = 3000) {
   });
 }
 
+async function hasCommand(cmd) {
+  // Use bash to check if a command exists
+  try {
+    const res = await runWithTimeout(['bash','-lc', `command -v ${cmd} >/dev/null 2>&1 && echo YES || echo NO`], '', 1500);
+    return /YES/.test(res.stdout || '');
+  } catch {
+    return false;
+  }
+}
+
 export async function runCodeSandboxed({ code, language, input }) {
   const chosen = (language || '').toString().toLowerCase();
   const cfg = langConfig[chosen];
@@ -113,32 +123,52 @@ export async function runCodeSandboxed({ code, language, input }) {
   }
   await fs.writeFile(filename, source, 'utf8');
 
-  // Compile if required inside Docker
+  // Determine execution mode
+  const wantDocker = !['false','0'].includes(String(process.env.USE_DOCKER || '').toLowerCase());
+  const dockerAvailable = await hasCommand('docker');
+  const timeAvailable = await hasCommand('/usr/bin/time');
+  const useDocker = wantDocker && dockerAvailable;
+
+  // Compile if required
   if (cfg.compile) {
-    const compileArgs = dockerCmd(cfg.image, tmp, cfg.compile(cfg.filename));
-    const compileRes = await runWithTimeout(compileArgs, '', 8000);
-    if (compileRes.exitCode !== 0 || !/__COMPILED__/.test(compileRes.stdout)) {
-      try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
-      return {
-        stdout: '',
-        stderr: compileRes.stderr || compileRes.stdout || 'Compilation failed',
-        exitCode: compileRes.exitCode,
-        runtimeMs: compileRes.runtimeMs,
-        memoryKb: null,
-      };
+    if (useDocker) {
+      const compileArgs = dockerCmd(cfg.image, tmp, cfg.compile(cfg.filename));
+      const compileRes = await runWithTimeout(compileArgs, '', 8000);
+      if (compileRes.exitCode !== 0 || !/__COMPILED__/.test(compileRes.stdout)) {
+        try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
+        return { stdout: '', stderr: compileRes.stderr || compileRes.stdout || 'Compilation failed', exitCode: compileRes.exitCode, runtimeMs: compileRes.runtimeMs, memoryKb: null };
+      }
+    } else {
+      // Local compile (requires toolchain installed on host)
+      const compileCmd = cfg.compile(cfg.filename);
+      const compileRes = await runWithTimeout(compileCmd, '', 8000, { cwd: tmp });
+      if (compileRes.exitCode !== 0 || !/__COMPILED__/.test(compileRes.stdout)) {
+        try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
+        return { stdout: '', stderr: compileRes.stderr || compileRes.stdout || 'Compilation failed', exitCode: compileRes.exitCode, runtimeMs: compileRes.runtimeMs, memoryKb: null };
+      }
     }
   }
 
-  // Run inside Docker with stdin; wrap with /usr/bin/time and write to time.txt
+  // Build run command
   let baseRun = cfg.run(cfg.filename);
-  if (chosen === 'java' && detectedJavaClass) {
-    baseRun = ['java', detectedJavaClass];
-  }
-  const wrapped = ['bash','-lc', `/usr/bin/time -v -o time.txt ${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')}`];
-  const runArgs = dockerCmd(cfg.image, tmp, wrapped);
-  const execRes = await runWithTimeout(runArgs, String(input ?? ''), 3000);
+  if (chosen === 'java' && detectedJavaClass) baseRun = ['java', detectedJavaClass];
 
-  // Cleanup temp dir
+  let execRes;
+  if (useDocker) {
+    const wrapped = ['bash','-lc', `${timeAvailable ? "/usr/bin/time -v -o time.txt " : ''}${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')}`];
+    const runArgs = dockerCmd(cfg.image, tmp, wrapped);
+    execRes = await runWithTimeout(runArgs, String(input ?? ''), 3000);
+  } else {
+    // Local run
+    let runCmd = baseRun;
+    if (timeAvailable) {
+      const inner = baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ');
+      runCmd = ['bash','-lc', `/usr/bin/time -v -o time.txt ${inner}`];
+    }
+    execRes = await runWithTimeout(runCmd, String(input ?? ''), 3000, { cwd: tmp });
+  }
+
+  // Parse time.txt if available
   let memKb = null;
   let runMs = execRes.runtimeMs;
   try {
@@ -161,14 +191,7 @@ export async function runCodeSandboxed({ code, language, input }) {
   } catch {}
   try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
 
-  return {
-    stdout: execRes.stdout,
-    stderr: execRes.stderr,
-    output: execRes.stdout,
-    exitCode: execRes.exitCode,
-    runtimeMs: runMs,
-    memoryKb: memKb,
-  };
+  return { stdout: execRes.stdout, stderr: execRes.stderr, output: execRes.stdout, exitCode: execRes.exitCode, runtimeMs: runMs, memoryKb: memKb };
 }
 
 router.post('/', express.json({ limit: '256kb' }), async (req, res) => {
