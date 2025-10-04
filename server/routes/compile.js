@@ -42,8 +42,8 @@ const langConfig = {
     filename: 'Main.java',
     // Use urandom to avoid potential entropy stalls in container, and ensure class files go to CWD
     compile: (filename) => ['bash', '-lc', `javac -J-Djava.security.egd=file:/dev/./urandom -d . ${filename} && echo __COMPILED__`],
-    // Explicit classpath '.' and the same urandom setting
-    run: () => ['java', '-Djava.security.egd=file:/dev/./urandom', '-cp', '.', 'Main'],
+    // Explicit classpath '.' and JVM kept small to avoid OOM within container limits
+    run: () => ['java', '-Djava.security.egd=file:/dev/./urandom', '-Xms16m', '-Xmx128m', '-XX:+UseSerialGC', '-cp', '.', 'Main'],
   },
   csharp: {
     image: 'mcr.microsoft.com/dotnet/sdk:8.0',
@@ -54,14 +54,17 @@ const langConfig = {
   },
 };
 
-function dockerCmd(image, workdir, args) {
-  // Basic sandbox flags: memory, pids, networking off
+function dockerCmd(image, workdir, args, limits = {}) {
+  // Basic sandbox flags with overridable limits
+  const cpus = limits.cpus ?? '0.5';
+  const memory = limits.memory ?? '256m';
+  const pids = limits.pids ?? '128';
   const base = [
     'docker','run','--rm',
     '--network','none',
-    '--cpus','0.5',
-    '--memory','256m',
-    '--pids-limit','128',
+    '--cpus', String(cpus),
+    '--memory', String(memory),
+    '--pids-limit', String(pids),
     '-v', `${workdir}:/code:rw`,
     '-w','/code',
     image,
@@ -142,6 +145,9 @@ export async function runCodeSandboxed({ code, language, input }) {
     filename = path.join(tmp, `${detectedJavaClass}.java`);
   }
   await fs.writeFile(filename, source, 'utf8');
+  const inputStr = String(input ?? '');
+  const stdinFile = path.join(tmp, 'stdin.txt');
+  await fs.writeFile(stdinFile, inputStr, 'utf8');
 
   // Compile if required inside Docker
   if (cfg.compile) {
@@ -161,6 +167,20 @@ export async function runCodeSandboxed({ code, language, input }) {
     }
   }
 
+  // One-time warmup for Java containers: pull layers and start JVM once to avoid first-run TLE
+  if (chosen === 'java') {
+    if (!global.__ab_java_warm__) global.__ab_java_warm__ = false;
+    if (!global.__ab_java_warm__) {
+      try {
+        const warmCmd = ['bash','-lc', `echo 'class _W{public static void main(String[]a){}}' > _W.java && javac -J-Djava.security.egd=file:/dev/./urandom -d . _W.java && java -Djava.security.egd=file:/dev/./urandom -cp . _W`];
+        const warmArgs = dockerCmd(cfg.image, os.tmpdir(), warmCmd);
+        // Allow longer warmup (pull + first JVM start)
+        await runWithTimeout(warmArgs, '', 15000);
+      } catch {}
+      global.__ab_java_warm__ = true;
+    }
+  }
+
   // Run inside Docker with stdin; prefer wrapping with /usr/bin/time to collect memory,
   // but fall back to plain run if /usr/bin/time is missing in the image.
   let baseRun = cfg.run(cfg.filename);
@@ -168,15 +188,16 @@ export async function runCodeSandboxed({ code, language, input }) {
     // Mirror the flags from cfg.run() but swap the main class
     baseRun = ['java', '-Djava.security.egd=file:/dev/./urandom', '-cp', '.', detectedJavaClass];
   }
-  const wrapped = ['bash','-lc', `/usr/bin/time -v -o time.txt ${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')}`];
+  const wrapped = ['bash','-lc', `/usr/bin/time -v -o time.txt ${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')} < stdin.txt`];
   let runArgs = dockerCmd(cfg.image, tmp, wrapped);
-  let execRes = await runWithTimeout(runArgs, String(input ?? ''), 5000);
+  const execTimeout = (chosen === 'java') ? 12000 : 5000;
+  let execRes = await runWithTimeout(runArgs, '', execTimeout);
 
   // If /usr/bin/time is missing, retry without it
   if (execRes.exitCode === 127 && /time:\s+not found|No such file or directory/i.test(execRes.stderr || '')) {
-    const plain = ['bash','-lc', baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')];
+    const plain = ['bash','-lc', `${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')} < stdin.txt`];
     runArgs = dockerCmd(cfg.image, tmp, plain);
-    execRes = await runWithTimeout(runArgs, String(input ?? ''), 5000);
+    execRes = await runWithTimeout(runArgs, '', execTimeout);
   }
 
   // Cleanup temp dir
