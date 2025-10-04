@@ -41,6 +41,8 @@ const CodeEditor = () => {
   const [ignoreWhitespace, setIgnoreWhitespace] = useState<boolean>(true);
   const [ignoreCase, setIgnoreCase] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(true);
+  // OnlineGDB embed toggle (default ON per user request)
+  const [useOnlineGDB, setUseOnlineGDB] = useState<boolean>(true);
   const [testcases, setTestcases] = useState<Array<{ input: string; expected: string; output?: string; passed?: boolean; runtimeMs?: number; exitCode?: number }>>([
     { input: '', expected: '' },
   ]);
@@ -58,6 +60,25 @@ const CodeEditor = () => {
   const onMount: OnMount = (editor) => {
     editorRef.current = editor;
     editor.focus();
+  };
+
+  // OnlineGDB launcher: copies code to clipboard and opens language page
+  const openInOnlineGDB = async () => {
+    try {
+      const codeText = codeByLang[lang] ?? code;
+      if (navigator?.clipboard?.writeText) {
+        await navigator.clipboard.writeText(codeText);
+        alert('Code copied to clipboard. It will open in OnlineGDB — paste the code there.');
+      }
+    } catch {}
+    const urlMap: Record<Lang, string> = {
+      Java: 'https://www.onlinegdb.com/online_java_compiler',
+      Cpp: 'https://www.onlinegdb.com/online_cpp_compiler',
+      Python: 'https://www.onlinegdb.com/online_python_compiler',
+      JavaScript: 'https://www.onlinegdb.com/' // fallback; JS editor URL varies
+    };
+    const href = urlMap[lang] || 'https://www.onlinegdb.com/';
+    window.open(href, '_blank', 'noopener,noreferrer');
   };
 
   // Try to extract a meaningful line number and short message from toolchain output
@@ -237,6 +258,15 @@ const CodeEditor = () => {
 
   const monacoLanguage =
     lang === "Cpp" ? "cpp" : lang === "JavaScript" ? "javascript" : lang.toLowerCase();
+
+  // OnlineGDB URL per language
+  const onlineGdbUrlFor = (l: Lang): string => {
+    if (l === 'Java') return 'https://www.onlinegdb.com/online_java_compiler';
+    if (l === 'Cpp') return 'https://www.onlinegdb.com/online_cpp_compiler';
+    if (l === 'Python') return 'https://www.onlinegdb.com/online_python_compiler';
+    // Fallback for JavaScript
+    return 'https://www.onlinegdb.com/';
+  };
 
   // Auto-wrap Java sources so users aren't forced to name the main class 'Main'
   const autoWrapJava = (src: string): string => {
@@ -557,6 +587,16 @@ const CodeEditor = () => {
               </span>
             )}
           </div>
+          {/* OnlineGDB toggle */}
+          <label className={`inline-flex items-center gap-2 text-xs md:text-sm ${theme.textSecondary} cursor-pointer`}>
+            <input
+              type="checkbox"
+              checked={useOnlineGDB}
+              onChange={(e) => setUseOnlineGDB(e.target.checked)}
+              className="rounded text-sky-500 focus:ring-sky-400 w-3 h-3 md:w-4 md:h-4"
+            />
+            <span className="font-medium">Use OnlineGDB in editor</span>
+          </label>
           
           {/* Run Button */}
           <button
@@ -578,6 +618,16 @@ const CodeEditor = () => {
               </>
             )}
           </button>
+
+          {/* Open in OnlineGDB */}
+          <button
+            type="button"
+            onClick={openInOnlineGDB}
+            className={`px-3 md:px-4 py-2 md:py-3 rounded-xl ${theme.button.secondary} flex items-center justify-center gap-2 text-xs md:text-sm font-medium transition-all duration-200 hover:scale-105 shadow-md`}
+            title="Open in OnlineGDB (code copied to clipboard)"
+          >
+            <span>Open in OnlineGDB</span>
+          </button>
         </div>
       </div>
 
@@ -588,30 +638,46 @@ const CodeEditor = () => {
           <div className={`p-3 md:p-4 ${theme.header} border-b border-sky-100 dark:border-gray-600`}>
             <h3 className={`font-bold text-sm md:text-lg ${theme.text} flex items-center gap-2`}>
               <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-              Code Editor
+              {useOnlineGDB ? 'OnlineGDB' : 'Code Editor'}
             </h3>
           </div>
           <div className="relative">
-            <Editor
-              height="400px"
-              theme={darkMode ? "vs-dark" : "light"}
-              language={monacoLanguage}
-              value={code}
-              onChange={(v) => {
-                const val = v || '';
-                setCode(val);
-                setCodeByLang(prev => ({ ...prev, [lang]: val }));
-              }}
-              options={{ 
-                minimap: { enabled: false },
-                fontSize: 12,
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                padding: { top: 16, bottom: 16 }
-              }}
-              onMount={onMount}
-            />
+            {useOnlineGDB ? (
+              <div className="flex flex-col">
+                <div className="p-2 text-[11px] text-sky-700 dark:text-sky-300 bg-sky-50 dark:bg-gray-800 border-b border-sky-100 dark:border-gray-700">
+                  OnlineGDB may block embedding in some browsers. If it fails to load, use the "Open in OnlineGDB" button; your code will be copied to clipboard.
+                </div>
+                <iframe
+                  key={lang}
+                  title="OnlineGDB"
+                  src={onlineGdbUrlFor(lang)}
+                  className="w-full h-[500px] bg-white"
+                  referrerPolicy="no-referrer"
+                  sandbox="allow-scripts allow-forms allow-pointer-lock allow-popups allow-modals allow-same-origin"
+                />
+              </div>
+            ) : (
+              <Editor
+                height="400px"
+                theme={darkMode ? "vs-dark" : "light"}
+                language={monacoLanguage}
+                value={code}
+                onChange={(v) => {
+                  const val = v || '';
+                  setCode(val);
+                  setCodeByLang(prev => ({ ...prev, [lang]: val }));
+                }}
+                options={{ 
+                  minimap: { enabled: false },
+                  fontSize: 12,
+                  lineNumbers: 'on',
+                  scrollBeyondLastLine: false,
+                  automaticLayout: true,
+                  padding: { top: 16, bottom: 16 }
+                }}
+                onMount={onMount}
+              />
+            )}
           </div>
         </div>
 
