@@ -41,7 +41,7 @@ const CodeEditor = () => {
   const [ignoreWhitespace, setIgnoreWhitespace] = useState<boolean>(true);
   const [ignoreCase, setIgnoreCase] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(true);
-  // OnlineGDB embed toggle (default ON per user request)
+  // OnlineGDB embed toggle (default ON)
   const [useOnlineGDB, setUseOnlineGDB] = useState<boolean>(true);
   const [testcases, setTestcases] = useState<Array<{ input: string; expected: string; output?: string; passed?: boolean; runtimeMs?: number; exitCode?: number }>>([
     { input: '', expected: '' },
@@ -597,13 +597,14 @@ const CodeEditor = () => {
             />
             <span className="font-medium">Use OnlineGDB in editor</span>
           </label>
-          
-          {/* Run Button */}
+
+          {/* Run Button (built-in runner) */}
           <button
             type="button"
             onClick={run}
-            disabled={running}
+            disabled={running || useOnlineGDB}
             className={`px-4 md:px-6 py-2 md:py-3 rounded-xl disabled:opacity-60 ${theme.button.success} flex items-center justify-center gap-2 text-xs md:text-sm font-semibold transition-all duration-200 hover:scale-105 shadow-lg min-w-[100px] md:min-w-[120px]`}
+            title={useOnlineGDB ? 'Disable OnlineGDB to use built-in runner' : 'Run code with built-in runner'}
           >
             {running ? (
               <>
