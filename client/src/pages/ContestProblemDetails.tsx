@@ -5,13 +5,18 @@ import { toast } from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Play, RotateCcw, Check } from 'lucide-react';
-import CodeEditor from '@/components/common/CodeEditor';
+import CodeMirror from '@uiw/react-codemirror';
+import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
+import { java } from '@codemirror/lang-java';
+import { cpp } from '@codemirror/lang-cpp';
+import {csharp} from "@replit/codemirror-lang-csharp";
 import { apiService } from '@/lib/api';
 
-// Keep language type compatible with ProblemDetail
- type Language = 'javascript' | 'python' | 'java' | 'cpp';
+// Keep language type compatible with ProblemDetail, plus csharp
+type Language = 'javascript' | 'python' | 'java' | 'cpp' | 'csharp';
 
- interface Problem {
+interface Problem {
   _id: string;
   id?: string;
   title: string;
@@ -42,8 +47,17 @@ const ContestProblemDetails: React.FC = () => {
 
   const editorTheme = useMemo(() => {
     const t = (user as any)?.preferences?.editor?.theme;
-    return t === 'vs-dark' ? 'vs-dark' : 'light';
+    return t === 'vs-dark' ? 'dark' : 'light';
   }, [user]);
+
+  const editorExtensions = useMemo(() => {
+    if (language === 'javascript') return [javascript({ typescript: false })];
+    if (language === 'python') return [python()];
+    if (language === 'java') return [java()];
+    if (language === 'cpp') return [cpp()];
+    if (language === 'csharp') return [csharp() as any];
+    return [];
+  }, [language]);
 
   // Load the full problem list for this contest (supports populated or ObjectId array)
   useEffect(() => {
@@ -97,14 +111,14 @@ const ContestProblemDetails: React.FC = () => {
     if (!problem) return;
     setIsBusy(true);
     try {
-      // Reuse in-house execute endpoint for fast feedback
+      const langKey = language; // already lowercased keys expected by backend
       const resp = await fetch('/compile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, lang: language.charAt(0).toUpperCase() + language.slice(1) }),
+        body: JSON.stringify({ code, language: langKey, input: '' }),
       });
       const data = await resp.json();
-      const out = data?.output ?? data?.run?.output ?? '';
+      const out = data?.stdout ?? data?.output ?? '';
       toast.success(`Output:\n${String(out).slice(0, 400)}`);
     } catch (e) {
       console.error(e);
@@ -255,17 +269,18 @@ const ContestProblemDetails: React.FC = () => {
                     <option value="python">Python</option>
                     <option value="java">Java</option>
                     <option value="cpp">C++</option>
+                    <option value="csharp">C#</option>
                   </select>
                 </div>
   
                 <div className="border border-sky-200 dark:border-gray-600 rounded-lg overflow-hidden shadow bg-white dark:bg-gray-800">
-                  <CodeEditor
-                    value={code}
-                    onChange={setCode}
-                    language={language}
+                  <CodeMirror
                     height="420px"
                     theme={editorTheme}
-                    options={{ minimap: { enabled: false }, wordWrap: 'on', fontSize: 14 }}
+                    value={code}
+                    extensions={editorExtensions}
+                    basicSetup={{ lineNumbers: true, highlightActiveLineGutter: true, highlightActiveLine: true, autocompletion: true, foldGutter: true }}
+                    onChange={(val) => setCode(val)}
                   />
                 </div>
   

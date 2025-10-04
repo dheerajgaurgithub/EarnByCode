@@ -71,11 +71,12 @@ import Problem from './models/Problem.js';
 import Submission from './models/Submission.js';
 import User from './models/User.js';
 import Contest from './models/Contest.js';
-import { executeCode } from './utils/codeExecutor.js';
+import { runCodeSandboxed } from './routes/compile.js';
 import { sendEmail } from './utils/email.js';
 import { openaiChat } from './utils/ai/openai.js';
 import cron from 'node-cron';
 import { grantStreakRewardsDaily, grantMonthlyLeaderboardRewards } from './services/rewards.js';
+import compileRoute from './routes/compile.js';
 
 // Initialize express app
 const app = express();
@@ -734,6 +735,8 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/email-test', emailTestRoutes); // Add email test routes
 app.use('/api/notifications', notificationRoutes);
+app.use('/compile', compileRoute);
+app.use('/api/compile', compileRoute);
 
 // --- Rewards: admin triggers for testing ---
 app.post('/api/admin/rewards/run-daily', authenticate, admin, async (req, res) => {
@@ -1169,56 +1172,68 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
     const ignoreWhitespace = compareMode === 'strict' ? false : true;
     const ignoreCase = compareMode === 'strict' ? false : true;
 
-    // Execute and evaluate against full problem testcases
-    const result = await executeCode(code, language, problem.testCases || [], {
-      compareMode,
-      ignoreWhitespace,
-      ignoreCase,
-    });
+    // Execute and evaluate against full problem testcases using sandboxed runner
+    const testCases = Array.isArray(problem.testCases) ? problem.testCases : [];
+    let testsPassed = 0;
+    const totalTests = testCases.length;
+    let anyCompileErr = false;
+    let anyRuntimeErr = false;
+    let anyTLE = false;
+    let aggRuntimeMs = 0;
+    let peakMemoryKb = 0;
 
-    // Parse numeric runtime/memory from result (best-effort)
-    const parseMs = (v) => {
-      if (v == null) return undefined;
-      if (typeof v === 'number') return Math.round(v);
-      const m = String(v).match(/([0-9]+(?:\.[0-9]+)?)\s*ms/i);
-      if (m) return Math.round(parseFloat(m[1]));
-      const n = Number(v);
-      return Number.isFinite(n) ? Math.round(n) : undefined;
+    const langKey = (language || '').toString().toLowerCase();
+    const normalizeOut = (s) => {
+      let t = (s ?? '').toString().replace(/\r\n/g, '\n');
+      if (ignoreWhitespace) t = t.replace(/\s+/g, ' ').trim(); else t = t.trim();
+      if (ignoreCase) t = t.toLowerCase();
+      return t;
     };
-    const parseKb = (v) => {
-      if (v == null) return undefined;
-      if (typeof v === 'number') return Math.round(v);
-      const s = String(v);
-      const mb = s.match(/([0-9]+(?:\.[0-9]+)?)\s*mb/i);
-      if (mb) return Math.round(parseFloat(mb[1]) * 1024);
-      const kb = s.match(/([0-9]+(?:\.[0-9]+)?)\s*kb/i);
-      if (kb) return Math.round(parseFloat(kb[1]));
-      const n = Number(v);
-      return Number.isFinite(n) ? Math.round(n) : undefined;
-    };
-    const runtimeMs = parseMs(result?.runtime);
-    const memoryKb = parseKb(result?.memory);
+
+    for (const tc of testCases) {
+      const input = tc.input ?? tc.stdin ?? '';
+      const expected = normalizeOut(tc.expectedOutput ?? tc.expected ?? '');
+      const resp = await runCodeSandboxed({ code, language: langKey, input });
+      const exit = typeof resp.exitCode === 'number' ? resp.exitCode : 0;
+      if (exit === 124) anyTLE = true;
+      if (exit !== 0 && exit !== 124) anyRuntimeErr = true;
+      if (resp.stderr && /compil|javac|g\+\+|error:/i.test(resp.stderr)) anyCompileErr = true;
+      const actual = normalizeOut(resp.stdout ?? resp.output ?? '');
+      if (expected ? (actual === expected) : (exit === 0)) testsPassed += 1;
+      if (typeof resp.runtimeMs === 'number') aggRuntimeMs += Math.max(0, resp.runtimeMs);
+      if (typeof resp.memoryKb === 'number') peakMemoryKb = Math.max(peakMemoryKb, resp.memoryKb);
+    }
+
+    let status = 'Wrong Answer';
+    if (anyCompileErr) status = 'Compilation Error';
+    else if (anyTLE) status = 'Time Limit Exceeded';
+    else if (anyRuntimeErr && testsPassed === 0) status = 'Runtime Error';
+    else if (testsPassed === totalTests) status = 'Accepted';
+    else if (testsPassed > 0) status = 'Partial Correct';
+
+    const runtimeMs = aggRuntimeMs || undefined;
+    const memoryKb = peakMemoryKb || undefined;
 
     const submission = new Submission({
       user: req.user._id,
       problem: problem._id,
       code,
       language,
-      status: result?.status || 'Submitted',
-      runtime: result?.runtime,
-      memory: result?.memory,
+      status,
+      runtime: runtimeMs ? `${runtimeMs}ms` : undefined,
+      memory: memoryKb ? `${Math.round(memoryKb/1024)}MB` : undefined,
       runtimeMs,
       memoryKb,
-      testsPassed: Number(result?.testsPassed || 0),
-      totalTests: Number(result?.totalTests || (problem.testCases?.length || 0)),
-      score: Number(result?.score || 0),
+      testsPassed: testsPassed,
+      totalTests: totalTests,
+      score: totalTests > 0 ? Math.floor((testsPassed / totalTests) * 100) : 0,
       contest: contestId || undefined,
     });
     await submission.save();
 
     // Update problem statistics
     problem.submissions = (problem.submissions || 0) + 1;
-    if ((result?.status || '').toLowerCase() === 'accepted') {
+    if (status.toLowerCase() === 'accepted') {
       problem.acceptedSubmissions = (problem.acceptedSubmissions || 0) + 1;
       if (typeof problem.updateAcceptance === 'function') {
         try { problem.updateAcceptance(); } catch {}
@@ -1240,7 +1255,7 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
       }
     }
 
-    return res.json({ submission, result: { ...(result || {}), runtimeMs, memoryKb, earnedCodecoin } });
+    return res.json({ submission, result: { status, testsPassed, totalTests, runtimeMs, memoryKb, score: totalTests > 0 ? Math.floor((testsPassed/totalTests)*100) : 0, earnedCodecoin } });
   } catch (err) {
     console.error('Legacy /api/code/submit error:', err);
     return res.status(500).json({ status: 'error', message: 'Failed to submit code' });

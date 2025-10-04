@@ -1,18 +1,23 @@
-import { useEffect, useRef, useState } from "react";
-import { Editor, OnMount } from "@monaco-editor/react";
+import { useEffect, useState } from "react";
+import CodeMirror from "@uiw/react-codemirror";
+import { javascript } from "@codemirror/lang-javascript";
+import { python } from "@codemirror/lang-python";
+import { java } from "@codemirror/lang-java";
+import { cpp } from "@codemirror/lang-cpp";
+import {csharp} from "@replit/codemirror-lang-csharp";
 import { useParams } from "react-router-dom";
 
-type Lang = "Java" | "Cpp" | "Python" | "JavaScript";
+type Lang = "Java" | "Cpp" | "Python" | "JavaScript" | "CSharp";
 
 const DEFAULT_SNIPPETS: Record<Lang, string> = {
-  Java: `public class Main {\n  public static void main(String[] args){\n    System.out.println(\"Hello Java\");\n  }\n}`,
-  Cpp: `#include <bits/stdc++.h>\nusing namespace std;\nint main(){\n  cout << \"Hello Cpp\\n\";\n  return 0;\n}`,
+  Java: `public class Main {\n  public static void main(String[] args){\n    System.out.println("Hello Java");\n  }\n}`,
+  Cpp: `#include <bits/stdc++.h>\nusing namespace std;\nint main(){\n  cout << "Hello Cpp\\n";\n  return 0;\n}`,
   Python: `print('Hello Python')`,
   JavaScript: `console.log('Hello JavaScript');`,
+  CSharp: `using System;\nclass Program {\n  static void Main() {\n    Console.WriteLine("Hello C#");\n  }\n}`,
 };
 
 const CodeEditor = () => {
-  const editorRef = useRef<any>(null);
   const [lang, setLang] = useState<Lang>("Cpp");
   const [code, setCode] = useState<string>(DEFAULT_SNIPPETS["Cpp"]);
   const [codeByLang, setCodeByLang] = useState<Record<Lang, string>>({
@@ -20,6 +25,7 @@ const CodeEditor = () => {
     Cpp: DEFAULT_SNIPPETS.Cpp,
     Python: DEFAULT_SNIPPETS.Python,
     JavaScript: DEFAULT_SNIPPETS.JavaScript,
+    CSharp: DEFAULT_SNIPPETS.CSharp,
   });
   const [input, setInput] = useState<string>("");
   const [output, setOutput] = useState<string>("");
@@ -33,7 +39,7 @@ const CodeEditor = () => {
   const [running, setRunning] = useState(false);
   const [compilerLog, setCompilerLog] = useState<string>("");
   const [showLog, setShowLog] = useState<boolean>(false);
-  const [errorDecorations, setErrorDecorations] = useState<string[]>([]);
+  // Monaco-specific decorations removed in CodeMirror version
   const [stdoutText, setStdoutText] = useState<string>("");
   const [stderrText, setStderrText] = useState<string>("");
   const [errorLines, setErrorLines] = useState<number[]>([]);
@@ -41,7 +47,7 @@ const CodeEditor = () => {
   const [ignoreWhitespace, setIgnoreWhitespace] = useState<boolean>(true);
   const [ignoreCase, setIgnoreCase] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(true);
-  const [testcases, setTestcases] = useState<Array<{ input: string; expected: string; output?: string; passed?: boolean; runtimeMs?: number; exitCode?: number }>>([
+  const [testcases, setTestcases] = useState<Array<{ input: string; expected: string; output?: string; passed?: boolean; runtimeMs?: number; memoryKb?: number; exitCode?: number }>>([
     { input: '', expected: '' },
   ]);
   const [problemId, setProblemId] = useState<string | null>(null);
@@ -54,11 +60,6 @@ const CodeEditor = () => {
     // In dev, prefer VITE_COMPILER_API, else localhost:8000 (standalone dev server)
     return env.VITE_COMPILER_API || 'http://localhost:8000';
   })();
-
-  const onMount: OnMount = (editor) => {
-    editorRef.current = editor;
-    editor.focus();
-  };
 
   // Try to extract a meaningful line number and short message from toolchain output
   const parseError = (language: Lang, text: string): { line: number | null; summary: string | null; lines: number[] } => {
@@ -235,8 +236,31 @@ const CodeEditor = () => {
     setCode(codeByLang[lang] ?? DEFAULT_SNIPPETS[lang]);
   }, [lang, codeByLang]);
 
-  const monacoLanguage =
-    lang === "Cpp" ? "cpp" : lang === "JavaScript" ? "javascript" : lang.toLowerCase();
+  // Load saved code per language on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(`codeEditor:code:${lang}`);
+      if (stored !== null) {
+        setCode(stored);
+        setCodeByLang((prev) => ({ ...prev, [lang]: stored }));
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist code per language
+  useEffect(() => {
+    try { localStorage.setItem(`codeEditor:code:${lang}`, code); } catch {}
+  }, [code, lang]);
+
+  const cmExtensions = () => {
+    if (lang === "Cpp") return [cpp()];
+    if (lang === "Java") return [java()];
+    if (lang === "Python") return [python()];
+    if (lang === "JavaScript") return [javascript({ typescript: false })];
+    if (lang === "CSharp") return [csharp() as any];
+    return [];
+  };
 
   // Auto-wrap Java sources so users aren't forced to name the main class 'Main'
   const autoWrapJava = (src: string): string => {
@@ -357,14 +381,11 @@ const CodeEditor = () => {
       };
       
       try {
-        const startTime = performance.now();
         const res = await fetch(`${apiBase}/compile`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        const endTime = performance.now();
-        const runtimeMs = Math.round(endTime - startTime);
         
         const data = await res.json();
         const output = typeof data?.output === "string" ? data.output : JSON.stringify(data);
@@ -372,6 +393,8 @@ const CodeEditor = () => {
         setStdoutText(typeof data?.stdout === 'string' ? data.stdout : output);
         setStderrText(typeof data?.stderr === 'string' ? data.stderr : '');
         const exitCode = typeof data?.exitCode === 'number' ? data.exitCode : null;
+        const runtimeMs = typeof data?.runtimeMs === 'number' ? data.runtimeMs : undefined;
+        const memoryKb = typeof data?.memoryKb === 'number' ? data.memoryKb : undefined;
         
         // Check if output matches expected
         const normalizedOutput = normalize(output);
@@ -392,6 +415,7 @@ const CodeEditor = () => {
                 output,
                 passed: passed ?? undefined,
                 runtimeMs,
+                memoryKb,
                 exitCode: exitCode ?? undefined
               } 
             : item
@@ -419,41 +443,7 @@ const CodeEditor = () => {
     setRunning(false);
   };
 
-  // Apply Monaco decoration and auto-scroll on error line
-  useEffect(() => {
-    try {
-      const editor = editorRef.current;
-      if (!editor) return;
-      // clear existing decorations
-      if (errorDecorations.length) {
-        const cleared = editor.deltaDecorations(errorDecorations, []);
-        setErrorDecorations(cleared);
-      }
-      if (errorLine && errorLine > 0) {
-        const newDecos = editor.deltaDecorations([], [
-          {
-            range: {
-              startLineNumber: errorLine,
-              startColumn: 1,
-              endLineNumber: errorLine,
-              endColumn: 1,
-            },
-            options: {
-              isWholeLine: true,
-              className: 'editor-error-line-bg',
-              glyphMarginClassName: 'editor-error-glyph',
-              inlineClassName: 'editor-error-inline',
-            },
-          },
-        ]);
-        setErrorDecorations(newDecos);
-        editor.revealLineInCenter(errorLine);
-        editor.setPosition({ lineNumber: errorLine, column: 1 });
-        editor.focus();
-      }
-    } catch {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [errorLine]);
+  // CodeMirror version omits in-editor decorations for simplicity
 
   const resetTestcases = () => {
     if (confirm('Are you sure you want to reset all test cases? This cannot be undone.')) {
@@ -592,25 +582,16 @@ const CodeEditor = () => {
             </h3>
           </div>
           <div className="relative">
-            <Editor
+            <CodeMirror
               height="400px"
-              theme={darkMode ? "vs-dark" : "light"}
-              language={monacoLanguage}
+              theme={darkMode ? 'dark' : 'light'}
               value={code}
-              onChange={(v) => {
-                const val = v || '';
+              extensions={cmExtensions()}
+              basicSetup={{ lineNumbers: true, highlightActiveLineGutter: true, highlightActiveLine: true, autocompletion: true, foldGutter: true }}
+              onChange={(val) => {
                 setCode(val);
                 setCodeByLang(prev => ({ ...prev, [lang]: val }));
               }}
-              options={{ 
-                minimap: { enabled: false },
-                fontSize: 12,
-                lineNumbers: 'on',
-                scrollBeyondLastLine: false,
-                automaticLayout: true,
-                padding: { top: 16, bottom: 16 }
-              }}
-              onMount={onMount}
             />
           </div>
         </div>
@@ -712,23 +693,7 @@ const CodeEditor = () => {
                       {exitCode === 124 ? 'Time limit exceeded' : `Exit: ${exitCode}`}
                     </span>
                   )}
-                  {errorLine != null && (
-                    <button
-                      type="button"
-                      className={`px-2 py-1 rounded-md ${theme.button.secondary}`}
-                      onClick={() => {
-                        try {
-                          const editor = editorRef.current;
-                          if (!editor) return;
-                          editor.revealLineInCenter(errorLine);
-                          editor.setPosition({ lineNumber: errorLine, column: 1 });
-                          editor.focus();
-                        } catch {}
-                      }}
-                    >
-                      Go to error line
-                    </button>
-                  )}
+                  {/* Go to error line removed in CodeMirror version */}
                   {errorLines.length > 1 && (
                     <button
                       type="button"
@@ -739,13 +704,6 @@ const CodeEditor = () => {
                         setErrorIdx(next);
                         const ln = errorLines[next];
                         setErrorLine(ln);
-                        try {
-                          const editor = editorRef.current;
-                          if (!editor) return;
-                          editor.revealLineInCenter(ln);
-                          editor.setPosition({ lineNumber: ln, column: 1 });
-                          editor.focus();
-                        } catch {}
                       }}
                     >
                       Next error ({(errorIdx + 1)}/{errorLines.length})
