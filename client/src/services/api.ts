@@ -323,6 +323,34 @@ class ApiService {
     return this.request('POST', '/payments/confirm', { paymentIntentId });
   }
 
+  // Wallet methods
+  async getWalletBalance(): Promise<{ success: boolean; balance: number; currency: string; status: string; lastUpdated: string }> {
+    return this.request('GET', '/wallet/balance');
+  }
+  async getWalletTransactions(params: { page?: number; limit?: number; type?: string; status?: string } = {}): Promise<{ success: boolean; transactions: any[]; pagination: { total: number; page: number; pages: number; limit: number } }> {
+    const query = new URLSearchParams();
+    if (params.page) query.append('page', String(params.page));
+    if (params.limit) query.append('limit', String(params.limit));
+    if (params.type) query.append('type', params.type);
+    if (params.status) query.append('status', params.status);
+    return this.request('GET', `/wallet/transactions?${query.toString()}`);
+  }
+  async getWalletStatistics(): Promise<{ success: boolean; stats: { totalDeposits: number; depositCount: number; totalWithdrawals: number; withdrawalCount: number; recentTransactions: any[] } }> {
+    return this.request('GET', '/wallet/statistics');
+  }
+  async initiateDeposit(amount: number, provider: 'razorpay' | string = 'razorpay', note?: string): Promise<{ success: boolean; transactionId: string; pending: boolean }> {
+    return this.request('POST', '/wallet/deposit/initiate', { amount, provider, note });
+  }
+  async confirmDeposit(data: { transactionId: string; provider?: string; paymentId?: string; orderId?: string; signature?: string }): Promise<{ success: boolean; balance: number; transactionId: string }> {
+    return this.request('POST', '/wallet/deposit/confirm', data);
+  }
+  async requestWithdraw(amount: number, method: 'upi' | 'bank' | 'card' = 'upi', details: Record<string, any> = {}): Promise<{ success: boolean; pending: boolean; balance: number; transactionId: string }> {
+    return this.request('POST', '/wallet/withdraw', { amount, method, details });
+  }
+  async getTotalWinnings(): Promise<{ success: boolean; total: number }> {
+    return this.request('GET', '/wallet/winnings/total');
+  }
+
   // Admin methods
   async getAdminStats(): Promise<{
     stats: {
@@ -370,7 +398,7 @@ class ApiService {
   }
 
   // Admin wallet metrics
-  async getAdminWalletMetrics(): Promise<{ success: boolean; metrics: { totalCollected: number; totalPayouts: number; adminBalance: number; } }> {
+  async getAdminWalletMetrics(): Promise<{ success: boolean; metrics: { totalCollected: number; totalPayouts: number; adminBalance: number; totalPlatformBalance: number; totalUserWinnings: number; platformEarnings: number; } }> {
     return this.request('GET', '/wallet/admin/metrics');
   }
   async getAdminAllTransactions(params: { page?: number; limit?: number; type?: string; status?: string; userId?: string } = {}): Promise<{
@@ -387,9 +415,9 @@ class ApiService {
     return this.request('GET', `/wallet/admin/transactions?${query.toString()}`);
   }
 
-  // Admin withdraw
-  async adminWithdraw(amount: number): Promise<{ success: boolean; balance: number; transactionId: string }> {
-    return this.request('POST', '/wallet/admin/withdraw', { amount });
+  // Admin: complete a specific user withdrawal
+  async adminCompleteWithdrawal(transactionId: string): Promise<{ success: boolean }> {
+    return this.request('POST', `/wallet/admin/withdrawals/${transactionId}/complete`);
   }
 
   // Settle a contest (admin)

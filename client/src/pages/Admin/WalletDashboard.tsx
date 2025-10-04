@@ -7,6 +7,9 @@ interface Metrics {
   totalCollected: number;
   totalPayouts: number;
   adminBalance: number;
+  totalPlatformBalance?: number;
+  totalUserWinnings?: number;
+  platformEarnings?: number;
 }
 
 const currencyFormat = (n: number) =>
@@ -71,6 +74,22 @@ const WalletDashboard: React.FC = () => {
         <div className="bg-white rounded-xl border p-4 shadow-sm">
           <div className="text-sm text-gray-500">{t('admin.wallet.admin_balance')}</div>
           <div className="text-xl font-semibold mt-1">{loading ? '…' : currencyFormat(metrics?.adminBalance || 0)}</div>
+        </div>
+      </div>
+
+      {/* New metrics per requirements */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white rounded-xl border p-4 shadow-sm">
+          <div className="text-sm text-gray-500">Platform Balance (Sum of Entry Fees)</div>
+          <div className="text-xl font-semibold mt-1">{loading ? '…' : currencyFormat(metrics?.totalPlatformBalance ?? metrics?.totalCollected ?? 0)}</div>
+        </div>
+        <div className="bg-white rounded-xl border p-4 shadow-sm">
+          <div className="text-sm text-gray-500">Total User Winnings</div>
+          <div className="text-xl font-semibold mt-1">{loading ? '…' : currencyFormat(metrics?.totalUserWinnings ?? metrics?.totalPayouts ?? 0)}</div>
+        </div>
+        <div className="bg-white rounded-xl border p-4 shadow-sm">
+          <div className="text-sm text-gray-500">Platform Earnings (Balance - Winnings)</div>
+          <div className="text-xl font-semibold mt-1">{loading ? '…' : currencyFormat(metrics?.platformEarnings ?? Math.max(0, (metrics?.totalCollected || 0) - (metrics?.totalPayouts || 0)))}</div>
         </div>
       </div>
 
