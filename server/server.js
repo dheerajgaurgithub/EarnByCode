@@ -86,6 +86,11 @@ const __dirname = path.dirname(__filename);
 // Load environment variables (prefer server/.env.local, then server/.env)
 dotenv.config({ path: path.join(__dirname, '.env.local') });
 
+// Hard-disable legacy executor endpoint
+app.all('/api/execute', (req, res) => {
+  return res.status(410).json({ message: 'Deprecated: use /compile' });
+});
+
 // Alias: some clients call /api/execute — route to the same handler logic as /api/code/run
 app.post('/api/execute', async (req, res) => {
   try {

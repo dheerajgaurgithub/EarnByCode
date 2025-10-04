@@ -26,18 +26,13 @@ const detectCodeLanguage = (src: string): Language | null => {
 
 const validateJavaSolution = (src: string) => /\bclass\s+Solution\b/.test(src);
 
-// Build a safe execute URL without duplicating /api.
-// Supports absolute VITE_EXECUTE_PATH (e.g., https://emkc.org/api/v2/piston/execute)
-const getExecuteUrl = () => {
-  const execPath = (import.meta.env.VITE_EXECUTE_PATH as string) || '/api/execute';
-  // 1) If absolute override provided, use it
-  if (/^https?:\/\//i.test(execPath)) return execPath;
-  // 2) Default: use configured API base (production) and alias /api/execute (server supports it)
-  const raw = (import.meta.env.VITE_API_URL as string) || 'https://earnbycode-mfs3.onrender.com/api';
-  let base = raw.replace(/\/+$/, '');
-  base = base.replace(/\/?api$/, '');
-  const path = execPath.startsWith('/') ? execPath : `/${execPath}`;
-  return `${base}${path}`;
+// Resolve compiler API base for new Docker sandbox
+const getCompilerBase = () => {
+  const env: any = (import.meta as any).env || {};
+  // In production builds, call same-origin '/compile'
+  if (env.PROD) return '';
+  // In dev, prefer explicit VITE_COMPILER_API or fallback to '' (same-origin)
+  return env.VITE_COMPILER_API || '';
 };
 
 type Language = 'javascript' | 'python' | 'java' | 'cpp';
@@ -300,88 +295,28 @@ const ProblemDetail: React.FC = () => {
       return;
     }
 
-    // Guardrails: Java must use class Solution
-    if (selectedLanguage === 'java' && !validateJavaSolution(code)) {
-      setTestResults({
-        status: 'error',
-        error: "For Java, please define 'class Solution' (we compile Solution.java and run class Solution).",
-        testCases: [],
-        results: [],
-        testsPassed: 0,
-        totalTests: 0,
-        isSubmission: false
-      });
-      return;
-    }
-
     setIsRunning(true);
     setTestResults(prev => ({ ...prev, status: 'running', isSubmission: false, error: undefined }));
 
     try {
-      // Build optional stdin from first example if present
       const exampleInput = problem.examples?.[0]?.input ?? '';
       const exampleOutput = problem.examples?.[0]?.output ?? '';
-      // Build payload compatible with external executors like Piston
-      const fileForLang = (lang: Language) => {
-        switch (lang) {
-          case 'javascript': return { name: 'index.js', content: code };
-          case 'python': return { name: 'main.py', content: code };
-          case 'java': return { name: 'Solution.java', content: code };
-          case 'cpp': return { name: 'main.cpp', content: code };
-        }
-      };
-      // Map language IDs for external executors (Piston accepts these IDs)
-      const pistonLang: Record<Language, string> = {
-        javascript: 'javascript',
-        python: 'python',
-        java: 'java',
-        cpp: 'cpp',
-      };
       const payload = {
-        language: pistonLang[selectedLanguage] || selectedLanguage,
-        version: '*',
-        files: [fileForLang(selectedLanguage)],
-        ...(typeof exampleInput === 'string' ? { stdin: exampleInput } : {})
-      } as any;
-
-      const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-      const resp = await fetch(getExecuteUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        code,
+        language: selectedLanguage,
+        input: typeof exampleInput === 'string' ? exampleInput : ''
+      };
+      const resp = await fetch(`${getCompilerBase()}/compile`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
       const data = await resp.json();
-      const out = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? '').toString();
-      const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
-      // Normalize runtime and memory from sandbox responses
-      const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time) as number | string | undefined;
-      const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory) as number | string | undefined;
-      const timeText = (data?.run?.runtime ?? data?.runtime ?? data?.run?.timeText ?? data?.timeText) as string | undefined;
-      const memText = (data?.run?.memory_text ?? data?.memory_text ?? data?.run?.memory ?? data?.memory) as string | undefined;
-      const parseMs = (v: any): number | undefined => {
-        if (v == null) return undefined;
-        const n = typeof v === 'string' ? parseFloat(v) : Number(v);
-        if (Number.isNaN(n)) return undefined;
-        // Some APIs provide seconds; assume seconds if < 100 (heuristic)
-        return n < 100 ? Math.round(n * 1000) : Math.round(n);
-      };
-      const parseKb = (v: any): number | undefined => {
-        if (v == null) return undefined;
-        const n = typeof v === 'string' ? parseFloat(v) : Number(v);
-        if (Number.isNaN(n)) return undefined;
-        // If appears to be bytes (very large), convert to KB
-        return n > 4096 ? Math.round(n / 1024) : Math.round(n);
-      };
-      const providedMs = parseMs(rawTime);
-      const measuredMs = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0));
-      const runtimeMs = providedMs ?? measuredMs;
-      const memoryKb = parseKb(rawMem);
-      const runtimeText = timeText || (runtimeMs != null ? `${Math.round(runtimeMs)}ms` : undefined);
-      const memoryText = memText || (typeof memoryKb === 'number' ? (memoryKb >= 1024 ? `${(memoryKb/1024).toFixed(1)}MB` : `${Math.round(memoryKb)}KB`) : undefined);
-
+      const out = (data?.stdout ?? data?.output ?? '').toString();
+      const err = (data?.stderr ?? '').toString();
+      const runtimeMs = typeof data?.runtimeMs === 'number' ? data.runtimeMs : undefined;
+      const memoryKb = typeof data?.memoryKb === 'number' ? data.memoryKb : undefined;
       const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
       const hasExpected = typeof exampleOutput === 'string' && exampleOutput.trim().length > 0;
-      const passed = hasExpected ? normalize(out) === normalize(exampleOutput) : err.length === 0;
+      const passed = hasExpected ? normalize(out) === normalize(exampleOutput) : !err;
 
       setTestResults({
         status: err ? 'error' : passed ? 'accepted' : 'error',
@@ -437,58 +372,22 @@ const ProblemDetail: React.FC = () => {
       let totalMs = 0;
 
       const runOne = async (stdin: string | undefined, expected: string | undefined) => {
-        const fileForLang = (lang: Language) => {
-          switch (lang) {
-            case 'javascript': return { name: 'index.js', content: code };
-            case 'python': return { name: 'main.py', content: code };
-            case 'java': return { name: 'Solution.java', content: code };
-            case 'cpp': return { name: 'main.cpp', content: code };
-          }
-        };
-        const pistonLang: Record<Language, string> = {
-          javascript: 'javascript',
-          python: 'python',
-          java: 'java',
-          cpp: 'cpp',
-        };
         const payload = {
-          language: pistonLang[selectedLanguage] || selectedLanguage,
-          version: '*',
-          files: [fileForLang(selectedLanguage)],
-          ...(stdin ? { stdin } : {})
+          code,
+          language: selectedLanguage,
+          input: typeof stdin === 'string' ? stdin : ''
         } as any;
-        const tCase0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
-        const resp = await fetch(getExecuteUrl(), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+        const resp = await fetch(`${getCompilerBase()}/compile`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
         const data = await resp.json();
-        const out = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? '').toString();
-        const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
-        const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time) as number | string | undefined;
-        const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory) as number | string | undefined;
-        const timeText = (data?.run?.runtime ?? data?.runtime ?? data?.run?.timeText ?? data?.timeText) as string | undefined;
-        const memText = (data?.run?.memory_text ?? data?.memory_text ?? data?.run?.memory ?? data?.memory) as string | undefined;
-        const parseMs = (v: any): number | undefined => {
-          if (v == null) return undefined;
-          const n = typeof v === 'string' ? parseFloat(v) : Number(v);
-          if (Number.isNaN(n)) return undefined;
-          return n < 100 ? Math.round(n * 1000) : Math.round(n);
-        };
-        const parseKb = (v: any): number | undefined => {
-          if (v == null) return undefined;
-          const n = typeof v === 'string' ? parseFloat(v) : Number(v);
-          if (Number.isNaN(n)) return undefined;
-          return n > 4096 ? Math.round(n / 1024) : Math.round(n);
-        };
-        const providedMs = parseMs(rawTime);
-        const measuredMs = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - tCase0));
-        const runtimeMs = providedMs ?? measuredMs;
-        const memoryKb = parseKb(rawMem);
+        const out = (data?.stdout ?? data?.output ?? '').toString();
+        const err = (data?.stderr ?? '').toString();
+        const runtimeMs = typeof data?.runtimeMs === 'number' ? data.runtimeMs : undefined;
+        const memoryKb = typeof data?.memoryKb === 'number' ? data.memoryKb : undefined;
         const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
         const hasExpected = typeof expected === 'string' && expected.trim().length > 0;
-        const passed = hasExpected ? normalize(out) === normalize(expected!) : err.length === 0;
+        const passed = hasExpected ? normalize(out) === normalize(expected!) : !err;
         if (passed) passedCount++;
         results.push({ input: stdin, expectedOutput: expected, actualOutput: out, passed, error: err || undefined, runtime: runtimeMs });
         if (runtimeMs) totalMs += runtimeMs;
@@ -573,18 +472,17 @@ const ProblemDetail: React.FC = () => {
 
     // First do a compilation check (where supported) with empty stdin
     try {
-      const payload = {
-        language: pistonLang[selectedLanguage] || selectedLanguage,
-        version: '*',
-        files: [fileForLang(selectedLanguage)],
-        stdin: ''
+      const prePayload = {
+        code,
+        language: selectedLanguage,
+        input: ''
       } as any;
-      const pre = await fetch(getExecuteUrl(), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      const pre = await fetch(`${getCompilerBase()}/compile`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(prePayload)
       });
       const preData = await pre.json();
-      const compileErr = (preData?.compile?.stderr || '').toString();
-      const compileCode = Number(preData?.compile?.code || 0);
+      const compileErr = (preData?.stderr || '').toString();
+      const compileCode = Number(preData?.exitCode ?? 0);
       if (compileErr && compileCode !== 0) {
         const details = compileErr.replace(/\r\n/g,'\n');
         setStrictReport(`**Status:** Compilation Error\n**Details:**\n${details}`);
@@ -618,7 +516,7 @@ const ProblemDetail: React.FC = () => {
         let tle = false;
         let resp: Response;
         try {
-          resp = await fetch(getExecuteUrl(), {
+          resp = await fetch(`${getCompilerBase()}/compile`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: controller.signal
           });
         } catch (err: any) {

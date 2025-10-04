@@ -102,8 +102,16 @@ export async function runCodeSandboxed({ code, language, input }) {
 
   // Prepare temp dir with code file
   const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ab-compile-'));
-  const filename = path.join(tmp, cfg.filename);
-  await fs.writeFile(filename, String(code ?? ''), 'utf8');
+  let filename = path.join(tmp, cfg.filename);
+  let detectedJavaClass = null;
+  const source = String(code ?? '');
+  if (chosen === 'java') {
+    // Detect `public class <Name>`; fallback to Main
+    const m = source.match(/public\s+class\s+(\w+)/);
+    detectedJavaClass = m ? m[1] : 'Main';
+    filename = path.join(tmp, `${detectedJavaClass}.java`);
+  }
+  await fs.writeFile(filename, source, 'utf8');
 
   // Compile if required inside Docker
   if (cfg.compile) {
@@ -122,7 +130,10 @@ export async function runCodeSandboxed({ code, language, input }) {
   }
 
   // Run inside Docker with stdin; wrap with /usr/bin/time and write to time.txt
-  const baseRun = cfg.run(cfg.filename);
+  let baseRun = cfg.run(cfg.filename);
+  if (chosen === 'java' && detectedJavaClass) {
+    baseRun = ['java', detectedJavaClass];
+  }
   const wrapped = ['bash','-lc', `/usr/bin/time -v -o time.txt ${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')}`];
   const runArgs = dockerCmd(cfg.image, tmp, wrapped);
   const execRes = await runWithTimeout(runArgs, String(input ?? ''), 3000);
