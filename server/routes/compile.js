@@ -147,14 +147,22 @@ export async function runCodeSandboxed({ code, language, input }) {
     }
   }
 
-  // Run inside Docker with stdin; wrap with /usr/bin/time and write to time.txt
+  // Run inside Docker with stdin; prefer wrapping with /usr/bin/time to collect memory,
+  // but fall back to plain run if /usr/bin/time is missing in the image.
   let baseRun = cfg.run(cfg.filename);
   if (chosen === 'java' && detectedJavaClass) {
     baseRun = ['java', detectedJavaClass];
   }
   const wrapped = ['bash','-lc', `/usr/bin/time -v -o time.txt ${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')}`];
-  const runArgs = dockerCmd(cfg.image, tmp, wrapped);
-  const execRes = await runWithTimeout(runArgs, String(input ?? ''), 3000);
+  let runArgs = dockerCmd(cfg.image, tmp, wrapped);
+  let execRes = await runWithTimeout(runArgs, String(input ?? ''), 5000);
+
+  // If /usr/bin/time is missing, retry without it
+  if (execRes.exitCode === 127 && /time:\s+not found|No such file or directory/i.test(execRes.stderr || '')) {
+    const plain = ['bash','-lc', baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')];
+    runArgs = dockerCmd(cfg.image, tmp, plain);
+    execRes = await runWithTimeout(runArgs, String(input ?? ''), 5000);
+  }
 
   // Cleanup temp dir
   let memKb = null;
