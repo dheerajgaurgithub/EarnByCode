@@ -316,6 +316,9 @@ const ProblemDetail: React.FC = () => {
       });
       if (!resp.ok) {
         const txt = await resp.text().catch(()=>'');
+        if (resp.status === 503 && /Docker is not available/i.test(txt)) {
+          throw new Error('Backend cannot run code: Docker is not available on the server. Please deploy backend on a Docker-capable host.');
+        }
         throw new Error(`Compile HTTP ${resp.status}: ${txt}`);
       }
       const data = await resp.json();
@@ -391,6 +394,9 @@ const ProblemDetail: React.FC = () => {
         });
         if (!resp.ok) {
           const txt = await resp.text().catch(()=> '');
+          if (resp.status === 503 && /Docker is not available/i.test(txt)) {
+            throw new Error('Backend cannot run code: Docker is not available on the server. Please deploy backend on a Docker-capable host.');
+          }
           throw new Error(`Compile HTTP ${resp.status}: ${txt}`);
         }
         const data = await resp.json();

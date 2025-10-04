@@ -55,10 +55,14 @@ const CodeEditor = () => {
 
   const apiBase = (() => {
     const env: any = (import.meta as any).env || {};
-    // In production, call same-origin '/compile' so backend-integrated route works after deploy
-    if (env.PROD) return '';
-    // In dev, prefer VITE_COMPILER_API, else localhost:8000 (standalone dev server)
-    return env.VITE_COMPILER_API || 'http://localhost:8000';
+    let base = (env.VITE_COMPILER_API as string) || '';
+    if (base && base.trim()) {
+      base = base.trim().replace(/\/+$/, '');
+      base = base.replace(/\/compile$/i, '');
+      return base;
+    }
+    // Fallback to same-origin for integrated deployments
+    return '';
   })();
 
   // Try to extract a meaningful line number and short message from toolchain output
@@ -316,6 +320,13 @@ const CodeEditor = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) {
+        const txt = await res.text().catch(()=> '');
+        if (res.status === 503 && /Docker is not available/i.test(txt)) {
+          throw new Error('Backend cannot run code: Docker is not available on the server. Please deploy backend on a Docker-capable host.');
+        }
+        throw new Error(`Compile HTTP ${res.status}: ${txt}`);
+      }
       const data = await res.json();
       const outText = typeof data?.output === "string" ? data.output : JSON.stringify(data);
       setOutput(outText);
@@ -386,7 +397,13 @@ const CodeEditor = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
-        
+        if (!res.ok) {
+          const txt = await res.text().catch(()=> '');
+          if (res.status === 503 && /Docker is not available/i.test(txt)) {
+            throw new Error('Backend cannot run code: Docker is not available on the server. Please deploy backend on a Docker-capable host.');
+          }
+          throw new Error(`Compile HTTP ${res.status}: ${txt}`);
+        }
         const data = await res.json();
         const output = typeof data?.output === "string" ? data.output : JSON.stringify(data);
         setCompilerLog(output);

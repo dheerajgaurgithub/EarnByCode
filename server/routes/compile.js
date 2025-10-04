@@ -58,10 +58,10 @@ function dockerCmd(image, workdir, args) {
   return base;
 }
 
-async function runWithTimeout(command, stdinStr, timeoutMs = 3000, options = {}) {
+async function runWithTimeout(command, stdinStr, timeoutMs = 3000) {
   return new Promise((resolve) => {
     const startedAt = Date.now();
-    const child = spawn(command[0], command.slice(1), { stdio: 'pipe', cwd: options.cwd });
+    const child = spawn(command[0], command.slice(1), { stdio: 'pipe' });
     let stdout = '';
     let stderr = '';
     let killed = false;
@@ -95,14 +95,22 @@ async function runWithTimeout(command, stdinStr, timeoutMs = 3000, options = {})
   });
 }
 
-async function hasCommand(cmd) {
-  // Use bash to check if a command exists
-  try {
-    const res = await runWithTimeout(['bash','-lc', `command -v ${cmd} >/dev/null 2>&1 && echo YES || echo NO`], '', 1500);
-    return /YES/.test(res.stdout || '');
-  } catch {
-    return false;
+// Simple cached check for docker availability
+let _dockerOk = null;
+let _dockerCheckedAt = 0;
+async function isDockerAvailable() {
+  const now = Date.now();
+  if (_dockerOk !== null && (now - _dockerCheckedAt) < 60_000) {
+    return _dockerOk;
   }
+  try {
+    const res = await runWithTimeout(['docker','--version'], '', 1500);
+    _dockerOk = res.exitCode === 0 && /version/i.test(res.stdout || '');
+  } catch {
+    _dockerOk = false;
+  }
+  _dockerCheckedAt = now;
+  return _dockerOk;
 }
 
 export async function runCodeSandboxed({ code, language, input }) {
@@ -123,90 +131,32 @@ export async function runCodeSandboxed({ code, language, input }) {
   }
   await fs.writeFile(filename, source, 'utf8');
 
-  // Determine execution mode
-  const wantDocker = !['false','0'].includes(String(process.env.USE_DOCKER || '').toLowerCase());
-  const dockerAvailable = await hasCommand('docker');
-  const timeAvailable = await hasCommand('/usr/bin/time');
-  const useDocker = wantDocker && dockerAvailable;
-
-  // If not using Docker, ensure necessary toolchains exist; otherwise short-circuit with friendly error
-  if (!useDocker) {
-    const langReq = {
-      javascript: ['node'],
-      python: ['python', 'python3'],
-      cpp: ['g++'],
-      java: ['javac', 'java'],
-      csharp: ['dotnet'],
-    };
-    const cmds = langReq[chosen] || [];
-    let ok = true;
-    if (cmds.length > 0) {
-      let anyPython = false;
-      for (const c of cmds) {
-        const present = await hasCommand(c);
-        if (chosen === 'python') {
-          // Accept either python or python3
-          anyPython = anyPython || present;
-        } else if (!present) {
-          ok = false;
-        }
-      }
-      if (chosen === 'python') ok = anyPython;
-    }
-    if (!ok) {
-      // Compose message listing what's required
-      const needed = (langReq[chosen] || []).join(', ');
+  // Compile if required inside Docker
+  if (cfg.compile) {
+    const compileArgs = dockerCmd(cfg.image, tmp, cfg.compile(cfg.filename));
+    const compileRes = await runWithTimeout(compileArgs, '', 8000);
+    if (compileRes.exitCode !== 0 || !/__COMPILED__/.test(compileRes.stdout)) {
       try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
       return {
         stdout: '',
-        stderr: `Language '${chosen}' unavailable on host. Required tools not found: ${needed}. Install toolchains or set USE_DOCKER=true on a Docker-capable host.`,
-        exitCode: 127,
-        runtimeMs: 0,
+        stderr: compileRes.stderr || compileRes.stdout || 'Compilation failed',
+        exitCode: compileRes.exitCode,
+        runtimeMs: compileRes.runtimeMs,
         memoryKb: null,
       };
     }
   }
 
-  // Compile if required
-  if (cfg.compile) {
-    if (useDocker) {
-      const compileArgs = dockerCmd(cfg.image, tmp, cfg.compile(cfg.filename));
-      const compileRes = await runWithTimeout(compileArgs, '', 8000);
-      if (compileRes.exitCode !== 0 || !/__COMPILED__/.test(compileRes.stdout)) {
-        try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
-        return { stdout: '', stderr: compileRes.stderr || compileRes.stdout || 'Compilation failed', exitCode: compileRes.exitCode, runtimeMs: compileRes.runtimeMs, memoryKb: null };
-      }
-    } else {
-      // Local compile (requires toolchain installed on host)
-      const compileCmd = cfg.compile(cfg.filename);
-      const compileRes = await runWithTimeout(compileCmd, '', 8000, { cwd: tmp });
-      if (compileRes.exitCode !== 0 || !/__COMPILED__/.test(compileRes.stdout)) {
-        try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
-        return { stdout: '', stderr: compileRes.stderr || compileRes.stdout || 'Compilation failed', exitCode: compileRes.exitCode, runtimeMs: compileRes.runtimeMs, memoryKb: null };
-      }
-    }
-  }
-
-  // Build run command
+  // Run inside Docker with stdin; wrap with /usr/bin/time and write to time.txt
   let baseRun = cfg.run(cfg.filename);
-  if (chosen === 'java' && detectedJavaClass) baseRun = ['java', detectedJavaClass];
-
-  let execRes;
-  if (useDocker) {
-    const wrapped = ['bash','-lc', `${timeAvailable ? "/usr/bin/time -v -o time.txt " : ''}${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')}`];
-    const runArgs = dockerCmd(cfg.image, tmp, wrapped);
-    execRes = await runWithTimeout(runArgs, String(input ?? ''), 3000);
-  } else {
-    // Local run
-    let runCmd = baseRun;
-    if (timeAvailable) {
-      const inner = baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ');
-      runCmd = ['bash','-lc', `/usr/bin/time -v -o time.txt ${inner}`];
-    }
-    execRes = await runWithTimeout(runCmd, String(input ?? ''), 3000, { cwd: tmp });
+  if (chosen === 'java' && detectedJavaClass) {
+    baseRun = ['java', detectedJavaClass];
   }
+  const wrapped = ['bash','-lc', `/usr/bin/time -v -o time.txt ${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')}`];
+  const runArgs = dockerCmd(cfg.image, tmp, wrapped);
+  const execRes = await runWithTimeout(runArgs, String(input ?? ''), 3000);
 
-  // Parse time.txt if available
+  // Cleanup temp dir
   let memKb = null;
   let runMs = execRes.runtimeMs;
   try {
@@ -229,11 +179,26 @@ export async function runCodeSandboxed({ code, language, input }) {
   } catch {}
   try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
 
-  return { stdout: execRes.stdout, stderr: execRes.stderr, output: execRes.stdout, exitCode: execRes.exitCode, runtimeMs: runMs, memoryKb: memKb };
+  return {
+    stdout: execRes.stdout,
+    stderr: execRes.stderr,
+    output: execRes.stdout,
+    exitCode: execRes.exitCode,
+    runtimeMs: runMs,
+    memoryKb: memKb,
+  };
 }
 
 router.post('/', express.json({ limit: '256kb' }), async (req, res) => {
   try {
+    // Proactive guard: if docker is unavailable, return a clear message
+    const hasDocker = await isDockerAvailable();
+    if (!hasDocker) {
+      return res.status(503).json({
+        status: 'unavailable',
+        message: 'Docker is not available on this host. Please deploy the backend on a Docker-capable environment (e.g., VM with Docker, Fly.io Machines, etc.).'
+      });
+    }
     const { code, language, lang, input } = req.body || {};
     const chosen = (language || lang || '').toString().toLowerCase();
     const result = await runCodeSandboxed({ code, language: chosen, input });
