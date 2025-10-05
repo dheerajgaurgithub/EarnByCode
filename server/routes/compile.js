@@ -398,4 +398,3 @@ export async function runCodeSandboxed({ code, language, input }) {
   }
 }
 
-export default router;
