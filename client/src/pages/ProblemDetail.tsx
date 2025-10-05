@@ -215,6 +215,8 @@ const ProblemDetail: React.FC = () => {
     totalTests: 0,
     isSubmission: false
   });
+  // Non-hidden testcases fetched from backend endpoint
+  const [visibleTestcases, setVisibleTestcases] = useState<Array<{ input: string; expectedOutput: string }>>([]);
   // Toolbar UI state
   const [showTimer, setShowTimer] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
@@ -263,6 +265,28 @@ const ProblemDetail: React.FC = () => {
       const data = await response.json();
       setProblem(data.problem || data); // Handle both formats: { problem } or direct problem object
       setCode((data.problem || data)?.starterCode?.[selectedLanguage] || getDefaultCode(selectedLanguage));
+      // Also fetch non-hidden testcases from dedicated endpoint
+      try {
+        const tcRes = await fetch(`${getApiBase()}/problems/${id}/testcases`);
+        if (tcRes.ok) {
+          const raw = await tcRes.json();
+          const arr: any[] = Array.isArray(raw) ? raw : (Array.isArray(raw?.testcases) ? raw.testcases : []);
+          const vis = arr
+            .filter((t: any) => {
+              const hidden = t?.hidden ?? t?.isHidden ?? (t?.visibility === 'hidden') ?? (t?.private === true);
+              return !hidden;
+            })
+            .map((t: any) => ({
+              input: String(t?.input ?? ''),
+              expectedOutput: String(t?.expectedOutput ?? t?.output ?? ''),
+            }));
+          setVisibleTestcases(vis);
+        } else {
+          setVisibleTestcases([]);
+        }
+      } catch {
+        setVisibleTestcases([]);
+      }
     } catch (error) {
       console.error('Error fetching problem:', error);
     } finally {
@@ -304,12 +328,14 @@ const ProblemDetail: React.FC = () => {
     setTestResults(prev => ({ ...prev, status: 'running', isSubmission: false, error: undefined }));
 
     try {
-      const exampleInput = problem.examples?.[0]?.input ?? '';
-      const exampleOutput = problem.examples?.[0]?.output ?? '';
+      // Prefer first visible (non-hidden) testcase; fallback to first example
+      const tc0 = visibleTestcases && visibleTestcases.length > 0 ? visibleTestcases[0] : undefined;
+      const runInput = tc0 ? tc0.input : (problem.examples?.[0]?.input ?? '');
+      const expectedText = tc0 ? tc0.expectedOutput : (problem.examples?.[0]?.output ?? '');
       const payload = {
         code,
         language: selectedLanguage,
-        input: typeof exampleInput === 'string' ? exampleInput : ''
+        input: typeof runInput === 'string' ? runInput : ''
       };
       const resp = await fetch(`${getCompilerBase()}/compile`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
@@ -327,13 +353,13 @@ const ProblemDetail: React.FC = () => {
       const runtimeMs = typeof data?.runtimeMs === 'number' ? data.runtimeMs : undefined;
       const memoryKb = typeof data?.memoryKb === 'number' ? data.memoryKb : undefined;
       const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
-      const hasExpected = typeof exampleOutput === 'string' && exampleOutput.trim().length > 0;
-      const passed = hasExpected ? normalize(out) === normalize(exampleOutput) : !err;
+      const hasExpected = typeof expectedText === 'string' && expectedText.trim().length > 0;
+      const passed = hasExpected ? normalize(out) === normalize(expectedText) : !err;
 
       setTestResults({
         status: err ? 'error' : passed ? 'accepted' : 'error',
-        testCases: hasExpected ? [{ input: exampleInput, expectedOutput: exampleOutput }] : [],
-        results: hasExpected ? [{ input: exampleInput, expectedOutput: exampleOutput, actualOutput: out, passed, error: err || undefined }] : [],
+        testCases: hasExpected ? [{ input: runInput, expectedOutput: expectedText }] : [],
+        results: hasExpected ? [{ input: runInput, expectedOutput: expectedText, actualOutput: out, passed, error: err || undefined }] : [],
         testsPassed: passed ? 1 : 0,
         totalTests: hasExpected ? 1 : 0,
         isSubmission: false,
@@ -1029,6 +1055,29 @@ const ProblemDetail: React.FC = () => {
                                 <div className="mt-1 text-slate-800 dark:text-green-200">{example.explanation}</div>
                               </div>
                             )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Visible Test Cases (non-hidden) */}
+                {visibleTestcases.length > 0 && (
+                  <div className="mt-4">
+                    <h3 className="text-sm font-black text-slate-900 dark:text-green-100 mb-2">Test Cases</h3>
+                    <div className="space-y-3">
+                      {visibleTestcases.map((tc, index) => (
+                        <div key={index} className="bg-sky-50 dark:bg-green-900/30 rounded-xl p-3 border border-sky-200 dark:border-green-800">
+                          <p className="text-slate-900 dark:text-green-100 font-bold mb-2 text-xs">Test {index + 1}</p>
+                          <div className="space-y-2 text-xs">
+                            <div>
+                              <span className="text-sky-700 dark:text-green-300 font-bold">Input:</span>
+                              <pre className="bg-white dark:bg-gray-900/60 p-2 rounded-lg mt-1 border border-sky-200 dark:border-green-800 overflow-auto whitespace-pre-wrap break-words">{tc.input}</pre>
+                            </div>
+                            <div>
+                              <span className="text-sky-700 dark:text-green-300 font-bold">Expected:</span>
+                              <pre className="bg-emerald-100 dark:bg-green-900/40 p-2 rounded-lg mt-1 border border-emerald-200 dark:border-green-800 overflow-auto whitespace-pre-wrap break-words">{tc.expectedOutput}</pre>
+                            </div>
                           </div>
                         </div>
                       ))}
