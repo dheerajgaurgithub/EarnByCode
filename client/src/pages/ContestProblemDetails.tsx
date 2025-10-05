@@ -44,6 +44,7 @@ const ContestProblemDetails: React.FC = () => {
   const [code, setCode] = useState('');
   const [isBusy, setIsBusy] = useState(false);
   const [lastSubmitOk, setLastSubmitOk] = useState(false);
+  const [visibleTestcases, setVisibleTestcases] = useState<Array<{ input: string; expectedOutput: string }>>([]);
 
   const editorTheme = useMemo(() => {
     const t = (user as any)?.preferences?.editor?.theme;
@@ -92,6 +93,16 @@ const ContestProblemDetails: React.FC = () => {
         const initial = ((p as any).problem || p)?.starterCode?.[language] || '';
         setCode(initial);
         setLastSubmitOk(false);
+        // Fetch test cases and keep only those not hidden by admin
+        try {
+          const tc = await apiService.get<any[]>(`/problems/${problemId}/testcases`);
+          const arr = Array.isArray(tc) ? tc : (Array.isArray((tc as any)?.testcases) ? (tc as any).testcases : []);
+          const visible = (arr as any[]).filter((t) => {
+            const hidden = t?.hidden ?? t?.isHidden ?? (t?.visibility === 'hidden') ?? (t?.private === true);
+            return !hidden;
+          }).map((t) => ({ input: String(t?.input ?? ''), expectedOutput: String(t?.expectedOutput ?? t?.output ?? '') }));
+          setVisibleTestcases(visible);
+        } catch {}
       } catch (e) {
         console.error('Failed to load problem', e);
         toast.error('Failed to load problem');
@@ -251,6 +262,27 @@ const ContestProblemDetails: React.FC = () => {
                             <span className="ml-1 text-gray-700 dark:text-gray-300">{ex.explanation}</span>
                           </div>
                         )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {visibleTestcases.length > 0 && (
+                  <div className="mt-3 lg:mt-4 space-y-2 lg:space-y-3">
+                    <h3 className="text-xs lg:text-sm font-semibold text-gray-900 dark:text-gray-100">Test Cases</h3>
+                    {visibleTestcases.map((tc, i) => (
+                      <div key={i} className="bg-gray-50 dark:bg-gray-700 p-2 lg:p-3 rounded border border-gray-200 dark:border-gray-600">
+                        <div className="text-xs lg:text-sm mb-1">
+                          <b className="text-gray-900 dark:text-gray-100">Input:</b>
+                          <pre className="block bg-white dark:bg-gray-800 px-1.5 py-1 lg:px-2 lg:py-1.5 mt-1 rounded border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 text-xs whitespace-pre-wrap">
+                            {tc.input}
+                          </pre>
+                        </div>
+                        <div className="text-xs lg:text-sm">
+                          <b className="text-gray-900 dark:text-gray-100">Expected:</b>
+                          <pre className="block bg-white dark:bg-gray-800 px-1.5 py-1 lg:px-2 lg:py-1.5 mt-1 rounded border border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-200 text-xs whitespace-pre-wrap">
+                            {tc.expectedOutput}
+                          </pre>
+                        </div>
                       </div>
                     ))}
                   </div>
