@@ -185,6 +185,7 @@ const CodeEditor: React.FC = () => {
     const piston = buildPistonPayload(l, src, stdin);
     const legacy = { code: src, language: langToApiLang(l), input: stdin ?? "", stdin: stdin ?? "" } as any;
     const payloads = [piston, legacy];
+    let judge0Hint = false;
     for (const url of urls) {
       for (const body of payloads) {
         try {
@@ -195,7 +196,8 @@ const CodeEditor: React.FC = () => {
           });
           if (!res.ok) {
             // capture text and continue to next fallback
-            await res.text().catch(() => "");
+            const txt = await res.text().catch(() => "");
+            if (res.status === 422 || /judge0/i.test(txt)) judge0Hint = true;
             continue;
           }
           const data = await res.json();
@@ -205,6 +207,36 @@ const CodeEditor: React.FC = () => {
         }
       }
     }
+    // Auto-try Judge0 submissions endpoint as last resort or if we saw hints
+    try {
+      if (judge0Hint) {
+        const url = `${apiBase}/submissions?base64_encoded=false&wait=true`;
+        const body = {
+          source_code: src,
+          language_id: judge0LanguageId(l),
+          stdin: stdin ?? "",
+        } as any;
+        const res = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          return {
+            stdout: data?.stdout ?? "",
+            stderr: data?.stderr ?? "",
+            output: typeof data?.stdout === "string" ? data.stdout : "",
+            exitCode:
+              typeof data?.status?.id === "number" && data.status.id === 3
+                ? 0
+                : (data?.status?.id ?? 1),
+            runtimeMs: data?.time ? Math.round(Number(data.time) * 1000) : undefined,
+            memoryKb: typeof data?.memory === "number" ? data.memory : undefined,
+          } as any;
+        }
+      }
+    } catch {}
     throw new Error("All executor fallbacks failed");
   };
 
