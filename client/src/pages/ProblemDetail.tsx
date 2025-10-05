@@ -199,7 +199,6 @@ const ProblemDetail: React.FC = () => {
     const n = Number((user as any)?.preferences?.editor?.tabSize);
     return Number.isFinite(n) && n >= 2 && n <= 8 ? n : 2;
   }, [user]);
-  
   const [problem, setProblem] = useState<Problem | null>(null);
   const [loading, setLoading] = useState(true);
   const [code, setCode] = useState<string>('');
@@ -215,6 +214,12 @@ const ProblemDetail: React.FC = () => {
     totalTests: 0,
     isSubmission: false
   });
+  // Java helper: warn if class name is not Solution (server expects Solution.java)
+  const javaNeedsSolutionClass = useMemo(() => {
+    if (selectedLanguage !== 'java') return false;
+    const s = String(code || '');
+    return !/\bclass\s+Solution\b/.test(s);
+  }, [selectedLanguage, code]);
   // Non-hidden testcases fetched from backend endpoint
   const [visibleTestcases, setVisibleTestcases] = useState<Array<{ input: string; expectedOutput: string }>>([]);
   // Toolbar UI state
@@ -278,7 +283,9 @@ const ProblemDetail: React.FC = () => {
             })
             .map((t: any) => ({
               input: String(t?.input ?? ''),
-              expectedOutput: String(t?.expectedOutput ?? t?.output ?? ''),
+              expectedOutput: String(
+                t?.expectedOutput ?? t?.expected ?? t?.expected_output ?? t?.outputExpected ?? t?.output ?? ''
+              ),
             }));
           setVisibleTestcases(vis);
         } else {
@@ -293,6 +300,17 @@ const ProblemDetail: React.FC = () => {
       setLoading(false);
     }
   }, [id, selectedLanguage]);
+
+  // Fallback: if endpoint provided nothing, but problem has testCases, show them (assuming they are the public ones)
+  useEffect(() => {
+    if (visibleTestcases.length === 0 && Array.isArray(problem?.testCases) && problem!.testCases.length > 0) {
+      const vis = (problem!.testCases as any[]).map(t => ({
+        input: String((t as any)?.input ?? ''),
+        expectedOutput: String((t as any)?.expectedOutput ?? (t as any)?.expected ?? ''),
+      }));
+      setVisibleTestcases(vis);
+    }
+  }, [problem?.testCases, visibleTestcases.length]);
 
   // Handle code run (single example)
   const handleRunCode = useCallback(async () => {
@@ -651,6 +669,19 @@ const ProblemDetail: React.FC = () => {
         results: [],
         testsPassed: 0,
         totalTests: 0,
+        isSubmission: true
+      });
+      return;
+    }
+    // For Java, server expects class Solution
+    if (selectedLanguage === 'java' && !validateJavaSolution(code)) {
+      setTestResults({
+        status: 'error',
+        error: "For Java solutions, the public class must be named 'Solution' (file Solution.java).",
+        testCases: [],
+        results: [],
+        testsPassed: 0,
+        totalTests: problem.testCases?.length || 0,
         isSubmission: true
       });
       return;
