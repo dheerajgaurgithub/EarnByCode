@@ -17,6 +17,62 @@ function unescapeHtml(str = '') {
     .replaceAll('&#39;', "'");
 }
 
+// Minimal fetch shim for Node < 18
+async function getFetch() {
+  if (typeof fetch !== 'undefined') return fetch;
+  const mod = await import('node-fetch');
+  return mod.default;
+}
+
+// Judge0 (RapidAPI) integration
+function mapJudge0Language(lang) {
+  const l = String(lang || '').toLowerCase();
+  // Defaults for Judge0 CE via RapidAPI (IDs may vary slightly by deployment)
+  const ids = {
+    javascript: Number(process.env.JUDGE0_ID_JS || 63), // Node.js
+    python: Number(process.env.JUDGE0_ID_PY || 71),     // Python 3.11
+    java: Number(process.env.JUDGE0_ID_JAVA || 62),     // Java 17/13
+    cpp: Number(process.env.JUDGE0_ID_CPP || 54),       // GCC C++
+  };
+  if (l === 'javascript' || l === 'js' || l === 'node' || l === 'nodejs') return ids.javascript;
+  if (l === 'python' || l === 'py') return ids.python;
+  if (l === 'java') return ids.java;
+  if (l === 'cpp' || l === 'c++') return ids.cpp;
+  return null;
+}
+
+async function runViaJudge0({ code, language, input }) {
+  const f = await getFetch();
+  const host = process.env.JUDGE0_HOST || 'judge0-ce.p.rapidapi.com';
+  const base = process.env.JUDGE0_BASE || `https://${host}`;
+  const key = process.env.JUDGE0_KEY;
+  if (!key) throw new Error('JUDGE0_KEY is not set');
+
+  const language_id = mapJudge0Language(language);
+  if (!language_id) return { stdout: '', stderr: 'Unsupported language for Judge0', exitCode: 1, runtimeMs: 0, memoryKb: null };
+
+  const url = `${base}/submissions?base64_encoded=false&fields=stdout,stderr,compile_output,message,status,time,memory,exit_code&wait=true`;
+  const body = { source_code: String(code || ''), language_id, stdin: String(input || '') };
+  const resp = await f(url, {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-rapidapi-host': host,
+      'x-rapidapi-key': key,
+    },
+    body: JSON.stringify(body)
+  });
+  const data = await resp.json().catch(() => ({}));
+  const status = data?.status?.id || 0;
+  // status 3 = Accepted, others may indicate CE/RE/TLE etc
+  const stdout = typeof data?.stdout === 'string' ? data.stdout : '';
+  const stderr = typeof data?.stderr === 'string' ? data.stderr : (typeof data?.compile_output === 'string' ? data.compile_output : (typeof data?.message === 'string' ? data.message : ''));
+  const exitCode = typeof data?.exit_code === 'number' ? data.exit_code : (status === 3 ? 0 : 1);
+  const runtimeMs = data?.time ? Math.round(parseFloat(String(data.time)) * 1000) : 0;
+  const memoryKb = typeof data?.memory === 'number' ? data.memory : null;
+  return { stdout, stderr, output: stdout, exitCode, runtimeMs, memoryKb };
+}
+
 // Map language to Docker image and run commands
 const langConfig = {
   javascript: {
@@ -235,7 +291,20 @@ export async function runCodeSandboxed({ code, language, input }) {
 
 router.post('/', express.json({ limit: '256kb' }), async (req, res) => {
   try {
-    // Proactive guard: if docker is unavailable, return a clear message
+    const { code, language, lang, input } = req.body || {};
+    const chosen = (language || lang || '').toString().toLowerCase();
+    // Mode switch: judge0 or docker
+    const mode = String(process.env.EXECUTOR_MODE || 'docker').toLowerCase();
+    if (mode === 'judge0') {
+      try {
+        const out = await runViaJudge0({ code, language: chosen, input });
+        return res.status(200).json(out);
+      } catch (e) {
+        return res.status(502).json({ output: '', stdout: '', stderr: String(e?.message || e), exitCode: 1, runtimeMs: 0, memoryKb: null });
+      }
+    }
+
+    // Docker path: proactively guard availability
     const hasDocker = await isDockerAvailable();
     if (!hasDocker) {
       return res.status(503).json({
@@ -243,8 +312,6 @@ router.post('/', express.json({ limit: '256kb' }), async (req, res) => {
         message: 'Docker is not available on this host. Please deploy the backend on a Docker-capable environment (e.g., VM with Docker, Fly.io Machines, etc.).'
       });
     }
-    const { code, language, lang, input } = req.body || {};
-    const chosen = (language || lang || '').toString().toLowerCase();
     const result = await runCodeSandboxed({ code, language: chosen, input });
     return res.status(200).json(result);
   } catch (e) {
