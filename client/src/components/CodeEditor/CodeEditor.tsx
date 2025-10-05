@@ -94,6 +94,59 @@ const CodeEditor = () => {
     };
     return map[l] || 'javascript';
   };
+  
+  // Build piston-style payload with explicit filename per language
+  const buildPistonPayload = (l: Lang, src: string, stdin?: string) => {
+    const lower = langToApiLang(l);
+    const filename = (() => {
+      switch (l) {
+        case 'Java': return /\bclass\s+Solution\b/.test(src) ? 'Solution.java' : 'Main.java';
+        case 'Cpp': return 'main.cpp';
+        case 'C': return 'main.c';
+        case 'Python': return 'main.py';
+        case 'JavaScript': return 'index.js';
+        case 'CSharp': return 'Program.cs';
+        case 'Ruby': return 'main.rb';
+        case 'Go': return 'main.go';
+        case 'Rust': return 'main.rs';
+        case 'PHP': return 'main.php';
+        default: return 'main.txt';
+      }
+    })();
+    const payload: any = {
+      language: lower,
+      version: '*',
+      files: [{ name: filename, content: src }]
+    };
+    if (typeof stdin === 'string') payload.stdin = stdin;
+    return payload;
+  };
+
+  // Execute request with fallback: try piston payload first, then legacy
+  const executeWithFallback = async (src: string, l: Lang, stdin?: string) => {
+    const primary = buildPistonPayload(l, src, stdin);
+    try {
+      const res = await fetch(`${apiBase}/execute`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(primary)
+      });
+      if (!res.ok) {
+        const txt = await res.text().catch(() => '');
+        throw new Error(`API Error ${res.status}: ${txt}`);
+      }
+      return await res.json();
+    } catch (e: any) {
+      // Fallback to legacy simple payload
+      const legacy = { code: src, language: langToApiLang(l), input: stdin ?? '' } as any;
+      const res2 = await fetch(`${apiBase}/execute`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(legacy)
+      });
+      if (!res2.ok) {
+        const txt = await res2.text().catch(() => '');
+        throw new Error(`API Error ${res2.status}: ${txt}`);
+      }
+      return await res2.json();
+    }
+  };
 
   // Theme classes
   const themeClasses = {
@@ -226,24 +279,7 @@ const CodeEditor = () => {
       setCompilerLog("");
       setShowLog(false);
 
-      const payload = {
-        code,
-        language: langToApiLang(lang),
-        input
-      };
-
-      const res = await fetch(`${apiBase}/execute`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(`API Error ${res.status}: ${txt || res.statusText}`);
-      }
-
-      const data = await res.json();
+      const data = await executeWithFallback(code, lang, input);
       const outText = typeof data?.output === "string" ? data.output :
                       typeof data?.stdout === "string" ? data.stdout :
                       JSON.stringify(data);
@@ -294,24 +330,8 @@ const CodeEditor = () => {
     // Run each test case
     for (let i = 0; i < testcases.length; i++) {
       const tc = testcases[i];
-      const payload = {
-        code,
-        language: langToApiLang(lang),
-        input: tc.input
-      };
-
       try {
-        const res = await fetch(`${apiBase}/execute`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-
-        if (!res.ok) {
-          throw new Error(`API Error ${res.status}`);
-        }
-
-        const data = await res.json();
+        const data = await executeWithFallback(code, lang, tc.input);
         const output = typeof data?.output === "string" ? data.output :
                       typeof data?.stdout === "string" ? data.stdout :
                       JSON.stringify(data);
