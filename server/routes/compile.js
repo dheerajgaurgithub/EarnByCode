@@ -76,25 +76,25 @@ async function runViaJudge0({ code, language, input }) {
 // Map language to Docker image and run commands
 const langConfig = {
   javascript: {
-    image: 'node:20-bookworm',
+    image: process.env.NODE_IMAGE || 'node:20-bookworm',
     filename: 'main.js',
     compile: null,
     run: (filename) => ['node', filename],
   },
   python: {
-    image: 'python:3.11-slim',
+    image: process.env.PY_IMAGE || 'python:3.11-slim',
     filename: 'main.py',
     compile: null,
     run: (filename) => ['python', filename],
   },
   cpp: {
-    image: 'gcc:12.2.0',
+    image: process.env.CPP_IMAGE || 'gcc:12.2.0',
     filename: 'main.cpp',
     compile: (filename) => ['bash', '-lc', `g++ -O2 -std=c++17 ${filename} -o main && echo __COMPILED__`],
     run: () => ['./main'],
   },
   java: {
-    image: 'eclipse-temurin:17-jdk-jammy',
+    image: process.env.JAVA_IMAGE || 'eclipse-temurin:17-jdk-jammy',
     filename: 'Main.java',
     // Use urandom to avoid potential entropy stalls in container, and ensure class files go to CWD
     compile: (filename) => ['bash', '-lc', `javac -J-Djava.security.egd=file:/dev/./urandom -d . ${filename} && echo __COMPILED__`],
@@ -102,7 +102,7 @@ const langConfig = {
     run: () => ['java', '-Djava.security.egd=file:/dev/./urandom', '-Xms16m', '-Xmx128m', '-XX:+UseSerialGC', '-cp', '.', 'Main'],
   },
   csharp: {
-    image: 'mcr.microsoft.com/dotnet/sdk:8.0',
+    image: process.env.DOTNET_IMAGE || 'mcr.microsoft.com/dotnet/sdk:8.0',
     filename: 'Program.cs',
     // Create minimal csproj, build, and run
     compile: (filename) => ['bash', '-lc', `dotnet new console -n app -o app -f net8.0 --no-restore >/dev/null 2>&1 && mv ${filename} app/Program.cs && cd app && dotnet restore >/dev/null 2>&1 && dotnet build -c Release >/dev/null 2>&1 && echo __COMPILED__`],
