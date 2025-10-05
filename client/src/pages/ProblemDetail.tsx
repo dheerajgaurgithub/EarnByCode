@@ -350,11 +350,20 @@ const ProblemDetail: React.FC = () => {
       const tc0 = visibleTestcases && visibleTestcases.length > 0 ? visibleTestcases[0] : undefined;
       const runInput = tc0 ? tc0.input : (problem.examples?.[0]?.input ?? '');
       const expectedText = tc0 ? tc0.expectedOutput : (problem.examples?.[0]?.output ?? '');
-      const payload = {
-        code,
-        language: selectedLanguage,
-        input: typeof runInput === 'string' ? runInput : ''
-      };
+      // Build payload: for Java, pass explicit filename Solution.java
+      const isJava = selectedLanguage === 'java';
+      const payload = isJava
+        ? ({
+            language: 'java',
+            version: '*',
+            files: [{ name: 'Solution.java', content: code }],
+            ...(typeof runInput === 'string' ? { stdin: runInput } : {})
+          } as any)
+        : ({
+            code,
+            language: selectedLanguage,
+            input: typeof runInput === 'string' ? runInput : ''
+          } as any);
       const resp = await fetch(`${getCompilerBase()}/compile`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
       });
@@ -366,8 +375,8 @@ const ProblemDetail: React.FC = () => {
         throw new Error(`Compile HTTP ${resp.status}: ${txt}`);
       }
       const data = await resp.json();
-      const out = (data?.stdout ?? data?.output ?? '').toString();
-      const err = (data?.stderr ?? '').toString();
+      const out = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? data?.output ?? '').toString();
+      const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
       const runtimeMs = typeof data?.runtimeMs === 'number' ? data.runtimeMs : undefined;
       const memoryKb = typeof data?.memoryKb === 'number' ? data.memoryKb : undefined;
       const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
@@ -428,11 +437,19 @@ const ProblemDetail: React.FC = () => {
       let totalMs = 0;
 
       const runOne = async (stdin: string | undefined, expected: string | undefined) => {
-        const payload = {
-          code,
-          language: selectedLanguage,
-          input: typeof stdin === 'string' ? stdin : ''
-        } as any;
+        const isJava = selectedLanguage === 'java';
+        const payload = isJava
+          ? ({
+              language: 'java',
+              version: '*',
+              files: [{ name: 'Solution.java', content: code }],
+              ...(typeof stdin === 'string' ? { stdin } : {})
+            } as any)
+          : ({
+              code,
+              language: selectedLanguage,
+              input: typeof stdin === 'string' ? stdin : ''
+            } as any);
         const resp = await fetch(`${getCompilerBase()}/compile`, {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
         });
@@ -444,8 +461,8 @@ const ProblemDetail: React.FC = () => {
           throw new Error(`Compile HTTP ${resp.status}: ${txt}`);
         }
         const data = await resp.json();
-        const out = (data?.stdout ?? data?.output ?? '').toString();
-        const err = (data?.stderr ?? '').toString();
+        const out = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? data?.output ?? '').toString();
+        const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
         const runtimeMs = typeof data?.runtimeMs === 'number' ? data.runtimeMs : undefined;
         const memoryKb = typeof data?.memoryKb === 'number' ? data.memoryKb : undefined;
         const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
