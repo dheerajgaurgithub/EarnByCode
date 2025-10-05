@@ -1,13 +1,9 @@
-import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
-import { fileURLToPath } from 'url';
 import { spawn } from 'child_process';
 
-const router = express.Router();
-
-// Minimal HTML entity unescape for code payloads possibly sanitized by xss-clean
+// Minimal HTML entity unescape for sanitized code
 function unescapeHtml(str = '') {
   return String(str)
     .replaceAll('&lt;', '<')
@@ -24,60 +20,100 @@ async function getFetch() {
   return mod.default;
 }
 
-// Judge0 (RapidAPI) integration
+// Judge0 language mapping
 function mapJudge0Language(lang) {
   const l = String(lang || '').toLowerCase();
-  // Defaults for Judge0 CE via RapidAPI (IDs may vary slightly by deployment)
   const ids = {
-    javascript: Number(process.env.JUDGE0_ID_JS || 63), // Node.js
-    python: Number(process.env.JUDGE0_ID_PY || 71),     // Python 3.11
-    java: Number(process.env.JUDGE0_ID_JAVA || 62),     // Java 17/13
-    cpp: Number(process.env.JUDGE0_ID_CPP || 54),       // GCC C++
+    javascript: Number(process.env.JUDGE0_ID_JS || 63),
+    python: Number(process.env.JUDGE0_ID_PY || 71),
+    java: Number(process.env.JUDGE0_ID_JAVA || 62),
+    cpp: Number(process.env.JUDGE0_ID_CPP || 54),
+    c: Number(process.env.JUDGE0_ID_C || 50),
+    csharp: Number(process.env.JUDGE0_ID_CS || 51),
+    ruby: Number(process.env.JUDGE0_ID_RUBY || 72),
+    go: Number(process.env.JUDGE0_ID_GO || 60),
+    rust: Number(process.env.JUDGE0_ID_RUST || 73),
+    php: Number(process.env.JUDGE0_ID_PHP || 68),
   };
+
   if (l === 'javascript' || l === 'js' || l === 'node' || l === 'nodejs') return ids.javascript;
-  if (l === 'python' || l === 'py') return ids.python;
+  if (l === 'python' || l === 'py' || l === 'python3') return ids.python;
   if (l === 'java') return ids.java;
   if (l === 'cpp' || l === 'c++') return ids.cpp;
+  if (l === 'c') return ids.c;
+  if (l === 'csharp' || l === 'cs' || l === 'c#') return ids.csharp;
+  if (l === 'ruby' || l === 'rb') return ids.ruby;
+  if (l === 'go' || l === 'golang') return ids.go;
+  if (l === 'rust' || l === 'rs') return ids.rust;
+  if (l === 'php') return ids.php;
+
   return null;
 }
 
-async function runViaJudge0({ code, language, input }) {
+// Judge0 executor
+export async function runViaJudge0({ code, language, input }) {
   const f = await getFetch();
   const host = process.env.JUDGE0_HOST || 'judge0-ce.p.rapidapi.com';
   const base = process.env.JUDGE0_BASE || `https://${host}`;
   const key = process.env.JUDGE0_KEY;
-  if (!key) throw new Error('JUDGE0_KEY is not set');
+
+  if (!key) {
+    throw new Error('JUDGE0_KEY environment variable is not set');
+  }
 
   const language_id = mapJudge0Language(language);
-  if (!language_id) return { stdout: '', stderr: 'Unsupported language for Judge0', exitCode: 1, runtimeMs: 0, memoryKb: null };
+  if (!language_id) {
+    return {
+      stdout: '',
+      stderr: `Unsupported language for Judge0: ${language}`,
+      exitCode: 1,
+      runtimeMs: 0,
+      memoryKb: null
+    };
+  }
 
   const url = `${base}/submissions?base64_encoded=false&fields=stdout,stderr,compile_output,message,status,time,memory,exit_code&wait=true`;
-  // Unescape HTML entities in code that may come from sanitized editors (e.g., <, >)
-  const body = { source_code: unescapeHtml(String(code || '')), language_id, stdin: String(input || '') };
-  const resp = await f(url, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-rapidapi-host': host,
-      'x-rapidapi-key': key,
-    },
-    body: JSON.stringify(body)
-  });
-  const data = await resp.json().catch(() => ({}));
-  const status = data?.status?.id || 0;
-  // status 3 = Accepted, others may indicate CE/RE/TLE etc
-  const stdout = typeof data?.stdout === 'string' ? data.stdout : '';
-  const stderr = typeof data?.stderr === 'string' ? data.stderr : (typeof data?.compile_output === 'string' ? data.compile_output : (typeof data?.message === 'string' ? data.message : ''));
-  const exitCode = typeof data?.exit_code === 'number' ? data.exit_code : (status === 3 ? 0 : 1);
-  const runtimeMs = data?.time ? Math.round(parseFloat(String(data.time)) * 1000) : 0;
-  const memoryKb = typeof data?.memory === 'number' ? data.memory : null;
-  return { stdout, stderr, output: stdout, exitCode, runtimeMs, memoryKb };
+  const body = {
+    source_code: unescapeHtml(String(code || '')),
+    language_id,
+    stdin: String(input || '')
+  };
+
+  try {
+    const resp = await f(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-rapidapi-host': host,
+        'x-rapidapi-key': key,
+      },
+      body: JSON.stringify(body)
+    });
+
+    if (!resp.ok) {
+      throw new Error(`Judge0 API error: ${resp.status} ${resp.statusText}`);
+    }
+
+    const data = await resp.json().catch(() => ({}));
+    const status = data?.status?.id || 0;
+    const stdout = typeof data?.stdout === 'string' ? data.stdout : '';
+    const stderr = typeof data?.stderr === 'string' ? data.stderr :
+                   (typeof data?.compile_output === 'string' ? data.compile_output :
+                   (typeof data?.message === 'string' ? data.message : ''));
+    const exitCode = typeof data?.exit_code === 'number' ? data.exit_code : (status === 3 ? 0 : 1);
+    const runtimeMs = data?.time ? Math.round(parseFloat(String(data.time)) * 1000) : 0;
+    const memoryKb = typeof data?.memory === 'number' ? data.memory : null;
+
+    return { stdout, stderr, output: stdout, exitCode, runtimeMs, memoryKb };
+  } catch (error) {
+    throw new Error(`Judge0 execution failed: ${error.message}`);
+  }
 }
 
-// Map language to Docker image and run commands
+// Language configurations for Docker execution
 const langConfig = {
   javascript: {
-    image: process.env.NODE_IMAGE || 'node:20-bookworm',
+    image: process.env.NODE_IMAGE || 'node:20-slim',
     filename: 'main.js',
     compile: null,
     run: (filename) => ['node', filename],
@@ -91,46 +127,92 @@ const langConfig = {
   cpp: {
     image: process.env.CPP_IMAGE || 'gcc:12.2.0',
     filename: 'main.cpp',
-    compile: (filename) => ['bash', '-lc', `g++ -O2 -std=c++17 ${filename} -o main && echo __COMPILED__`],
+    compile: (filename) => ['bash', '-c', `g++ -O2 -std=c++17 ${filename} -o main && echo __COMPILED__`],
+    run: () => ['./main'],
+  },
+  c: {
+    image: process.env.C_IMAGE || 'gcc:12.2.0',
+    filename: 'main.c',
+    compile: (filename) => ['bash', '-c', `gcc -O2 ${filename} -o main && echo __COMPILED__`],
     run: () => ['./main'],
   },
   java: {
     image: process.env.JAVA_IMAGE || 'eclipse-temurin:17-jdk-jammy',
     filename: 'Main.java',
-    // Use urandom to avoid potential entropy stalls in container, and ensure class files go to CWD
-    compile: (filename) => ['bash', '-lc', `javac -J-Djava.security.egd=file:/dev/./urandom -d . ${filename} && echo __COMPILED__`],
-    // Explicit classpath '.' and JVM kept small to avoid OOM within container limits
-    run: () => ['java', '-Djava.security.egd=file:/dev/./urandom', '-Xms16m', '-Xmx128m', '-XX:+UseSerialGC', '-cp', '.', 'Main'],
+    compile: (filename) => ['bash', '-c', `javac -J-Djava.security.egd=file:/dev/./urandom -d . ${filename} && echo __COMPILED__`],
+    run: () => ['java', '-Djava.security.egd=file:/dev/./urandom', '-Xms16m', '-Xmx256m', '-XX:+UseSerialGC', '-cp', '.', 'Main'],
   },
   csharp: {
     image: process.env.DOTNET_IMAGE || 'mcr.microsoft.com/dotnet/sdk:8.0',
     filename: 'Program.cs',
-    // Create minimal csproj, build, and run
-    compile: (filename) => ['bash', '-lc', `dotnet new console -n app -o app -f net8.0 --no-restore >/dev/null 2>&1 && mv ${filename} app/Program.cs && cd app && dotnet restore >/dev/null 2>&1 && dotnet build -c Release >/dev/null 2>&1 && echo __COMPILED__`],
-    run: () => ['bash', '-lc', 'cd app && dotnet run -c Release --no-build'],
+    compile: (filename) => ['bash', '-c', `dotnet new console -n app -o app -f net8.0 --no-restore >/dev/null 2>&1 && mv ${filename} app/Program.cs && cd app && dotnet restore >/dev/null 2>&1 && dotnet build -c Release >/dev/null 2>&1 && echo __COMPILED__`],
+    run: () => ['bash', '-c', 'cd app && dotnet run -c Release --no-build'],
+  },
+  ruby: {
+    image: process.env.RUBY_IMAGE || 'ruby:3.2-slim',
+    filename: 'main.rb',
+    compile: null,
+    run: (filename) => ['ruby', filename],
+  },
+  go: {
+    image: process.env.GO_IMAGE || 'golang:1.21-alpine',
+    filename: 'main.go',
+    compile: (filename) => ['bash', '-c', `go build -o main ${filename} && echo __COMPILED__`],
+    run: () => ['./main'],
+  },
+  rust: {
+    image: process.env.RUST_IMAGE || 'rust:1.75-slim',
+    filename: 'main.rs',
+    compile: (filename) => ['bash', '-c', `rustc -O ${filename} -o main && echo __COMPILED__`],
+    run: () => ['./main'],
+  },
+  php: {
+    image: process.env.PHP_IMAGE || 'php:8.2-cli-alpine',
+    filename: 'main.php',
+    compile: null,
+    run: (filename) => ['php', filename],
   },
 };
 
+// Normalize language names
+function normalizeLanguage(lang) {
+  const l = String(lang || '').toLowerCase().trim();
+
+  if (l === 'javascript' || l === 'js' || l === 'node' || l === 'nodejs') return 'javascript';
+  if (l === 'python' || l === 'py' || l === 'python3') return 'python';
+  if (l === 'java') return 'java';
+  if (l === 'cpp' || l === 'c++') return 'cpp';
+  if (l === 'c') return 'c';
+  if (l === 'csharp' || l === 'cs' || l === 'c#') return 'csharp';
+  if (l === 'ruby' || l === 'rb') return 'ruby';
+  if (l === 'go' || l === 'golang') return 'go';
+  if (l === 'rust' || l === 'rs') return 'rust';
+  if (l === 'php') return 'php';
+
+  return null;
+}
+
+// Build Docker command
 function dockerCmd(image, workdir, args, limits = {}) {
-  // Basic sandbox flags with overridable limits
-  const cpus = limits.cpus ?? '0.5';
-  const memory = limits.memory ?? '256m';
-  const pids = limits.pids ?? '128';
-  const base = [
-    'docker','run','--rm',
-    '--network','none',
+  const cpus = limits.cpus ?? '1.0';
+  const memory = limits.memory ?? '512m';
+  const pids = limits.pids ?? '256';
+
+  return [
+    'docker', 'run', '--rm',
+    '--network', 'none',
     '--cpus', String(cpus),
     '--memory', String(memory),
     '--pids-limit', String(pids),
     '-v', `${workdir}:/code:rw`,
-    '-w','/code',
+    '-w', '/code',
     image,
     ...args,
   ];
-  return base;
 }
 
-async function runWithTimeout(command, stdinStr, timeoutMs = 3000) {
+// Run command with timeout
+async function runWithTimeout(command, stdinStr, timeoutMs = 5000) {
   return new Promise((resolve) => {
     const startedAt = Date.now();
     const child = spawn(command[0], command.slice(1), { stdio: 'pipe' });
@@ -151,173 +233,169 @@ async function runWithTimeout(command, stdinStr, timeoutMs = 3000) {
 
     child.stdout.on('data', (d) => { stdout += d.toString(); });
     child.stderr.on('data', (d) => { stderr += d.toString(); });
+
     child.on('error', (e) => {
       clearTimeout(timer);
-      resolve({ stdout: '', stderr: String(e?.message || e), exitCode: 1, runtimeMs: Date.now() - startedAt });
+      resolve({
+        stdout: '',
+        stderr: `Execution error: ${e.message}`,
+        exitCode: 1,
+        runtimeMs: Date.now() - startedAt
+      });
     });
+
     child.on('close', (code) => {
       if (!killed) clearTimeout(timer);
-      resolve({ stdout, stderr, exitCode: code ?? 0, runtimeMs: Date.now() - startedAt });
+      resolve({
+        stdout,
+        stderr,
+        exitCode: code ?? 0,
+        runtimeMs: Date.now() - startedAt
+      });
     });
 
     if (typeof stdinStr === 'string' && stdinStr.length) {
-      child.stdin.write(stdinStr);
+      try {
+        child.stdin.write(stdinStr);
+      } catch {}
     }
     try { child.stdin.end(); } catch {}
   });
 }
 
-// Simple cached check for docker availability
+// Check Docker availability with caching
 let _dockerOk = null;
 let _dockerCheckedAt = 0;
-async function isDockerAvailable() {
+
+export async function isDockerAvailable() {
   const now = Date.now();
   if (_dockerOk !== null && (now - _dockerCheckedAt) < 60_000) {
     return _dockerOk;
   }
+
   try {
-    const res = await runWithTimeout(['docker','--version'], '', 1500);
+    const res = await runWithTimeout(['docker', '--version'], '', 2000);
     _dockerOk = res.exitCode === 0 && /version/i.test(res.stdout || '');
   } catch {
     _dockerOk = false;
   }
+
   _dockerCheckedAt = now;
   return _dockerOk;
 }
 
+// Main Docker-based code executor
 export async function runCodeSandboxed({ code, language, input }) {
-  const chosen = (language || '').toString().toLowerCase();
-  const cfg = langConfig[chosen];
-  if (!cfg) throw new Error('Unsupported language');
-
-  // Prepare temp dir with code file
-  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'ab-compile-'));
-  let filename = path.join(tmp, cfg.filename);
-  let detectedJavaClass = null;
-  const source = unescapeHtml(String(code ?? ''));
-  if (chosen === 'java') {
-    // Detect `public class <Name>`; fallback to Main
-    const m = source.match(/public\s+class\s+(\w+)/);
-    detectedJavaClass = m ? m[1] : 'Main';
-    filename = path.join(tmp, `${detectedJavaClass}.java`);
+  const normalized = normalizeLanguage(language);
+  if (!normalized) {
+    throw new Error(`Unsupported language: ${language}`);
   }
-  await fs.writeFile(filename, source, 'utf8');
-  const inputStr = String(input ?? '');
-  const stdinFile = path.join(tmp, 'stdin.txt');
-  await fs.writeFile(stdinFile, inputStr, 'utf8');
 
-  // Compile if required inside Docker
-  if (cfg.compile) {
-    // Use the actual filename we wrote (may be detected Java class)
-    const compileTarget = path.basename(filename);
-    const compileArgs = dockerCmd(cfg.image, tmp, cfg.compile(compileTarget));
-    const compileRes = await runWithTimeout(compileArgs, '', 8000);
-    if (compileRes.exitCode !== 0 || !/__COMPILED__/.test(compileRes.stdout)) {
-      try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
-      return {
-        stdout: '',
-        stderr: compileRes.stderr || compileRes.stdout || 'Compilation failed',
-        exitCode: compileRes.exitCode,
-        runtimeMs: compileRes.runtimeMs,
-        memoryKb: null,
-      };
+  const cfg = langConfig[normalized];
+  if (!cfg) {
+    throw new Error(`Configuration missing for language: ${normalized}`);
+  }
+
+  // Create temp directory
+  const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'code-exec-'));
+
+  try {
+    let filename = path.join(tmp, cfg.filename);
+    let detectedJavaClass = null;
+    const source = unescapeHtml(String(code ?? ''));
+
+    // Handle Java class detection
+    if (normalized === 'java') {
+      const m = source.match(/public\s+class\s+(\w+)/);
+      detectedJavaClass = m ? m[1] : 'Main';
+      filename = path.join(tmp, `${detectedJavaClass}.java`);
     }
-  }
 
-  // One-time warmup for Java containers: pull layers and start JVM once to avoid first-run TLE
-  if (chosen === 'java') {
-    if (!global.__ab_java_warm__) global.__ab_java_warm__ = false;
-    if (!global.__ab_java_warm__) {
+    await fs.writeFile(filename, source, 'utf8');
+
+    // Write stdin input
+    const inputStr = String(input ?? '');
+    const stdinFile = path.join(tmp, 'stdin.txt');
+    await fs.writeFile(stdinFile, inputStr, 'utf8');
+
+    // Compilation step if needed
+    if (cfg.compile) {
+      const compileTarget = path.basename(filename);
+      const compileArgs = dockerCmd(cfg.image, tmp, cfg.compile(compileTarget));
+      const compileRes = await runWithTimeout(compileArgs, '', 15000);
+
+      if (compileRes.exitCode !== 0 || !/__COMPILED__/.test(compileRes.stdout)) {
+        return {
+          stdout: '',
+          stderr: compileRes.stderr || compileRes.stdout || 'Compilation failed',
+          output: '',
+          exitCode: compileRes.exitCode,
+          runtimeMs: compileRes.runtimeMs,
+          memoryKb: null,
+        };
+      }
+    }
+
+    // Warmup for Java (one-time)
+    if (normalized === 'java' && !global.__ab_java_warm__) {
       try {
-        const warmCmd = ['bash','-lc', `echo 'class _W{public static void main(String[]a){}}' > _W.java && javac -J-Djava.security.egd=file:/dev/./urandom -d . _W.java && java -Djava.security.egd=file:/dev/./urandom -cp . _W`];
+        const warmCmd = ['bash', '-c', `echo 'class _W{public static void main(String[]a){}}' > _W.java && javac -J-Djava.security.egd=file:/dev/./urandom -d . _W.java && java -Djava.security.egd=file:/dev/./urandom -cp . _W`];
         const warmArgs = dockerCmd(cfg.image, os.tmpdir(), warmCmd);
-        // Allow longer warmup (pull + first JVM start)
         await runWithTimeout(warmArgs, '', 15000);
       } catch {}
       global.__ab_java_warm__ = true;
     }
-  }
 
-  // Run inside Docker with stdin; prefer wrapping with /usr/bin/time to collect memory,
-  // but fall back to plain run if /usr/bin/time is missing in the image.
-  let baseRun = cfg.run(cfg.filename);
-  if (chosen === 'java' && detectedJavaClass) {
-    // Mirror the flags from cfg.run() but swap the main class
-    baseRun = ['java', '-Djava.security.egd=file:/dev/./urandom', '-cp', '.', detectedJavaClass];
-  }
-  const wrapped = ['bash','-lc', `/usr/bin/time -v -o time.txt ${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')} < stdin.txt`];
-  let runArgs = dockerCmd(cfg.image, tmp, wrapped);
-  const execTimeout = (chosen === 'java') ? 12000 : 5000;
-  let execRes = await runWithTimeout(runArgs, '', execTimeout);
-
-  // If /usr/bin/time is missing, retry without it
-  if (execRes.exitCode === 127 && /time:\s+not found|No such file or directory/i.test(execRes.stderr || '')) {
-    const plain = ['bash','-lc', `${baseRun.map(a=>`'${a.replace(/'/g,"'\\''")}'`).join(' ')} < stdin.txt`];
-    runArgs = dockerCmd(cfg.image, tmp, plain);
-    execRes = await runWithTimeout(runArgs, '', execTimeout);
-  }
-
-  // Cleanup temp dir
-  let memKb = null;
-  let runMs = execRes.runtimeMs;
-  try {
-    const timeRaw = await fs.readFile(path.join(tmp, 'time.txt'), 'utf8').catch(() => '');
-    if (timeRaw) {
-      const m = timeRaw.match(/Maximum resident set size \(kbytes\):\s*(\d+)/i);
-      if (m) memKb = parseInt(m[1], 10);
-      const usr = timeRaw.match(/User time \(seconds\):\s*([\d\.]+)/i);
-      const sys = timeRaw.match(/System time \(seconds\):\s*([\d\.]+)/i);
-      if (usr && sys) runMs = Math.round((parseFloat(usr[1]) + parseFloat(sys[1])) * 1000);
-      const el = timeRaw.match(/Elapsed \(wall clock\) time:\s*(\d+:)?(\d+):(\d+\.\d+)/i);
-      if (el) {
-        const hours = el[1] ? parseInt(el[1].replace(':',''),10) : 0;
-        const minutes = parseInt(el[2],10);
-        const seconds = parseFloat(el[3]);
-        const wall = ((hours*60 + minutes)*60 + seconds)*1000;
-        runMs = Math.round(wall);
-      }
+    // Execution
+    let baseRun = cfg.run(cfg.filename);
+    if (normalized === 'java' && detectedJavaClass) {
+      baseRun = ['java', '-Djava.security.egd=file:/dev/./urandom', '-Xms16m', '-Xmx256m', '-XX:+UseSerialGC', '-cp', '.', detectedJavaClass];
     }
-  } catch {}
-  try { await fs.rm(tmp, { recursive: true, force: true }); } catch {}
 
-  return {
-    stdout: execRes.stdout,
-    stderr: execRes.stderr,
-    output: execRes.stdout,
-    exitCode: execRes.exitCode,
-    runtimeMs: runMs,
-    memoryKb: memKb,
-  };
+    const wrapped = ['bash', '-c', `/usr/bin/time -v -o time.txt ${baseRun.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')} < stdin.txt`];
+    let runArgs = dockerCmd(cfg.image, tmp, wrapped);
+    const execTimeout = (normalized === 'java') ? 15000 : 8000;
+    let execRes = await runWithTimeout(runArgs, '', execTimeout);
+
+    // Fallback if /usr/bin/time not available
+    if (execRes.exitCode === 127 && /time:\s+not found|No such file or directory/i.test(execRes.stderr || '')) {
+      const plain = ['bash', '-c', `${baseRun.map(a => `'${a.replace(/'/g, "'\\''")}'`).join(' ')} < stdin.txt`];
+      runArgs = dockerCmd(cfg.image, tmp, plain);
+      execRes = await runWithTimeout(runArgs, '', execTimeout);
+    }
+
+    // Parse timing info
+    let memKb = null;
+    let runMs = execRes.runtimeMs;
+
+    try {
+      const timeRaw = await fs.readFile(path.join(tmp, 'time.txt'), 'utf8').catch(() => '');
+      if (timeRaw) {
+        const m = timeRaw.match(/Maximum resident set size \(kbytes\):\s*(\d+)/i);
+        if (m) memKb = parseInt(m[1], 10);
+
+        const usr = timeRaw.match(/User time \(seconds\):\s*([\d\.]+)/i);
+        const sys = timeRaw.match(/System time \(seconds\):\s*([\d\.]+)/i);
+        if (usr && sys) {
+          runMs = Math.round((parseFloat(usr[1]) + parseFloat(sys[1])) * 1000);
+        }
+      }
+    } catch {}
+
+    return {
+      stdout: execRes.stdout,
+      stderr: execRes.stderr,
+      output: execRes.stdout,
+      exitCode: execRes.exitCode,
+      runtimeMs: runMs,
+      memoryKb: memKb,
+    };
+  } finally {
+    // Cleanup
+    try {
+      await fs.rm(tmp, { recursive: true, force: true });
+    } catch {}
+  }
 }
-
-router.post('/', express.json({ limit: '256kb' }), async (req, res) => {
-  try {
-    const { code, language, lang, input } = req.body || {};
-    const chosen = (language || lang || '').toString().toLowerCase();
-    // Mode switch: judge0 or docker
-    const mode = String(process.env.EXECUTOR_MODE || 'docker').toLowerCase();
-    if (mode === 'judge0') {
-      try {
-        const out = await runViaJudge0({ code, language: chosen, input });
-        return res.status(200).json(out);
-      } catch (e) {
-        return res.status(502).json({ output: '', stdout: '', stderr: String(e?.message || e), exitCode: 1, runtimeMs: 0, memoryKb: null });
-      }
-    }
-
-    // Docker path: proactively guard availability
-    const hasDocker = await isDockerAvailable();
-    if (!hasDocker) {
-      return res.status(503).json({
-        status: 'unavailable',
-        message: 'Docker is not available on this host. Please deploy the backend on a Docker-capable environment (e.g., VM with Docker, Fly.io Machines, etc.).'
-      });
-    }
-    const result = await runCodeSandboxed({ code, language: chosen, input });
-    return res.status(200).json(result);
-  } catch (e) {
-    return res.status(500).json({ error: String(e?.message || e) });
-  }
-});
 
 export default router;
