@@ -78,6 +78,15 @@ const CodeEditor = () => {
     return 'http://localhost:3000';
   })();
 
+  // Main App API (problems) base URL
+  const getApiBase = () => {
+    const raw = (import.meta as any).env?.VITE_API_URL as string | undefined;
+    let base = (raw && raw.trim()) ? raw.trim() : 'https://earnbycode-mfs3.onrender.com/api';
+    base = base.replace(/\/+$/, '');
+    if (!/\/api$/.test(base)) base = `${base}/api`;
+    return base;
+  };
+
   // Language to API mapping
   const langToApiLang = (l: Lang): string => {
     const map: Record<Lang, string> = {
@@ -122,30 +131,30 @@ const CodeEditor = () => {
     return payload;
   };
 
-  // Execute request with fallback: try piston payload first, then legacy
+  // Execute request with robust fallback order (/compile then /execute; piston then legacy)
   const executeWithFallback = async (src: string, l: Lang, stdin?: string) => {
-    const primary = buildPistonPayload(l, src, stdin);
-    try {
-      const res = await fetch(`${apiBase}/execute`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(primary)
-      });
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(`API Error ${res.status}: ${txt}`);
+    const urls = [`${apiBase}/compile`, `${apiBase}/execute`];
+    const piston = buildPistonPayload(l, src, stdin);
+    const legacy = { code: src, language: langToApiLang(l), input: stdin ?? '', stdin: stdin ?? '' } as any;
+    const payloads = [piston, legacy];
+    for (const url of urls) {
+      for (const body of payloads) {
+        try {
+          const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+          if (!res.ok) {
+            // Capture text but continue to next fallback
+            await res.text().catch(() => '');
+            continue;
+          }
+          const data = await res.json();
+          return data;
+        } catch {
+          // try next
+          continue;
+        }
       }
-      return await res.json();
-    } catch (e: any) {
-      // Fallback to legacy simple payload
-      const legacy = { code: src, language: langToApiLang(l), input: stdin ?? '' } as any;
-      const res2 = await fetch(`${apiBase}/execute`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(legacy)
-      });
-      if (!res2.ok) {
-        const txt = await res2.text().catch(() => '');
-        throw new Error(`API Error ${res2.status}: ${txt}`);
-      }
-      return await res2.json();
     }
+    throw new Error('All executor fallbacks failed');
   };
 
   // Theme classes
@@ -190,21 +199,25 @@ const CodeEditor = () => {
 
   const theme = darkMode ? themeClasses.dark : themeClasses.light;
 
-  // Load problem test cases if problem ID is in route
+  // Load problem test cases if problem ID is in route (from App API, not compiler API)
   useEffect(() => {
     const loadProblem = async () => {
       if (routeProblemId) {
         try {
           setProblemId(routeProblemId);
-          const response = await fetch(`/api/problems/${routeProblemId}/testcases`);
+          const url = `${getApiBase()}/problems/${routeProblemId}/testcases`;
+          const response = await fetch(url);
           if (response.ok) {
-            const data = await response.json();
-            if (data.testCases && data.testCases.length > 0) {
-              setTestcases(data.testCases.map((tc: any) => ({
-                input: tc.input || '',
-                expected: tc.expectedOutput || ''
-              })));
-            }
+            const raw = await response.json();
+            const arr: any[] = Array.isArray(raw) ? raw : (Array.isArray(raw?.testcases) ? raw.testcases : (Array.isArray(raw?.testCases) ? raw.testCases : []));
+            const visible = arr.filter((t: any) => {
+              const hidden = t?.hidden ?? t?.isHidden ?? (t?.visibility === 'hidden') ?? (t?.private === true);
+              return !hidden;
+            }).map((t: any) => ({
+              input: String(t?.input ?? ''),
+              expected: String(t?.expectedOutput ?? t?.expected ?? t?.expected_output ?? t?.outputExpected ?? t?.output ?? ''),
+            }));
+            if (visible.length > 0) setTestcases(visible);
           }
         } catch (error) {
           console.error('Failed to load problem:', error);
@@ -280,13 +293,15 @@ const CodeEditor = () => {
       setShowLog(false);
 
       const data = await executeWithFallback(code, lang, input);
-      const outText = typeof data?.output === "string" ? data.output :
+      const outText = typeof data?.run?.output === 'string' ? data.run.output :
+                      typeof data?.run?.stdout === 'string' ? data.run.stdout :
+                      typeof data?.output === "string" ? data.output :
                       typeof data?.stdout === "string" ? data.stdout :
                       JSON.stringify(data);
 
       setOutput(outText);
-      setStdoutText(typeof data?.stdout === 'string' ? data.stdout : outText);
-      setStderrText(typeof data?.stderr === 'string' ? data.stderr : '');
+      setStdoutText(typeof data?.run?.stdout === 'string' ? data.run.stdout : (typeof data?.stdout === 'string' ? data.stdout : outText));
+      setStderrText(typeof data?.run?.stderr === 'string' ? data.run.stderr : (typeof data?.stderr === 'string' ? data.stderr : ''));
       setCompilerLog(outText);
       setRuntimeMs(typeof data?.runtimeMs === 'number' ? data.runtimeMs : null);
       setMemoryKb(typeof data?.memoryKb === 'number' ? data.memoryKb : null);
@@ -332,7 +347,9 @@ const CodeEditor = () => {
       const tc = testcases[i];
       try {
         const data = await executeWithFallback(code, lang, tc.input);
-        const output = typeof data?.output === "string" ? data.output :
+        const output = typeof data?.run?.output === 'string' ? data.run.output :
+                      typeof data?.run?.stdout === 'string' ? data.run.stdout :
+                      typeof data?.output === "string" ? data.output :
                       typeof data?.stdout === "string" ? data.stdout :
                       JSON.stringify(data);
         const exitCode = typeof data?.exitCode === 'number' ? data.exitCode : null;
