@@ -346,6 +346,19 @@ const ProblemDetail: React.FC = () => {
     setTestResults(prev => ({ ...prev, status: 'running', isSubmission: false, error: undefined }));
 
     try {
+      // For Java, require class Solution to match filename Solution.java
+      if (selectedLanguage === 'java' && !validateJavaSolution(code)) {
+        setTestResults({
+          status: 'error',
+          error: "For Java, please name the public class 'Solution' (file Solution.java).",
+          testCases: [],
+          results: [],
+          testsPassed: 0,
+          totalTests: 0,
+          isSubmission: false,
+        });
+        return;
+      }
       // Prefer first visible (non-hidden) testcase; fallback to first example
       const tc0 = visibleTestcases && visibleTestcases.length > 0 ? visibleTestcases[0] : undefined;
       const runInput = tc0 ? tc0.input : (problem.examples?.[0]?.input ?? '');
@@ -432,6 +445,20 @@ const ProblemDetail: React.FC = () => {
     setTestResults(prev => ({ ...prev, status: 'running', isSubmission: false, error: undefined }));
 
     try {
+      // For Java, require class Solution to match filename Solution.java
+      if (selectedLanguage === 'java' && !validateJavaSolution(code)) {
+        setTestResults({
+          status: 'error',
+          error: "For Java, please name the public class 'Solution' (file Solution.java).",
+          testCases: [],
+          results: [],
+          testsPassed: 0,
+          totalTests: problem.testCases?.length || 0,
+          isSubmission: false,
+        });
+        setIsRunning(false);
+        return;
+      }
       const results: TestCaseResult[] = [];
       let passedCount = 0;
       let totalMs = 0;
