@@ -1,7 +1,9 @@
+import express from 'express';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import { spawn } from 'child_process';
+const router = express.Router();
 
 // Minimal HTML entity unescape for sanitized code
 function unescapeHtml(str = '') {
@@ -109,6 +111,47 @@ export async function runViaJudge0({ code, language, input }) {
     throw new Error(`Judge0 execution failed: ${error.message}`);
   }
 }
+
+// Shared handler
+async function handleExecute(req, res) {
+  try {
+    const { code, language, lang, input } = req.body || {};
+    const chosen = (language || lang || '').toString().toLowerCase();
+
+    const mode = String(process.env.EXECUTOR_MODE || 'docker').toLowerCase();
+    if (mode === 'judge0') {
+      try {
+        const out = await runViaJudge0({ code, language: chosen, input });
+        return res.status(200).json(out);
+      } catch (e) {
+        return res.status(502).json({ output: '', stdout: '', stderr: String(e?.message || e), exitCode: 1, runtimeMs: 0, memoryKb: null });
+      }
+    }
+
+    const hasDocker = await isDockerAvailable();
+    if (!hasDocker) {
+      return res.status(503).json({
+        status: 'unavailable',
+        message: 'Docker is not available on this host. Please deploy the backend on a Docker-capable environment.'
+      });
+    }
+
+    const result = await runCodeSandboxed({ code, language: chosen, input });
+    return res.status(200).json(result);
+  } catch (e) {
+    return res.status(500).json({ error: String(e?.message || e) });
+  }
+}
+
+// HTTP routes expected by server and client
+router.post('/', express.json({ limit: '256kb' }), (req, res) => {
+  handleExecute(req, res);
+});
+router.post('/execute', express.json({ limit: '256kb' }), (req, res) => {
+  handleExecute(req, res);
+});
+
+export default router;
 
 // Language configurations for Docker execution
 const langConfig = {
