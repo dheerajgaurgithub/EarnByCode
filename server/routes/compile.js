@@ -52,7 +52,8 @@ async function runViaJudge0({ code, language, input }) {
   if (!language_id) return { stdout: '', stderr: 'Unsupported language for Judge0', exitCode: 1, runtimeMs: 0, memoryKb: null };
 
   const url = `${base}/submissions?base64_encoded=false&fields=stdout,stderr,compile_output,message,status,time,memory,exit_code&wait=true`;
-  const body = { source_code: String(code || ''), language_id, stdin: String(input || '') };
+  // Unescape HTML entities in code that may come from sanitized editors (e.g., <, >)
+  const body = { source_code: unescapeHtml(String(code || '')), language_id, stdin: String(input || '') };
   const resp = await f(url, {
     method: 'POST',
     headers: {
