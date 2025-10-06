@@ -1,6 +1,5 @@
 // Chat service: API wrappers for chat threads, messages, and requests
-import { getApiBase } from './config';
-
+import { getApiBase } from "./config";
 export type ChatThread = {
   threadId: string;
   otherUser: { id: string; username: string; avatar?: string };
@@ -17,9 +16,18 @@ export type ChatMessage = {
 };
 
 const api = () => getApiBase();
+const authHeaders = () => {
+  const token =
+    (typeof localStorage !== 'undefined' && (localStorage.getItem('token') || localStorage.getItem('accessToken'))) ||
+    undefined;
+  return token ? { Authorization: `Bearer ${token}` } : undefined as any;
+};
 
 export async function listThreads(): Promise<ChatThread[]> {
-  const res = await fetch(`${api()}/chat/threads`, { credentials: 'include' });
+  const res = await fetch(`${api()}/chat/threads`, {
+    credentials: 'include',
+    headers: authHeaders(),
+  } as RequestInit);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.json();
 }
@@ -29,7 +37,10 @@ export async function getMessages(threadId: string, cursor?: string, limit = 50)
   if (cursor) q.push(`cursor=${encodeURIComponent(cursor)}`);
   if (limit) q.push(`limit=${limit}`);
   const qs = q.length ? `?${q.join('&')}` : '';
-  const res = await fetch(`${api()}/chat/threads/${threadId}/messages${qs}`, { credentials: 'include' });
+  const res = await fetch(`${api()}/chat/threads/${threadId}/messages${qs}`, {
+    credentials: 'include',
+    headers: authHeaders(),
+  } as RequestInit);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.json();
 }
@@ -37,7 +48,7 @@ export async function getMessages(threadId: string, cursor?: string, limit = 50)
 export async function sendMessage(threadId: string, text: string): Promise<{ id: string }>{
   const res = await fetch(`${api()}/chat/threads/${threadId}/messages`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', ...(authHeaders() || {}) },
     credentials: 'include',
     body: JSON.stringify({ text })
   });
@@ -47,7 +58,7 @@ export async function sendMessage(threadId: string, text: string): Promise<{ id:
 
 export async function startOrGetThread(otherUserId: string): Promise<{ threadId: string; approvalStatus?: 'pending'|'approved'|'declined' }>{
   const res = await fetch(`${api()}/chat/start`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...(authHeaders() || {}) }, credentials: 'include',
     body: JSON.stringify({ otherUserId })
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -56,7 +67,7 @@ export async function startOrGetThread(otherUserId: string): Promise<{ threadId:
 
 export async function createRequest(recipientId: string, firstMessage?: string): Promise<{ requestId: string; status: 'pending'|'approved'|'declined' }>{
   const res = await fetch(`${api()}/chat/requests`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+    method: 'POST', headers: { 'Content-Type': 'application/json', ...(authHeaders() || {}) }, credentials: 'include',
     body: JSON.stringify({ recipientId, firstMessage })
   });
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -64,16 +75,16 @@ export async function createRequest(recipientId: string, firstMessage?: string):
 }
 
 export async function approveRequest(requestId: string): Promise<void>{
-  const res = await fetch(`${api()}/chat/requests/${requestId}/approve`, { method: 'POST', credentials: 'include' });
+  const res = await fetch(`${api()}/chat/requests/${requestId}/approve`, { method: 'POST', credentials: 'include', headers: authHeaders() } as RequestInit);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
 export async function declineRequest(requestId: string): Promise<void>{
-  const res = await fetch(`${api()}/chat/requests/${requestId}/decline`, { method: 'POST', credentials: 'include' });
+  const res = await fetch(`${api()}/chat/requests/${requestId}/decline`, { method: 'POST', credentials: 'include', headers: authHeaders() } as RequestInit);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
 
 export async function retryRequest(requestId: string): Promise<void>{
-  const res = await fetch(`${api()}/chat/requests/${requestId}/retry`, { method: 'POST', credentials: 'include' });
+  const res = await fetch(`${api()}/chat/requests/${requestId}/retry`, { method: 'POST', credentials: 'include', headers: authHeaders() } as RequestInit);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
 }
