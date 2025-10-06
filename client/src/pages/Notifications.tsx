@@ -72,22 +72,35 @@ const Notifications: React.FC = () => {
     finally { setBusy(null); }
   };
 
-  const onApproveChat = async (requestId: string, nId: string) => {
+  const onApproveChat = async (requestId: string, nId: string, e?: React.MouseEvent) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
     try {
       setBusy(nId);
       await approveChatRequest(requestId);
-      await load();
-    } catch {}
-    finally { setBusy(null); }
+      try { await svcApi.markNotificationRead(nId); } catch {}
+      // Optimistically remove the notification from list
+      setItems((prev) => prev.filter(x => x._id !== nId));
+    } catch (err: any) {
+      setError(err?.message || 'Failed to approve message request');
+    } finally {
+      setBusy(null);
+    }
   };
 
-  const onDeclineChat = async (requestId: string, nId: string) => {
+  const onDeclineChat = async (requestId: string, nId: string, e?: React.MouseEvent) => {
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
     try {
       setBusy(nId);
       await declineChatRequest(requestId);
-      await load();
-    } catch {}
-    finally { setBusy(null); }
+      try { await svcApi.markNotificationRead(nId); } catch {}
+      setItems((prev) => prev.filter(x => x._id !== nId));
+    } catch (err: any) {
+      setError(err?.message || 'Failed to decline message request');
+    } finally {
+      setBusy(null);
+    }
   };
 
   if (loading) {
@@ -186,10 +199,10 @@ const Notifications: React.FC = () => {
                     </>
                   ) : isChatReq ? (
                     <>
-                      <button disabled={busy===n._id} onClick={() => onApproveChat(meta.requestId!, n._id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md bg-emerald-600 text-white hover:bg-emerald-700">
+                      <button type="button" disabled={busy===n._id} onClick={(e) => onApproveChat(meta.requestId!, n._id, e)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md bg-emerald-600 text-white hover:bg-emerald-700">
                         {busy===n._id ? <Loader2 className="w-3 h-3 animate-spin"/> : <Check className="w-3 h-3"/>} Approve
                       </button>
-                      <button disabled={busy===n._id} onClick={() => onDeclineChat(meta.requestId!, n._id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md bg-red-600 text-white hover:bg-red-700">
+                      <button type="button" disabled={busy===n._id} onClick={(e) => onDeclineChat(meta.requestId!, n._id, e)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md bg-red-600 text-white hover:bg-red-700">
                         {busy===n._id ? <Loader2 className="w-3 h-3 animate-spin"/> : <X className="w-3 h-3"/>} Decline
                       </button>
                     </>
