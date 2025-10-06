@@ -1,4 +1,4 @@
-import React, { useEffect, useState, ChangeEvent } from "react";
+﻿import React, { useEffect, useState, ChangeEvent, useRef } from "react";
 import CodeMirror from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { python } from "@codemirror/lang-python";
@@ -65,6 +65,8 @@ const CodeEditor: React.FC = () => {
   const [ignoreCase, setIgnoreCase] = useState<boolean>(false);
   const [darkMode, setDarkMode] = useState<boolean>(true);
   const [selectedTcIndex, setSelectedTcIndex] = useState<number>(0);
+  // Stores details about the last executor attempts (endpoints/payloads)
+  const lastExecMetaRef = useRef<string>("");
   const [testcases, setTestcases] = useState<
     Array<{
       input: string;
@@ -89,6 +91,14 @@ const CodeEditor: React.FC = () => {
     }
     // Default to localhost:3000
     return "http://localhost:3000";
+  })();
+
+  // Optional Judge0 base; if not set, fallback to apiBase
+  const judge0Base = (() => {
+    const env: any = (import.meta as any).env || {};
+    let base = (env.VITE_JUDGE0_API as string) || apiBase;
+    if (base && base.trim()) base = base.trim().replace(/\/+$/, "");
+    return base;
   })();
 
   // Main App API (problems) base URL
@@ -126,6 +136,7 @@ const CodeEditor: React.FC = () => {
 
   // Judge0 language_id mapping (common defaults). Adjust if your instance differs.
   const judge0LanguageId = (l: Lang): number => {
+    // Defaults
     const ids: Record<Lang, number> = {
       Java: 62,        // Java (OpenJDK 17)
       Cpp: 54,         // C++ (GCC 9.2.0)
@@ -138,6 +149,19 @@ const CodeEditor: React.FC = () => {
       PHP: 68,         // PHP 7.4.1
       C: 50            // C (GCC 9.2.0)
     };
+    // Optional overrides via env JSON: VITE_JUDGE0_LANG_IDS
+    try {
+      const raw = (import.meta as any).env?.VITE_JUDGE0_LANG_IDS as string | undefined;
+      if (raw && raw.trim()) {
+        const map = JSON.parse(raw);
+        if (map && typeof map === 'object') {
+          // Allow keys by our Lang labels or lowercased names
+          const byKey = (key: string) => (typeof map[key] === 'number' ? map[key] : undefined);
+          const alt = byKey(l) ?? byKey(l.toLowerCase());
+          if (typeof alt === 'number') return alt;
+        }
+      }
+    } catch {}
     return ids[l] ?? 63;
   };
 
@@ -185,10 +209,12 @@ const CodeEditor: React.FC = () => {
     const piston = buildPistonPayload(l, src, stdin);
     const legacy = { code: src, language: langToApiLang(l), input: stdin ?? "", stdin: stdin ?? "" } as any;
     const payloads = [piston, legacy];
-    let judge0Hint = false;
+    let judge0Hint = false;    
+    const attempts: string[] = [];
     for (const url of urls) {
       for (const body of payloads) {
         try {
+          attempts.push(`${url} with ${body === piston ? 'piston' : 'legacy'} format`);
           const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -207,10 +233,12 @@ const CodeEditor: React.FC = () => {
         }
       }
     }
+    // Record attempts for UI surfacing before failing
+    lastExecMetaRef.current = attempts.join("\n");
     // Auto-try Judge0 submissions endpoint as last resort or if we saw hints
     try {
       if (judge0Hint) {
-        const url = `${apiBase}/submissions?base64_encoded=false&wait=true`;
+        const url = `${judge0Base}/submissions?base64_encoded=false&wait=true`;
         const body = {
           source_code: src,
           language_id: judge0LanguageId(l),
@@ -422,7 +450,7 @@ const CodeEditor: React.FC = () => {
         typeof data?.run?.stdout === "string" ? data.run.stdout : typeof data?.stdout === "string" ? data.stdout : outText
       );
       setStderrText(typeof data?.run?.stderr === "string" ? data.run.stderr : typeof data?.stderr === "string" ? data.stderr : "");
-      setCompilerLog(outText);
+      setCompilerLog((lastExecMetaRef.current ? `${lastExecMetaRef.current}\n\n` : "") + outText);
       // Sync right-hand inputs with the testcase we ran, for visibility
       if (tc0) {
         setInput(tc0.input);

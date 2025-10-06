@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const notificationSchema = new mongoose.Schema({
   type: {
     type: String,
-    enum: ['follow_request', 'follow_approved', 'started_following', 'contest_assigned', 'admin_discussion'],
+    enum: ['follow_request', 'follow_approved', 'started_following', 'contest_assigned', 'admin_discussion', 'chat_request'],
     required: true,
   },
   actor: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true }, // who triggered

@@ -1,8 +1,9 @@
 import React from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { apiService } from '@/lib/api';
 import svcApi from '@/services/api';
-import { Loader2, MapPin, Trophy, Award, BadgeCheck } from 'lucide-react';
+import { Loader2, MapPin, Trophy, Award, BadgeCheck, MessageSquare } from 'lucide-react';
+import { startOrGetThread, createRequest, retryRequest } from '@/services/chat';
 import { useI18n } from '@/context/I18nContext';
 import { useAuth } from '@/context/AuthContext';
 
@@ -31,6 +32,7 @@ const PublicProfile: React.FC = () => {
   const [error, setError] = React.useState<string | null>(null);
   const { t } = useI18n();
   const { user: me } = useAuth();
+  const navigate = useNavigate();
   const [isFollowing, setIsFollowing] = React.useState<boolean | null>(null);
   const [followBusy, setFollowBusy] = React.useState(false);
   const [requested, setRequested] = React.useState(false);
@@ -142,6 +144,38 @@ const PublicProfile: React.FC = () => {
     }
   };
 
+  const [msgBusy, setMsgBusy] = React.useState(false);
+  const onMessage: React.MouseEventHandler<HTMLButtonElement> = async (e) => {
+    e?.preventDefault?.();
+    if (!me?._id || !user?._id) return;
+    if (String(me._id) === String(user._id)) return;
+    try {
+      setMsgBusy(true);
+      const r = await startOrGetThread(user._id);
+      if (r?.threadId && r?.approvalStatus === 'approved') {
+        navigate(`/chat/${r.threadId}`);
+        return;
+      }
+      if (r?.approvalStatus === 'pending') {
+        // already requested; show lightweight banner via alert for now
+        alert('Message request sent. Waiting for approval.');
+        return;
+      }
+      if (r?.approvalStatus === 'declined' && (r as any).requestId) {
+        // allow one retry
+        try { await retryRequest((r as any).requestId as string); alert('Request resent (last attempt).'); } catch {}
+        return;
+      }
+      // Fallback: explicitly create request
+      await createRequest(user._id);
+      alert('Message request sent.');
+    } catch (e: any) {
+      alert(e?.message || 'Failed to start chat');
+    } finally {
+      setMsgBusy(false);
+    }
+  };
+
   // Loading State
 if (loading) {
   return (
@@ -208,21 +242,32 @@ return (
               )}
               {/* Follow/Unfollow button: show only when logged-in and viewing someone else */}
               {me?._id && String(me._id) !== String(user._id) && (
-                <button
-                  onClick={handleFollowToggle}
-                  disabled={followBusy || isFollowing === null || requested}
-                  className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm rounded-lg shadow-sm border transition-colors ${isFollowing ? 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50' : requested ? 'bg-gray-200 text-gray-600 border-gray-300 cursor-not-allowed' : 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700'}`}
-                >
-                  {followBusy ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : requested ? (
-                    <>Requested</>
-                  ) : isFollowing ? (
-                    <>Unfollow</>
-                  ) : (
-                    <>Follow</>
-                  )}
-                </button>
+                <>
+                  <button
+                    onClick={handleFollowToggle}
+                    disabled={followBusy || isFollowing === null || requested}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs sm:text-sm rounded-lg shadow-sm border transition-colors ${isFollowing ? 'bg-white text-sky-700 border-sky-200 hover:bg-sky-50' : requested ? 'bg-gray-200 text-gray-600 border-gray-300 cursor-not-allowed' : 'bg-sky-600 text-white border-sky-600 hover:bg-sky-700'}`}
+                  >
+                    {followBusy ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : requested ? (
+                      <>Requested</>
+                    ) : isFollowing ? (
+                      <>Unfollow</>
+                    ) : (
+                      <>Follow</>
+                    )}
+                  </button>
+                  <button
+                    onClick={onMessage}
+                    disabled={msgBusy}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-xs sm:text-sm rounded-lg shadow-sm border bg-white text-sky-700 border-sky-200 hover:bg-sky-50"
+                    title="Message"
+                  >
+                    {msgBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <MessageSquare className="w-4 h-4" />}
+                    <span>Message</span>
+                  </button>
+                </>
               )}
             </div>
             <div className="text-sm sm:text-base text-sky-600 dark:text-green-300 mb-2 flex items-center gap-3">

@@ -65,6 +65,7 @@ import oauthRoutes from './routes/oauth.js';
 import walletRoutes from './routes/wallet.js';
 import emailTestRoutes from './routes/email-test.js';
 import notificationRoutes from './routes/notifications.js';
+import chatRoutes from './routes/chat.js';
 import { authenticate } from './middleware/auth.js';
 import admin from './middleware/admin.js';
 import Problem from './models/Problem.js';
@@ -740,6 +741,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/email-test', emailTestRoutes); // Add email test routes
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/compile', compileRoute);
 app.use('/api/compile', compileRoute);
 

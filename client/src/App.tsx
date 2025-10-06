@@ -49,6 +49,8 @@ import PublicProfile from './pages/PublicProfile';
 import Welcome from './pages/Welcome';
 import Notifications from './pages/Notifications';
 const ContestPage = React.lazy(() => import('./pages/ContestPage'));
+import ChatListPage from './pages/ChatListPage';
+import ChatThreadPage from './pages/ChatThreadPage';
 
 // Sync theme with user preferences globally (auto->system)
 const ThemeSync = () => {
@@ -438,6 +440,24 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Settings />
+                  </ProtectedRoute>
+                }
+              />
+
+              {/* Chat routes */}
+              <Route
+                path="/chat"
+                element={
+                  <ProtectedRoute>
+                    <ChatListPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/chat/:threadId"
+                element={
+                  <ProtectedRoute>
+                    <ChatThreadPage />
                   </ProtectedRoute>
                 }
               />
