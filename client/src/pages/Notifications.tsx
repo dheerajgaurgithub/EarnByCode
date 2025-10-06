@@ -1,11 +1,12 @@
 import React from 'react';
 import svcApi from '@/services/api';
-import { Loader2, Check, X } from 'lucide-react';
+import { Loader2, Check, X, MessageSquare } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { approveRequest as approveChatRequest, declineRequest as declineChatRequest } from '@/services/chat';
 
 type Note = {
   _id: string;
-  type: 'follow_request' | 'follow_approved' | 'started_following' | 'contest_assigned';
+  type: 'follow_request' | 'follow_approved' | 'started_following' | 'contest_assigned' | 'chat_request';
   actor: { _id: string; username: string; fullName?: string; avatarUrl?: string } | string;
   targetUser: string;
   status: 'pending' | 'approved' | 'declined' | 'delivered';
@@ -17,6 +18,8 @@ type Note = {
     startTime?: string | null;
     endTime?: string | null;
     note?: string;
+    requestId?: string;
+    firstMessage?: string;
   };
 };
 
@@ -69,6 +72,24 @@ const Notifications: React.FC = () => {
     finally { setBusy(null); }
   };
 
+  const onApproveChat = async (requestId: string, nId: string) => {
+    try {
+      setBusy(nId);
+      await approveChatRequest(requestId);
+      await load();
+    } catch {}
+    finally { setBusy(null); }
+  };
+
+  const onDeclineChat = async (requestId: string, nId: string) => {
+    try {
+      setBusy(nId);
+      await declineChatRequest(requestId);
+      await load();
+    } catch {}
+    finally { setBusy(null); }
+  };
+
   if (loading) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center">
@@ -92,6 +113,7 @@ const Notifications: React.FC = () => {
             const when = new Date(n.createdAt).toLocaleString();
             const meta = (n.metadata as any) || {};
             const isFollowReq = n.type === 'follow_request' && n.status === 'pending';
+            const isChatReq = n.type === 'chat_request' && n.status === 'pending' && !!meta?.requestId;
             return (
               <div key={n._id} className="flex items-center justify-between p-2 bg-white dark:bg-gray-900 border border-sky-200 dark:border-green-800 rounded-md">
                 <div className="flex items-center gap-2">
@@ -106,6 +128,14 @@ const Notifications: React.FC = () => {
                     {n.type === 'follow_request' && (
                       <>
                         <Link to={`/u/${actor.username}`} className="font-semibold text-sky-700 dark:text-green-400 hover:underline">@{actor.username}</Link> wants to follow you
+                      </>
+                    )}
+                    {n.type === 'chat_request' && (
+                      <>
+                        <Link to={`/u/${actor.username}`} className="font-semibold text-sky-700 dark:text-green-400 hover:underline">@{actor.username}</Link> wants to message you
+                        {meta?.firstMessage && (
+                          <div className="mt-0.5 text-[10px] text-gray-600 dark:text-gray-400 flex items-center gap-1"><MessageSquare className="w-3 h-3"/> "{meta.firstMessage.slice(0,80)}"</div>
+                        )}
                       </>
                     )}
                     {n.type === 'follow_approved' && (
@@ -151,6 +181,15 @@ const Notifications: React.FC = () => {
                         {busy===n._id ? <Loader2 className="w-3 h-3 animate-spin"/> : <Check className="w-3 h-3"/>} Approve
                       </button>
                       <button disabled={busy===n._id} onClick={() => onDecline(n._id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md bg-red-600 text-white hover:bg-red-700">
+                        {busy===n._id ? <Loader2 className="w-3 h-3 animate-spin"/> : <X className="w-3 h-3"/>} Decline
+                      </button>
+                    </>
+                  ) : isChatReq ? (
+                    <>
+                      <button disabled={busy===n._id} onClick={() => onApproveChat(meta.requestId!, n._id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md bg-emerald-600 text-white hover:bg-emerald-700">
+                        {busy===n._id ? <Loader2 className="w-3 h-3 animate-spin"/> : <Check className="w-3 h-3"/>} Approve
+                      </button>
+                      <button disabled={busy===n._id} onClick={() => onDeclineChat(meta.requestId!, n._id)} className="inline-flex items-center gap-1 px-2 py-1 text-[11px] rounded-md bg-red-600 text-white hover:bg-red-700">
                         {busy===n._id ? <Loader2 className="w-3 h-3 animate-spin"/> : <X className="w-3 h-3"/>} Decline
                       </button>
                     </>
