@@ -74,17 +74,20 @@ export async function createRequest(recipientId: string, firstMessage?: string):
   return await res.json();
 }
 
-export async function approveRequest(requestId: string): Promise<void>{
+export async function approveRequest(requestId: string): Promise<{ success: boolean; threadId?: string }>{
   const res = await fetch(`${api()}/chat/requests/${requestId}/approve`, { method: 'POST', credentials: 'include', headers: authHeaders() } as RequestInit);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.json();
 }
 
-export async function declineRequest(requestId: string): Promise<void>{
+export async function declineRequest(requestId: string): Promise<{ success: boolean }>{
   const res = await fetch(`${api()}/chat/requests/${requestId}/decline`, { method: 'POST', credentials: 'include', headers: authHeaders() } as RequestInit);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.json();
 }
 
-export async function retryRequest(requestId: string): Promise<void>{
+export async function retryRequest(requestId: string): Promise<{ success: boolean }>{
   const res = await fetch(`${api()}/chat/requests/${requestId}/retry`, { method: 'POST', credentials: 'include', headers: authHeaders() } as RequestInit);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.json();
 }

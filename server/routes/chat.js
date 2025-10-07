@@ -110,6 +110,14 @@ router.post('/requests/:id/approve', authenticate, async (req, res) => {
     doc.threadId = thread._id;
     await doc.save();
 
+    // Mark related notifications as approved and read
+    try {
+      await Notification.updateMany(
+        { type: 'chat_request', 'metadata.requestId': String(doc._id) },
+        { $set: { status: 'approved', readAt: new Date() } }
+      );
+    } catch {}
+
     return res.status(200).json({ success: true, threadId: thread._id.toString() });
   } catch (e) {
     console.error('approve request error', e);
@@ -127,6 +135,14 @@ router.post('/requests/:id/decline', authenticate, async (req, res) => {
     if (String(doc.toUserId) !== me) return res.status(403).json({ message: 'Not allowed' });
     doc.status = 'declined';
     await doc.save();
+
+    // Mark related notifications as declined and read
+    try {
+      await Notification.updateMany(
+        { type: 'chat_request', 'metadata.requestId': String(doc._id) },
+        { $set: { status: 'declined', readAt: new Date() } }
+      );
+    } catch {}
     return res.status(200).json({ success: true });
   } catch (e) {
     console.error('decline request error', e);

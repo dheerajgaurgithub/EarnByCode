@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, Send, X, Square } from 'lucide-react';
+import { Bot, Send, X, Square, RotateCcw } from 'lucide-react';
 import config from '@/lib/config';
 
 // Reusable global chatbot widget for site-scoped Q&A
@@ -9,17 +9,8 @@ import config from '@/lib/config';
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
-// Remove any code blocks or inline code formatting
-function stripCode(text: string): string {
-  if (!text) return '';
-  // Remove fenced code blocks ``` ... ```
-  let out = text.replace(/```[\s\S]*?```/g, '');
-  // Remove inline code `...`
-  out = out.replace(/`[^`]+`/g, (m) => m.replace(/`/g, ''));
-  // Collapse excessive newlines
-  out = out.replace(/\n{3,}/g, '\n\n');
-  return out.trim();
-}
+// Keep raw content (including code blocks) to behave like ChatGPT
+function keep(text: string): string { return text || ''; }
 
 // Hint configuration
 const HINT_LOCALSTORAGE_KEY = 'ai_widget_hint_seen';
@@ -40,13 +31,14 @@ const ChatbotWidget: React.FC = () => {
   const [open, setOpen] = React.useState(false);
   const [input, setInput] = React.useState('');
   const [messages, setMessages] = React.useState<ChatMessage[]>([
-    { role: 'system', content: 'You are a helpful AI assistant for the AlgoBucks web app. Answer questions about this site and general coding concepts, but NEVER include code, pseudo-code, or fenced code blocks. Provide plain-language explanations only.' },
-    { role: 'assistant', content: 'Hi! I can help with AlgoBucks pages, features, submissions, contests, and general coding concepts. Ask me anything (no code snippets will be provided).' },
+    { role: 'system', content: 'You are a helpful, safe AI assistant. Answer the user comprehensively. When appropriate, include examples and code blocks fenced with proper language hints. Be concise when asked; be detailed when needed.' },
+    { role: 'assistant', content: 'Hi! I can help with AlgoBucks and general questions. Ask me anything.' },
   ]);
   const [loading, setLoading] = React.useState(false);
   const abortRef = React.useRef<AbortController | null>(null);
   const [showHint, setShowHint] = React.useState(false);
   const inputRef = React.useRef<HTMLInputElement | null>(null);
+  const [errorText, setErrorText] = React.useState<string | null>(null);
 
   // Keyboard shortcuts: Shift+A or Alt+A to toggle; Ctrl+J to focus input when open. Ignore when typing in inputs.
   React.useEffect(() => {
@@ -135,6 +127,7 @@ const ChatbotWidget: React.FC = () => {
     setMessages(next);
     setInput('');
     setLoading(true);
+    setErrorText(null);
     logFaqToBackend(normalize(q));
 
     try {
@@ -175,7 +168,7 @@ const ChatbotWidget: React.FC = () => {
                 const copy = [...prev];
                 const last = copy[copy.length - 1];
                 if (last && last.role === 'assistant') {
-                    (last as ChatMessage).content = stripCode(acc);
+                    (last as ChatMessage).content = keep(acc);
                 }
                 return copy as ChatMessage[];
               });
@@ -196,7 +189,8 @@ const ChatbotWidget: React.FC = () => {
         console.warn('[AI widget] No tokens received from stream. Check API key, model access, or network.');
       }
     } catch (e: any) {
-      setMessages(prev => [...prev, { role: 'assistant', content: stripCode(`Error: ${e?.message || e}`) }]);
+      setErrorText(String(e?.message || e));
+      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${String(e?.message || e)}` }]);
       try { console.error('[AI widget] chat error', e); } catch {}
     } finally {
       setLoading(false);
@@ -258,15 +252,30 @@ const ChatbotWidget: React.FC = () => {
                 {s}
               </button>
             ))}
+            <button
+              onClick={() => {
+                setMessages(m => m.filter(x => x.role === 'system').concat({ role: 'assistant', content: 'Cleared chat. How can I help you now?' }));
+                setErrorText(null);
+              }}
+              className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-green-300 inline-flex items-center gap-1"
+              title="Clear chat"
+            >
+              <RotateCcw className="w-3 h-3" /> Clear
+            </button>
           </div>
           <div className="h-44 sm:h-56 overflow-y-auto px-2.5 py-2.5 space-y-2">
             {messages.filter(m => m.role !== 'system').map((m, i) => (
               <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
                 <div className={`inline-block max-w-[85%] px-2 py-1.5 rounded-xl text-[12px] ${m.role === 'user' ? 'bg-sky-600 text-white rounded-br-sm' : 'bg-slate-100 dark:bg-gray-800 text-slate-800 dark:text-green-200 rounded-bl-sm'}`}>
-                  <span>{stripCode(m.content)}</span>
+                  <span style={{ whiteSpace: 'pre-wrap' }}>{keep(m.content)}</span>
                 </div>
               </div>
             ))}
+            {errorText && (
+              <div className="text-[11px] text-red-600">
+                {errorText}
+              </div>
+            )}
           </div>
           <div className="p-2 border-t border-sky-200 dark:border-green-800 flex items-center gap-2">
             <input
@@ -288,7 +297,7 @@ const ChatbotWidget: React.FC = () => {
             )}
           </div>
           <div className="px-2.5 py-1.5 bg-slate-50 dark:bg-gray-800 text-[10px] text-slate-500 dark:text-green-300 border-t border-sky-200 dark:border-green-800">
-            Answers are based only on AlgoBucks content. For more help see /help or /contact.
+            Powered by AI. Responses may include code blocks and external knowledge.
           </div>
         </div>
       )}

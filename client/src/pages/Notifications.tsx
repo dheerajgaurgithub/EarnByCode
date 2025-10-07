@@ -1,7 +1,7 @@
 import React from 'react';
 import svcApi from '@/services/api';
 import { Loader2, Check, X, MessageSquare } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { approveRequest as approveChatRequest, declineRequest as declineChatRequest } from '@/services/chat';
 
 type Note = {
@@ -24,6 +24,7 @@ type Note = {
 };
 
 const Notifications: React.FC = () => {
+  const navigate = useNavigate();
   const [loading, setLoading] = React.useState(true);
   const [items, setItems] = React.useState<Note[]>([]);
   const [error, setError] = React.useState<string | null>(null);
@@ -33,7 +34,7 @@ const Notifications: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await svcApi.getNotifications({ status: 'all', limit: 50 });
+      const res = await svcApi.getNotifications({ status: 'unread', limit: 50 });
       const list: Note[] = (res as any)?.notifications || [];
       setItems(list);
       // Mark unread as read in background
@@ -58,7 +59,9 @@ const Notifications: React.FC = () => {
     try {
       setBusy(id);
       await svcApi.approveFollowRequest(id);
-      await load();
+      try { await svcApi.markNotificationRead(id); } catch {}
+      try { window.dispatchEvent(new CustomEvent('notifications:updated')); } catch {}
+      setItems(prev => prev.filter(x => x._id !== id));
     } catch {}
     finally { setBusy(null); }
   };
@@ -67,7 +70,9 @@ const Notifications: React.FC = () => {
     try {
       setBusy(id);
       await svcApi.declineFollowRequest(id);
-      await load();
+      try { await svcApi.markNotificationRead(id); } catch {}
+      try { window.dispatchEvent(new CustomEvent('notifications:updated')); } catch {}
+      setItems(prev => prev.filter(x => x._id !== id));
     } catch {}
     finally { setBusy(null); }
   };
@@ -77,10 +82,16 @@ const Notifications: React.FC = () => {
     e?.stopPropagation?.();
     try {
       setBusy(nId);
-      await approveChatRequest(requestId);
+      const res = await approveChatRequest(requestId);
       try { await svcApi.markNotificationRead(nId); } catch {}
+      try { window.dispatchEvent(new CustomEvent('notifications:updated')); } catch {}
       // Optimistically remove the notification from list
       setItems((prev) => prev.filter(x => x._id !== nId));
+      if (res?.threadId) {
+        navigate(`/chat/${res.threadId}`);
+      } else {
+        navigate('/chat');
+      }
     } catch (err: any) {
       setError(err?.message || 'Failed to approve message request');
     } finally {
