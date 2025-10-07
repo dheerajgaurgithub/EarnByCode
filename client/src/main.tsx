@@ -5,6 +5,9 @@ import { AuthProvider } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Toaster } from './components/ui/toaster';
 import App from './App';
+import { Provider } from 'react-redux';
+import { store } from './store';
+import { startSocketListeners } from '@/socketListener';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import './index.css';
 
@@ -43,19 +46,23 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
         </div>
       );
     }
-
     return this.props.children;
   }
 }
 
 // Initialize the application with providers
+// start socket listeners once
+startSocketListeners(store);
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter basename={basename}>
       <ErrorBoundary>
         <ThemeProvider>
           <AuthProvider>
-            <App />
+            <Provider store={store}>
+              <App />
+            </Provider>
             {/* Vercel Speed Insights */}
             <SpeedInsights />
             <Toaster />

@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
-import { listThreads, type ChatThread } from '@/services/chat';
+import { listThreads } from '@/services/chat';
 import { Link, useLocation } from 'react-router-dom';
 import { getSocket, watchPresence, startPresence } from '@/lib/socket';
 import { useAuth } from '@/context/AuthContext';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { chatThreadsActions, chatThreadsSelectors } from '@/store/chatThreadsSlice';
 
 const ChatListPage: React.FC = () => {
-  const [threads, setThreads] = useState<ChatThread[]>([]);
+  const dispatch = useAppDispatch();
+  const threads = useAppSelector(chatThreadsSelectors.selectAll);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
@@ -33,8 +36,8 @@ const ChatListPage: React.FC = () => {
         setLoading(true);
         const data = await listThreads();
         if (!mounted) return;
-        const arr = Array.isArray(data) ? data : [];
-        setThreads(arr);
+        const arr = (Array.isArray(data) ? data : []).map((t: any) => ({ ...t, id: t.threadId }));
+        dispatch(chatThreadsActions.setAll(arr));
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || 'Failed to load chats');
@@ -60,19 +63,10 @@ const ChatListPage: React.FC = () => {
       if (ids.length) watchPresence(ids);
       const s = getSocket();
       const onPresence = (p: { userId: string; online: boolean; lastSeen: string | null }) => {
-        setThreads(prev => prev.map(t => (String(t.otherUser?.id) === String(p.userId) ? { ...t, otherUserIsOnline: p.online, otherUserLastSeen: p.lastSeen } : t)));
+        dispatch(chatThreadsActions.setOtherPresence(p));
       };
       const onThreadUpdate = (u: { threadId: string; lastMessage: { id: string; text: string; createdAt: string } }) => {
-        setThreads(prev => {
-          const next = prev.map(t => t.threadId === u.threadId ? { ...t, lastMessage: u.lastMessage } : t);
-          // move updated thread to top
-          next.sort((a, b) => {
-            const at = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
-            const bt = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
-            return bt - at;
-          });
-          return next;
-        });
+        dispatch(chatThreadsActions.lastMessageUpdated(u));
       };
       s.on('presence:update', onPresence);
       s.on('chat:thread:update', onThreadUpdate);
