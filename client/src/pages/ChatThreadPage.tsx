@@ -13,7 +13,7 @@ const ChatThreadPage: React.FC = () => {
   const [text, setText] = useState('');
   const listRef = useRef<HTMLDivElement | null>(null);
   const myId = (user as any)?.id || (user as any)?._id || (user as any)?.username || 'me';
-  const [peer, setPeer] = useState<{ username: string; avatar?: string; id?: string } | null>(null);
+  const [peer, setPeer] = useState<{ username: string; avatarUrl?: string; id?: string } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
   const [disappearing24h, setDisappearing24h] = useState(false);
@@ -32,7 +32,7 @@ const ChatThreadPage: React.FC = () => {
         try {
           const threads: ChatThread[] = await listThreads();
           const th = Array.isArray(threads) ? threads.find(t => t.threadId === threadId) : undefined;
-          if (mounted && th?.otherUser) setPeer({ username: th.otherUser.username, avatar: th.otherUser.avatar, id: th.otherUser.id });
+          if (mounted && th?.otherUser) setPeer({ username: th.otherUser.username, avatarUrl: (th as any).otherUser?.avatarUrl, id: (th as any).otherUser?.id });
         } catch {}
         const data = await getMessages(threadId, undefined, 50);
         if (!mounted) return;
@@ -98,17 +98,38 @@ const ChatThreadPage: React.FC = () => {
               </a>
             )}
           </div>
-          {loading && <div>Loading...</div>}
-          {error && <div className="text-red-600 mb-2">{error}</div>}
+          {loading && <div className="p-3">Loading...</div>}
+          {error && <div className="text-red-600 p-3 mb-2">{error}</div>}
           <div ref={listRef} className="border rounded-b p-3 h-[60vh] overflow-auto bg-white dark:bg-gray-900">
             {messages.map((m) => {
               const isMine = m.fromUserId === myId || m.fromUserId === 'me';
+              const myAvatar = (user as any)?.avatarUrl || (user as any)?.photoURL || '';
+              const otherAvatar = peer?.avatarUrl || '';
+              const initial = (isMine ? ((user as any)?.username || 'U') : (peer?.username || 'U')).charAt(0).toUpperCase();
               return (
-                <div key={m.id} className={`mb-3 flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[80%]`}>
+                <div key={m.id} className={`mb-3 flex ${isMine ? 'justify-end' : 'justify-start'} items-end`}>
+                  {!isMine && (
+                    <div className="mr-2">
+                      {otherAvatar ? (
+                        <img src={otherAvatar} alt="avatar" className="w-7 h-7 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-gray-300 text-gray-700 flex items-center justify-center text-xs font-semibold">{initial}</div>
+                      )}
+                    </div>
+                  )}
+                  <div className={`max-w-[78%]`}>
                     <div className={`px-3 py-2 rounded-2xl ${isMine ? 'bg-blue-500 text-white rounded-br-sm' : 'bg-gray-200 text-black rounded-bl-sm'} whitespace-pre-wrap`}>{m.text}</div>
                     <div className={`mt-1 text-[10px] ${isMine ? 'text-right text-gray-500' : 'text-left text-gray-500'}`}>{new Date(m.createdAt).toLocaleString()}</div>
                   </div>
+                  {isMine && (
+                    <div className="ml-2">
+                      {myAvatar ? (
+                        <img src={myAvatar} alt="me" className="w-7 h-7 rounded-full object-cover" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-semibold">{initial}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -118,6 +139,7 @@ const ChatThreadPage: React.FC = () => {
               className="flex-1 border rounded px-3 py-2 bg-white dark:bg-gray-900"
               value={text}
               onChange={(e) => setText(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') onSend(); }}
               placeholder="Type a message"
             />
             <button className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-50" onClick={onSend} disabled={!text.trim()}>Send</button>
@@ -182,7 +204,7 @@ const ChatThreadPage: React.FC = () => {
                           } catch (e) { alert('Failed to block'); }
                           finally { setBusyAction(false); }
                         }}
-                        className="px-3 py-1.5 text-sm rounded bg-red-600 text-white hover:bg-red-700"
+                        className="px-3 py-1.5 text-sm rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
                       >
                         Block user
                       </button>
@@ -196,7 +218,7 @@ const ChatThreadPage: React.FC = () => {
                           } catch (e) { alert('Failed to unblock'); }
                           finally { setBusyAction(false); }
                         }}
-                        className="px-3 py-1.5 text-sm rounded border hover:bg-gray-50 dark:hover:bg-gray-800"
+                        className="px-3 py-1.5 text-sm rounded border hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
                       >
                         Unblock user
                       </button>

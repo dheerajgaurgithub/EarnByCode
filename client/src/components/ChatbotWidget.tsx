@@ -213,13 +213,13 @@ const ChatbotWidget: React.FC = () => {
             )}
             <button
               onClick={() => setOpen(true)}
-              className="relative h-16 w-16 bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform duration-300 group"
+              className="relative h-12 w-12 bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform duration-300 group"
               aria-label="Open AI Assistant"
               title="AI Assistant"
             >
-              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-400 to-cyan-400 opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-300"></div>
-              <Bot className="w-8 h-8 relative z-10" />
-              <Sparkles className="w-4 h-4 absolute top-2 right-2 animate-pulse" />
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-400 to-cyan-400 opacity-0 group-hover:opacity-30 blur-lg transition-opacity duration-300"></div>
+              <Bot className="w-6 h-6 relative z-10" />
+              <Sparkles className="w-3 h-3 absolute top-1.5 right-1.5 animate-pulse" />
             </button>
           </div>
         </div>
@@ -235,20 +235,20 @@ const ChatbotWidget: React.FC = () => {
           />
           
           {/* Sidebar Panel */}
-          <div className="fixed top-0 right-0 h-full w-full sm:w-96 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 z-50 shadow-2xl flex flex-col animate-slide-in">
+          <div className="fixed top-0 right-0 h-full w-full sm:w-72 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 z-50 shadow-2xl flex flex-col animate-slide-in">
             {/* Header */}
             <div className="relative px-6 py-4 bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-xl border-b border-purple-500/30">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full blur-md opacity-60"></div>
-                    <div className="relative h-10 w-10 bg-gradient-to-br from-purple-600 to-cyan-500 rounded-full flex items-center justify-center">
-                      <Bot className="w-6 h-6 text-white" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full blur-sm opacity-60"></div>
+                    <div className="relative h-8 w-8 bg-gradient-to-br from-purple-600 to-cyan-500 rounded-full flex items-center justify-center">
+                      <Bot className="w-5 h-5 text-white" />
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-white font-semibold text-lg">AI Assistant</h2>
-                    <p className="text-purple-300 text-xs flex items-center gap-1">
+                    <h2 className="text-white font-semibold text-base">AI Assistant</h2>
+                    <p className="text-purple-300 text-[11px] flex items-center gap-1">
                       <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                       Online
                     </p>
@@ -256,21 +256,21 @@ const ChatbotWidget: React.FC = () => {
                 </div>
                 <button 
                   onClick={() => setOpen(false)} 
-                  className="text-purple-300 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                  className="text-purple-300 hover:text-white transition-colors p-1.5 hover:bg-white/10 rounded-lg"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="px-4 py-3 bg-slate-900/50 border-b border-purple-500/20">
+            <div className="px-3 py-2 bg-slate-900/50 border-b border-purple-500/20">
               <div className="flex flex-wrap gap-2">
                 {quick.map((s, idx) => (
                   <button
                     key={idx}
                     onClick={() => send(s)}
-                    className="text-xs px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600/30 to-blue-600/30 hover:from-purple-600/50 hover:to-blue-600/50 text-purple-200 border border-purple-500/30 transition-all duration-200 hover:scale-105"
+                    className="text-[11px] px-2.5 py-1 rounded-full bg-gradient-to-r from-purple-600/30 to-blue-600/30 hover:from-purple-600/50 hover:to-blue-600/50 text-purple-200 border border-purple-500/30 transition-all duration-200 hover:scale-105"
                   >
                     {s}
                   </button>
@@ -280,7 +280,7 @@ const ChatbotWidget: React.FC = () => {
                     setMessages(m => m.filter(x => x.role === 'system').concat({ role: 'assistant', content: 'Cleared chat. How can I help you now?' }));
                     setErrorText(null);
                   }}
-                  className="text-xs px-3 py-1.5 rounded-full bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 border border-slate-600/30 inline-flex items-center gap-1 transition-all duration-200"
+                  className="text-[11px] px-2.5 py-1 rounded-full bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 border border-slate-600/30 inline-flex items-center gap-1 transition-all duration-200"
                   title="Clear chat"
                 >
                   <RotateCcw className="w-3 h-3" /> Clear
@@ -289,15 +289,15 @@ const ChatbotWidget: React.FC = () => {
             </div>
 
             {/* Messages Area */}
-            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
+            <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
               {messages.filter(m => m.role !== 'system').map((m, i) => (
                 <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {m.role === 'assistant' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center mr-2 mt-1">
-                      <Bot className="w-5 h-5 text-white" />
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center mr-2 mt-1">
+                      <Bot className="w-4 h-4 text-white" />
                     </div>
                   )}
-                  <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm ${
+                  <div className={`max-w-[75%] px-3 py-2 rounded-2xl text-sm ${
                     m.role === 'user' 
                       ? 'bg-gradient-to-br from-blue-600 to-cyan-500 text-white rounded-br-sm shadow-lg' 
                       : 'bg-slate-800/80 text-slate-100 rounded-bl-sm border border-purple-500/20'
@@ -314,34 +314,34 @@ const ChatbotWidget: React.FC = () => {
             </div>
 
             {/* Input Area */}
-            <div className="p-4 bg-slate-900/50 border-t border-purple-500/30">
-              <div className="flex items-center gap-2 bg-slate-800/50 rounded-xl p-2 border border-purple-500/30">
+            <div className="p-3 bg-slate-900/50 border-t border-purple-500/30">
+              <div className="flex items-center gap-2 bg-slate-800/50 rounded-xl p-1.5 border border-purple-500/30">
                 <input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
                   placeholder="Ask me anything..."
                   ref={inputRef}
-                  className="flex-1 px-3 py-2 bg-transparent text-white placeholder-slate-400 text-sm focus:outline-none"
+                  className="flex-1 px-2.5 py-1.5 bg-transparent text-white placeholder-slate-400 text-sm focus:outline-none"
                 />
                 {loading ? (
                   <button 
                     onClick={stop} 
-                    className="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg text-sm inline-flex items-center gap-2 transition-all duration-200 shadow-lg"
+                    className="px-3 py-1.5 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg text-sm inline-flex items-center gap-2 transition-all duration-200 shadow-lg"
                   >
                     <Square className="w-4 h-4" /> Stop
                   </button>
                 ) : (
                   <button 
                     onClick={() => send()} 
-                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg text-sm inline-flex items-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg" 
+                    className="px-3 py-1.5 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg text-sm inline-flex items-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg" 
                     disabled={!input.trim()}
                   >
                     <Send className="w-4 h-4" />
                   </button>
                 )}
               </div>
-              <p className="text-xs text-purple-300/60 mt-2 text-center">
+              <p className="text-[11px] text-purple-300/60 mt-2 text-center">
                 Powered by AI • Responses may include code & external knowledge
               </p>
             </div>
