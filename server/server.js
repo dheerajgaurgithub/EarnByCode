@@ -715,7 +715,7 @@ app.get('/', (req, res) => {
       status: 'ok',
       service: 'earnbycode API',
       env: process.env.NODE_ENV || 'development',
-      apiUrl: process.env.API_URL || 'http://localhost:5000',
+      apiUrl: process.env.API_URL || 'https://earnbycode-mfs3.onrender.com',
       time: new Date().toISOString(),
     });
   } catch (e) {
