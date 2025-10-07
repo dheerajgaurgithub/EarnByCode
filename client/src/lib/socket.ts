@@ -6,7 +6,14 @@ let latestUserId: string | undefined;
 
 export function getSocket(baseUrl?: string) {
   if (socket && socket.connected) return socket;
-  const url = baseUrl || (import.meta.env.VITE_API_BASE || '/');
+  const base = baseUrl || (import.meta.env.VITE_API_BASE || '/');
+  let url = base;
+  // Runtime fallback: if deployed on Vercel frontend without API_BASE, use known Render API
+  try {
+    if (url === '/' && typeof window !== 'undefined' && /vercel\.app$/i.test(window.location.host)) {
+      url = 'https://earnbycode-mfs3.onrender.com';
+    }
+  } catch {}
   const token = (() => {
     try { return localStorage.getItem('token') || localStorage.getItem('accessToken') || undefined; } catch { return undefined; }
   })();
