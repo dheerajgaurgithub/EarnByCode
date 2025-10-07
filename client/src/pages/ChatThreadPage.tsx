@@ -1,14 +1,18 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getMessages, sendMessage, listThreads, type ChatMessage, type ChatThread } from '@/services/chat';
+import { getMessages, sendMessage, listThreads, type ChatThread } from '@/services/chat';
 import ChatListPage from './ChatListPage';
 import { useAuth } from '@/context/AuthContext';
 import { getSocket, watchPresence, startPresence } from '@/lib/socket';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import { messagesActions, messagesSelectors } from '@/store/messagesSlice';
 
 const ChatThreadPage: React.FC = () => {
   const { threadId } = useParams<{ threadId: string }>();
   const { user } = useAuth();
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const dispatch = useAppDispatch();
+  const allMsgs = useAppSelector(messagesSelectors.selectAll);
+  const messages = (threadId ? allMsgs.filter(m => m.threadId === threadId) : []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -58,7 +62,9 @@ const ChatThreadPage: React.FC = () => {
         } catch {}
         const data = await getMessages(threadId, undefined, 50);
         if (!mounted) return;
-        setMessages(Array.isArray(data) ? data : []);
+        if (Array.isArray(data) && data.length) {
+          dispatch(messagesActions.messagesLoaded(data.map(m => ({ id: m.id, threadId: m.threadId, fromUserId: m.fromUserId, text: m.text, createdAt: m.createdAt }))));
+        }
         setTimeout(scrollToBottom, 50);
         try { window.dispatchEvent(new CustomEvent('chat:updated')); } catch {}
       } catch (e: any) {
@@ -91,31 +97,18 @@ const ChatThreadPage: React.FC = () => {
     } catch { /* ignore */ }
   }, [peer?.id]);
 
-  // Live incoming messages for this thread
+  // Scroll on messages change
   useEffect(() => {
-    if (!threadId) return;
-    const s = getSocket();
-    const onMsg = (p: { id: string; threadId: string; fromUserId: string; text: string; createdAt: string }) => {
-      if (String(p.threadId) !== String(threadId)) return;
-      setMessages(prev => {
-        // avoid duplicates if already present
-        if (prev.some(m => m.id === p.id)) return prev;
-        return [...prev, { id: p.id, threadId: p.threadId, fromUserId: p.fromUserId, text: p.text, createdAt: p.createdAt }];
-      });
-      setTimeout(scrollToBottom, 30);
-    };
-    s.on('chat:message', onMsg);
-    return () => { try { s.off('chat:message', onMsg); } catch {} };
-  }, [threadId]);
+    setTimeout(scrollToBottom, 50);
+  }, [messages.length]);
 
   const onSend = async () => {
     if (!threadId || !text.trim()) return;
     const t = text.trim();
     setText('');
     try {
-      const res = await sendMessage(threadId, t);
-      setMessages(prev => [...prev, { id: res.id, text: t, threadId, fromUserId: String(myId || 'me'), createdAt: new Date().toISOString() }]);
-      setTimeout(scrollToBottom, 30);
+      await sendMessage(threadId, t);
+      // rely on server socket "chat:message" to append; avoid local duplicate
       try { window.dispatchEvent(new CustomEvent('chat:updated')); } catch {}
     } catch (e: any) {
       setError(e?.message || 'Failed to send');
