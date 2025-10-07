@@ -8,7 +8,7 @@ import imgNeelesh from './Honors/neelesh.png';
 export const Company: React.FC = () => {
   const CEO_LINK = 'https://dheerajgaurofficial.netlify.app/';
   const ceo = { name: 'Dheeraj Gaur', role: 'CEO & Founder', image: imgDheeraj, link: CEO_LINK } as const;
-  
+
   const otherTeamMembers = [
     { name: 'Manish Kumar', role: 'Chief Technology Officer (CTO)', image: imgManish, link: 'https://manishdev.tech/' },
     { name: 'Mukul Kumar', role: 'VP & Director of Engineering', image: imgMukul, link: CEO_LINK },
@@ -19,14 +19,32 @@ export const Company: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-sky-50 to-white dark:from-gray-950 dark:to-gray-900 py-4 sm:py-6 lg:py-8 px-3 sm:px-4 lg:px-6">
       <div className="max-w-4xl mx-auto">
-        <header className="text-center mb-6 sm:mb-8 lg:mb-10">
-          <img src="/logo.png" alt="EarnByCode Logo" width={80} height={80} loading="eager" decoding="async" className="inline-block mb-3 sm:mb-4 w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 object-contain" />
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-green-100 mb-2">About EarnByCode</h1>
-          <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-green-300 mt-2 max-w-2xl mx-auto leading-relaxed px-2">
-            EarnByCode is a coding practice and contests platform. Solve problems, compete in timed contests,
-            and track your progress with submissions and leaderboards.
-          </p>
+        <header className="flex flex-col sm:flex-row items-center sm:items-center justify-center sm:justify-start gap-6 sm:gap-10 mb-6 sm:mb-8 lg:mb-10 px-4 sm:px-8">
+          {/* Logo */}
+          <div className="flex-shrink-0">
+            <img
+              src="/logo.png"
+              alt="EarnByCode Logo"
+              width={120}
+              height={120}
+              loading="eager"
+              decoding="async"
+              className="w-24 h-24 sm:w-28 sm:h-28 lg:w-32 lg:h-32 object-contain drop-shadow-xl transition-transform duration-300 hover:scale-105"
+            />
+          </div>
+
+          {/* Text Content */}
+          <div className="text-center sm:text-left max-w-2xl">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-gray-900 dark:text-green-100 mb-3">
+              About EarnByCode
+            </h1>
+            <p className="text-sm sm:text-base lg:text-lg text-gray-600 dark:text-green-300 leading-relaxed">
+              EarnByCode is a coding practice and contests platform. Solve problems, compete in timed contests,
+              and track your progress with submissions and leaderboards.
+            </p>
+          </div>
         </header>
+
 
         <section className="mb-6 sm:mb-8 lg:mb-10 bg-white dark:bg-gray-900 rounded-xl border border-sky-200 dark:border-green-800 p-4 sm:p-6 shadow-sm">
           <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-3 sm:mb-4 text-gray-900 dark:text-green-100">What we do</h2>
@@ -99,51 +117,51 @@ export const Company: React.FC = () => {
 
         {/* Team */}
         {/* <section className="mb-6 sm:mb-8 lg:mb-10"> */}
-          {/* <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-4 sm:mb-6 text-gray-900 dark:text-green-100 text-center">Our Team</h2> */}
-          
-          {/* CEO Section - Prominent Display */}
-          <div className="flex flex-col items-center justify-center mb-10">
-  <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden group transition-all duration-500 hover:scale-[1.05]">
+        {/* <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-4 sm:mb-6 text-gray-900 dark:text-green-100 text-center">Our Team</h2> */}
 
-    {/* Glowing Circular Border */}
-    <div className="absolute inset-0 rounded-full p-[3px] bg-gradient-to-r from-sky-400 via-blue-500 to-purple-500 animate-gradient-x">
-      <div className="absolute inset-0 rounded-full bg-white dark:bg-gray-900"></div>
-    </div>
+        {/* CEO Section - Prominent Display */}
+        <div className="flex flex-col items-center justify-center mb-10">
+          <div className="relative w-64 h-64 sm:w-72 sm:h-72 rounded-full overflow-hidden group transition-all duration-500 hover:scale-[1.05]">
 
-    {/* Profile Image */}
-    <img
-      src={ceo.image}
-      alt={ceo.name}
-      className="relative z-10 w-full h-full object-cover rounded-full transition-transform duration-700 group-hover:scale-110"
-      loading="eager"
-      decoding="async"
-    />
+            {/* Glowing Circular Border */}
+            <div className="absolute inset-0 rounded-full p-[3px] bg-gradient-to-r from-sky-400 via-blue-500 to-purple-500 animate-gradient-x">
+              <div className="absolute inset-0 rounded-full bg-white dark:bg-gray-900"></div>
+            </div>
 
-    {/* Optional Overlay */}
-    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent rounded-full"></div>
-  </div>
+            {/* Profile Image */}
+            <img
+              src={ceo.image}
+              alt={ceo.name}
+              className="relative z-10 w-full h-full object-cover rounded-full transition-transform duration-700 group-hover:scale-110"
+              loading="eager"
+              decoding="async"
+            />
 
-  {/* Text Section */}
-  <div className="text-center mt-6">
-    <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
-      {ceo.name}
-    </h3>
-    <p className="text-sky-600 dark:text-green-400 font-medium mb-4">
-      {ceo.role}
-    </p>
-    <a
-      href={ceo.link}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-block px-6 py-2 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-indigo-500 hover:to-sky-600 text-white rounded-full font-semibold shadow-lg hover:shadow-2xl transition-all duration-300"
-    >
-      View Profile ↗
-    </a>
-  </div>
-</div>
+            {/* Optional Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-black/10 to-transparent rounded-full"></div>
+          </div>
 
-          
-          {/* Other Team Members - Single Batch
+          {/* Text Section */}
+          <div className="text-center mt-6">
+            <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+              {ceo.name}
+            </h3>
+            <p className="text-sky-600 dark:text-green-400 font-medium mb-4">
+              {ceo.role}
+            </p>
+            <a
+              href={ceo.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-block px-6 py-2 bg-gradient-to-r from-sky-500 to-indigo-500 hover:from-indigo-500 hover:to-sky-600 text-white rounded-full font-semibold shadow-lg hover:shadow-2xl transition-all duration-300"
+            >
+              View Profile ↗
+            </a>
+          </div>
+        </div>
+
+
+        {/* Other Team Members - Single Batch
           <div className="bg-gradient-to-br from-sky-50 to-white dark:from-gray-800 dark:to-gray-900 rounded-2xl p-4 sm:p-6 lg:p-8 shadow-lg">
             <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-green-100 mb-4 sm:mb-6 text-center">Core Team</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6">
@@ -172,7 +190,7 @@ export const Company: React.FC = () => {
             <div>
               <h2 className="text-base sm:text-lg lg:text-xl font-semibold mb-2 text-gray-900 dark:text-green-100">Contact Us</h2>
               <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-green-300 leading-relaxed">
-                For general queries and press inquiries: 
+                For general queries and press inquiries:
                 <a href="mailto:replyearnbycode@gmail.com" className="ml-1 text-sky-600 dark:text-green-400 hover:text-sky-700 dark:hover:text-green-300 font-medium underline transition-colors">
                   replyearnbycode@gmail.com
                 </a>

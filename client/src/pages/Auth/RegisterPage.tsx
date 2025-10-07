@@ -104,40 +104,45 @@ export function RegisterPage() {
         <div className="bg-white/90 dark:bg-black/90 border border-sky-100 dark:border-green-800/50 rounded-2xl shadow-2xl shadow-sky-500/10 dark:shadow-green-900/30 backdrop-blur-2xl p-6 sm:p-8 transition-all duration-500 hover:shadow-3xl hover:shadow-sky-500/20 dark:hover:shadow-green-900/40 hover:scale-[1.02] transform">
           
           {/* Header section */}
-          <div className="text-center mb-8">
-            {/* Logo (wrapper removed, larger image) */}
-            <img 
-              src="/logo.png" 
-              alt="EarnByCode Logo" 
-              width={112}
-              height={112}
-              loading="eager"
-              decoding="async"
-              className="mx-auto w-24 h-24 sm:w-28 sm:h-28 object-contain mb-4"
-            />
-            
-            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-sky-600 to-blue-600 dark:from-green-400 dark:to-green-500 bg-clip-text text-transparent mb-3 tracking-tight">
-              {t('register.title')}
-            </h1>
-            <p
-              className="text-slate-600 dark:text-gray-300 text-sm sm:text-base font-medium leading-relaxed mb-4"
-              dangerouslySetInnerHTML={{ 
-                __html: t('register.subtitle')
-                  .replace('<b>', '<span class="text-sky-600 dark:text-green-400 font-bold">')
-                  .replace('</b>', '</span>') 
-              }}
-            />
-            
-            <p className="text-sm text-slate-600 dark:text-gray-300 font-medium">
-              {t('register.have_account')}{' '}
-              <Link
-                to="/login"
-                className="font-bold text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-all duration-200 underline-offset-4 hover:underline hover:scale-105 inline-block"
-              >
-                {t('register.sign_in_here')}
-              </Link>
-            </p>
-          </div>
+          <div className="flex flex-col sm:flex-row items-center sm:items-start justify-center sm:justify-start gap-6 sm:gap-10 mb-8 px-4 sm:px-8">
+  {/* Logo on Left */}
+  <img
+    src="/logo.png"
+    alt="EarnByCode Logo"
+    width={160}
+    height={160}
+    loading="eager"
+    decoding="async"
+    className="w-28 h-28 sm:w-32 sm:h-32 lg:w-40 lg:h-40 object-contain drop-shadow-2xl transition-transform duration-300 hover:scale-105"
+  />
+
+  {/* Text Section on Right */}
+  <div className="text-center sm:text-left max-w-2xl">
+    <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-sky-600 to-blue-600 dark:from-green-400 dark:to-green-500 bg-clip-text text-transparent mb-3 tracking-tight">
+      {t('register.title')}
+    </h1>
+
+    <p
+      className="text-slate-600 dark:text-gray-300 text-sm sm:text-base lg:text-lg font-medium leading-relaxed mb-4"
+      dangerouslySetInnerHTML={{
+        __html: t('register.subtitle')
+          .replace('<b>', '<span class=\"text-sky-600 dark:text-green-400 font-bold\">')
+          .replace('</b>', '</span>')
+      }}
+    />
+
+    <p className="text-sm sm:text-base text-slate-600 dark:text-gray-300 font-medium">
+      {t('register.have_account')}{' '}
+      <Link
+        to="/login"
+        className="font-bold text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-all duration-200 underline-offset-4 hover:underline hover:scale-105 inline-block"
+      >
+        {t('register.sign_in_here')}
+      </Link>
+    </p>
+  </div>
+</div>
+
 
           {/* Error alert */}
           {error && (
@@ -340,7 +345,7 @@ export function RegisterPage() {
             <p className="text-sm text-slate-600 dark:text-gray-300 text-center leading-relaxed font-medium">
               {t('register.terms_prefix')}{' '}
               <a 
-                href="/terms" 
+                href="/terms-of-service" 
                 className="text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 transition-all duration-200 underline-offset-4 hover:underline font-semibold hover:scale-105 inline-block"
               >
                 {t('register.terms')}
