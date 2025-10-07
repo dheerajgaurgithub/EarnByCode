@@ -35,19 +35,6 @@ const ChatListPage: React.FC = () => {
         if (!mounted) return;
         const arr = Array.isArray(data) ? data : [];
         setThreads(arr);
-        // realtime presence
-        try {
-          const myId = (user as any)?.id || (user as any)?._id || undefined;
-          startPresence(myId);
-          const ids = arr.map(t => (t.otherUser?.id ? String(t.otherUser.id) : '')).filter(Boolean);
-          if (ids.length) watchPresence(ids);
-          const s = getSocket();
-          const onPresence = (p: { userId: string; online: boolean; lastSeen: string | null }) => {
-            setThreads(prev => prev.map(t => (String(t.otherUser?.id) === String(p.userId) ? { ...t, otherUserIsOnline: p.online, otherUserLastSeen: p.lastSeen } : t)));
-          };
-          s.on('presence:update', onPresence);
-          return () => { try { s.off('presence:update', onPresence); } catch {} };
-        } catch {}
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || 'Failed to load chats');
@@ -57,6 +44,28 @@ const ChatListPage: React.FC = () => {
     })();
     return () => { mounted = false; };
   }, []);
+
+  // Start presence as soon as we know the user
+  useEffect(() => {
+    const myId = (user as any)?.id || (user as any)?._id || undefined;
+    if (!myId) return;
+    try { startPresence(myId); } catch {}
+  }, [user]);
+
+  // Watch presence for loaded threads and attach one listener
+  useEffect(() => {
+    if (!threads.length) return;
+    try {
+      const ids = threads.map(t => (t.otherUser?.id ? String(t.otherUser.id) : '')).filter(Boolean);
+      if (ids.length) watchPresence(ids);
+      const s = getSocket();
+      const onPresence = (p: { userId: string; online: boolean; lastSeen: string | null }) => {
+        setThreads(prev => prev.map(t => (String(t.otherUser?.id) === String(p.userId) ? { ...t, otherUserIsOnline: p.online, otherUserLastSeen: p.lastSeen } : t)));
+      };
+      s.on('presence:update', onPresence);
+      return () => { try { s.off('presence:update', onPresence); } catch {} };
+    } catch {}
+  }, [threads.length]);
 
   return (
     <aside className="w-full sm:w-72 md:w-80 lg:w-80 border-r bg-white dark:bg-gray-900">

@@ -1,6 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
+let heartbeat: number | null = null;
+let latestUserId: string | undefined;
 
 export function getSocket(baseUrl?: string) {
   if (socket && socket.connected) return socket;
@@ -12,22 +14,39 @@ export function getSocket(baseUrl?: string) {
     path: '/socket.io',
     withCredentials: true,
     autoConnect: true,
-    transports: ['websocket'],
+    // Allow polling fallback for hosts like Render
+    transports: ['websocket', 'polling'],
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000,
     auth: token ? { token } : {},
+  });
+
+  // Basic visibility logs (can be removed later)
+  socket.on('connect', () => {
+    try {
+      if (latestUserId) socket!.emit('presence:identify', { userId: latestUserId });
+      if (heartbeat) window.clearInterval(heartbeat);
+      heartbeat = window.setInterval(() => {
+        try { socket!.emit('presence:ping'); } catch {}
+      }, 30000) as unknown as number;
+    } catch {}
+  });
+  socket.on('disconnect', () => {
+    if (heartbeat) { window.clearInterval(heartbeat); heartbeat = null; }
   });
   return socket;
 }
 
 export function startPresence(userId?: string) {
   const s = getSocket();
-  s.emit('presence:identify', { userId });
-  const interval = setInterval(() => {
+  latestUserId = userId || latestUserId;
+  try { s.emit('presence:identify', { userId: latestUserId }); } catch {}
+  if (heartbeat) { window.clearInterval(heartbeat); heartbeat = null; }
+  heartbeat = window.setInterval(() => {
     try { s.emit('presence:ping'); } catch {}
-  }, 30000);
-  s.on('disconnect', () => clearInterval(interval));
+  }, 30000) as unknown as number;
+  s.on('disconnect', () => { if (heartbeat) { window.clearInterval(heartbeat); heartbeat = null; } });
 }
 
 export function watchPresence(userIds: string[]) {
