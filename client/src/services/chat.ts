@@ -2,7 +2,7 @@
 import { getApiBase } from "./config";
 export type ChatThread = {
   threadId: string;
-  otherUser: { id: string; username: string; avatar?: string };
+  otherUser: { id: string; username: string; fullName?: string; avatarUrl?: string; avatar?: string };
   lastMessage?: { id: string; text: string; createdAt: string };
   unread?: number;
 };

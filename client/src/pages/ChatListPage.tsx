@@ -46,11 +46,15 @@ const ChatListPage: React.FC = () => {
               className={`block px-3 py-2 rounded-md border ${active ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50 dark:hover:bg-gray-800 border-transparent'}`}
             >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-semibold overflow-hidden">
-                  {(t.otherUser?.username || 'U').charAt(0).toUpperCase()}
+                <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-semibold">
+                  {t.otherUser?.avatarUrl ? (
+                    <img src={t.otherUser.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    (t.otherUser?.username || 'U').charAt(0).toUpperCase()
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium truncate">{t.otherUser?.username}</div>
+                  <div className="font-medium truncate">{t.otherUser?.fullName || t.otherUser?.username}</div>
                   {t.lastMessage && (
                     <div className="text-xs text-gray-500 truncate">{t.lastMessage.text}</div>
                   )}

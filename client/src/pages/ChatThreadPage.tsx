@@ -13,7 +13,7 @@ const ChatThreadPage: React.FC = () => {
   const [text, setText] = useState('');
   const listRef = useRef<HTMLDivElement | null>(null);
   const myId = (user as any)?.id || (user as any)?._id || (user as any)?.username || 'me';
-  const [peer, setPeer] = useState<{ username: string; avatarUrl?: string; id?: string } | null>(null);
+  const [peer, setPeer] = useState<{ username: string; fullName?: string; avatarUrl?: string; id?: string } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
   const [disappearing24h, setDisappearing24h] = useState(false);
@@ -32,7 +32,7 @@ const ChatThreadPage: React.FC = () => {
         try {
           const threads: ChatThread[] = await listThreads();
           const th = Array.isArray(threads) ? threads.find(t => t.threadId === threadId) : undefined;
-          if (mounted && th?.otherUser) setPeer({ username: th.otherUser.username, avatarUrl: (th as any).otherUser?.avatarUrl, id: (th as any).otherUser?.id });
+          if (mounted && th?.otherUser) setPeer({ username: th.otherUser.username, fullName: (th as any).otherUser?.fullName, avatarUrl: (th as any).otherUser?.avatarUrl, id: (th as any).otherUser?.id });
         } catch {}
         const data = await getMessages(threadId, undefined, 50);
         if (!mounted) return;
@@ -80,11 +80,15 @@ const ChatThreadPage: React.FC = () => {
               onClick={() => setSettingsOpen(true)}
               title="Chat settings"
             >
-              <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center text-sm font-semibold cursor-pointer">
-                {(peer?.username || 'U').charAt(0).toUpperCase()}
+              <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-semibold cursor-pointer">
+                {peer?.avatarUrl ? (
+                  <img src={peer.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                ) : (
+                  (peer?.username || 'U').charAt(0).toUpperCase()
+                )}
               </div>
               <div className="text-left cursor-pointer">
-                <div className="text-sm font-semibold">{peer?.username || 'Chat'}</div>
+                <div className="text-sm font-semibold">{peer?.fullName || peer?.username || 'Chat'}</div>
                 <div className="text-[11px] text-gray-500">Tap name to open settings</div>
               </div>
             </button>

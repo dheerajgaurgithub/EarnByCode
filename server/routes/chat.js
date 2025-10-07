@@ -191,7 +191,7 @@ router.get('/threads', authenticate, async (req, res) => {
       const other = t.participants.map(String).find(x => x !== String(me));
       return {
         threadId: String(t._id),
-        otherUser: await (await mongoose.model('User').findById(other).select('_id username avatarUrl').lean()) || { id: other },
+        otherUser: await (await mongoose.model('User').findById(other).select('_id username fullName avatarUrl').lean()) || { id: other },
         lastMessage: lastMap.get(String(t._id)) ? { id: String(lastMap.get(String(t._id))._id), text: lastMap.get(String(t._id)).text, createdAt: lastMap.get(String(t._id)).createdAt } : undefined,
         unread: 0,
       };
