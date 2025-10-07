@@ -1735,7 +1735,7 @@ const startServer = async () => {
       const entry = online.get(userId);
       const payload = {
         userId: String(userId),
-        online: !!entry?.online,
+        online: !!(entry && entry.lastSeen && (Date.now() - new Date(entry.lastSeen).getTime() < ONLINE_THRESHOLD_MS)),
         lastSeen: entry?.lastSeen ? new Date(entry.lastSeen).toISOString() : null,
       };
       const targets = watchers.get(String(userId));
@@ -1763,6 +1763,7 @@ const startServer = async () => {
       socket.on('presence:identify', ({ userId } = {}) => {
         const uid = String(userId || socket.data.userId || '');
         if (!uid) return;
+        socket.data.userId = uid; // ensure future pings/disconnect map to this user
         let entry = online.get(uid);
         if (!entry) entry = { sockets: new Set(), lastSeen: new Date(), online: true };
         entry.sockets.add(sid);
