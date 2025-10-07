@@ -97,6 +97,13 @@ const ChatThreadPage: React.FC = () => {
     } catch { /* ignore */ }
   }, [peer?.id]);
 
+  // Start presence as soon as we know current user (don't wait for peer)
+  useEffect(() => {
+    const my = (user as any)?.id || (user as any)?._id;
+    if (!my) return;
+    try { startPresence(my); } catch {}
+  }, [user]);
+
   // Scroll on messages change
   useEffect(() => {
     setTimeout(scrollToBottom, 50);
@@ -107,8 +114,10 @@ const ChatThreadPage: React.FC = () => {
     const t = text.trim();
     setText('');
     try {
-      await sendMessage(threadId, t);
-      // rely on server socket "chat:message" to append; avoid local duplicate
+      const res = await sendMessage(threadId, t);
+      // optimistic append; socket echo will upsert same id
+      dispatch(messagesActions.messageReceived({ id: res.id, threadId, fromUserId: String(myId || 'me'), text: t, createdAt: new Date().toISOString() }));
+      setTimeout(scrollToBottom, 30);
       try { window.dispatchEvent(new CustomEvent('chat:updated')); } catch {}
     } catch (e: any) {
       setError(e?.message || 'Failed to send');

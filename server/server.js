@@ -1724,7 +1724,7 @@ const startServer = async () => {
         },
         credentials: true,
       },
-      transports: ['websocket'],
+      transports: ['websocket', 'polling'],
     });
 
     // Expose io to routes
