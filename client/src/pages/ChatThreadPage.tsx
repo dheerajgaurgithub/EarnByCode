@@ -91,6 +91,23 @@ const ChatThreadPage: React.FC = () => {
     } catch { /* ignore */ }
   }, [peer?.id]);
 
+  // Live incoming messages for this thread
+  useEffect(() => {
+    if (!threadId) return;
+    const s = getSocket();
+    const onMsg = (p: { id: string; threadId: string; fromUserId: string; text: string; createdAt: string }) => {
+      if (String(p.threadId) !== String(threadId)) return;
+      setMessages(prev => {
+        // avoid duplicates if already present
+        if (prev.some(m => m.id === p.id)) return prev;
+        return [...prev, { id: p.id, threadId: p.threadId, fromUserId: p.fromUserId, text: p.text, createdAt: p.createdAt }];
+      });
+      setTimeout(scrollToBottom, 30);
+    };
+    s.on('chat:message', onMsg);
+    return () => { try { s.off('chat:message', onMsg); } catch {} };
+  }, [threadId]);
+
   const onSend = async () => {
     if (!threadId || !text.trim()) return;
     const t = text.trim();

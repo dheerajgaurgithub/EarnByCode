@@ -1727,6 +1727,9 @@ const startServer = async () => {
       transports: ['websocket'],
     });
 
+    // Expose io to routes
+    app.set('io', io);
+
     const ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
     const online = new Map(); // userId -> { sockets: Set<string>, lastSeen: Date, online: boolean }
     const watchers = new Map(); // targetUserId -> Set<socketId>
@@ -1764,6 +1767,8 @@ const startServer = async () => {
         const uid = String(userId || socket.data.userId || '');
         if (!uid) return;
         socket.data.userId = uid; // ensure future pings/disconnect map to this user
+        // join per-user room
+        try { socket.join(`user:${uid}`); } catch {}
         let entry = online.get(uid);
         if (!entry) entry = { sockets: new Set(), lastSeen: new Date(), online: true };
         entry.sockets.add(sid);

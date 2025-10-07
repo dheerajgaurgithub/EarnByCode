@@ -62,8 +62,21 @@ const ChatListPage: React.FC = () => {
       const onPresence = (p: { userId: string; online: boolean; lastSeen: string | null }) => {
         setThreads(prev => prev.map(t => (String(t.otherUser?.id) === String(p.userId) ? { ...t, otherUserIsOnline: p.online, otherUserLastSeen: p.lastSeen } : t)));
       };
+      const onThreadUpdate = (u: { threadId: string; lastMessage: { id: string; text: string; createdAt: string } }) => {
+        setThreads(prev => {
+          const next = prev.map(t => t.threadId === u.threadId ? { ...t, lastMessage: u.lastMessage } : t);
+          // move updated thread to top
+          next.sort((a, b) => {
+            const at = a.lastMessage?.createdAt ? new Date(a.lastMessage.createdAt).getTime() : 0;
+            const bt = b.lastMessage?.createdAt ? new Date(b.lastMessage.createdAt).getTime() : 0;
+            return bt - at;
+          });
+          return next;
+        });
+      };
       s.on('presence:update', onPresence);
-      return () => { try { s.off('presence:update', onPresence); } catch {} };
+      s.on('chat:thread:update', onThreadUpdate);
+      return () => { try { s.off('presence:update', onPresence); s.off('chat:thread:update', onThreadUpdate); } catch {} };
     } catch {}
   }, [threads.length]);
 

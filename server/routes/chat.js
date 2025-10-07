@@ -5,6 +5,7 @@ import ChatThread from '../models/ChatThread.js';
 import ChatMessage from '../models/ChatMessage.js';
 import ChatRequest from '../models/ChatRequest.js';
 import Notification from '../models/Notification.js';
+import User from '../models/User.js';
 
 const router = express.Router();
 
@@ -118,7 +119,16 @@ router.post('/requests/:id/approve', authenticate, async (req, res) => {
       );
     } catch {}
 
-    return res.status(200).json({ success: true, threadId: thread._id.toString() });
+    // Suggest follow-back to the approver if they are not already following the requester
+    let suggestFollowBack = false;
+    try {
+      const meUser = await User.findById(me).select('following').lean();
+      if (meUser && Array.isArray(meUser.following)) {
+        suggestFollowBack = !meUser.following.map(String).includes(String(doc.fromUserId));
+      }
+    } catch {}
+
+    return res.status(200).json({ success: true, threadId: thread._id.toString(), suggestFollowBack });
   } catch (e) {
     console.error('approve request error', e);
     return res.status(500).json({ message: 'Failed to approve' });
@@ -263,6 +273,18 @@ router.post('/threads/:threadId/messages', authenticate, async (req, res) => {
     const msg = await ChatMessage.create({ threadId: thread._id, fromUserId: me, text });
     thread.lastMessageAt = new Date();
     await thread.save();
+
+    // Realtime: notify both participants
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        const payload = { id: String(msg._id), threadId: String(thread._id), fromUserId: String(me), text, createdAt: msg.createdAt };
+        const rooms = thread.participants.map(u => `user:${String(u)}`);
+        io.to(rooms).emit('chat:message', payload);
+        // lightweight thread update for lists
+        io.to(rooms).emit('chat:thread:update', { threadId: String(thread._id), lastMessage: { id: payload.id, text: payload.text, createdAt: payload.createdAt } });
+      }
+    } catch (e) { console.warn('socket emit failed', e?.message || e); }
 
     return res.status(200).json({ id: String(msg._id) });
   } catch (e) {
