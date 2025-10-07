@@ -8,6 +8,21 @@ const ChatListPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
 
+  const formatLastSeen = (iso?: string | null) => {
+    if (!iso) return 'Offline';
+    try {
+      const d = new Date(iso);
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${dd}/${mm}/${yyyy}, ${hh}:${min}`;
+    } catch {
+      return 'Offline';
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -55,6 +70,10 @@ const ChatListPage: React.FC = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium truncate">{t.otherUser?.fullName || t.otherUser?.username}</div>
+                  <div className="text-[11px] text-gray-500 flex items-center gap-1">
+                    <span className={`inline-block w-2 h-2 rounded-full ${t.otherUserIsOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    {t.otherUserIsOnline ? 'Online' : `Last seen ${formatLastSeen(t.otherUserLastSeen)}`}
+                  </div>
                   {t.lastMessage && (
                     <div className="text-xs text-gray-500 truncate">{t.lastMessage.text}</div>
                   )}

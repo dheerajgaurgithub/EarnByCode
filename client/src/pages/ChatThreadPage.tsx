@@ -13,13 +13,28 @@ const ChatThreadPage: React.FC = () => {
   const [text, setText] = useState('');
   const listRef = useRef<HTMLDivElement | null>(null);
   const myId = (user as any)?.id || (user as any)?._id || (user as any)?.username || 'me';
-  const [peer, setPeer] = useState<{ username: string; fullName?: string; avatarUrl?: string; id?: string } | null>(null);
+  const [peer, setPeer] = useState<{ username: string; fullName?: string; avatarUrl?: string; id?: string; isOnline?: boolean; lastSeen?: string | null } | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
   const [disappearing24h, setDisappearing24h] = useState(false);
 
   const scrollToBottom = () => {
     try { listRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth' }); } catch {}
+  };
+
+  const formatLastSeen = (iso?: string | null) => {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const yyyy = d.getFullYear();
+      const hh = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${dd}/${mm}/${yyyy}, ${hh}:${min}`;
+    } catch {
+      return '';
+    }
   };
 
   useEffect(() => {
@@ -32,7 +47,14 @@ const ChatThreadPage: React.FC = () => {
         try {
           const threads: ChatThread[] = await listThreads();
           const th = Array.isArray(threads) ? threads.find(t => t.threadId === threadId) : undefined;
-          if (mounted && th?.otherUser) setPeer({ username: th.otherUser.username, fullName: (th as any).otherUser?.fullName, avatarUrl: (th as any).otherUser?.avatarUrl, id: (th as any).otherUser?.id });
+          if (mounted && th?.otherUser) setPeer({
+            username: th.otherUser.username,
+            fullName: (th as any).otherUser?.fullName,
+            avatarUrl: (th as any).otherUser?.avatarUrl,
+            id: (th as any).otherUser?.id,
+            isOnline: (th as any).otherUserIsOnline,
+            lastSeen: (th as any).otherUserLastSeen ?? null,
+          });
         } catch {}
         const data = await getMessages(threadId, undefined, 50);
         if (!mounted) return;
@@ -89,7 +111,10 @@ const ChatThreadPage: React.FC = () => {
               </div>
               <div className="text-left cursor-pointer">
                 <div className="text-sm font-semibold">{peer?.fullName || peer?.username || 'Chat'}</div>
-                <div className="text-[11px] text-gray-500">Tap name to open settings</div>
+                <div className="text-[11px] text-gray-500 flex items-center gap-1">
+                  <span className={`inline-block w-2 h-2 rounded-full ${peer?.isOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  {peer?.isOnline ? 'Online' : (peer?.lastSeen ? `Last seen ${formatLastSeen(peer.lastSeen)}` : 'Offline')}
+                </div>
               </div>
             </button>
             {peer?.username && (

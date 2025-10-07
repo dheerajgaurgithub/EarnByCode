@@ -3,6 +3,8 @@ import { getApiBase } from "./config";
 export type ChatThread = {
   threadId: string;
   otherUser: { id: string; username: string; fullName?: string; avatarUrl?: string; avatar?: string };
+  otherUserIsOnline?: boolean;
+  otherUserLastSeen?: string | null;
   lastMessage?: { id: string; text: string; createdAt: string };
   unread?: number;
 };

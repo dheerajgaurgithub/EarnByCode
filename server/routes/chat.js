@@ -187,11 +187,20 @@ router.get('/threads', authenticate, async (req, res) => {
     ]);
     const lastMap = new Map(lastByThread.map(x => [String(x._id), x.last]));
 
+    const ONLINE_THRESHOLD_MS = 2 * 60 * 1000; // 2 minutes
     const populated = await Promise.all(threads.map(async (t) => {
       const other = t.participants.map(String).find(x => x !== String(me));
+      const ou = await mongoose.model('User')
+        .findById(other)
+        .select('_id username fullName avatarUrl walletLastActive updatedAt')
+        .lean();
+      const lastSeen = (ou?.walletLastActive || ou?.updatedAt || null);
+      const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime() < ONLINE_THRESHOLD_MS) : false;
       return {
         threadId: String(t._id),
-        otherUser: await (await mongoose.model('User').findById(other).select('_id username fullName avatarUrl').lean()) || { id: other },
+        otherUser: ou ? { id: String(ou._id), username: ou.username, fullName: ou.fullName, avatarUrl: ou.avatarUrl } : { id: other },
+        otherUserLastSeen: lastSeen || null,
+        otherUserIsOnline: isOnline,
         lastMessage: lastMap.get(String(t._id)) ? { id: String(lastMap.get(String(t._id))._id), text: lastMap.get(String(t._id)).text, createdAt: lastMap.get(String(t._id)).createdAt } : undefined,
         unread: 0,
       };
