@@ -25,6 +25,7 @@ const ChatThreadPage: React.FC = () => {
   const [peerLastSeen, setPeerLastSeen] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
+  const [isBlocked, setIsBlocked] = useState(false);
   const [disappearing24h, setDisappearing24h] = useState(false);
 
   const scrollToBottom = () => {
@@ -61,6 +62,7 @@ const ChatThreadPage: React.FC = () => {
             avatarUrl: (th as any).otherUser?.avatarUrl,
             id: (th as any).otherUser?.id,
           });
+          if (mounted) setIsBlocked(!!(th as any)?.blockedByMe);
         } catch {}
         const data = await getMessages(threadId, undefined, 50);
         if (!mounted) return;
@@ -242,8 +244,12 @@ const ChatThreadPage: React.FC = () => {
                   <button className="text-sm px-2 py-1 border rounded" onClick={() => setSettingsOpen(false)}>Close</button>
                 </div>
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-semibold">
-                    {(peer?.username || 'U').charAt(0).toUpperCase()}
+                  <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center text-sm font-semibold">
+                    {peer?.avatarUrl ? (
+                      <img src={peer.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
+                    ) : (
+                      (peer?.username || 'U').charAt(0).toUpperCase()
+                    )}
                   </div>
                   <div>
                     <div className="font-medium">{peer?.username || 'User'}</div>
@@ -281,34 +287,37 @@ const ChatThreadPage: React.FC = () => {
                   <div className="border rounded p-3">
                     <div className="font-medium text-sm mb-2">Safety</div>
                     <div className="flex items-center gap-2">
-                      <button
-                        disabled={busyAction}
-                        onClick={async () => {
-                          try {
-                            setBusyAction(true);
-                            await fetch(`/api/chat/threads/${threadId}/block`, { method: 'POST', credentials: 'include' });
-                            alert('User blocked for this thread.');
-                          } catch (e) { alert('Failed to block'); }
-                          finally { setBusyAction(false); }
-                        }}
-                        className="px-3 py-1.5 text-sm rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
-                      >
-                        Block user
-                      </button>
-                      <button
-                        disabled={busyAction}
-                        onClick={async () => {
-                          try {
-                            setBusyAction(true);
-                            await fetch(`/api/chat/threads/${threadId}/unblock`, { method: 'POST', credentials: 'include' });
-                            alert('User unblocked.');
-                          } catch (e) { alert('Failed to unblock'); }
-                          finally { setBusyAction(false); }
-                        }}
-                        className="px-3 py-1.5 text-sm rounded border hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
-                      >
-                        Unblock user
-                      </button>
+                      {isBlocked ? (
+                        <button
+                          disabled={busyAction}
+                          onClick={async () => {
+                            try {
+                              setBusyAction(true);
+                              await fetch(`/api/chat/threads/${threadId}/unblock`, { method: 'POST', credentials: 'include' });
+                              setIsBlocked(false);
+                            } catch (e) { alert('Failed to unblock'); }
+                            finally { setBusyAction(false); }
+                          }}
+                          className="px-3 py-1.5 text-sm rounded border hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50"
+                        >
+                          Unblock user
+                        </button>
+                      ) : (
+                        <button
+                          disabled={busyAction}
+                          onClick={async () => {
+                            try {
+                              setBusyAction(true);
+                              await fetch(`/api/chat/threads/${threadId}/block`, { method: 'POST', credentials: 'include' });
+                              setIsBlocked(true);
+                            } catch (e) { alert('Failed to block'); }
+                            finally { setBusyAction(false); }
+                          }}
+                          className="px-3 py-1.5 text-sm rounded bg-red-600 text-white hover:bg-red-700 disabled:opacity-50"
+                        >
+                          Block user
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>

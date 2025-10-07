@@ -108,12 +108,19 @@ const ChatListPage: React.FC = () => {
                     {t.otherUserIsOnline ? 'Online' : (t.otherUserLastSeen ? `Last seen ${formatLastSeen(t.otherUserLastSeen)}` : 'Offline')}
                   </div>
                   {t.lastMessage && (
-                    <div className="text-xs text-gray-500 truncate">{t.lastMessage.text}</div>
+                    <div className={`text-xs truncate ${t.unread && t.unread > 0 ? 'text-black dark:text-white font-semibold' : 'text-gray-500'}`}>
+                      {t.lastMessage.text}{t.unread && t.unread > 1 ? ` • ${t.unread}` : ''}
+                    </div>
                   )}
                 </div>
-                {typeof t.unread === 'number' && t.unread > 0 && (
-                  <span className="text-xs bg-green-700 text-white rounded-full px-2 py-0.5">{t.unread}</span>
-                )}
+                <div className="flex flex-col items-end gap-1">
+                  {t.blockedByMe && (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-200">Blocked</span>
+                  )}
+                  {typeof t.unread === 'number' && t.unread > 0 && (
+                    <span className="text-xs bg-green-700 text-white rounded-full px-2 py-0.5">{t.unread}</span>
+                  )}
+                </div>
               </div>
             </Link>
           );

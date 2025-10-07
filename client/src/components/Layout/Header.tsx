@@ -175,7 +175,7 @@ export const Header: React.FC = () => {
     };
   }, [userInfo?.username]);
 
-  // Chat unread polling (sum of per-thread unread)
+  // Chat unread polling (count of threads with unread > 0)
   useEffect(() => {
     let canceled = false;
     const load = async () => {
@@ -183,8 +183,8 @@ export const Header: React.FC = () => {
       try {
         const threads = await listThreads();
         if (canceled) return;
-        const total = Array.isArray(threads) ? threads.reduce((acc, t: any) => acc + (Number(t.unread) || 0), 0) : 0;
-        setChatUnread(total);
+        const count = Array.isArray(threads) ? threads.reduce((acc, t: any) => acc + ((Number(t.unread) || 0) > 0 ? 1 : 0), 0) : 0;
+        setChatUnread(count);
       } catch { if (!canceled) setChatUnread(0); }
     };
     load();
@@ -281,7 +281,7 @@ export const Header: React.FC = () => {
                     <span className="relative z-10 whitespace-nowrap">{item.path === '/chat' ? 'Chats' : t(item.nameKey)}</span>
                     {item.path === '/chat' && chatUnread > 0 && (
                       <span className="ml-1 inline-flex items-center justify-center min-w-[14px] h-[14px] px-1 rounded-full bg-blue-600 text-white text-[10px] leading-[14px]">
-                        {chatUnread > 99 ? '99+' : chatUnread}
+                        {chatUnread > 9 ? '9+' : chatUnread}
                       </span>
                     )}
 

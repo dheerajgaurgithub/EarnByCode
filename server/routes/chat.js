@@ -215,6 +215,11 @@ router.get('/threads', authenticate, async (req, res) => {
         unread = await ChatMessage.countDocuments(q);
       } catch {}
       const last = lastMap.get(String(t._id));
+      let blockedByMe = false;
+      try {
+        const otherId = other ? String(other) : '';
+        blockedByMe = Boolean(t.blocks && (t.blocks instanceof Map ? t.blocks.get(otherId) : (t.blocks?.[otherId])));
+      } catch {}
       return {
         threadId: String(t._id),
         otherUser: ou ? { id: String(ou._id), username: ou.username, fullName: ou.fullName, avatarUrl: ou.avatarUrl } : { id: other },
@@ -222,6 +227,7 @@ router.get('/threads', authenticate, async (req, res) => {
         otherUserIsOnline: isOnline,
         lastMessage: last ? { id: String(last._id), text: last.text, createdAt: last.createdAt } : undefined,
         unread,
+        blockedByMe,
       };
     }));
 

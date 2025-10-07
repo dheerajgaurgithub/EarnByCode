@@ -11,6 +11,7 @@ export type ChatThreadEntity = {
   // seen status (last time any participant marked as read)
   seenAt?: string | null;
   seenByUserId?: string | null;
+  blockedByMe?: boolean;
 };
 
 const threadsAdapter = createEntityAdapter<ChatThreadEntity>({
