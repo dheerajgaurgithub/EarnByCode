@@ -1,31 +1,24 @@
 import React from 'react';
-import { Bot, Send, X, Square, RotateCcw } from 'lucide-react';
-import config from '@/lib/config';
+import { Bot, Send, X, Square, RotateCcw, Sparkles } from 'lucide-react';
 
 // Reusable global chatbot widget for site-scoped Q&A
-// - Responsive, floating bottom-right
-// - Excludes problem-detail and contest pages by mounting conditions in App
-// - Uses improved matching and backend logging
+// Now styled as a professional sidebar interface
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
-// Keep raw content (including code blocks) to behave like ChatGPT
 function keep(text: string): string { return text || ''; }
 
-// Hint configuration
 const HINT_LOCALSTORAGE_KEY = 'ai_widget_hint_seen';
-const HINT_DURATION_MS = 5000; // adjust as needed
+const HINT_DURATION_MS = 5000;
 const HINT_MESSAGE = 'Press Shift + A (or Alt + A)';
 
 const normalize = (s: string) =>
   s.toLowerCase().replace(/[^a-z0-9\s/.-]+/g, ' ').replace(/\s+/g, ' ').trim();
 
 const getApiBase = () => {
-  const raw = (import.meta as any)?.env?.VITE_API_URL as string;
-  const base = raw || 'https://algobucks.onrender.com/api';
-  return base.replace(/\/$/, '');
+  const raw = 'https://earnbycode-mfs3.onrender.com/api';
+  return raw.replace(/\/$/, '');
 };
-// KB removed; using AI backend
 
 const ChatbotWidget: React.FC = () => {
   const [open, setOpen] = React.useState(false);
@@ -40,7 +33,6 @@ const ChatbotWidget: React.FC = () => {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
   const [errorText, setErrorText] = React.useState<string | null>(null);
 
-  // Keyboard shortcuts: Shift+A or Alt+A to toggle; Ctrl+J to focus input when open. Ignore when typing in inputs.
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
@@ -62,9 +54,8 @@ const ChatbotWidget: React.FC = () => {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [open]);
 
-  // First-visit hint: show a subtle tooltip for Shift+A
   React.useEffect(() => {
     try {
       const key = HINT_LOCALSTORAGE_KEY;
@@ -80,9 +71,6 @@ const ChatbotWidget: React.FC = () => {
     } catch {}
   }, []);
 
-  // Allow re-showing the hint on demand:
-  // - window.dispatchEvent(new Event('ai-widget:hint'))
-  // - or call (window as any).aiWidgetShowHint?.()
   React.useEffect(() => {
     const show = () => {
       try { localStorage.removeItem(HINT_LOCALSTORAGE_KEY); } catch {}
@@ -133,7 +121,7 @@ const ChatbotWidget: React.FC = () => {
     try {
       const controller = new AbortController();
       abortRef.current = controller;
-      const res = await fetch(`${config.api.baseUrl}/ai/chat`, {
+      const res = await fetch(`${getApiBase()}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -176,7 +164,6 @@ const ChatbotWidget: React.FC = () => {
           } catch {}
         }
       }
-      // Fallback if stream produced no content
       if (!gotToken) {
         setMessages(prev => {
           const copy = [...prev];
@@ -203,105 +190,165 @@ const ChatbotWidget: React.FC = () => {
   };
 
   return (
-    <div className="fixed z-40 right-3 bottom-3">
+    <>
+      {/* Floating Button */}
       {!open && (
-        <div className="relative">
-          {showHint && (
-            <div className="absolute -top-11 right-0 bg-black/80 text-white text-[11px] px-2 py-1 rounded shadow-md select-none">
-              {HINT_MESSAGE}
-              <button
-                onClick={() => {
-                  setShowHint(false);
-                  try { localStorage.setItem(HINT_LOCALSTORAGE_KEY, '1'); } catch {}
-                }}
-                className="ml-2 text-white/70 hover:text-white"
-                aria-label="Dismiss hint"
-              >
-                ×
-              </button>
-              <div className="absolute -bottom-1 right-3 w-2 h-2 bg-black/80 rotate-45"></div>
-            </div>
-          )}
-          <button
-            onClick={() => setOpen(true)}
-            className="h-11 w-11 bg-sky-600 text-white rounded-full shadow-lg flex items-center justify-center hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400"
-            aria-label="Open assistant"
-            title="Assistant"
-          >
-            <Bot className="w-5 h-5" />
-          </button>
-        </div>
-      )}
-      {open && (
-        <div className="w-[92vw] max-w-[17rem] sm:w-[90vw] sm:max-w-sm bg-white dark:bg-gray-900 border border-sky-200 dark:border-green-800 rounded-2xl shadow-2xl overflow-hidden">
-          <div className="px-2.5 py-2 bg-sky-50 dark:bg-gray-800 border-b border-sky-200 dark:border-green-800 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Bot className="w-4 h-4 text-sky-600 dark:text-green-400" />
-            </div>
-            <button onClick={() => setOpen(false)} className="text-slate-500 hover:text-slate-700 dark:text-green-300 dark:hover:text-green-100">
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="px-2.5 py-2 flex flex-wrap gap-1.5 border-b border-sky-200 dark:border-green-800 bg-white dark:bg-gray-900">
-            {quick.map((s, idx) => (
-              <button
-                key={idx}
-                onClick={() => send(s)}
-                className="text-[11px] px-2 py-0.5 rounded-full bg-sky-100 hover:bg-sky-200 text-sky-700 dark:bg-green-900/40 dark:hover:bg-green-900/60 dark:text-green-300"
-              >
-                {s}
-              </button>
-            ))}
+        <div className="fixed z-50 right-6 bottom-6">
+          <div className="relative">
+            {showHint && (
+              <div className="absolute -top-14 right-0 bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs px-3 py-2 rounded-lg shadow-xl animate-pulse">
+                {HINT_MESSAGE}
+                <button
+                  onClick={() => {
+                    setShowHint(false);
+                    try { localStorage.setItem(HINT_LOCALSTORAGE_KEY, '1'); } catch {}
+                  }}
+                  className="ml-2 text-white/80 hover:text-white font-bold"
+                  aria-label="Dismiss hint"
+                >
+                  ×
+                </button>
+                <div className="absolute -bottom-1.5 right-4 w-3 h-3 bg-purple-600 rotate-45"></div>
+              </div>
+            )}
             <button
-              onClick={() => {
-                setMessages(m => m.filter(x => x.role === 'system').concat({ role: 'assistant', content: 'Cleared chat. How can I help you now?' }));
-                setErrorText(null);
-              }}
-              className="text-[11px] px-2 py-0.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-gray-800 dark:hover:bg-gray-700 dark:text-green-300 inline-flex items-center gap-1"
-              title="Clear chat"
+              onClick={() => setOpen(true)}
+              className="relative h-16 w-16 bg-gradient-to-br from-purple-600 via-blue-600 to-cyan-500 text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform duration-300 group"
+              aria-label="Open AI Assistant"
+              title="AI Assistant"
             >
-              <RotateCcw className="w-3 h-3" /> Clear
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-400 to-cyan-400 opacity-0 group-hover:opacity-30 blur-xl transition-opacity duration-300"></div>
+              <Bot className="w-8 h-8 relative z-10" />
+              <Sparkles className="w-4 h-4 absolute top-2 right-2 animate-pulse" />
             </button>
-          </div>
-          <div className="h-44 sm:h-56 overflow-y-auto px-2.5 py-2.5 space-y-2">
-            {messages.filter(m => m.role !== 'system').map((m, i) => (
-              <div key={i} className={m.role === 'user' ? 'text-right' : 'text-left'}>
-                <div className={`inline-block max-w-[85%] px-2 py-1.5 rounded-xl text-[12px] ${m.role === 'user' ? 'bg-sky-600 text-white rounded-br-sm' : 'bg-slate-100 dark:bg-gray-800 text-slate-800 dark:text-green-200 rounded-bl-sm'}`}>
-                  <span style={{ whiteSpace: 'pre-wrap' }}>{keep(m.content)}</span>
-                </div>
-              </div>
-            ))}
-            {errorText && (
-              <div className="text-[11px] text-red-600">
-                {errorText}
-              </div>
-            )}
-          </div>
-          <div className="p-2 border-t border-sky-200 dark:border-green-800 flex items-center gap-2">
-            <input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
-              placeholder="Ask something..."
-              ref={inputRef}
-              className="flex-1 px-2.5 py-1.5 rounded-lg bg-white dark:bg-gray-800 border border-sky-200 dark:border-green-800 text-[12px] focus:outline-none focus:ring-2 focus:ring-sky-500"
-            />
-            {loading ? (
-              <button onClick={stop} className="px-2.5 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-[13px] inline-flex items-center gap-1">
-                <Square className="w-4 h-4" /> Stop
-              </button>
-            ) : (
-              <button onClick={() => send()} className="px-2.5 py-1.5 bg-sky-600 hover:bg-sky-700 text-white rounded-lg text-[13px] inline-flex items-center gap-1" disabled={!input.trim()}>
-                <Send className="w-4 h-4" />
-              </button>
-            )}
-          </div>
-          <div className="px-2.5 py-1.5 bg-slate-50 dark:bg-gray-800 text-[10px] text-slate-500 dark:text-green-300 border-t border-sky-200 dark:border-green-800">
-            Powered by AI. Responses may include code blocks and external knowledge.
           </div>
         </div>
       )}
-    </div>
+
+      {/* Sidebar */}
+      {open && (
+        <>
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300"
+            onClick={() => setOpen(false)}
+          />
+          
+          {/* Sidebar Panel */}
+          <div className="fixed top-0 right-0 h-full w-full sm:w-96 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 z-50 shadow-2xl flex flex-col animate-slide-in">
+            {/* Header */}
+            <div className="relative px-6 py-4 bg-gradient-to-r from-purple-600/20 to-blue-600/20 backdrop-blur-xl border-b border-purple-500/30">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500 to-cyan-500 rounded-full blur-md opacity-60"></div>
+                    <div className="relative h-10 w-10 bg-gradient-to-br from-purple-600 to-cyan-500 rounded-full flex items-center justify-center">
+                      <Bot className="w-6 h-6 text-white" />
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-white font-semibold text-lg">AI Assistant</h2>
+                    <p className="text-purple-300 text-xs flex items-center gap-1">
+                      <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                      Online
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setOpen(false)} 
+                  className="text-purple-300 hover:text-white transition-colors p-2 hover:bg-white/10 rounded-lg"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="px-4 py-3 bg-slate-900/50 border-b border-purple-500/20">
+              <div className="flex flex-wrap gap-2">
+                {quick.map((s, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => send(s)}
+                    className="text-xs px-3 py-1.5 rounded-full bg-gradient-to-r from-purple-600/30 to-blue-600/30 hover:from-purple-600/50 hover:to-blue-600/50 text-purple-200 border border-purple-500/30 transition-all duration-200 hover:scale-105"
+                  >
+                    {s}
+                  </button>
+                ))}
+                <button
+                  onClick={() => {
+                    setMessages(m => m.filter(x => x.role === 'system').concat({ role: 'assistant', content: 'Cleared chat. How can I help you now?' }));
+                    setErrorText(null);
+                  }}
+                  className="text-xs px-3 py-1.5 rounded-full bg-slate-800/50 hover:bg-slate-700/50 text-slate-300 border border-slate-600/30 inline-flex items-center gap-1 transition-all duration-200"
+                  title="Clear chat"
+                >
+                  <RotateCcw className="w-3 h-3" /> Clear
+                </button>
+              </div>
+            </div>
+
+            {/* Messages Area */}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 scrollbar-thin scrollbar-thumb-purple-600 scrollbar-track-transparent">
+              {messages.filter(m => m.role !== 'system').map((m, i) => (
+                <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {m.role === 'assistant' && (
+                    <div className="flex-shrink-0 w-8 h-8 rounded-full bg-gradient-to-br from-purple-600 to-cyan-500 flex items-center justify-center mr-2 mt-1">
+                      <Bot className="w-5 h-5 text-white" />
+                    </div>
+                  )}
+                  <div className={`max-w-[80%] px-4 py-3 rounded-2xl text-sm ${
+                    m.role === 'user' 
+                      ? 'bg-gradient-to-br from-blue-600 to-cyan-500 text-white rounded-br-sm shadow-lg' 
+                      : 'bg-slate-800/80 text-slate-100 rounded-bl-sm border border-purple-500/20'
+                  }`}>
+                    <span style={{ whiteSpace: 'pre-wrap' }}>{keep(m.content)}</span>
+                  </div>
+                </div>
+              ))}
+              {errorText && (
+                <div className="text-xs text-red-400 bg-red-900/20 border border-red-500/30 rounded-lg px-3 py-2">
+                  {errorText}
+                </div>
+              )}
+            </div>
+
+            {/* Input Area */}
+            <div className="p-4 bg-slate-900/50 border-t border-purple-500/30">
+              <div className="flex items-center gap-2 bg-slate-800/50 rounded-xl p-2 border border-purple-500/30">
+                <input
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') send(); }}
+                  placeholder="Ask me anything..."
+                  ref={inputRef}
+                  className="flex-1 px-3 py-2 bg-transparent text-white placeholder-slate-400 text-sm focus:outline-none"
+                />
+                {loading ? (
+                  <button 
+                    onClick={stop} 
+                    className="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-700 hover:to-orange-700 text-white rounded-lg text-sm inline-flex items-center gap-2 transition-all duration-200 shadow-lg"
+                  >
+                    <Square className="w-4 h-4" /> Stop
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => send()} 
+                    className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white rounded-lg text-sm inline-flex items-center gap-2 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg" 
+                    disabled={!input.trim()}
+                  >
+                    <Send className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-purple-300/60 mt-2 text-center">
+                Powered by AI • Responses may include code & external knowledge
+              </p>
+            </div>
+          </div>
+        </>
+      )}
+    </>
   );
 };
 

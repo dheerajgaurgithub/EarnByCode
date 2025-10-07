@@ -1,14 +1,17 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { getMessages, sendMessage, type ChatMessage } from '@/services/chat';
+import { useAuth } from '@/context/AuthContext';
 
 const ChatThreadPage: React.FC = () => {
   const { threadId } = useParams<{ threadId: string }>();
+  const { user } = useAuth();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState('');
   const listRef = useRef<HTMLDivElement | null>(null);
+  const myId = (user as any)?.id || (user as any)?._id || (user as any)?.username || 'me';
 
   const scrollToBottom = () => {
     try { listRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth' }); } catch {}
@@ -24,6 +27,7 @@ const ChatThreadPage: React.FC = () => {
         if (!mounted) return;
         setMessages(Array.isArray(data) ? data : []);
         setTimeout(scrollToBottom, 50);
+        try { window.dispatchEvent(new CustomEvent('chat:updated')); } catch {}
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || 'Failed to load messages');
@@ -40,8 +44,9 @@ const ChatThreadPage: React.FC = () => {
     setText('');
     try {
       const res = await sendMessage(threadId, t);
-      setMessages(prev => [...prev, { id: res.id, text: t, threadId, fromUserId: 'me', createdAt: new Date().toISOString() }]);
+      setMessages(prev => [...prev, { id: res.id, text: t, threadId, fromUserId: String(myId || 'me'), createdAt: new Date().toISOString() }]);
       setTimeout(scrollToBottom, 30);
+      try { window.dispatchEvent(new CustomEvent('chat:updated')); } catch {}
     } catch (e: any) {
       setError(e?.message || 'Failed to send');
     }
@@ -53,12 +58,17 @@ const ChatThreadPage: React.FC = () => {
       {loading && <div>Loading...</div>}
       {error && <div className="text-red-600 mb-2">{error}</div>}
       <div ref={listRef} className="border rounded p-3 h-[60vh] overflow-auto bg-white dark:bg-gray-900">
-        {messages.map((m) => (
-          <div key={m.id} className="mb-2">
-            <div className="text-xs text-gray-500">{new Date(m.createdAt).toLocaleString()}</div>
-            <div className="px-2 py-1 rounded bg-gray-100 dark:bg-gray-800 inline-block mt-1">{m.text}</div>
-          </div>
-        ))}
+        {messages.map((m) => {
+          const isMine = m.fromUserId === myId || m.fromUserId === 'me';
+          return (
+            <div key={m.id} className={`mb-3 flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+              <div className={`max-w-[80%]`}>
+                <div className={`px-3 py-2 rounded-2xl ${isMine ? 'bg-blue-500 text-white rounded-br-sm' : 'bg-gray-200 text-black rounded-bl-sm'} whitespace-pre-wrap`}>{m.text}</div>
+                <div className={`mt-1 text-[10px] ${isMine ? 'text-right text-gray-500' : 'text-left text-gray-500'}`}>{new Date(m.createdAt).toLocaleString()}</div>
+              </div>
+            </div>
+          );
+        })}
       </div>
       <div className="mt-3 flex gap-2">
         <input

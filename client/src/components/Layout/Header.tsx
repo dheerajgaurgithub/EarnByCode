@@ -14,6 +14,7 @@ import {
   X,
   Code2,
   MessageSquare,
+  MessageCircle,
   Users,
   Bell,
   ChevronDown
@@ -21,6 +22,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import svcApi from '@/services/api';
+import { listThreads } from '@/services/chat';
 
 type NavItem = {
   nameKey: string;
@@ -61,6 +63,13 @@ const NAV_ITEMS: NavItem[] = [
     hoverGradient: 'from-indigo-500 to-blue-600'
   },
   {
+    nameKey: 'nav.chat',
+    path: '/chat',
+    icon: MessageCircle,
+    gradient: 'from-sky-500 to-cyan-600',
+    hoverGradient: 'from-sky-500 to-cyan-600'
+  },
+  {
     nameKey: 'nav.leaderboard',
     path: '/leaderboard',
     icon: Users,
@@ -92,7 +101,9 @@ export const Header: React.FC = () => {
   const dropdownRef = useRef<HTMLDivElement | null>(null);
   // OTP dev badge removed
   const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [chatUnread, setChatUnread] = useState<number>(0);
   const pollRef = useRef<number | null>(null);
+  const chatPollRef = useRef<number | null>(null);
 
   const userInfo = user as UserDisplayInfo | null;
   const displayName = (userInfo?.fullName as any) || (userInfo as any)?.name || userInfo?.username || '';
@@ -161,6 +172,29 @@ export const Header: React.FC = () => {
       window.removeEventListener('focus', onFocus);
     window.removeEventListener('notifications:updated', onUpdated as any);
       if (pollRef.current) window.clearInterval(pollRef.current);
+    };
+  }, [userInfo?.username]);
+
+  // Chat unread polling (sum of per-thread unread)
+  useEffect(() => {
+    let canceled = false;
+    const load = async () => {
+      if (!userInfo) { setChatUnread(0); return; }
+      try {
+        const threads = await listThreads();
+        if (canceled) return;
+        const total = Array.isArray(threads) ? threads.reduce((acc, t: any) => acc + (Number(t.unread) || 0), 0) : 0;
+        setChatUnread(total);
+      } catch { if (!canceled) setChatUnread(0); }
+    };
+    load();
+    const onUpdated = () => load();
+    window.addEventListener('chat:updated', onUpdated as any);
+    chatPollRef.current = window.setInterval(load, 30000);
+    return () => {
+      canceled = true;
+      window.removeEventListener('chat:updated', onUpdated as any);
+      if (chatPollRef.current) window.clearInterval(chatPollRef.current);
     };
   }, [userInfo?.username]);
 
@@ -245,6 +279,11 @@ export const Header: React.FC = () => {
                       isItemActive ? 'text-sky-600 dark:text-green-400' : 'text-gray-500 dark:text-green-400 group-hover:text-sky-600 dark:group-hover:text-green-400'
                     )} />
                     <span className="relative z-10 whitespace-nowrap">{t(item.nameKey)}</span>
+                    {item.path === '/chat' && chatUnread > 0 && (
+                      <span className="ml-1 inline-flex items-center justify-center min-w-[14px] h-[14px] px-1 rounded-full bg-blue-600 text-white text-[10px] leading-[14px]">
+                        {chatUnread > 99 ? '99+' : chatUnread}
+                      </span>
+                    )}
 
                     {/* Active indicator */}
                     {isItemActive && (

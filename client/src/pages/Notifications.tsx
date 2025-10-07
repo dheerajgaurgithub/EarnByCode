@@ -34,7 +34,7 @@ const Notifications: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const res = await svcApi.getNotifications({ status: 'unread', limit: 50 });
+      const res = await svcApi.getNotifications({ status: 'all', limit: 100 });
       const list: Note[] = (res as any)?.notifications || [];
       setItems(list);
       // Mark unread as read in background
