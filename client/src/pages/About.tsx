@@ -9,9 +9,9 @@ export const About: React.FC = () => {
           <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-sky-100 dark:bg-green-900/30 mb-3 sm:mb-4 shadow-sm">
             <span className="text-xl sm:text-2xl">💻</span>
           </div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-green-100 mb-2">About AlgoBucks</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 dark:text-green-100 mb-2">About EarnByCode</h1>
           <p className="text-xs sm:text-sm lg:text-base text-gray-600 dark:text-green-300 mt-2 max-w-2xl mx-auto leading-relaxed px-2">
-            AlgoBucks helps you practice coding, compete in contests, and improve with detailed submissions and leaderboards.
+            EarnByCode helps you practice coding, compete in contests, and improve with detailed submissions and leaderboards.
           </p>
         </header>
 

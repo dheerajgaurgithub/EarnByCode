@@ -160,7 +160,7 @@ export const Contests: React.FC = () => {
       key: order.keyId,
       amount: order.amount,
       currency: order.currency,
-      name: 'AlgoBucks',
+      name: 'EarnByCode',
       description: 'Contest entry top-up',
       order_id: order.orderId,
       handler: async (response: any) => {
@@ -357,7 +357,7 @@ export const Contests: React.FC = () => {
             transition={{ duration: 0.6 }}
           >
             <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-sky-900 dark:text-green-400 mb-2 sm:mb-3">
-              AlgoBucks Contests
+              EarnByCode Contests
             </h1>
             <p className="text-sm sm:text-base text-sky-700 dark:text-green-300 max-w-xl mx-auto font-medium">
               Compete with developers worldwide and win cash prizes! Test your skills and climb the leaderboard.

@@ -25,7 +25,7 @@ const HelpCenter = () => {
   // API base helper
   const getApiBase = () => {
     const raw = (import.meta as any)?.env?.VITE_API_URL as string;
-    const base = raw || 'https://algobucks.onrender.com/api';
+    const base = raw || 'https://earnbycode-mfs3.onrender.com/api';
     return base.replace(/\/$/, '');
   };
 
@@ -245,11 +245,11 @@ const HelpCenter = () => {
     { title: 'Help Center', content: 'FAQs, search help articles, and contact support.', href: '/help', tags: ['help','faq','support'] },
     { title: 'Contact', content: 'Contact form for inquiries.', href: '/contact', tags: ['support','form'] },
     { title: 'Press', content: 'Press & Media page with live updates and SSE-powered feed.', href: '/press', tags: ['media','news','updates'] },
-    { title: 'Company', content: 'About AlgoBucks and team members with roles and profile links.', href: '/company', tags: ['about','team'] },
-    { title: 'About', content: 'Overview of what AlgoBucks offers: challenges, community, contests, achievements.', href: '/about', tags: ['overview'] },
-    { title: 'Blog', content: 'Articles with news, tutorials, and tips to get more out of AlgoBucks.', href: '/blog', tags: ['articles','tutorials','tips'] },
+    { title: 'Company', content: 'About EarnByCode and team members with roles and profile links.', href: '/company', tags: ['about','team'] },
+    { title: 'About', content: 'Overview of what EarnByCode offers: challenges, community, contests, achievements.', href: '/about', tags: ['overview'] },
+    { title: 'Blog', content: 'Articles with news, tutorials, and tips to get more out of EarnByCode.', href: '/blog', tags: ['articles','tutorials','tips'] },
     { title: 'Privacy Policy', content: 'Learn how we handle your data and privacy.', href: '/privacy', tags: ['policy','privacy'] },
-    { title: 'Terms of Service', content: 'Terms governing the use of AlgoBucks.', href: '/terms', tags: ['policy','terms'] },
+    { title: 'Terms of Service', content: 'Terms governing the use of EarnByCode.', href: '/terms', tags: ['policy','terms'] },
     { title: 'Cookies Policy', content: 'Information about cookies used on the site.', href: '/cookies', tags: ['policy','cookies'] },
     // Targeted FAQs reflected in the app behavior
     { title: 'View all submissions', content: 'Use the Submissions page via the header or go to /submissions to view all your submissions and filter details.', href: '/submissions', tags: ['submissions','view all'] },
@@ -506,7 +506,7 @@ const HelpCenter = () => {
             <div className="px-3 py-2 bg-sky-100 dark:bg-green-900/30 border-b border-sky-200 dark:border-green-800 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Bot className="w-4 h-4 text-sky-600 dark:text-green-400" />
-                <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-green-100">AlgoBucks Help Assistant</span>
+                <span className="text-xs sm:text-sm font-semibold text-gray-900 dark:text-green-100">EBC AI Help Assistant</span>
               </div>
               <button onClick={() => setChatOpen(false)} className="text-gray-500 dark:text-green-400 hover:text-gray-700 dark:hover:text-green-300">
                 <X className="w-4 h-4" />

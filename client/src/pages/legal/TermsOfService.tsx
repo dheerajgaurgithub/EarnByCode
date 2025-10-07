@@ -5,7 +5,7 @@ const TermsOfService = () => {
   const sections = [
     {
       title: '1. Acceptance of Terms',
-      content: 'By accessing or using EaenByCode, you agree to be bound by these Terms of Service and our Privacy Policy.',
+      content: 'By accessing or using EarnByCode, you agree to be bound by these Terms of Service and our Privacy Policy.',
     },
     {
       title: '2. Account Registration',
@@ -17,7 +17,7 @@ const TermsOfService = () => {
     },
     {
       title: '4. Intellectual Property',
-      content: 'All content and materials available on AlgoBucks, including but not limited to text, graphics, and code, are the property of AlgoBucks and are protected by intellectual property laws.',
+      content: 'All content and materials available on EarnByCode, including but not limited to text, graphics, and code, are the property of EarnByCode and are protected by intellectual property laws.',
     },
     {
       title: '5. Termination',

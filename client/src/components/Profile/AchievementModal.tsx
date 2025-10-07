@@ -79,9 +79,9 @@ export function AchievementModal({ open, onClose, achievement }: AchievementModa
 
   const onShare = async () => {
     try {
-      const shareText = `I just unlocked: ${achievement.title} on AlgoBucks! 🎉`;
+      const shareText = `I just unlocked: ${achievement.title} on EarnByCode! 🎉`;
       if ((navigator as any).share) {
-        try { await (navigator as any).share({ title: 'AlgoBucks Achievement', text: shareText, url: window.location.href }); return; } catch {}
+        try { await (navigator as any).share({ title: 'EarnByCode Achievement', text: shareText, url: window.location.href }); return; } catch {}
       }
       await navigator.clipboard.writeText(shareText);
       setCopied(true);
@@ -109,7 +109,7 @@ export function AchievementModal({ open, onClose, achievement }: AchievementModa
           </div>
           <div className="shrink-0 flex items-center gap-2">
             <a
-              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('I just unlocked: ' + achievement.title + ' on AlgoBucks! 🎉')}&url=${encodeURIComponent(window.location.href)}&via=AlgoBucks`}
+              href={`https://twitter.com/intent/tweet?text=${encodeURIComponent('I just unlocked: ' + achievement.title + ' on EarnByCode! 🎉')}&url=${encodeURIComponent(window.location.href)}&via=EarnByCode`}
               target="_blank"
               rel="noopener noreferrer"
               className="px-3 py-1.5 rounded-lg bg-black text-white hover:bg-gray-900 text-sm"

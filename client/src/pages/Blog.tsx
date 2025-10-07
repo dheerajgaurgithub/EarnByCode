@@ -6,8 +6,8 @@ const Blog = () => {
   const fallbackPosts = [
     {
       id: 1,
-      title: 'How to Earn on AlgoBucks: A Complete Guide',
-      excerpt: 'AlgoBucks is for coders. Learn how to earn through coding contests, problem bounties, streak rewards, and redeeming CodeCoins.',
+      title: 'How to Earn on EarnByCode: A Complete Guide',
+      excerpt: 'EarnByCode is for coders. Learn how to earn through coding contests, problem bounties, streak rewards, and redeeming CodeCoins.',
       author: 'Jane Smith',
       date: 'September 5, 2025',
       readTime: '6 min read',
@@ -47,7 +47,7 @@ const Blog = () => {
     },
     {
       id: 5,
-      title: 'Payments & KYC: How Payouts Work on AlgoBucks',
+      title: 'Payments & KYC: How Payouts Work on EarnByCode',
       excerpt: 'Understand KYC, bank/UPI setup with OTP verification, and payout timelines so your earnings reach you safely.',
       author: 'Michael Brown',
       date: 'August 25, 2025',

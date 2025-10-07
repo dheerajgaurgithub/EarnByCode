@@ -43,7 +43,7 @@ export const RazorpayDeposit: React.FC<{ onSuccess?: () => void } > = ({ onSucce
         key: order.keyId,
         amount: order.amount,
         currency: order.currency,
-        name: 'AlgoBucks',
+        name: 'EarnByCode',
         description: 'Wallet Top-up',
         order_id: order.orderId,
         handler: async function (response: any) {

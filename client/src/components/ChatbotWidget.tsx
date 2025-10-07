@@ -25,7 +25,7 @@ const ChatbotWidget: React.FC = () => {
   const [input, setInput] = React.useState('');
   const [messages, setMessages] = React.useState<ChatMessage[]>([
     { role: 'system', content: 'You are a helpful, safe AI assistant. Answer the user comprehensively. When appropriate, include examples and code blocks fenced with proper language hints. Be concise when asked; be detailed when needed.' },
-    { role: 'assistant', content: 'Hi! I can help with AlgoBucks and general questions. Ask me anything.' },
+    { role: 'assistant', content: 'Hi! I can help with EarnByCode and general questions. Ask me anything.' },
   ]);
   const [loading, setLoading] = React.useState(false);
   const abortRef = React.useRef<AbortController | null>(null);
@@ -247,7 +247,7 @@ const ChatbotWidget: React.FC = () => {
                     </div>
                   </div>
                   <div>
-                    <h2 className="text-white font-semibold text-base">AI Assistant</h2>
+                    <h2 className="text-white font-semibold text-base">EBC AI Assistant</h2>
                     <p className="text-purple-300 text-[11px] flex items-center gap-1">
                       <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                       Online
@@ -342,7 +342,7 @@ const ChatbotWidget: React.FC = () => {
                 )}
               </div>
               <p className="text-[11px] text-purple-300/60 mt-2 text-center">
-                Powered by AI • Responses may include code & external knowledge
+                Powered by EBC AI • Responses may include code & external knowledge
               </p>
             </div>
           </div>
