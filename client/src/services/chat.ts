@@ -93,3 +93,9 @@ export async function retryRequest(requestId: string): Promise<{ success: boolea
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return await res.json();
 }
+
+export async function markThreadRead(threadId: string): Promise<{ success: boolean }>{
+  const res = await fetch(`${api()}/chat/threads/${threadId}/read`, { method: 'POST', credentials: 'include', headers: authHeaders() } as RequestInit);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return await res.json();
+}

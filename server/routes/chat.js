@@ -206,13 +206,22 @@ router.get('/threads', authenticate, async (req, res) => {
         .lean();
       const lastSeen = (ou?.walletLastActive || ou?.updatedAt || null);
       const isOnline = lastSeen ? (Date.now() - new Date(lastSeen).getTime() < ONLINE_THRESHOLD_MS) : false;
+      // unread count: messages newer than my lastReadAt
+      let unread = 0;
+      try {
+        const lastRead = t.lastReadAt instanceof Map ? t.lastReadAt.get(String(me)) : (t.lastReadAt ? t.lastReadAt.get(String(me)) : null);
+        const q = { threadId: t._id };
+        if (lastRead) Object.assign(q, { createdAt: { $gt: new Date(lastRead) } });
+        unread = await ChatMessage.countDocuments(q);
+      } catch {}
+      const last = lastMap.get(String(t._id));
       return {
         threadId: String(t._id),
         otherUser: ou ? { id: String(ou._id), username: ou.username, fullName: ou.fullName, avatarUrl: ou.avatarUrl } : { id: other },
         otherUserLastSeen: lastSeen || null,
         otherUserIsOnline: isOnline,
-        lastMessage: lastMap.get(String(t._id)) ? { id: String(lastMap.get(String(t._id))._id), text: lastMap.get(String(t._id)).text, createdAt: lastMap.get(String(t._id)).createdAt } : undefined,
-        unread: 0,
+        lastMessage: last ? { id: String(last._id), text: last.text, createdAt: last.createdAt } : undefined,
+        unread,
       };
     }));
 
@@ -283,6 +292,16 @@ router.post('/threads/:threadId/messages', authenticate, async (req, res) => {
         io.to(rooms).emit('chat:message', payload);
         // lightweight thread update for lists
         io.to(rooms).emit('chat:thread:update', { threadId: String(thread._id), lastMessage: { id: payload.id, text: payload.text, createdAt: payload.createdAt } });
+        // unread for the recipient
+        const others = thread.participants.map(String).filter(id => id !== String(me));
+        const recipient = others[0];
+        try {
+          const lastRead = thread.lastReadAt?.get(String(recipient));
+          const q = { threadId: thread._id };
+          if (lastRead) Object.assign(q, { createdAt: { $gt: new Date(lastRead) } });
+          const unread = await ChatMessage.countDocuments(q);
+          io.to(`user:${recipient}`).emit('chat:unread', { threadId: String(thread._id), unread });
+        } catch {}
       }
     } catch (e) { console.warn('socket emit failed', e?.message || e); }
 
@@ -365,8 +384,18 @@ router.post('/threads/:threadId/read', authenticate, async (req, res) => {
     if (!thread) return res.status(404).json({ message: 'Thread not found' });
     if (!thread.participants.map(String).includes(String(me))) return res.status(403).json({ message: 'Not a participant' });
     if (!thread.lastReadAt) thread.lastReadAt = new Map();
-    thread.lastReadAt.set(String(me), new Date());
+    const readAt = new Date();
+    thread.lastReadAt.set(String(me), readAt);
     await thread.save();
+    // Emit seen + unread reset to both
+    try {
+      const io = req.app.get('io');
+      if (io) {
+        const rooms = thread.participants.map(u => `user:${String(u)}`);
+        io.to(rooms).emit('chat:seen', { threadId: String(thread._id), byUserId: String(me), at: readAt.toISOString() });
+        io.to(rooms).emit('chat:unread', { threadId: String(thread._id), unread: 0 });
+      }
+    } catch {}
     return res.status(200).json({ success: true });
   } catch (e) {
     console.error('thread read error', e);

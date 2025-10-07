@@ -112,7 +112,7 @@ const ChatListPage: React.FC = () => {
                   )}
                 </div>
                 {typeof t.unread === 'number' && t.unread > 0 && (
-                  <span className="text-xs bg-blue-600 text-white rounded-full px-2 py-0.5">{t.unread}</span>
+                  <span className="text-xs bg-green-700 text-white rounded-full px-2 py-0.5">{t.unread}</span>
                 )}
               </div>
             </Link>

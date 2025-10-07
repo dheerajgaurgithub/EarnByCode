@@ -8,6 +8,9 @@ export type ChatThreadEntity = {
   unread?: number;
   otherUserIsOnline?: boolean;
   otherUserLastSeen?: string | null;
+  // seen status (last time any participant marked as read)
+  seenAt?: string | null;
+  seenByUserId?: string | null;
 };
 
 const threadsAdapter = createEntityAdapter<ChatThreadEntity>({
@@ -43,6 +46,16 @@ const chatThreadsSlice = createSlice({
           t.otherUserLastSeen = lastSeen;
         }
       }
+    },
+    setUnread(state, action: PayloadAction<{ threadId: string; unread: number }>) {
+      const { threadId, unread } = action.payload;
+      const t = state.entities[threadId] || state.entities[(state.ids as string[]).find(id => (state.entities[id] as any)?.threadId === threadId)!];
+      if (t) t.unread = unread;
+    },
+    setSeen(state, action: PayloadAction<{ threadId: string; byUserId: string; at: string }>) {
+      const { threadId, byUserId, at } = action.payload;
+      const t = state.entities[threadId] || state.entities[(state.ids as string[]).find(id => (state.entities[id] as any)?.threadId === threadId)!];
+      if (t) { t.seenAt = at; t.seenByUserId = byUserId; }
     }
   }
 });

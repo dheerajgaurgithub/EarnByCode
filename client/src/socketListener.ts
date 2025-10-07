@@ -28,4 +28,10 @@ export function startSocketListeners(store: Store) {
   s.on('presence:update', onPresence);
   s.on('chat:message', onMessage);
   s.on('chat:thread:update', onThreadUpdate);
+  s.on('chat:unread', (u: { threadId: string; unread: number }) => {
+    store.dispatch(chatThreadsActions.setUnread(u));
+  });
+  s.on('chat:seen', (p: { threadId: string; byUserId: string; at: string }) => {
+    store.dispatch(chatThreadsActions.setSeen(p));
+  });
 }

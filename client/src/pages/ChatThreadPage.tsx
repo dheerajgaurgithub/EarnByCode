@@ -1,11 +1,12 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { getMessages, sendMessage, listThreads, type ChatThread } from '@/services/chat';
+import { getMessages, sendMessage, listThreads, type ChatThread, markThreadRead } from '@/services/chat';
 import ChatListPage from './ChatListPage';
 import { useAuth } from '@/context/AuthContext';
 import { getSocket, watchPresence, startPresence } from '@/lib/socket';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { messagesActions, messagesSelectors } from '@/store/messagesSlice';
+import { chatThreadsSelectors } from '@/store/chatThreadsSlice';
 
 const ChatThreadPage: React.FC = () => {
   const { threadId } = useParams<{ threadId: string }>();
@@ -13,6 +14,7 @@ const ChatThreadPage: React.FC = () => {
   const dispatch = useAppDispatch();
   const allMsgs = useAppSelector(messagesSelectors.selectAll);
   const messages = (threadId ? allMsgs.filter(m => m.threadId === threadId) : []);
+  const thread = useAppSelector(state => threadId ? chatThreadsSelectors.selectById(state as any, threadId) : undefined);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [text, setText] = useState('');
@@ -109,6 +111,19 @@ const ChatThreadPage: React.FC = () => {
     setTimeout(scrollToBottom, 50);
   }, [messages.length]);
 
+  // Mark thread as read after initial load and when tab regains focus
+  useEffect(() => {
+    if (!threadId) return;
+    const mark = async () => {
+      try { await markThreadRead(threadId); } catch {}
+    };
+    // after messages present, mark as read
+    if (messages.length) mark();
+    const onFocus = () => { if (messages.length) mark(); };
+    window.addEventListener('focus', onFocus);
+    return () => { window.removeEventListener('focus', onFocus); };
+  }, [threadId, messages.length]);
+
   const onSend = async () => {
     if (!threadId || !text.trim()) return;
     const t = text.trim();
@@ -169,8 +184,10 @@ const ChatThreadPage: React.FC = () => {
           {loading && <div className="p-3">Loading...</div>}
           {error && <div className="text-red-600 p-3 mb-2">{error}</div>}
           <div ref={listRef} className="border rounded-b p-3 h-[60vh] overflow-auto bg-white dark:bg-gray-900">
-            {messages.map((m) => {
+            {messages.map((m, idx) => {
               const isMine = m.fromUserId === myId || m.fromUserId === 'me';
+              const isLastInThread = idx === messages.length - 1;
+              const seen = !!(isMine && isLastInThread && thread?.seenByUserId === String(peer?.id) && thread?.seenAt && (new Date(thread.seenAt).getTime() >= new Date(m.createdAt).getTime()));
               const myAvatar = (user as any)?.avatarUrl || (user as any)?.photoURL || '';
               const otherAvatar = peer?.avatarUrl || '';
               const initial = (isMine ? ((user as any)?.username || 'U') : (peer?.username || 'U')).charAt(0).toUpperCase();
@@ -187,7 +204,9 @@ const ChatThreadPage: React.FC = () => {
                   )}
                   <div className={`max-w-[78%]`}>
                     <div className={`px-3 py-2 rounded-2xl ${isMine ? 'bg-blue-500 text-white rounded-br-sm' : 'bg-gray-200 text-black rounded-bl-sm'} whitespace-pre-wrap`}>{m.text}</div>
-                    <div className={`mt-1 text-[10px] ${isMine ? 'text-right text-gray-500' : 'text-left text-gray-500'}`}>{new Date(m.createdAt).toLocaleString()}</div>
+                    <div className={`mt-1 text-[10px] ${isMine ? 'text-right text-gray-500' : 'text-left text-gray-500'}`}>
+                      {new Date(m.createdAt).toLocaleString()} {seen ? <span className="ml-2 text-green-600 font-medium">Seen</span> : null}
+                    </div>
                   </div>
                   {isMine && (
                     <div className="ml-2">
