@@ -211,10 +211,22 @@ router.get('/threads', authenticate, async (req, res) => {
       try {
         const lastRead = t.lastReadAt instanceof Map ? t.lastReadAt.get(String(me)) : (t.lastReadAt ? t.lastReadAt.get(String(me)) : null);
         const q = { threadId: t._id };
-        if (lastRead) Object.assign(q, { createdAt: { $gt: new Date(lastRead) } });
+        // apply disappearing cutoff if enabled
+        const hours = t.settings?.disappearingAfterHours ? Number(t.settings.disappearingAfterHours) : 0;
+        const cutoff = (hours && hours > 0) ? new Date(Date.now() - hours * 3600 * 1000) : null;
+        const gtDate = [lastRead, cutoff].filter(Boolean).map(d => new Date(d)).sort((a,b)=>b.getTime()-a.getTime())[0];
+        if (gtDate) Object.assign(q, { createdAt: { $gt: gtDate } });
         unread = await ChatMessage.countDocuments(q);
       } catch {}
-      const last = lastMap.get(String(t._id));
+      let last = lastMap.get(String(t._id));
+      // hide last message if it expired by disappearing policy
+      try {
+        const hours = t.settings?.disappearingAfterHours ? Number(t.settings.disappearingAfterHours) : 0;
+        if (hours && hours > 0 && last) {
+          const cutoff = new Date(Date.now() - hours * 3600 * 1000);
+          if (new Date(last.createdAt).getTime() <= cutoff.getTime()) last = null;
+        }
+      } catch {}
       let blockedByMe = false;
       try {
         const otherId = other ? String(other) : '';
@@ -252,6 +264,14 @@ router.get('/threads/:threadId/messages', authenticate, async (req, res) => {
     const limit = Math.min(parseInt(String(req.query.limit || '50'), 10) || 50, 200);
 
     const q = { threadId: thread._id };
+    // apply disappearing cutoff for this thread
+    const hours = thread.settings?.disappearingAfterHours ? Number(thread.settings.disappearingAfterHours) : 0;
+    const cutoff = (hours && hours > 0) ? new Date(Date.now() - hours * 3600 * 1000) : null;
+    if (cutoff) {
+      q.createdAt = { ...(q.createdAt || {}), $gt: cutoff };
+      // purge older messages permanently
+      try { await ChatMessage.deleteMany({ threadId: thread._id, createdAt: { $lte: cutoff } }); } catch {}
+    }
     if (cursor) Object.assign(q, { createdAt: { $lt: cursor } });
 
     const list = await ChatMessage.find(q).sort({ createdAt: 1 }).limit(limit).lean();

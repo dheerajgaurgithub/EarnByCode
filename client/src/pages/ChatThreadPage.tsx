@@ -159,21 +159,21 @@ const ChatThreadPage: React.FC = () => {
               title="Chat settings"
             >
               <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-semibold cursor-pointer">
-                {peer?.avatarUrl ? (
+                {!isBlocked && peer?.avatarUrl ? (
                   <img src={peer.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                 ) : (
-                  (peer?.username || 'U').charAt(0).toUpperCase()
+                  'B'
                 )}
               </div>
               <div className="text-left cursor-pointer">
-                <div className="text-sm font-semibold">{peer?.fullName || peer?.username || 'Chat'}</div>
+                <div className="text-sm font-semibold">{isBlocked ? 'Blocked user' : (peer?.fullName || peer?.username || 'Chat')}</div>
                 <div className="text-[11px] text-gray-500 flex items-center gap-1">
                   <span className={`inline-block w-2 h-2 rounded-full ${peerOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
-                  {peerOnline ? 'Online' : (peerLastSeen ? `Last seen ${formatLastSeen(peerLastSeen)}` : 'Offline')}
+                  {isBlocked ? 'Blocked' : (peerOnline ? 'Online' : (peerLastSeen ? `Last seen ${formatLastSeen(peerLastSeen)}` : 'Offline'))}
                 </div>
               </div>
             </button>
-            {peer?.username && (
+            {peer?.username && !isBlocked && (
               <a
                 href={`/u/${peer.username}`}
                 className="text-xs px-2 py-1 border rounded hover:bg-gray-50 dark:hover:bg-gray-800"
@@ -245,16 +245,19 @@ const ChatThreadPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden flex items-center justify-center text-sm font-semibold">
-                    {peer?.avatarUrl ? (
+                    {!isBlocked && peer?.avatarUrl ? (
                       <img src={peer.avatarUrl} alt="avatar" className="w-full h-full object-cover" />
                     ) : (
-                      (peer?.username || 'U').charAt(0).toUpperCase()
+                      'B'
                     )}
                   </div>
                   <div>
-                    <div className="font-medium">{peer?.username || 'User'}</div>
-                    {peer?.username && (
+                    <div className="font-medium">{isBlocked ? 'Blocked user' : (peer?.username || 'User')}</div>
+                    {!isBlocked && peer?.username && (
                       <a href={`/u/${peer.username}`} className="text-xs text-blue-600 underline">View public profile</a>
+                    )}
+                    {isBlocked && (
+                      <div className="text-[11px] text-gray-500">Profile, avatar and details are hidden because you blocked this user.</div>
                     )}
                   </div>
                 </div>

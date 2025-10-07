@@ -1,5 +1,6 @@
 import express from 'express';
 import User from '../models/User.js';
+import ChatThread from '../models/ChatThread.js';
 import { authenticate } from '../middleware/auth.js';
 import { sendOTPEmail, sendEmailChangeSuccessEmail, sendAccountDeletedEmail, sendAccountDeletionScheduledEmail } from '../utils/email.js';
 import config from '../config/config.js';
@@ -474,6 +475,18 @@ router.get('/me/leaderboard-rank', authenticate, async (req, res) => {
   }
 });
 
+// Helper: check if target has blocked requester in any chat thread
+async function isBlockedByTarget(targetUserId, requesterUserId) {
+  try {
+    if (!targetUserId || !requesterUserId) return false;
+    const thread = await ChatThread.findOne({ participants: { $all: [targetUserId, requesterUserId] } }).select('blocks').lean();
+    if (!thread || !thread.blocks) return false;
+    // blocks is a Map or plain object: key is the other user's id who is blocked
+    const map = thread.blocks instanceof Map ? thread.blocks : new Map(Object.entries(thread.blocks));
+    return Boolean(map.get(String(requesterUserId)));
+  } catch { return false; }
+}
+
 // Get user profile by username (public)
 router.get('/username/:username', optionalAuth, async (req, res) => {
   try {
@@ -488,6 +501,12 @@ router.get('/username/:username', optionalAuth, async (req, res) => {
 
     const isOwner = req.user && String(req.user._id || req.user.id) === String(target._id);
     const isAdmin = req.user && req.user.isAdmin;
+
+    // If target has blocked requester, deny profile access
+    if (!isOwner && !isAdmin && req.user) {
+      const blocked = await isBlockedByTarget(String(target._id), String(req.user._id || req.user.id));
+      if (blocked) return res.status(403).json({ message: 'You are blocked by this user' });
+    }
     const rawPrivacy = (target.preferences && target.preferences.privacy) || {};
     const privacy = {
       profileVisibility: rawPrivacy.profileVisibility || 'public',
