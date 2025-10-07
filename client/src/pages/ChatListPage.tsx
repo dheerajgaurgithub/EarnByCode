@@ -2,12 +2,14 @@ import React, { useEffect, useState } from 'react';
 import { listThreads, type ChatThread } from '@/services/chat';
 import { Link, useLocation } from 'react-router-dom';
 import { getSocket, watchPresence, startPresence } from '@/lib/socket';
+import { useAuth } from '@/context/AuthContext';
 
 const ChatListPage: React.FC = () => {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const location = useLocation();
+  const { user } = useAuth();
 
   const formatLastSeen = (iso?: string | null) => {
     if (!iso) return 'Offline';
@@ -35,7 +37,8 @@ const ChatListPage: React.FC = () => {
         setThreads(arr);
         // realtime presence
         try {
-          startPresence();
+          const myId = (user as any)?.id || (user as any)?._id || undefined;
+          startPresence(myId);
           const ids = arr.map(t => (t.otherUser?.id ? String(t.otherUser.id) : '')).filter(Boolean);
           if (ids.length) watchPresence(ids);
           const s = getSocket();
@@ -43,6 +46,7 @@ const ChatListPage: React.FC = () => {
             setThreads(prev => prev.map(t => (String(t.otherUser?.id) === String(p.userId) ? { ...t, otherUserIsOnline: p.online, otherUserLastSeen: p.lastSeen } : t)));
           };
           s.on('presence:update', onPresence);
+          return () => { try { s.off('presence:update', onPresence); } catch {} };
         } catch {}
       } catch (e: any) {
         if (!mounted) return;
