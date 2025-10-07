@@ -278,7 +278,7 @@ export const Header: React.FC = () => {
                       'h-3 w-3 mr-1 sm:mr-1.5 transition-colors duration-300',
                       isItemActive ? 'text-sky-600 dark:text-green-400' : 'text-gray-500 dark:text-green-400 group-hover:text-sky-600 dark:group-hover:text-green-400'
                     )} />
-                    <span className="relative z-10 whitespace-nowrap">{t(item.nameKey)}</span>
+                    <span className="relative z-10 whitespace-nowrap">{item.path === '/chat' ? 'Chats' : t(item.nameKey)}</span>
                     {item.path === '/chat' && chatUnread > 0 && (
                       <span className="ml-1 inline-flex items-center justify-center min-w-[14px] h-[14px] px-1 rounded-full bg-blue-600 text-white text-[10px] leading-[14px]">
                         {chatUnread > 99 ? '99+' : chatUnread}

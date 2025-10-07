@@ -16,6 +16,9 @@ import CodeEditor from '../components/common/CodeEditor';
 
 type ContestPhase = 'guidelines' | 'problem' | 'problems' | 'feedback' | 'completed';
 
+// Active indicator threshold for leaderboard (default: 60 seconds)
+const ACTIVE_THRESHOLD_MS = 60000;
+
 interface ContestWithProblems extends Omit<Contest, 'problems'> {
   problems: Problem[];  // Override with Problem[] instead of string[]
   rules: string[];  
@@ -714,6 +717,24 @@ const ContestPage = () => {
     }
   }, [currentProblem, userCode, language, id, currentProblemIndex, problems, getProblemId, isRunning, isRunningAll, isSubmitting]);
 
+  // Submit contest (finalize). Backend endpoint is optional; we optimistically move to feedback.
+  const handleSubmitContest = useCallback(async () => {
+    if (!id) return;
+    if (isRunning || isRunningAll || isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      try {
+        await apiService.post(`/contests/${id}/complete`, { at: Date.now() });
+      } catch {}
+      toast.success('Contest submitted successfully!');
+      setPhase('feedback');
+    } catch (e: any) {
+      toast.error(String(e?.message || 'Failed to submit contest'));
+    } finally {
+      setIsSubmitting(false);
+    }
+  }, [id, isRunning, isRunningAll, isSubmitting]);
+
   // Auto-submit/complete on unload or tab close
   useEffect(() => {
     if (!id) return;
@@ -931,12 +952,37 @@ const ContestPage = () => {
         <div className="container mx-auto px-4 py-4 max-w-7xl">
           {/* Contest Header */}
           <div className="mb-6 bg-white rounded-lg shadow-md p-4 border border-blue-200 sticky top-2 z-30">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div className="mb-3 sm:mb-0">
                 <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-800">{contest.title}</h1>
                 <p className="text-sm sm:text-base text-gray-600 mt-1">
                   Problem {currentProblemIndex + 1} of {problems.length}
                 </p>
+              </div>
+              <div className="flex items-center gap-2 sm:self-start">
+                <Button
+                  onClick={handleSubmitProblem}
+                  disabled={isRunning || isRunningAll || isSubmitting}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 h-auto"
+                >
+                  {isSubmitting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>
+                  ) : (
+                    <>Submit Solution</>
+                  )}
+                </Button>
+                <Button
+                  onClick={handleSubmitContest}
+                  variant="secondary"
+                  disabled={isSubmitting}
+                  className="px-3 py-2 h-auto"
+                >
+                  {isSubmitting ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finishing...</>
+                  ) : (
+                    <>Submit Contest</>
+                  )}
+                </Button>
               </div>
             </div>
             {/* New running clock bar */}
@@ -954,8 +1000,8 @@ const ContestPage = () => {
             </div>
           </div>
           
-          {/* Main layout: single column center content */}
-          <div className="grid grid-cols-1 gap-4 items-start">
+          {/* Main layout: left content + right sidebar leaderboard */}
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 items-start">
 
             {/* Center: Problems Tabs and content */}
             <Card className="shadow-lg border-blue-200">
@@ -1222,38 +1268,40 @@ const ContestPage = () => {
               </Tabs>
             </Card>
 
-          </div>
-
-          {/* Bottom panel: Live Leaderboard only */}
-          <div className="mt-4">
-            <div className="bg-white rounded-lg border p-3">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold">Live Leaderboard</h3>
-                {liveLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+            {/* Right sidebar: Live Leaderboard (sticky) */}
+            <aside className="hidden lg:block">
+              <div className="sticky top-24">
+                <div className="bg-white rounded-lg border p-3 shadow-sm">
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="font-semibold">Live Leaderboard</h3>
+                    {liveLoading && <Loader2 className="h-4 w-4 animate-spin text-blue-500" />}
+                  </div>
+                  <ol className="space-y-1 text-sm">
+                    {leaderboard.length === 0 ? (
+                      <li className="text-gray-500">No entries yet</li>
+                    ) : (
+                      leaderboard.slice(0, 20).map((e, i) => {
+                        let active = false;
+                        try {
+                          const ts = e.time ? new Date(e.time as any).getTime() : 0;
+                          active = ts > 0 && Date.now() - ts < ACTIVE_THRESHOLD_MS;
+                        } catch {}
+                        return (
+                          <li key={i} className="flex items-center justify-between">
+                            <div className="flex items-center min-w-0">
+                              <span className={`mr-2 inline-block w-2 h-2 rounded-full ${active ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} aria-hidden="true" />
+                              <span className="truncate mr-2">{i + 1}. {e.username}</span>
+                            </div>
+                            <span className="font-semibold">{e.score}</span>
+                          </li>
+                        );
+                      })
+                    )}
+                  </ol>
+                </div>
               </div>
-              <ol className="space-y-1 text-sm">
-                {leaderboard.length === 0 ? (
-                  <li className="text-gray-500">No entries yet</li>
-                ) : (
-                  leaderboard.slice(0, 20).map((e, i) => {
-                    let active = false;
-                    try {
-                      const ts = e.time ? new Date(e.time as any).getTime() : 0;
-                      active = ts > 0 && Date.now() - ts < 120000; // active within last 2 minutes
-                    } catch {}
-                    return (
-                      <li key={i} className="flex items-center justify-between">
-                        <div className="flex items-center min-w-0">
-                          <span className={`mr-2 inline-block w-2 h-2 rounded-full ${active ? 'bg-green-500 animate-pulse' : 'bg-gray-400'}`} aria-hidden="true" />
-                          <span className="truncate mr-2">{i + 1}. {e.username}</span>
-                        </div>
-                        <span className="font-semibold">{e.score}</span>
-                      </li>
-                    );
-                  })
-                )}
-              </ol>
-            </div>
+            </aside>
+
           </div>
         </div>
       </div>

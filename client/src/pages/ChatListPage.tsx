@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { listThreads, type ChatThread } from '@/services/chat';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 
 const ChatListPage: React.FC = () => {
   const [threads, setThreads] = useState<ChatThread[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const location = useLocation();
 
   useEffect(() => {
     let mounted = true;
@@ -26,25 +27,32 @@ const ChatListPage: React.FC = () => {
   }, []);
 
   return (
-    <div className="max-w-3xl mx-auto p-4">
-      <h1 className="text-xl font-bold mb-4">Chats</h1>
-      {loading && <div>Loading...</div>}
-      {error && <div className="text-red-600">{error}</div>}
-      {!loading && !error && (
-        <div className="space-y-2">
-          {threads.length === 0 && (
-            <div className="text-gray-500">No chats yet.</div>
-          )}
-          {threads.map((t) => (
-            <Link key={t.threadId} to={`/chat/${t.threadId}`} className="block p-3 border rounded hover:bg-gray-50 dark:hover:bg-gray-800">
+    <aside className="w-full sm:w-72 md:w-80 lg:w-80 border-r bg-white dark:bg-gray-900">
+      <div className="px-3 py-3 border-b">
+        <h2 className="text-lg font-semibold">Chats</h2>
+      </div>
+      <div className="p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-8rem)]">
+        {loading && <div className="text-sm text-gray-500 px-2 py-1">Loading...</div>}
+        {error && <div className="text-sm text-red-600 px-2 py-1">{error}</div>}
+        {!loading && !error && threads.length === 0 && (
+          <div className="text-sm text-gray-500 px-2 py-1">No chats yet.</div>
+        )}
+        {!loading && !error && threads.map((t) => {
+          const active = location.pathname.endsWith(`/${t.threadId}`);
+          return (
+            <Link
+              key={t.threadId}
+              to={`/chat/${t.threadId}`}
+              className={`block px-3 py-2 rounded-md border ${active ? 'bg-blue-50 border-blue-200' : 'hover:bg-gray-50 dark:hover:bg-gray-800 border-transparent'}`}
+            >
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-semibold">
+                <div className="w-9 h-9 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-semibold overflow-hidden">
                   {(t.otherUser?.username || 'U').charAt(0).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="font-medium">{t.otherUser?.username}</div>
+                  <div className="font-medium truncate">{t.otherUser?.username}</div>
                   {t.lastMessage && (
-                    <div className="text-sm text-gray-500 truncate">{t.lastMessage.text}</div>
+                    <div className="text-xs text-gray-500 truncate">{t.lastMessage.text}</div>
                   )}
                 </div>
                 {typeof t.unread === 'number' && t.unread > 0 && (
@@ -52,11 +60,12 @@ const ChatListPage: React.FC = () => {
                 )}
               </div>
             </Link>
-          ))}
-        </div>
-      )}
-    </div>
+          );
+        })}
+      </div>
+    </aside>
   );
-};
+}
+;
 
 export default ChatListPage;

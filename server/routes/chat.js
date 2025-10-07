@@ -240,6 +240,16 @@ router.post('/threads/:threadId/messages', authenticate, async (req, res) => {
     if (!thread) return res.status(404).json({ message: 'Thread not found' });
     if (!thread.participants.map(String).includes(String(me))) return res.status(403).json({ message: 'Not a participant' });
     if (!thread.approved) return res.status(403).json({ message: 'Chat not approved yet' });
+    // Block checks: if either side has a block flag, disallow sending
+    try {
+      const others = thread.participants.map(String).filter(id => id !== String(me));
+      const other = others[0];
+      const blockedByMe = Boolean(thread.blocks && thread.blocks.get(String(other)));
+      const blockedByOther = Boolean(thread.blocks && thread.blocks.get(String(me)));
+      if (blockedByMe || blockedByOther) {
+        return res.status(403).json({ message: 'Messaging is blocked in this thread' });
+      }
+    } catch {}
 
     const msg = await ChatMessage.create({ threadId: thread._id, fromUserId: me, text });
     thread.lastMessageAt = new Date();
@@ -249,6 +259,87 @@ router.post('/threads/:threadId/messages', authenticate, async (req, res) => {
   } catch (e) {
     console.error('send message error', e);
     return res.status(500).json({ message: 'Failed to send message' });
+  }
+});
+
+// POST /api/chat/threads/:threadId/settings
+router.post('/threads/:threadId/settings', authenticate, async (req, res) => {
+  try {
+    const me = req.user?._id;
+    const threadId = req.params.threadId;
+    const thread = await ChatThread.findById(threadId);
+    if (!thread) return res.status(404).json({ message: 'Thread not found' });
+    if (!thread.participants.map(String).includes(String(me))) return res.status(403).json({ message: 'Not a participant' });
+
+    const hours = Number(req.body?.disappearingAfterHours);
+    if (!Number.isFinite(hours) || hours < 0 || hours > 168) {
+      return res.status(400).json({ message: 'Invalid disappearingAfterHours' });
+    }
+    thread.settings = thread.settings || {};
+    thread.settings.disappearingAfterHours = Math.floor(hours);
+    await thread.save();
+    return res.status(200).json({ success: true, settings: thread.settings });
+  } catch (e) {
+    console.error('thread settings error', e);
+    return res.status(500).json({ message: 'Failed to update settings' });
+  }
+});
+
+// POST /api/chat/threads/:threadId/block (blocks the other user for current user)
+router.post('/threads/:threadId/block', authenticate, async (req, res) => {
+  try {
+    const me = req.user?._id;
+    const threadId = req.params.threadId;
+    const thread = await ChatThread.findById(threadId);
+    if (!thread) return res.status(404).json({ message: 'Thread not found' });
+    if (!thread.participants.map(String).includes(String(me))) return res.status(403).json({ message: 'Not a participant' });
+    const others = thread.participants.map(String).filter(id => id !== String(me));
+    const other = others[0];
+    if (!thread.blocks) thread.blocks = new Map();
+    thread.blocks.set(String(other), true);
+    await thread.save();
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    console.error('thread block error', e);
+    return res.status(500).json({ message: 'Failed to block user' });
+  }
+});
+
+// POST /api/chat/threads/:threadId/unblock
+router.post('/threads/:threadId/unblock', authenticate, async (req, res) => {
+  try {
+    const me = req.user?._id;
+    const threadId = req.params.threadId;
+    const thread = await ChatThread.findById(threadId);
+    if (!thread) return res.status(404).json({ message: 'Thread not found' });
+    if (!thread.participants.map(String).includes(String(me))) return res.status(403).json({ message: 'Not a participant' });
+    const others = thread.participants.map(String).filter(id => id !== String(me));
+    const other = others[0];
+    if (!thread.blocks) thread.blocks = new Map();
+    thread.blocks.set(String(other), false);
+    await thread.save();
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    console.error('thread unblock error', e);
+    return res.status(500).json({ message: 'Failed to unblock user' });
+  }
+});
+
+// POST /api/chat/threads/:threadId/read (update lastReadAt for current user)
+router.post('/threads/:threadId/read', authenticate, async (req, res) => {
+  try {
+    const me = req.user?._id;
+    const threadId = req.params.threadId;
+    const thread = await ChatThread.findById(threadId);
+    if (!thread) return res.status(404).json({ message: 'Thread not found' });
+    if (!thread.participants.map(String).includes(String(me))) return res.status(403).json({ message: 'Not a participant' });
+    if (!thread.lastReadAt) thread.lastReadAt = new Map();
+    thread.lastReadAt.set(String(me), new Date());
+    await thread.save();
+    return res.status(200).json({ success: true });
+  } catch (e) {
+    console.error('thread read error', e);
+    return res.status(500).json({ message: 'Failed to update read' });
   }
 });
 
