@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { listThreads, type ChatThread } from '@/services/chat';
 import { Link, useLocation } from 'react-router-dom';
+import { getSocket, watchPresence, startPresence } from '@/lib/socket';
 
 const ChatListPage: React.FC = () => {
   const [threads, setThreads] = useState<ChatThread[]>([]);
@@ -30,7 +31,19 @@ const ChatListPage: React.FC = () => {
         setLoading(true);
         const data = await listThreads();
         if (!mounted) return;
-        setThreads(Array.isArray(data) ? data : []);
+        const arr = Array.isArray(data) ? data : [];
+        setThreads(arr);
+        // realtime presence
+        try {
+          startPresence();
+          const ids = arr.map(t => (t.otherUser?.id ? String(t.otherUser.id) : '')).filter(Boolean);
+          if (ids.length) watchPresence(ids);
+          const s = getSocket();
+          const onPresence = (p: { userId: string; online: boolean; lastSeen: string | null }) => {
+            setThreads(prev => prev.map(t => (String(t.otherUser?.id) === String(p.userId) ? { ...t, otherUserIsOnline: p.online, otherUserLastSeen: p.lastSeen } : t)));
+          };
+          s.on('presence:update', onPresence);
+        } catch {}
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || 'Failed to load chats');
@@ -72,7 +85,7 @@ const ChatListPage: React.FC = () => {
                   <div className="font-medium truncate">{t.otherUser?.fullName || t.otherUser?.username}</div>
                   <div className="text-[11px] text-gray-500 flex items-center gap-1">
                     <span className={`inline-block w-2 h-2 rounded-full ${t.otherUserIsOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
-                    {t.otherUserIsOnline ? 'Online' : `Last seen ${formatLastSeen(t.otherUserLastSeen)}`}
+                    {t.otherUserIsOnline ? 'Online' : (t.otherUserLastSeen ? `Last seen ${formatLastSeen(t.otherUserLastSeen)}` : 'Offline')}
                   </div>
                   {t.lastMessage && (
                     <div className="text-xs text-gray-500 truncate">{t.lastMessage.text}</div>

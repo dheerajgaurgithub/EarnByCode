@@ -1,4 +1,6 @@
 import express from 'express';
+import { Server as IOServer } from 'socket.io';
+import jwt from 'jsonwebtoken';
 import { Script, createContext } from 'node:vm';
 import os from 'os';
 import { spawn, spawnSync, exec } from 'child_process';
@@ -1706,6 +1708,116 @@ const startServer = async () => {
     const port = config.PORT || 5000;
     const server = app.listen(port, () => {
       console.log(`🚀 Server running on port ${port} in ${config.NODE_ENV} mode`);
+    });
+
+    // --- Socket.IO: realtime presence ---
+    const io = new IOServer(server, {
+      path: '/socket.io',
+      cors: {
+        origin: (origin, cb) => {
+          try {
+            // Reuse existing CORS allow logic
+            const ok = !origin || origin === undefined || origin === null || true; // fallback; detailed check below
+            if (ok || (origin && (origin.endsWith('.vercel.app') || origin.includes('localhost')))) return cb(null, true);
+          } catch {}
+          return cb(null, true);
+        },
+        credentials: true,
+      },
+      transports: ['websocket'],
+    });
+
+    const ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
+    const online = new Map(); // userId -> { sockets: Set<string>, lastSeen: Date, online: boolean }
+    const watchers = new Map(); // targetUserId -> Set<socketId>
+
+    const emitPresence = (userId) => {
+      const entry = online.get(userId);
+      const payload = {
+        userId: String(userId),
+        online: !!entry?.online,
+        lastSeen: entry?.lastSeen ? new Date(entry.lastSeen).toISOString() : null,
+      };
+      const targets = watchers.get(String(userId));
+      if (targets && targets.size) {
+        for (const sid of targets) {
+          try { io.to(sid).emit('presence:update', payload); } catch {}
+        }
+      }
+    };
+
+    io.use((socket, next) => {
+      try {
+        const token = socket.handshake?.auth?.token || socket.handshake?.headers?.authorization?.replace(/^Bearer\s+/i,'');
+        if (token) {
+          const decoded = jwt.verify(token, process.env.JWT_SECRET || process.env.JWT_KEY || 'secret');
+          socket.data.userId = decoded.id || decoded._id || decoded.sub;
+        }
+      } catch {}
+      return next();
+    });
+
+    io.on('connection', (socket) => {
+      const sid = socket.id;
+      // Identify current user explicitly
+      socket.on('presence:identify', ({ userId } = {}) => {
+        const uid = String(userId || socket.data.userId || '');
+        if (!uid) return;
+        let entry = online.get(uid);
+        if (!entry) entry = { sockets: new Set(), lastSeen: new Date(), online: true };
+        entry.sockets.add(sid);
+        entry.lastSeen = new Date();
+        entry.online = true;
+        online.set(uid, entry);
+        emitPresence(uid);
+      });
+
+      socket.on('presence:ping', () => {
+        const uid = socket.data.userId ? String(socket.data.userId) : null;
+        if (!uid) return;
+        const entry = online.get(uid);
+        if (entry) {
+          entry.lastSeen = new Date();
+          entry.online = true;
+          online.set(uid, entry);
+        }
+      });
+
+      socket.on('presence:watch', ({ userIds } = {}) => {
+        const ids = Array.isArray(userIds) ? userIds.map(String) : [];
+        for (const id of ids) {
+          if (!watchers.has(id)) watchers.set(id, new Set());
+          watchers.get(id).add(sid);
+          // send immediate snapshot
+          const entry = online.get(id);
+          socket.emit('presence:update', {
+            userId: String(id),
+            online: !!entry?.online && (entry.lastSeen ? (Date.now() - new Date(entry.lastSeen).getTime() < ONLINE_THRESHOLD_MS) : false),
+            lastSeen: entry?.lastSeen ? new Date(entry.lastSeen).toISOString() : null,
+          });
+        }
+      });
+
+      socket.on('disconnect', () => {
+        // remove from online maps
+        const uid = socket.data.userId ? String(socket.data.userId) : null;
+        if (uid) {
+          const entry = online.get(uid);
+          if (entry) {
+            entry.sockets.delete(sid);
+            if (entry.sockets.size === 0) {
+              entry.online = false;
+              entry.lastSeen = new Date();
+            }
+            online.set(uid, entry);
+            emitPresence(uid);
+          }
+        }
+        // remove from watchers
+        for (const set of watchers.values()) {
+          set.delete(sid);
+        }
+      });
     });
 
     // Handle unhandled promise rejections

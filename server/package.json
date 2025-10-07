@@ -37,6 +37,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "razorpay": "^2.9.6",
+    "socket.io": "^4.8.1",
     "vm2": "^3.9.19",
     "xss-clean": "^0.1.4"
   },

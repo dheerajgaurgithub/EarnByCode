@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { getMessages, sendMessage, listThreads, type ChatMessage, type ChatThread } from '@/services/chat';
 import ChatListPage from './ChatListPage';
 import { useAuth } from '@/context/AuthContext';
+import { getSocket, watchPresence, startPresence } from '@/lib/socket';
 
 const ChatThreadPage: React.FC = () => {
   const { threadId } = useParams<{ threadId: string }>();
@@ -13,7 +14,9 @@ const ChatThreadPage: React.FC = () => {
   const [text, setText] = useState('');
   const listRef = useRef<HTMLDivElement | null>(null);
   const myId = (user as any)?.id || (user as any)?._id || (user as any)?.username || 'me';
-  const [peer, setPeer] = useState<{ username: string; fullName?: string; avatarUrl?: string; id?: string; isOnline?: boolean; lastSeen?: string | null } | null>(null);
+  const [peer, setPeer] = useState<{ username: string; fullName?: string; avatarUrl?: string; id?: string } | null>(null);
+  const [peerOnline, setPeerOnline] = useState<boolean | null>(null);
+  const [peerLastSeen, setPeerLastSeen] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [busyAction, setBusyAction] = useState(false);
   const [disappearing24h, setDisappearing24h] = useState(false);
@@ -22,6 +25,7 @@ const ChatThreadPage: React.FC = () => {
     try { listRef.current?.lastElementChild?.scrollIntoView({ behavior: 'smooth' }); } catch {}
   };
 
+  // Presence via socket.io
   const formatLastSeen = (iso?: string | null) => {
     if (!iso) return '';
     try {
@@ -32,9 +36,7 @@ const ChatThreadPage: React.FC = () => {
       const hh = String(d.getHours()).padStart(2, '0');
       const min = String(d.getMinutes()).padStart(2, '0');
       return `${dd}/${mm}/${yyyy}, ${hh}:${min}`;
-    } catch {
-      return '';
-    }
+    } catch { return ''; }
   };
 
   useEffect(() => {
@@ -52,8 +54,6 @@ const ChatThreadPage: React.FC = () => {
             fullName: (th as any).otherUser?.fullName,
             avatarUrl: (th as any).otherUser?.avatarUrl,
             id: (th as any).otherUser?.id,
-            isOnline: (th as any).otherUserIsOnline,
-            lastSeen: (th as any).otherUserLastSeen ?? null,
           });
         } catch {}
         const data = await getMessages(threadId, undefined, 50);
@@ -70,6 +70,26 @@ const ChatThreadPage: React.FC = () => {
     })();
     return () => { mounted = false; };
   }, [threadId]);
+
+  // Watch presence for peer
+  useEffect(() => {
+    if (!peer?.id) return;
+    try {
+      startPresence((user as any)?.id || (user as any)?._id);
+    } catch {}
+    try {
+      watchPresence([String(peer.id)]);
+      const s = getSocket();
+      const onPresence = (p: { userId: string; online: boolean; lastSeen: string | null }) => {
+        if (String(p.userId) === String(peer.id)) {
+          setPeerOnline(!!p.online);
+          setPeerLastSeen(p.lastSeen || null);
+        }
+      };
+      s.on('presence:update', onPresence);
+      return () => { try { s.off('presence:update', onPresence); } catch {} };
+    } catch { /* ignore */ }
+  }, [peer?.id]);
 
   const onSend = async () => {
     if (!threadId || !text.trim()) return;
@@ -112,8 +132,8 @@ const ChatThreadPage: React.FC = () => {
               <div className="text-left cursor-pointer">
                 <div className="text-sm font-semibold">{peer?.fullName || peer?.username || 'Chat'}</div>
                 <div className="text-[11px] text-gray-500 flex items-center gap-1">
-                  <span className={`inline-block w-2 h-2 rounded-full ${peer?.isOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
-                  {peer?.isOnline ? 'Online' : (peer?.lastSeen ? `Last seen ${formatLastSeen(peer.lastSeen)}` : 'Offline')}
+                  <span className={`inline-block w-2 h-2 rounded-full ${peerOnline ? 'bg-green-500' : 'bg-gray-300'}`} />
+                  {peerOnline ? 'Online' : (peerLastSeen ? `Last seen ${formatLastSeen(peerLastSeen)}` : 'Offline')}
                 </div>
               </div>
             </button>
