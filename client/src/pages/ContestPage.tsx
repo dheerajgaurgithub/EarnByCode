@@ -1097,7 +1097,6 @@ const ContestPage = () => {
                               onChange={(e) => setLanguage(e.target.value)}
                               className="w-full sm:w-auto px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
-                              <option value="javascript">JavaScript</option>
                               <option value="python">Python</option>
                               <option value="java">Java</option>
                               <option value="cpp">C++</option>

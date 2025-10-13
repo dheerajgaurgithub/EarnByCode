@@ -297,11 +297,9 @@ const ContestProblemDetails: React.FC = () => {
                     onChange={(e) => setLanguage(e.target.value as Language)}
                     className="px-2 lg:px-3 py-1 lg:py-1.5 bg-white dark:bg-gray-700 border border-sky-300 dark:border-gray-600 rounded-md text-xs lg:text-sm text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-sky-500 dark:focus:ring-green-500"
                   >
-                    <option value="javascript">JavaScript</option>
                     <option value="python">Python</option>
                     <option value="java">Java</option>
                     <option value="cpp">C++</option>
-                    <option value="csharp">C#</option>
                   </select>
                 </div>
   

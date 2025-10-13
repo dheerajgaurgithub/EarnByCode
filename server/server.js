@@ -393,9 +393,9 @@ app.post('/api/code/run', async (req, res) => {
     else if (Array.isArray(payload.files) && payload.files[0]?.content) source = payload.files[0].content;
     source = unescapeHtml(source);
 
-    // Allow Java and C++ here as well so their handlers below are reachable
-    if (!source || !['javascript', 'typescript', 'java', 'cpp'].includes(language)) {
-      return res.status(400).json({ message: 'Only JavaScript, TypeScript, Java and C++ are supported', language, received: Object.keys(payload || {}) });
+    // Allow Python, Java and C++ as the supported languages
+    if (!source || !['python', 'java', 'cpp'].includes(language)) {
+      return res.status(400).json({ message: 'Only Python, Java and C++ are supported', language, received: Object.keys(payload || {}) });
     }
 
     // Java execution path
