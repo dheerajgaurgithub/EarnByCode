@@ -96,6 +96,106 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
+// Submit a solution for a problem with test case validation
+router.post('/submit/:problemId', authenticate, async (req, res) => {
+  try {
+    const { code, language } = req.body;
+    
+    if (!code || !language) {
+      return res.status(400).json({ message: 'Code and language are required' });
+    }
+    
+    // Validate language
+    const supportedLanguages = ['javascript', 'python', 'java', 'cpp'];
+    if (!supportedLanguages.includes(language)) {
+      return res.status(400).json({ message: `Language not supported. Supported languages: ${supportedLanguages.join(', ')}` });
+    }
+    
+    // Get problem
+    const problem = await Problem.findById(req.params.problemId);
+    if (!problem) {
+      return res.status(404).json({ message: 'Problem not found' });
+    }
+    
+    // Import executeCode function
+    const { executeCode } = await import('../utils/codeExecutor.js');
+    
+    // Execute code against all test cases
+    const executionResult = await executeCode(code, language, problem.testCases, {
+      timeout: 10000, // 10 seconds timeout for submissions
+      ignoreWhitespace: true,
+      ignoreCase: false
+    });
+    
+    // Calculate score based on passed test cases
+    const visibleTestCases = problem.testCases.filter(tc => !tc.hidden);
+    const hiddenTestCases = problem.testCases.filter(tc => tc.hidden);
+    
+    const visiblePassed = executionResult.results
+      .filter((r, i) => !problem.testCases[i].hidden)
+      .every(r => r.passed);
+      
+    const allPassed = executionResult.results.every(r => r.passed);
+    
+    // Create submission record
+    const submission = new Submission({
+      user: req.user._id,
+      problem: req.params.problemId,
+      code,
+      language,
+      results: executionResult.results,
+      status: allPassed ? 'Accepted' : 'Wrong Answer',
+      passed: allPassed,
+      visiblePassed,
+      executionTime: executionResult.executionTime
+    });
+    
+    await submission.save();
+    
+    // Update user stats if all test cases passed
+    if (allPassed) {
+      const user = await User.findById(req.user._id);
+      
+      // Check if this is the first time solving this problem
+      const previousSolved = await Submission.findOne({
+        user: req.user._id,
+        problem: req.params.problemId,
+        status: 'Accepted'
+      }).sort({ createdAt: -1 });
+      
+      if (!previousSolved) {
+        user.problemsSolved = (user.problemsSolved || 0) + 1;
+        user.totalPoints = (user.totalPoints || 0) + (problem.points || 10); // Default 10 points if not specified
+        await user.save();
+      }
+    }
+    
+    // Return results with hidden test cases masked
+    const maskedResults = executionResult.results.map((result, index) => {
+      if (problem.testCases[index].hidden) {
+        return {
+          ...result,
+          input: 'Hidden',
+          expectedOutput: 'Hidden',
+          actualOutput: result.passed ? 'Correct' : 'Incorrect'
+        };
+      }
+      return result;
+    });
+    
+    res.json({
+      submission: submission._id,
+      results: maskedResults,
+      passed: allPassed,
+      visiblePassed,
+      executionTime: executionResult.executionTime
+    });
+  } catch (error) {
+    console.error('Error submitting solution:', error);
+    res.status(500).json({ message: 'Server error', error: error.message });
+  }
+});
+
 // Get all submissions for a problem (for admin)
 router.get('/problem/:problemId', authenticate, async (req, res) => {
   try {

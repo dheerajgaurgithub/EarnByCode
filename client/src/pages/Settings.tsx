@@ -1030,6 +1030,7 @@ export const Settings: React.FC = () => {
                           onChange={(e) => setPreferences({ ...preferences, defaultCodeLanguage: e.target.value })}
                           className="w-full px-4 py-4 bg-slate-50 dark:bg-gray-700 border border-slate-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-sky-500 dark:focus:ring-emerald-500 focus:border-transparent transition-all duration-200 text-gray-900 dark:text-white text-sm sm:text-base"
                         >
+                          <option value="javascript">JavaScript</option>
                           <option value="python">Python</option>
                           <option value="java">Java</option>
                           <option value="cpp">C++</option>

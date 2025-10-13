@@ -206,7 +206,7 @@ class ApiService {
   }
 
   async submitCode(problemId: string, code: string, language: string): Promise<CodeExecutionResult> {
-    return this.request('POST', `/problems/${problemId}/submit`, { code, language });
+    return this.request('POST', `/submissions/submit/${problemId}`, { code, language });
   }
 
   // Contest methods

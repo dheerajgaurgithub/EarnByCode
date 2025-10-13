@@ -942,375 +942,442 @@ const AdminPanel: React.FC = () => {
                 </Dialog.Title>
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* Basic Information */}
-                  <div className="space-y-3">
-                    <h4 className="text-xs font-medium text-blue-700">Basic Information</h4>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                      <div>
-                        <label htmlFor="title" className="block text-xs font-medium text-gray-700 mb-1">
-                          Problem Title *
-                        </label>
-                        <input
-                          type="text"
-                          id="title"
-                          name="title"
-                          required
-                          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
-                          value={problemForm.title}
-                          onChange={handleProblemInputChange}
-                          placeholder="Enter problem title"
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="difficulty" className="block text-xs font-medium text-gray-700 mb-1">
-                          Difficulty *
-                        </label>
-                        <select
-                          id="difficulty"
-                          name="difficulty"
-                          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
-                          value={problemForm.difficulty}
-                          onChange={handleProblemInputChange}
-                        >
-                          <option value="Easy">Easy</option>
-                          <option value="Medium">Medium</option>
-                          <option value="Hard">Hard</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label htmlFor="points" className="block text-xs font-medium text-gray-700 mb-1">
-                          Points *
-                        </label>
-                        <input
-                          type="number"
-                          id="points"
-                          name="points"
-                          min="1"
-                          required
-                          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
-                          value={problemForm.points}
-                          onChange={handleProblemInputChange}
-                        />
-                      </div>
-                      <div>
-                        <label htmlFor="category" className="block text-xs font-medium text-gray-700 mb-1">
-                          Category
-                        </label>
-                        <input
-                          type="text"
-                          id="category"
-                          name="category"
-                          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
-                          value={problemForm.category}
-                          onChange={handleProblemInputChange}
-                          placeholder="e.g., Array, String"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="flex space-x-4">
-                      <div className="flex items-center">
-                        <input
-                          id="isPremium"
-                          name="isPremium"
-                          type="checkbox"
-                          className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-blue-300 rounded"
-                          checked={problemForm.isPremium}
-                          onChange={handleCheckboxChange}
-                        />
-                        <label htmlFor="isPremium" className="ml-2 block text-xs text-gray-700">
-                          Premium Problem
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          id="isPublished"
-                          name="isPublished"
-                          type="checkbox"
-                          className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-blue-300 rounded"
-                          checked={problemForm.isPublished}
-                          onChange={handleCheckboxChange}
-                        />
-                        <label htmlFor="isPublished" className="ml-2 block text-xs text-gray-700">
-                          Published
-                        </label>
-                      </div>
-                    </div>
-                  </div>
+  {/* Basic Information */}
+  <div className="space-y-3">
+    <h4 className="text-xs font-medium text-blue-700">Basic Information</h4>
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div>
+        <label htmlFor="title" className="block text-xs font-medium text-gray-700 mb-1">
+          Problem Title *
+        </label>
+        <input
+          type="text"
+          id="title"
+          name="title"
+          required
+          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
+          value={problemForm.title}
+          onChange={handleProblemInputChange}
+          placeholder="Enter problem title"
+        />
+      </div>
+      <div>
+        <label htmlFor="difficulty" className="block text-xs font-medium text-gray-700 mb-1">
+          Difficulty *
+        </label>
+        <select
+          id="difficulty"
+          name="difficulty"
+          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
+          value={problemForm.difficulty}
+          onChange={handleProblemInputChange}
+        >
+          <option value="Easy">Easy</option>
+          <option value="Medium">Medium</option>
+          <option value="Hard">Hard</option>
+        </select>
+      </div>
+      <div>
+        <label htmlFor="points" className="block text-xs font-medium text-gray-700 mb-1">
+          Points *
+        </label>
+        <input
+          type="number"
+          id="points"
+          name="points"
+          min="1"
+          required
+          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
+          value={problemForm.points}
+          onChange={handleProblemInputChange}
+        />
+      </div>
+      <div>
+        <label htmlFor="category" className="block text-xs font-medium text-gray-700 mb-1">
+          Category
+        </label>
+        <input
+          type="text"
+          id="category"
+          name="category"
+          className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
+          value={problemForm.category}
+          onChange={handleProblemInputChange}
+          placeholder="e.g., Array, String"
+        />
+      </div>
+    </div>
+    
+    <div className="flex space-x-4">
+      <div className="flex items-center">
+        <input
+          id="isPremium"
+          name="isPremium"
+          type="checkbox"
+          className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-blue-300 rounded"
+          checked={problemForm.isPremium}
+          onChange={handleCheckboxChange}
+        />
+        <label htmlFor="isPremium" className="ml-2 block text-xs text-gray-700">
+          Premium Problem
+        </label>
+      </div>
+      <div className="flex items-center">
+        <input
+          id="isPublished"
+          name="isPublished"
+          type="checkbox"
+          className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-blue-300 rounded"
+          checked={problemForm.isPublished}
+          onChange={handleCheckboxChange}
+        />
+        <label htmlFor="isPublished" className="ml-2 block text-xs text-gray-700">
+          Published
+        </label>
+      </div>
+    </div>
+  </div>
 
-                  {/* Problem Description */}
-                  <div>
-                    <label htmlFor="description" className="block text-xs font-medium text-gray-700 mb-1">
-                      Problem Description *
-                    </label>
-                    <textarea
-                      id="description"
-                      name="description"
-                      rows={4}
-                      required
-                      className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
-                      value={problemForm.description}
-                      onChange={handleProblemInputChange}
-                      placeholder="Enter detailed problem description with examples"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Use Markdown for formatting. Include constraints and examples in the description.
-                    </p>
-                  </div>
+  {/* Problem Description */}
+  <div>
+    <label htmlFor="description" className="block text-xs font-medium text-gray-700 mb-1">
+      Problem Description *
+    </label>
+    <textarea
+      id="description"
+      name="description"
+      rows={4}
+      required
+      className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
+      value={problemForm.description}
+      onChange={handleProblemInputChange}
+      placeholder="Enter detailed problem description with examples"
+    />
+    <p className="mt-1 text-xs text-gray-500">
+      Use Markdown for formatting. Include constraints and examples in the description.
+    </p>
+  </div>
 
-                  {/* Examples */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="text-xs font-medium text-blue-700">Examples</h4>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProblemForm(prev => ({
-                            ...prev,
-                            examples: [...prev.examples, { input: '', output: '', explanation: '' }]
-                          }));
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded border border-blue-200 hover:bg-blue-50"
-                      >
-                        + Add Example
-                      </button>
-                    </div>
-                    {problemForm.examples.map((example, index) => (
-                      <div key={index} className="mb-3 p-2 border border-gray-200 rounded-md">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Input {index + 1}
-                            </label>
-                            <textarea
-                              className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
-                              rows={2}
-                              value={example.input}
-                              onChange={(e) => {
-                                const newExamples = [...problemForm.examples];
-                                newExamples[index].input = e.target.value;
-                                setProblemForm(prev => ({
-                                  ...prev,
-                                  examples: newExamples
-                                }));
-                              }}
-                              placeholder="Input"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Output {index + 1}
-                            </label>
-                            <textarea
-                              className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
-                              rows={2}
-                              value={example.output}
-                              onChange={(e) => {
-                                const newExamples = [...problemForm.examples];
-                                newExamples[index].output = e.target.value;
-                                setProblemForm(prev => ({
-                                  ...prev,
-                                  examples: newExamples
-                                }));
-                              }}
-                              placeholder="Expected output"
-                            />
-                          </div>
-                        </div>
-                        <div className="mb-2">
-                          <label className="block text-xs font-medium text-gray-700 mb-1">
-                            Explanation
-                          </label>
-                          <textarea
-                            className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
-                            rows={2}
-                            value={example.explanation}
-                            onChange={(e) => {
-                              const newExamples = [...problemForm.examples];
-                              newExamples[index].explanation = e.target.value;
-                              setProblemForm(prev => ({
-                                ...prev,
-                                examples: newExamples
-                              }));
-                            }}
-                            placeholder="Explanation (optional)"
-                          />
-                        </div>
-                        {problemForm.examples.length > 1 && (
-                          <div className="flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setProblemForm(prev => ({
-                                  ...prev,
-                                  examples: prev.examples.filter((_, i) => i !== index)
-                                }));
-                              }}
-                              className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded border border-red-200 hover:bg-red-50"
-                            >
-                              Remove Example
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
+  {/* Examples */}
+  <div>
+    <div className="flex justify-between items-center mb-2">
+      <h4 className="text-xs font-medium text-blue-700">Examples</h4>
+      <button
+        type="button"
+        onClick={() => {
+          setProblemForm(prev => ({
+            ...prev,
+            examples: [...prev.examples, { input: '', output: '', explanation: '' }]
+          }));
+        }}
+        className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded border border-blue-200 hover:bg-blue-50"
+      >
+        + Add Example
+      </button>
+    </div>
+    {problemForm.examples.map((example, index) => (
+      <div key={index} className="mb-3 p-2 border border-gray-200 rounded-md">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Input {index + 1}
+            </label>
+            <textarea
+              className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
+              rows={2}
+              value={example.input}
+              onChange={(e) => {
+                const newExamples = [...problemForm.examples];
+                newExamples[index].input = e.target.value;
+                setProblemForm(prev => ({
+                  ...prev,
+                  examples: newExamples
+                }));
+              }}
+              placeholder="Input"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Output {index + 1}
+            </label>
+            <textarea
+              className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
+              rows={2}
+              value={example.output}
+              onChange={(e) => {
+                const newExamples = [...problemForm.examples];
+                newExamples[index].output = e.target.value;
+                setProblemForm(prev => ({
+                  ...prev,
+                  examples: newExamples
+                }));
+              }}
+              placeholder="Expected output"
+            />
+          </div>
+        </div>
+        <div className="mb-2">
+          <label className="block text-xs font-medium text-gray-700 mb-1">
+            Explanation
+          </label>
+          <textarea
+            className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
+            rows={2}
+            value={example.explanation}
+            onChange={(e) => {
+              const newExamples = [...problemForm.examples];
+              newExamples[index].explanation = e.target.value;
+              setProblemForm(prev => ({
+                ...prev,
+                examples: newExamples
+              }));
+            }}
+            placeholder="Explanation (optional)"
+          />
+        </div>
+        {problemForm.examples.length > 1 && (
+          <div className="flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                setProblemForm(prev => ({
+                  ...prev,
+                  examples: prev.examples.filter((_, i) => i !== index)
+                }));
+              }}
+              className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded border border-red-200 hover:bg-red-50"
+            >
+              Remove Example
+            </button>
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
 
-                  {/* Test Cases */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <h4 className="text-xs font-medium text-blue-700">Test Cases</h4>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setProblemForm(prev => ({
-                            ...prev,
-                            testCases: [
-                              ...prev.testCases,
-                              { input: '', output: '', expectedOutput: '', isHidden: false }
-                            ]
-                          }));
-                        }}
-                        className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded border border-blue-200 hover:bg-blue-50"
-                      >
-                        + Add Test Case
-                      </button>
-                    </div>
-                    {problemForm.testCases.map((testCase, index) => (
-                      <div key={index} className="mb-3 p-2 border border-gray-200 rounded-md">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Input {index + 1}
-                            </label>
-                            <textarea
-                              className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
-                              rows={2}
-                              value={testCase.input}
-                              onChange={(e) => {
-                                const newTestCases = [...problemForm.testCases];
-                                newTestCases[index].input = e.target.value;
-                                setProblemForm(prev => ({
-                                  ...prev,
-                                  testCases: newTestCases
-                                }));
-                              }}
-                              placeholder="Input"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 mb-1">
-                              Expected Output {index + 1}
-                            </label>
-                            <textarea
-                              className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
-                              rows={2}
-                              value={testCase.expectedOutput}
-                              onChange={(e) => {
-                                const newTestCases = [...problemForm.testCases];
-                                newTestCases[index].expectedOutput = e.target.value;
-                                setProblemForm(prev => ({
-                                  ...prev,
-                                  testCases: newTestCases
-                                }));
-                              }}
-                              placeholder="Expected output"
-                            />
-                          </div>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center">
-                            <input
-                              id={`isHidden-${index}`}
-                              type="checkbox"
-                              className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                              checked={testCase.isHidden}
-                              onChange={(e) => {
-                                const newTestCases = [...problemForm.testCases];
-                                newTestCases[index].isHidden = e.target.checked;
-                                setProblemForm(prev => ({
-                                  ...prev,
-                                  testCases: newTestCases
-                                }));
-                              }}
-                            />
-                            <label htmlFor={`isHidden-${index}`} className="ml-2 block text-xs text-gray-700">
-                              Hidden Test Case
-                            </label>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setProblemForm(prev => ({
-                                ...prev,
-                                testCases: prev.testCases.filter((_, i) => i !== index)
-                              }));
-                            }}
-                            className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded border border-red-200 hover:bg-red-50"
-                            disabled={problemForm.testCases.length <= 1}
-                          >
-                            Remove
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+  {/* Test Cases */}
+  <div>
+    <div className="flex justify-between items-center mb-2">
+      <h4 className="text-xs font-medium text-blue-700">Test Cases</h4>
+      <div className="flex space-x-2">
+        <button
+          type="button"
+          onClick={() => {
+            // Run all test cases with current code
+            if (!problemForm.starterCode || problemForm.testCases.length === 0) {
+              toast.error('Please add test cases and starter code first');
+              return;
+            }
+            
+            const language = (Object.keys(problemForm.starterCode)[0] || 'javascript') as keyof typeof problemForm.starterCode;
+            const code = problemForm.starterCode[language] || '';
+            
+            // Call API to run all tests
+            toast.loading('Running all test cases...');
+            apiService.post('/admin-testcases/problems/test-solution', {
+              code,
+              language,
+              testCases: problemForm.testCases
+            })
+            .then(result => {
+              const passed = (result as { testsPassed: number }).testsPassed;
+              const total = (result as { totalTests: number }).totalTests;
+              toast.success(`Tests completed: ${passed}/${total} passed`);
+              console.log('Test results:', result);
+            })
+            .catch(error => {
+              toast.error(`Error running tests: ${error.message || 'Unknown error'}`);
+            });
+          }}
+          className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded border border-blue-200 hover:bg-blue-50"
+        >
+          Run All Tests
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setProblemForm(prev => ({
+              ...prev,
+              testCases: [
+                ...prev.testCases,
+                { input: '', output: '', expectedOutput: '', isHidden: false }
+              ]
+            }));
+          }}
+          className="text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded border border-blue-200 hover:bg-blue-50"
+        >
+          + Add Test Case
+        </button>
+      </div>
+    </div>
+    {problemForm.testCases.map((testCase, index) => (
+      <div key={index} className="mb-3 p-2 border border-gray-200 rounded-md">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Input {index + 1}
+            </label>
+            <textarea
+              className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
+              rows={2}
+              value={testCase.input}
+              onChange={(e) => {
+                const newTestCases = [...problemForm.testCases];
+                newTestCases[index].input = e.target.value;
+                setProblemForm(prev => ({
+                  ...prev,
+                  testCases: newTestCases
+                }));
+              }}
+              placeholder="Input"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1">
+              Expected Output {index + 1}
+            </label>
+            <textarea
+              className="w-full px-2 py-1 text-xs border border-blue-200 rounded text-black bg-white"
+              rows={2}
+              value={testCase.expectedOutput}
+              onChange={(e) => {
+                const newTestCases = [...problemForm.testCases];
+                newTestCases[index].expectedOutput = e.target.value;
+                setProblemForm(prev => ({
+                  ...prev,
+                  testCases: newTestCases
+                }));
+              }}
+              placeholder="Expected output"
+            />
+          </div>
+        </div>
+        <div className="flex justify-between items-center">
+          <div className="flex items-center">
+            <input
+              id={`isHidden-${index}`}
+              type="checkbox"
+              className="h-3 w-3 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+              checked={testCase.isHidden}
+              onChange={(e) => {
+                const newTestCases = [...problemForm.testCases];
+                newTestCases[index].isHidden = e.target.checked;
+                setProblemForm(prev => ({
+                  ...prev,
+                  testCases: newTestCases
+                }));
+              }}
+            />
+            <label htmlFor={`isHidden-${index}`} className="ml-2 block text-xs text-gray-700">
+              Hidden Test Case
+            </label>
+          </div>
+          <div className="flex space-x-2">
+            <button
+              type="button"
+              onClick={() => {
+                // Run test case with current code
+                if (!problemForm.starterCode) return;
+                
+                const language = (Object.keys(problemForm.starterCode)[0] || 'javascript') as keyof typeof problemForm.starterCode;
+                const code = problemForm.starterCode[language] || '';
+                
+                // Call API to run test
+                apiService.post('/admin-testcases/run-test', {
+                  code,
+                  language,
+                  input: testCase.input,
+                  expectedOutput: testCase.expectedOutput
+                })
+                .then(result => {
+                  const testResult = result as { passed: boolean };
+                  toast.success(`Test case ${index + 1} executed. ${testResult.passed ? 'Passed!' : 'Failed!'}`);
+                  console.log('Test result:', result);
+                })
+                .catch(error => {
+                  toast.error(`Error running test: ${error.message || 'Unknown error'}`);
+                });
+              }}
+              className="text-xs text-green-600 hover:text-green-800 px-2 py-1 rounded border border-green-200 hover:bg-green-50"
+            >
+              Run Test
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setProblemForm(prev => ({
+                  ...prev,
+                  testCases: prev.testCases.filter((_, i) => i !== index)
+                }));
+              }}
+              className="text-xs text-red-600 hover:text-red-800 px-2 py-1 rounded border border-red-200 hover:bg-red-50"
+              disabled={problemForm.testCases.length <= 1}
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
 
-                  {/* Tags */}
-                  <div>
-                    <label htmlFor="tags" className="block text-xs font-medium text-gray-700 mb-1">
-                      Tags
-                    </label>
-                    <input
-                      type="text"
-                      id="tags"
-                      className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
-                      onChange={(e) => {
-                        const tags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
-                        setProblemForm(prev => ({
-                          ...prev,
-                          tags
-                        }));
-                      }}
-                      placeholder="e.g., array, dynamic programming, recursion"
-                    />
-                    <p className="mt-1 text-xs text-gray-500">
-                      Separate tags with commas
-                    </p>
-                  </div>
+  {/* Tags */}
+  <div>
+    <label htmlFor="tags" className="block text-xs font-medium text-gray-700 mb-1">
+      Tags
+    </label>
+    <input
+      type="text"
+      id="tags"
+      className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
+      onChange={(e) => {
+        const tags = e.target.value.split(',').map(tag => tag.trim()).filter(Boolean);
+        setProblemForm(prev => ({
+          ...prev,
+          tags
+        }));
+      }}
+      placeholder="e.g., array, dynamic programming, recursion"
+    />
+    <p className="mt-1 text-xs text-gray-500">
+      Separate tags with commas
+    </p>
+  </div>
 
-                  {/* Solution */}
-                  <div>
-                    <label htmlFor="solution" className="block text-xs font-medium text-gray-700 mb-1">
-                      Solution Explanation
-                    </label>
-                    <textarea
-                      id="solution"
-                      name="solution"
-                      rows={3}
-                      className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
-                      value={problemForm.solution}
-                      onChange={handleProblemInputChange}
-                      placeholder="Explain the optimal solution approach"
-                    />
-                  </div>
+  {/* Solution */}
+  <div>
+    <label htmlFor="solution" className="block text-xs font-medium text-gray-700 mb-1">
+      Solution Explanation
+    </label>
+    <textarea
+      id="solution"
+      name="solution"
+      rows={3}
+      className="w-full px-2 py-1.5 text-xs border border-blue-200 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-black bg-white"
+      value={problemForm.solution}
+      onChange={handleProblemInputChange}
+      placeholder="Explain the optimal solution approach"
+    />
+  </div>
 
-                  <div className="flex justify-end space-x-2 pt-3 border-t border-gray-200">
-                    <button
-                      type="button"
-                      onClick={() => setShowProblemForm(false)}
-                      className="px-3 py-1.5 border-2 border-blue-500 rounded-md text-xs font-medium text-blue-700 bg-white hover:bg-blue-50 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-3 py-1.5 border-2 border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
-                    >
-                      {selectedProblem ? 'Update Problem' : 'Create Problem'}
-                    </button>
-                  </div>
-                </form>
+  <div className="flex justify-end space-x-2 pt-3 border-t border-gray-200">
+    <button
+      type="button"
+      onClick={() => setShowProblemForm(false)}
+      className="px-3 py-1.5 border-2 border-blue-500 rounded-md text-xs font-medium text-blue-700 bg-white hover:bg-blue-50 transition-colors"
+    >
+      Cancel
+    </button>
+    <button
+      type="submit"
+      className="px-3 py-1.5 border-2 border-transparent rounded-md shadow-sm text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors"
+    >
+      {selectedProblem ? 'Update Problem' : 'Create Problem'}
+    </button>
+  </div>
+</form>
+
               </Dialog.Panel>
             </div>
           </div>

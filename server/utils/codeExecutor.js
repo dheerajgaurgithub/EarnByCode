@@ -8,7 +8,7 @@ async function getFetch() {
   return mod.default;
 }
 
-async function executeWithLocalExecutor(code, language, input) {
+async function executeWithLocalExecutor(code, language, input, options = {}) {
   try {
     const httpFetch = await getFetch();
     // Derive base URL for self server
@@ -19,9 +19,12 @@ async function executeWithLocalExecutor(code, language, input) {
     // Map language ids to API expectations
     const lang = (language || '').toString().toLowerCase();
     const files = [{ content: String(code || '') }];
+    const timeout = options.timeout || 5000; // Default 5 seconds timeout
+    
     const body = {
       language: lang,
       files,
+      timeout,
       ...(typeof input === 'string' ? { stdin: input } : {})
     };
 
@@ -51,7 +54,7 @@ async function executeWithLocalExecutor(code, language, input) {
   }
 }
 
-// Enhanced OnlineGDB integration for real code compilation
+// Enhanced code execution for Java, C++, Python and JavaScript
 export const executeCode = async (code, language, testCases, options = {}) => {
   try {
     const results = [];
@@ -63,6 +66,24 @@ export const executeCode = async (code, language, testCases, options = {}) => {
     const compareMode = (options.compareMode || '').toString().toLowerCase();
     const optIgnoreWhitespace = typeof options.ignoreWhitespace === 'boolean' ? options.ignoreWhitespace : (compareMode !== 'strict');
     const optIgnoreCase = typeof options.ignoreCase === 'boolean' ? options.ignoreCase : (compareMode !== 'strict');
+    const timeLimit = options.timeLimit || 5000; // Default 5 seconds timeout
+
+    // Validate language support
+    const supportedLanguages = ['javascript', 'python', 'java', 'cpp'];
+    const normalizedLang = language.toLowerCase();
+    
+    if (!supportedLanguages.includes(normalizedLang)) {
+      throw new Error(`Unsupported language: ${language}. Supported languages are: ${supportedLanguages.join(', ')}`);
+    }
+
+    // Validate code for specific languages
+    if (normalizedLang === 'java' && !code.includes('class')) {
+      throw new Error('Java code must include a class definition');
+    }
+    
+    if (normalizedLang === 'cpp' && !code.includes('main(')) {
+      throw new Error('C++ code must include a main function');
+    }
 
     const normalizeFn = (s) => {
       let str = (s ?? '').toString().replace(/\r\n/g, '\n');
@@ -79,7 +100,10 @@ export const executeCode = async (code, language, testCases, options = {}) => {
       const testCase = testCases[i];
       
       try {
-        const result = await executeWithBestEffort(code, language, testCase.input);
+        // Execute with timeout option
+        const execOptions = { timeout: timeLimit };
+        const result = await executeWithBestEffort(code, normalizedLang, testCase.input, execOptions);
+        
         // Normalize output for comparison
         const actualOutput = normalizeFn(result.output);
         const expectedOutput = normalizeFn(testCase.expectedOutput);
@@ -145,11 +169,13 @@ export const executeCode = async (code, language, testCases, options = {}) => {
 };
 
 // Prefer local JS execution for stability, otherwise try OnlineGDB
-export async function executeWithBestEffort(code, language, input) {
+export async function executeWithBestEffort(code, language, input, options = {}) {
   const lang = (language || '').toString().toLowerCase();
+  const timeout = options.timeout || 5000; // Default 5 seconds timeout
+  
   // 1) Try local in-house executor for all supported languages to keep parity with Run
   try {
-    return await executeWithLocalExecutor(code, language, input);
+    return await executeWithLocalExecutor(code, language, input, { timeout });
   } catch (e) {
     // continue to fallback(s)
   }
@@ -157,15 +183,15 @@ export async function executeWithBestEffort(code, language, input) {
   // 2) For JavaScript, we also have a fast local VM fallback
   if (lang === 'javascript') {
     try {
-      return executeJsLocal(code, input);
+      return executeJsLocal(code, input, { timeout });
     } catch {}
   }
 
   // 3) Last resort: OnlineGDB (may be flaky) then simulation
-  return executeWithOnlineGDB(code, language, input);
+  return executeWithOnlineGDB(code, language, input, { timeout });
 }
 
-export async function executeWithOnlineGDB(code, language, input) {
+export async function executeWithOnlineGDB(code, language, input, options = {}) {
   try {
     console.log(`Executing ${language} code with OnlineGDB...`);
     
@@ -177,11 +203,14 @@ export async function executeWithOnlineGDB(code, language, input) {
       'cpp': 'cpp17'
     };
 
+    const timeout = options.timeout || 5000; // Default 5 seconds timeout
+
     const payload = {
       language: languageMap[language] || 'cpp17',
       code: code,
       input: input || '',
-      save: false
+      save: false,
+      timeout_ms: timeout
     };
 
     const response = await axios.post('https://www.onlinegdb.com/compile', payload, {
@@ -193,7 +222,7 @@ export async function executeWithOnlineGDB(code, language, input) {
         'Origin': 'https://www.onlinegdb.com',
         'Referer': 'https://www.onlinegdb.com/'
       },
-      timeout: 30000 // 30 second timeout
+      timeout: timeout + 5000 // Add 5 seconds to the request timeout
     });
 
     console.log('OnlineGDB response:', response.data);
@@ -217,7 +246,7 @@ export async function executeWithOnlineGDB(code, language, input) {
 };
 
 // Execute JavaScript locally in a sandboxed VM, with simple input helpers
-export function executeJsLocal(code, input) {
+export function executeJsLocal(code, input, options = {}) {
   const start = Date.now();
   const stdout = [];
   const stderr = [];
@@ -225,6 +254,8 @@ export function executeJsLocal(code, input) {
     const stdin = typeof input === 'string' ? input : '';
     const inputLines = stdin.split(/\r?\n/);
     let inputIndex = 0;
+    const timeout = options.timeout || 5000; // Default 5 seconds timeout
+    
     const sandbox = {
       console: {
         log: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
@@ -242,7 +273,7 @@ export function executeJsLocal(code, input) {
     };
     const context = createContext(sandbox);
     const script = new Script(String(code || ''), { filename: 'user_code.js' });
-    script.runInContext(context, { timeout: 3000 });
+    script.runInContext(context, { timeout });
   } catch (e) {
     stderr.push(String(e && e.message ? e.message : e));
   }
