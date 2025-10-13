@@ -1,13 +1,12 @@
 import express from 'express';
-import { isAdmin } from '../middleware/admin.js';
-import { auth } from '../middleware/auth.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 import Problem from '../models/Problem.js';
 import { executeCode } from '../utils/codeExecutor.js';
 
 const router = express.Router();
 
 // Run a single test case (admin only)
-router.post('/run-test', [auth, isAdmin], async (req, res) => {
+router.post('/run-test', [authenticate, requireAdmin], async (req, res) => {
   try {
     const { code, language, input, expectedOutput } = req.body;
     
@@ -36,7 +35,7 @@ router.post('/run-test', [auth, isAdmin], async (req, res) => {
 });
 
 // Get all test cases for a problem (admin only)
-router.get('/problems/:problemId/testcases', [auth, isAdmin], async (req, res) => {
+router.get('/problems/:problemId/testcases', [authenticate, requireAdmin], async (req, res) => {
   try {
     const problem = await Problem.findById(req.params.problemId);
     if (!problem) {
@@ -51,7 +50,7 @@ router.get('/problems/:problemId/testcases', [auth, isAdmin], async (req, res) =
 });
 
 // Add test case to a problem (admin only)
-router.post('/problems/:problemId/testcases', [auth, isAdmin], async (req, res) => {
+router.post('/problems/:problemId/testcases', [authenticate, requireAdmin], async (req, res) => {
   try {
     const { input, expectedOutput, hidden } = req.body;
     
@@ -83,7 +82,7 @@ router.post('/problems/:problemId/testcases', [auth, isAdmin], async (req, res) 
 });
 
 // Update test case (admin only)
-router.put('/problems/:problemId/testcases/:testCaseId', [auth, isAdmin], async (req, res) => {
+router.put('/problems/:problemId/testcases/:testCaseId', [authenticate, requireAdmin], async (req, res) => {
   try {
     const { input, expectedOutput, hidden } = req.body;
     
@@ -111,7 +110,7 @@ router.put('/problems/:problemId/testcases/:testCaseId', [auth, isAdmin], async 
 });
 
 // Delete test case (admin only)
-router.delete('/problems/:problemId/testcases/:testCaseId', [auth, isAdmin], async (req, res) => {
+router.delete('/problems/:problemId/testcases/:testCaseId', [authenticate, requireAdmin], async (req, res) => {
   try {
     const problem = await Problem.findById(req.params.problemId);
     if (!problem) {
@@ -134,7 +133,7 @@ router.delete('/problems/:problemId/testcases/:testCaseId', [auth, isAdmin], asy
 });
 
 // Test a solution against all test cases (admin only)
-router.post('/problems/:problemId/test-solution', [auth, isAdmin], async (req, res) => {
+router.post('/problems/:problemId/test-solution', [authenticate, requireAdmin], async (req, res) => {
   try {
     const { code, language } = req.body;
     
@@ -162,7 +161,7 @@ router.post('/problems/:problemId/test-solution', [auth, isAdmin], async (req, r
 });
 
 // Test a solution against provided test cases (admin only)
-router.post('/problems/test-solution', [auth, isAdmin], async (req, res) => {
+router.post('/problems/test-solution', [authenticate, requireAdmin], async (req, res) => {
   try {
     const { code, language, testCases } = req.body;
     
