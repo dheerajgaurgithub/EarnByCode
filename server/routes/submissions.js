@@ -105,8 +105,8 @@ router.post('/submit/:problemId', authenticate, async (req, res) => {
       return res.status(400).json({ message: 'Code and language are required' });
     }
     
-    // Validate language
-    const supportedLanguages = ['javascript', 'python', 'java', 'cpp'];
+    // Validate language - only Java, C++, Python supported
+    const supportedLanguages = ['java', 'cpp', 'python'];
     if (!supportedLanguages.includes(language)) {
       return res.status(400).json({ message: `Language not supported. Supported languages: ${supportedLanguages.join(', ')}` });
     }

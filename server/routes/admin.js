@@ -214,8 +214,37 @@ router.get('/users/:id/bank-details', async (req, res) => {
 });
 
 // Create new problem
-router.post('/problems', async (req, res) => {
+router.post('/problems', authenticate, requireAdmin, async (req, res) => {
   try {
+    // Validate required fields
+    const { title, description, difficulty, category, testCases } = req.body;
+
+    if (!title || !description || !difficulty || !category) {
+      return res.status(400).json({
+        message: 'Title, description, difficulty, and category are required'
+      });
+    }
+
+    // Validate difficulty
+    const validDifficulties = ['Easy', 'Medium', 'Hard'];
+    if (!validDifficulties.includes(difficulty)) {
+      return res.status(400).json({
+        message: `Difficulty must be one of: ${validDifficulties.join(', ')}`
+      });
+    }
+
+    // Validate test cases if provided
+    if (testCases && Array.isArray(testCases)) {
+      for (let i = 0; i < testCases.length; i++) {
+        const testCase = testCases[i];
+        if (!testCase.input || !testCase.expectedOutput) {
+          return res.status(400).json({
+            message: `Test case ${i + 1} must have input and expectedOutput`
+          });
+        }
+      }
+    }
+
     const problemData = {
       ...req.body,
       createdBy: req.user._id
@@ -224,9 +253,9 @@ router.post('/problems', async (req, res) => {
     const problem = new Problem(problemData);
     await problem.save();
 
-    res.status(201).json({ 
-      message: 'Problem created successfully', 
-      problem 
+    res.status(201).json({
+      message: 'Problem created successfully',
+      problem
     });
   } catch (error) {
     console.error('Create problem error:', error);
@@ -235,8 +264,30 @@ router.post('/problems', async (req, res) => {
 });
 
 // Update problem
-router.put('/problems/:id', async (req, res) => {
+router.put('/problems/:id', authenticate, requireAdmin, async (req, res) => {
   try {
+    // Validate difficulty if provided
+    if (req.body.difficulty) {
+      const validDifficulties = ['Easy', 'Medium', 'Hard'];
+      if (!validDifficulties.includes(req.body.difficulty)) {
+        return res.status(400).json({
+          message: `Difficulty must be one of: ${validDifficulties.join(', ')}`
+        });
+      }
+    }
+
+    // Validate test cases if provided
+    if (req.body.testCases && Array.isArray(req.body.testCases)) {
+      for (let i = 0; i < req.body.testCases.length; i++) {
+        const testCase = req.body.testCases[i];
+        if (!testCase.input || !testCase.expectedOutput) {
+          return res.status(400).json({
+            message: `Test case ${i + 1} must have input and expectedOutput`
+          });
+        }
+      }
+    }
+
     const problem = await Problem.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -308,7 +359,7 @@ router.delete('/problems/:id', async (req, res) => {
 });
 
 // Create new contest
-router.post('/contests', async (req, res) => {
+router.post('/contests', authenticate, requireAdmin, async (req, res) => {
   try {
     const contestData = {
       ...req.body,
@@ -354,7 +405,7 @@ router.post('/contests', async (req, res) => {
 });
 
 // Update contest
-router.put('/contests/:id', async (req, res) => {
+router.put('/contests/:id', authenticate, requireAdmin, async (req, res) => {
   try {
     const contest = await Contest.findByIdAndUpdate(
       req.params.id,

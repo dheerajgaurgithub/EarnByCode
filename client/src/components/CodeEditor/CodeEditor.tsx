@@ -1,53 +1,28 @@
 import React, { useEffect, useState, ChangeEvent, useRef } from "react";
 import CodeMirror from "@uiw/react-codemirror";
-import { javascript } from "@codemirror/lang-javascript";
-import { python } from "@codemirror/lang-python";
 import { java } from "@codemirror/lang-java";
 import { cpp } from "@codemirror/lang-cpp";
-import { rust } from "@codemirror/lang-rust";
-import { php } from "@codemirror/lang-php";
-import { go } from "@codemirror/lang-go";
+import { python } from "@codemirror/lang-python";
 import { useParams } from "react-router-dom";
 
 type Lang =
   | "Java"
   | "Cpp"
-  | "Python"
-  | "JavaScript"
-  | "CSharp"
-  | "Ruby"
-  | "Go"
-  | "Rust"
-  | "PHP"
-  | "C";
+  | "Python";
 
 const DEFAULT_SNIPPETS: Record<Lang, string> = {
   Java: `public class Main {\n  public static void main(String[] args) {\n    System.out.println("Hello Java");\n  }\n}`,
   Cpp: `#include <iostream>\nusing namespace std;\n\nint main() {\n  cout << "Hello C++" << endl;\n  return 0;\n}`,
   Python: `print('Hello Python')`,
-  JavaScript: `console.log('Hello JavaScript');`,
-  CSharp: `using System;\n\nclass Program {\n  static void Main() {\n    Console.WriteLine("Hello C#");\n  }\n}`,
-  Ruby: `puts 'Hello Ruby'`,
-  Go: `package main\n\nimport "fmt"\n\nfunc main() {\n  fmt.Println("Hello Go")\n}`,
-  Rust: `fn main() {\n  println!("Hello Rust");\n}`,
-  PHP: `<?php\necho "Hello PHP\\n";\n?>`,
-  C: `#include <stdio.h>\n\nint main() {\n  printf("Hello C\\n");\n  return 0;\n}`,
 };
 
 const CodeEditor: React.FC = () => {
-  const [lang, setLang] = useState<Lang>("JavaScript");
-  const [code, setCode] = useState<string>(DEFAULT_SNIPPETS["JavaScript"]);
+  const [lang, setLang] = useState<Lang>("Java");
+  const [code, setCode] = useState<string>(DEFAULT_SNIPPETS["Java"]);
   const [codeByLang, setCodeByLang] = useState<Record<Lang, string>>({
     Java: DEFAULT_SNIPPETS.Java,
     Cpp: DEFAULT_SNIPPETS.Cpp,
     Python: DEFAULT_SNIPPETS.Python,
-    JavaScript: DEFAULT_SNIPPETS.JavaScript,
-    CSharp: DEFAULT_SNIPPETS.CSharp,
-    Ruby: DEFAULT_SNIPPETS.Ruby,
-    Go: DEFAULT_SNIPPETS.Go,
-    Rust: DEFAULT_SNIPPETS.Rust,
-    PHP: DEFAULT_SNIPPETS.PHP,
-    C: DEFAULT_SNIPPETS.C,
   });
   const [input, setInput] = useState<string>("");
   const [output, setOutput] = useState<string>("");
@@ -123,31 +98,17 @@ const CodeEditor: React.FC = () => {
       Java: "java",
       Cpp: "cpp",
       Python: "python",
-      JavaScript: "javascript",
-      CSharp: "csharp",
-      Ruby: "ruby",
-      Go: "go",
-      Rust: "rust",
-      PHP: "php",
-      C: "c",
     };
-    return map[l] || "javascript";
+    return map[l] || "java";
   };
 
   // Judge0 language_id mapping (common defaults). Adjust if your instance differs.
   const judge0LanguageId = (l: Lang): number => {
-    // Defaults
+    // Defaults for Java, C++, Python only
     const ids: Record<Lang, number> = {
       Java: 62,        // Java (OpenJDK 17)
       Cpp: 54,         // C++ (GCC 9.2.0)
       Python: 71,      // Python (3.8.1)
-      JavaScript: 63,  // Node.js (12.14.0)
-      CSharp: 51,      // C# (Mono 6)
-      Ruby: 72,        // Ruby 2.7.0
-      Go: 60,          // Go 1.13.5
-      Rust: 73,        // Rust 1.40.0
-      PHP: 68,         // PHP 7.4.1
-      C: 50            // C (GCC 9.2.0)
     };
     // Optional overrides via env JSON: VITE_JUDGE0_LANG_IDS
     try {
@@ -162,7 +123,7 @@ const CodeEditor: React.FC = () => {
         }
       }
     } catch {}
-    return ids[l] ?? 63;
+    return ids[l] ?? 62;
   };
 
   // Build piston-style payload with explicit filename per language
@@ -174,22 +135,8 @@ const CodeEditor: React.FC = () => {
           return /\bclass\s+Solution\b/.test(src) ? "Solution.java" : "Main.java";
         case "Cpp":
           return "main.cpp";
-        case "C":
-          return "main.c";
         case "Python":
           return "main.py";
-        case "JavaScript":
-          return "index.js";
-        case "CSharp":
-          return "Program.cs";
-        case "Ruby":
-          return "main.rb";
-        case "Go":
-          return "main.go";
-        case "Rust":
-          return "main.rs";
-        case "PHP":
-          return "main.php";
         default:
           return "main.txt";
       }
@@ -394,13 +341,9 @@ const CodeEditor: React.FC = () => {
   }, [code, lang]);
 
   const cmExtensions = () => {
-    if (lang === "Cpp" || lang === "C") return [cpp()];
+    if (lang === "Cpp") return [cpp()];
     if (lang === "Java") return [java()];
     if (lang === "Python") return [python()];
-    if (lang === "JavaScript") return [javascript({ typescript: false })];
-    if (lang === "Go") return [go()];
-    if (lang === "Rust") return [rust()];
-    if (lang === "PHP") return [php()];
     return [];
   };
 
@@ -663,16 +606,9 @@ const CodeEditor: React.FC = () => {
             value={lang}
             onChange={(e) => setLang(e.target.value as Lang)}
           >
-            <option value="JavaScript">JavaScript</option>
-            <option value="Python">Python</option>
             <option value="Java">Java</option>
             <option value="Cpp">C++</option>
-            <option value="C">C</option>
-            <option value="CSharp">C#</option>
-            <option value="Ruby">Ruby</option>
-            <option value="Go">Go</option>
-            <option value="Rust">Rust</option>
-            <option value="PHP">PHP</option>
+            <option value="Python">Python</option>
           </select>
 
           <button

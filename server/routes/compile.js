@@ -22,32 +22,18 @@ async function getFetch() {
   return mod.default;
 }
 
-// Judge0 language mapping
+// Judge0 language mapping - only Java, C++, Python supported
 function mapJudge0Language(lang) {
   const l = String(lang || '').toLowerCase();
   const ids = {
-    javascript: Number(process.env.JUDGE0_ID_JS || 63),
     python: Number(process.env.JUDGE0_ID_PY || 71),
     java: Number(process.env.JUDGE0_ID_JAVA || 62),
     cpp: Number(process.env.JUDGE0_ID_CPP || 54),
-    c: Number(process.env.JUDGE0_ID_C || 50),
-    csharp: Number(process.env.JUDGE0_ID_CS || 51),
-    ruby: Number(process.env.JUDGE0_ID_RUBY || 72),
-    go: Number(process.env.JUDGE0_ID_GO || 60),
-    rust: Number(process.env.JUDGE0_ID_RUST || 73),
-    php: Number(process.env.JUDGE0_ID_PHP || 68),
   };
 
-  if (l === 'javascript' || l === 'js' || l === 'node' || l === 'nodejs') return ids.javascript;
   if (l === 'python' || l === 'py' || l === 'python3') return ids.python;
   if (l === 'java') return ids.java;
   if (l === 'cpp' || l === 'c++') return ids.cpp;
-  if (l === 'c') return ids.c;
-  if (l === 'csharp' || l === 'cs' || l === 'c#') return ids.csharp;
-  if (l === 'ruby' || l === 'rb') return ids.ruby;
-  if (l === 'go' || l === 'golang') return ids.go;
-  if (l === 'rust' || l === 'rs') return ids.rust;
-  if (l === 'php') return ids.php;
 
   return null;
 }
@@ -153,14 +139,8 @@ router.post('/execute', express.json({ limit: '256kb' }), (req, res) => {
 
 export default router;
 
-// Language configurations for Docker execution
+// Language configurations for Docker execution - only Java, C++, Python
 const langConfig = {
-  javascript: {
-    image: process.env.NODE_IMAGE || 'node:20-slim',
-    filename: 'main.js',
-    compile: null,
-    run: (filename) => ['node', filename],
-  },
   python: {
     image: process.env.PY_IMAGE || 'python:3.11-slim',
     filename: 'main.py',
@@ -173,64 +153,21 @@ const langConfig = {
     compile: (filename) => ['bash', '-c', `g++ -O2 -std=c++17 ${filename} -o main && echo __COMPILED__`],
     run: () => ['./main'],
   },
-  c: {
-    image: process.env.C_IMAGE || 'gcc:12.2.0',
-    filename: 'main.c',
-    compile: (filename) => ['bash', '-c', `gcc -O2 ${filename} -o main && echo __COMPILED__`],
-    run: () => ['./main'],
-  },
   java: {
     image: process.env.JAVA_IMAGE || 'eclipse-temurin:17-jdk-jammy',
     filename: 'Main.java',
     compile: (filename) => ['bash', '-c', `javac -J-Djava.security.egd=file:/dev/./urandom -d . ${filename} && echo __COMPILED__`],
     run: () => ['java', '-Djava.security.egd=file:/dev/./urandom', '-Xms16m', '-Xmx256m', '-XX:+UseSerialGC', '-cp', '.', 'Main'],
   },
-  csharp: {
-    image: process.env.DOTNET_IMAGE || 'mcr.microsoft.com/dotnet/sdk:8.0',
-    filename: 'Program.cs',
-    compile: (filename) => ['bash', '-c', `dotnet new console -n app -o app -f net8.0 --no-restore >/dev/null 2>&1 && mv ${filename} app/Program.cs && cd app && dotnet restore >/dev/null 2>&1 && dotnet build -c Release >/dev/null 2>&1 && echo __COMPILED__`],
-    run: () => ['bash', '-c', 'cd app && dotnet run -c Release --no-build'],
-  },
-  ruby: {
-    image: process.env.RUBY_IMAGE || 'ruby:3.2-slim',
-    filename: 'main.rb',
-    compile: null,
-    run: (filename) => ['ruby', filename],
-  },
-  go: {
-    image: process.env.GO_IMAGE || 'golang:1.21-alpine',
-    filename: 'main.go',
-    compile: (filename) => ['bash', '-c', `go build -o main ${filename} && echo __COMPILED__`],
-    run: () => ['./main'],
-  },
-  rust: {
-    image: process.env.RUST_IMAGE || 'rust:1.75-slim',
-    filename: 'main.rs',
-    compile: (filename) => ['bash', '-c', `rustc -O ${filename} -o main && echo __COMPILED__`],
-    run: () => ['./main'],
-  },
-  php: {
-    image: process.env.PHP_IMAGE || 'php:8.2-cli-alpine',
-    filename: 'main.php',
-    compile: null,
-    run: (filename) => ['php', filename],
-  },
 };
 
-// Normalize language names
+// Normalize language names - only Java, C++, Python supported
 function normalizeLanguage(lang) {
   const l = String(lang || '').toLowerCase().trim();
 
-  if (l === 'javascript' || l === 'js' || l === 'node' || l === 'nodejs') return 'javascript';
-  if (l === 'python' || l === 'py' || l === 'python3') return 'python';
   if (l === 'java') return 'java';
   if (l === 'cpp' || l === 'c++') return 'cpp';
-  if (l === 'c') return 'c';
-  if (l === 'csharp' || l === 'cs' || l === 'c#') return 'csharp';
-  if (l === 'ruby' || l === 'rb') return 'ruby';
-  if (l === 'go' || l === 'golang') return 'go';
-  if (l === 'rust' || l === 'rs') return 'rust';
-  if (l === 'php') return 'php';
+  if (l === 'python' || l === 'py' || l === 'python3') return 'python';
 
   return null;
 }

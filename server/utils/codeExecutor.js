@@ -54,24 +54,24 @@ async function executeWithLocalExecutor(code, language, input, options = {}) {
   }
 }
 
-// Enhanced code execution for Java, C++, Python and JavaScript
+// Enhanced code execution for Java, C++, and Python only
 export const executeCode = async (code, language, testCases, options = {}) => {
   try {
     const results = [];
     let allPassed = true;
-    
+
     console.log(`Executing ${language} code with ${testCases.length} test cases`);
-    
-    // Build comparison options
-    const compareMode = (options.compareMode || '').toString().toLowerCase();
+
+    // Build comparison options - default to strict comparison
+    const compareMode = (options.compareMode || 'strict').toString().toLowerCase();
     const optIgnoreWhitespace = typeof options.ignoreWhitespace === 'boolean' ? options.ignoreWhitespace : (compareMode !== 'strict');
     const optIgnoreCase = typeof options.ignoreCase === 'boolean' ? options.ignoreCase : (compareMode !== 'strict');
     const timeLimit = options.timeLimit || 5000; // Default 5 seconds timeout
 
-    // Validate language support
-    const supportedLanguages = ['javascript', 'python', 'java', 'cpp'];
+    // Only support Java, C++, and Python
+    const supportedLanguages = ['java', 'cpp', 'python'];
     const normalizedLang = language.toLowerCase();
-    
+
     if (!supportedLanguages.includes(normalizedLang)) {
       throw new Error(`Unsupported language: ${language}. Supported languages are: ${supportedLanguages.join(', ')}`);
     }
@@ -80,9 +80,13 @@ export const executeCode = async (code, language, testCases, options = {}) => {
     if (normalizedLang === 'java' && !code.includes('class')) {
       throw new Error('Java code must include a class definition');
     }
-    
+
     if (normalizedLang === 'cpp' && !code.includes('main(')) {
       throw new Error('C++ code must include a main function');
+    }
+
+    if (normalizedLang === 'python' && !code.includes('def ') && !code.includes('print') && !code.includes('input')) {
+      throw new Error('Python code must include a function definition or print/input statements');
     }
 
     const normalizeFn = (s) => {
@@ -98,30 +102,30 @@ export const executeCode = async (code, language, testCases, options = {}) => {
 
     for (let i = 0; i < testCases.length; i++) {
       const testCase = testCases[i];
-      
+
       try {
         // Execute with timeout option
         const execOptions = { timeout: timeLimit };
         const result = await executeWithBestEffort(code, normalizedLang, testCase.input, execOptions);
-        
-        // Normalize output for comparison
+
+        // Normalize output for comparison - strict comparison by default
         const actualOutput = normalizeFn(result.output);
         const expectedOutput = normalizeFn(testCase.expectedOutput);
         const passed = actualOutput === expectedOutput;
-        
+
         if (!passed) allPassed = false;
-        
+
         results.push({
           input: testCase.input,
-          expectedOutput: expectedOutput,
-          actualOutput: actualOutput,
+          expectedOutput: testCase.expectedOutput,
+          actualOutput: result.output,
           passed,
           runtime: result.runtime,
           memory: result.memory,
           error: result.error
         });
-        
-        console.log(`Test case ${i + 1}: ${passed ? 'PASSED' : 'FAILED'}`);
+
+        console.log(`Test case ${i + 1}: ${passed ? 'PASSED' : 'FAILED'} - Expected: "${expectedOutput}", Got: "${actualOutput}"`);
       } catch (error) {
         console.error(`Test case ${i + 1} execution error:`, error.message);
         allPassed = false;
@@ -138,8 +142,8 @@ export const executeCode = async (code, language, testCases, options = {}) => {
     }
 
     const testsPassed = results.filter(r => r.passed).length;
-    const status = allPassed ? 'Accepted' : 
-                  testsPassed === 0 ? 'Wrong Answer' : 
+    const status = allPassed ? 'Accepted' :
+                  testsPassed === 0 ? 'Wrong Answer' :
                   results.some(r => r.error && /timeout/i.test(r.error)) ? 'Time Limit Exceeded' :
                   results.some(r => r.error && /compilation/i.test(r.error)) ? 'Compilation Error' :
                   'Wrong Answer';
@@ -168,26 +172,18 @@ export const executeCode = async (code, language, testCases, options = {}) => {
   }
 };
 
-// Prefer local JS execution for stability, otherwise try OnlineGDB
 export async function executeWithBestEffort(code, language, input, options = {}) {
   const lang = (language || '').toString().toLowerCase();
   const timeout = options.timeout || 5000; // Default 5 seconds timeout
-  
-  // 1) Try local in-house executor for all supported languages to keep parity with Run
+
+  // 1) Try local in-house executor for all supported languages
   try {
     return await executeWithLocalExecutor(code, language, input, { timeout });
   } catch (e) {
     // continue to fallback(s)
   }
 
-  // 2) For JavaScript, we also have a fast local VM fallback
-  if (lang === 'javascript') {
-    try {
-      return executeJsLocal(code, input, { timeout });
-    } catch {}
-  }
-
-  // 3) Last resort: OnlineGDB (may be flaky) then simulation
+  // 2) Last resort: OnlineGDB (may be flaky) then simulation
   return executeWithOnlineGDB(code, language, input, { timeout });
 }
 
@@ -195,12 +191,11 @@ export async function executeWithOnlineGDB(code, language, input, options = {}) 
   try {
     console.log(`Executing ${language} code with OnlineGDB...`);
     
-    // Language mapping for OnlineGDB
+    // Language mapping for OnlineGDB (Java, C++, Python only)
     const languageMap = {
-      'javascript': 'nodejs',
-      'python': 'python3',
       'java': 'java',
-      'cpp': 'cpp17'
+      'cpp': 'cpp17',
+      'python': 'python3'
     };
 
     const timeout = options.timeout || 5000; // Default 5 seconds timeout
@@ -330,8 +325,6 @@ export function simulateExecution(code, language, input) {
 
 export function checkMainFunction(code, language) {
   switch (language) {
-    case 'javascript':
-      return /console\.log|function\s+main|process\.stdout/.test(code);
     case 'python':
       return /print\s*\(|if\s+__name__\s*==\s*['"']__main__['"]|def\s+main/.test(code);
     case 'java':
@@ -345,14 +338,6 @@ export function checkMainFunction(code, language) {
 
 export function checkBasicSyntax(code, language) {
   switch (language) {
-    case 'javascript':
-      // Check for basic JS syntax
-      const jsErrors = [];
-      if (code.includes('function') && !code.includes('{')) {
-        jsErrors.push('Missing opening brace for function');
-      }
-      return { valid: jsErrors.length === 0, error: jsErrors[0] };
-      
     case 'python':
       // Check for basic Python syntax
       const pyErrors = [];
@@ -367,7 +352,7 @@ export function checkBasicSyntax(code, language) {
         }
       }
       return { valid: pyErrors.length === 0, error: pyErrors[0] };
-      
+
     case 'java':
       // Check for basic Java syntax
       const javaErrors = [];
@@ -378,7 +363,7 @@ export function checkBasicSyntax(code, language) {
         javaErrors.push('Missing opening brace for class');
       }
       return { valid: javaErrors.length === 0, error: javaErrors[0] };
-      
+
     case 'cpp':
       // Check for basic C++ syntax
       const cppErrors = [];
@@ -386,7 +371,7 @@ export function checkBasicSyntax(code, language) {
         cppErrors.push('Missing include statements');
       }
       return { valid: cppErrors.length === 0, error: cppErrors[0] };
-      
+
     default:
       return { valid: true, error: null };
   }
@@ -397,11 +382,11 @@ export function analyzeCodeQuality(code, language) {
 
   // Check for proper structure
   if (checkMainFunction(code, language)) quality += 0.2;
-  
+
   // Check code length (reasonable complexity)
   const codeLength = code.trim().length;
-  if (codeLength > 100 && codeLength < 2000) quality += 0.1;
-  
+  if (codeLength > 50 && codeLength < 2000) quality += 0.1;
+
   // Check for common patterns
   if (code.includes('for') || code.includes('while') || code.includes('if')) quality += 0.1;
 
@@ -409,11 +394,11 @@ export function analyzeCodeQuality(code, language) {
 };
 
 export function generateRealisticOutput(input, code, language) {
-  // Enhanced output generation based on code analysis
+  // Enhanced output generation based on code analysis for Java, C++, Python
   if (!input) return '';
-  
+
   const lines = input.split('\n').filter(line => line.trim());
-  
+
   // Analyze code for common patterns
   if (code.toLowerCase().includes('sum') || code.includes('+')) {
     // Likely a sum problem
@@ -422,7 +407,7 @@ export function generateRealisticOutput(input, code, language) {
       return (numbers[0] + numbers[1]).toString();
     }
   }
-  
+
   if (code.toLowerCase().includes('factorial')) {
     const num = parseInt(lines[0]);
     if (!isNaN(num) && num >= 0 && num <= 10) {
@@ -433,7 +418,7 @@ export function generateRealisticOutput(input, code, language) {
       return factorial.toString();
     }
   }
-  
+
   if (code.toLowerCase().includes('fibonacci')) {
     const num = parseInt(lines[0]);
     if (!isNaN(num) && num >= 0 && num <= 20) {
@@ -445,7 +430,18 @@ export function generateRealisticOutput(input, code, language) {
       return b.toString();
     }
   }
-  
+
+  // Check for mathematical operations in the code
+  if (code.includes('*') || code.includes('/') || code.includes('%')) {
+    const num1 = parseInt(lines[0]);
+    const num2 = parseInt(lines[1]);
+    if (!isNaN(num1) && !isNaN(num2)) {
+      if (code.includes('*')) return (num1 * num2).toString();
+      if (code.includes('/')) return Math.floor(num1 / num2).toString();
+      if (code.includes('%')) return (num1 % num2).toString();
+    }
+  }
+
   // Default: echo first line or simple transformation
   return lines[0] || '';
 };
