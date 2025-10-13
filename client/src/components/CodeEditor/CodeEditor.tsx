@@ -150,69 +150,92 @@ const CodeEditor: React.FC = () => {
     return payload;
   };
 
-  // Execute request with robust fallback order (/compile then /execute; piston then legacy)
+  // Enhanced execution with better error handling and validation
   const executeWithFallback = async (src: string, l: Lang, stdin?: string) => {
     const urls = [`${apiBase}/compile`, `${apiBase}/execute`];
     const piston = buildPistonPayload(l, src, stdin);
     const legacy = { code: src, language: langToApiLang(l), input: stdin ?? "", stdin: stdin ?? "" } as any;
-    const payloads = [piston, legacy];
-    let judge0Hint = false;    
-    const attempts: string[] = [];
+
+    console.log(`🚀 Starting execution for ${l} with ${stdin?.length || 0} chars of input`);
+
     for (const url of urls) {
-      for (const body of payloads) {
+      for (const body of [piston, legacy]) {
         try {
-          attempts.push(`${url} with ${body === piston ? 'piston' : 'legacy'} format`);
+          console.log(`📡 Attempting ${url} with ${body === piston ? 'piston' : 'legacy'} format`);
           const res = await fetch(url, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
           });
+
           if (!res.ok) {
-            // capture text and continue to next fallback
             const txt = await res.text().catch(() => "");
-            if (res.status === 422 || /judge0/i.test(txt)) judge0Hint = true;
+            console.warn(`❌ ${url} failed (${res.status}): ${txt}`);
+            if (res.status === 422 || /judge0|unsupported/i.test(txt)) {
+              throw new Error(`Language ${l} not supported by this executor`);
+            }
             continue;
           }
+
           const data = await res.json();
-          return data;
-        } catch {
+          console.log(`✅ ${url} succeeded with ${body === piston ? 'piston' : 'legacy'} format`);
+
+          // Enhanced result validation
+          if (!data || typeof data !== 'object') {
+            throw new Error('Invalid response format from executor');
+          }
+
+          return {
+            ...data,
+            executionSource: url,
+            executionMethod: body === piston ? 'piston' : 'legacy'
+          };
+        } catch (error: any) {
+          console.warn(`❌ ${url} error:`, error.message);
           continue;
         }
       }
     }
-    // Record attempts for UI surfacing before failing
-    lastExecMetaRef.current = attempts.join("\n");
-    // Auto-try Judge0 submissions endpoint as last resort or if we saw hints
+
+    // If all attempts fail, try Judge0 as last resort
     try {
-      if (judge0Hint) {
-        const url = `${judge0Base}/submissions?base64_encoded=false&wait=true`;
-        const body = {
-          source_code: src,
-          language_id: judge0LanguageId(l),
-          stdin: stdin ?? "",
-        } as any;
-        const res = await fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          return {
-            stdout: data?.stdout ?? "",
-            stderr: data?.stderr ?? "",
-            output: typeof data?.stdout === "string" ? data.stdout : "",
-            exitCode:
-              typeof data?.status?.id === "number" && data.status.id === 3
-                ? 0
-                : (data?.status?.id ?? 1),
-            runtimeMs: data?.time ? Math.round(Number(data.time) * 1000) : undefined,
-            memoryKb: typeof data?.memory === "number" ? data.memory : undefined,
-          } as any;
-        }
+      console.log(`🔄 Attempting Judge0 fallback for ${l}`);
+      const url = `${judge0Base}/submissions?base64_encoded=false&wait=true`;
+      const body = {
+        source_code: src,
+        language_id: judge0LanguageId(l),
+        stdin: stdin ?? "",
+      } as any;
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        console.log(`✅ Judge0 execution succeeded for ${l}`);
+
+        return {
+          stdout: data?.stdout ?? "",
+          stderr: data?.stderr ?? "",
+          output: typeof data?.stdout === "string" ? data.stdout : "",
+          exitCode:
+            typeof data?.status?.id === "number" && data.status.id === 3
+              ? 0
+              : (data?.status?.id ?? 1),
+          runtimeMs: data?.time ? Math.round(Number(data.time) * 1000) : undefined,
+          memoryKb: typeof data?.memory === "number" ? data.memory : undefined,
+          executionSource: 'judge0',
+          executionMethod: 'judge0'
+        };
       }
-    } catch {}
-    throw new Error("All executor fallbacks failed");
+    } catch (error: any) {
+      console.warn(`❌ Judge0 fallback failed:`, error.message);
+    }
+
+    throw new Error(`💥 All execution methods failed for ${l}. Please check your code and try again.`);
   };
 
   // Theme classes
@@ -369,6 +392,24 @@ const CodeEditor: React.FC = () => {
       setCompilerLog("");
       setShowLog(false);
 
+      console.log(`🔧 Starting code execution for ${lang}`);
+
+      // Enhanced code validation
+      if (!code || code.trim().length === 0) {
+        throw new Error("❌ Please enter some code before running");
+      }
+
+      // Language-specific validation
+      if (lang === "Java" && !code.includes("class")) {
+        throw new Error("❌ Java code must include a class definition");
+      }
+      if (lang === "Cpp" && !code.includes("main(")) {
+        throw new Error("❌ C++ code must include a main function");
+      }
+      if (lang === "Python" && !code.includes("def ") && !code.includes("print") && !code.includes("input")) {
+        throw new Error("❌ Python code must include a function definition or print/input statements");
+      }
+
       // Prefer first problem testcase when available
       const hasProblemTests = problemId && Array.isArray(testcases) && testcases.length > 0;
       const idx = hasProblemTests ? Math.max(0, Math.min(selectedTcIndex, testcases.length - 1)) : -1;
@@ -376,7 +417,10 @@ const CodeEditor: React.FC = () => {
       const effectiveInput = tc0 ? tc0.input : input;
       const effectiveExpected = tc0 ? tc0.expected : expected;
 
+      console.log(`📝 Running with input: ${effectiveInput?.substring(0, 50)}${effectiveInput?.length > 50 ? '...' : ''}`);
+
       const data = await executeWithFallback(code, lang, effectiveInput);
+
       const outText =
         typeof data?.run?.output === "string"
           ? data.run.output
@@ -393,7 +437,20 @@ const CodeEditor: React.FC = () => {
         typeof data?.run?.stdout === "string" ? data.run.stdout : typeof data?.stdout === "string" ? data.stdout : outText
       );
       setStderrText(typeof data?.run?.stderr === "string" ? data.run.stderr : typeof data?.stderr === "string" ? data.stderr : "");
-      setCompilerLog((lastExecMetaRef.current ? `${lastExecMetaRef.current}\n\n` : "") + outText);
+
+      // Enhanced logging with execution details
+      const executionDetails = [
+        `🔧 Language: ${lang}`,
+        `📡 Execution Source: ${data.executionSource || 'unknown'}`,
+        `⚙️ Execution Method: ${data.executionMethod || 'unknown'}`,
+        `⏱️ Runtime: ${data.runtimeMs || 'unknown'}ms`,
+        `💾 Memory: ${data.memoryKb || 'unknown'}KB`,
+        `📊 Exit Code: ${data.exitCode || 'unknown'}`,
+        outText ? `📤 Output: ${outText.substring(0, 200)}${outText.length > 200 ? '...' : ''}` : '📤 No output'
+      ].join('\n');
+
+      setCompilerLog(executionDetails);
+
       // Sync right-hand inputs with the testcase we ran, for visibility
       if (tc0) {
         setInput(tc0.input);
@@ -405,17 +462,29 @@ const CodeEditor: React.FC = () => {
 
       if (typeof data?.exitCode === "number" && data.exitCode !== 0) {
         setShowLog(true);
+        console.warn(`⚠️ Non-zero exit code: ${data.exitCode}`);
       }
 
-      // Check vs expected: use problem testcase expected if present
+      // Enhanced test case validation
       if (effectiveExpected.trim().length > 0) {
         const ok = normalize(outText) === normalize(effectiveExpected);
         setPassed(ok);
+
+        if (ok) {
+          console.log(`✅ Test PASSED - Output matches expected`);
+        } else {
+          console.log(`❌ Test FAILED - Expected: "${normalize(effectiveExpected)}", Got: "${normalize(outText)}"`);
+          setShowLog(true);
+        }
+      } else {
+        console.log(`ℹ️ No expected output to compare against`);
       }
+
     } catch (e: any) {
-      const msg = e?.message || "Run failed";
+      console.error(`💥 Execution failed:`, e.message);
+      const msg = e?.message || "❌ Run failed - Please check your code and try again";
       setOutput(msg);
-      setCompilerLog(msg);
+      setCompilerLog(`${msg}\n\n🔍 Debug Info:\n${e.stack || 'No stack trace available'}`);
       setPassed(false);
       setShowLog(true);
     } finally {
@@ -425,8 +494,12 @@ const CodeEditor: React.FC = () => {
 
   const [stopOnFail, setStopOnFail] = useState<boolean>(false);
   const runAll = async () => {
-    if (testcases.length === 0) return;
+    if (testcases.length === 0) {
+      console.warn("⚠️ No test cases to run");
+      return;
+    }
 
+    console.log(`🚀 Starting batch execution of ${testcases.length} test cases`);
     setRunning(true);
 
     // Reset all test cases
@@ -441,11 +514,18 @@ const CodeEditor: React.FC = () => {
       }))
     );
 
-    // Run each test case sequentially
+    // Run each test case sequentially with enhanced error handling
     for (let i = 0; i < testcases.length; i++) {
       const tc = testcases[i];
+      console.log(`🔄 Running test case ${i + 1}/${testcases.length}`);
+
       try {
         const data = await executeWithFallback(code, lang, tc.input);
+
+        if (!data || typeof data !== 'object') {
+          throw new Error('Invalid execution response');
+        }
+
         const outputText =
           typeof data?.run?.output === "string"
             ? data.run.output
@@ -456,6 +536,7 @@ const CodeEditor: React.FC = () => {
             : typeof data?.stdout === "string"
             ? data.stdout
             : JSON.stringify(data);
+
         const exit = typeof data?.exitCode === "number" ? data.exitCode : null;
         const runtime = typeof data?.runtimeMs === "number" ? data.runtimeMs : undefined;
         const memory = typeof data?.memoryKb === "number" ? data.memoryKb : undefined;
@@ -479,33 +560,43 @@ const CodeEditor: React.FC = () => {
           )
         );
 
-        // Stop on first fail if toggled
-        if (passedResult === false && stopOnFail) {
-          break;
+        if (passedResult === false) {
+          console.log(`❌ Test case ${i + 1} FAILED`);
+          if (stopOnFail) {
+            console.log(`🛑 Stopping execution due to failure`);
+            break;
+          }
+        } else if (passedResult === true) {
+          console.log(`✅ Test case ${i + 1} PASSED`);
         }
 
-        // Small delay between test cases to avoid hammering the API
+        // Increased delay between test cases for better reliability
         if (i < testcases.length - 1) {
-          // eslint-disable-next-line no-await-in-loop
-          await new Promise((resolve) => setTimeout(resolve, 300));
+          await new Promise((resolve) => setTimeout(resolve, 500));
         }
-      } catch (error) {
-        console.error("Error running test case:", error);
+      } catch (error: any) {
+        console.error(`❌ Error running test case ${i + 1}:`, error.message);
         setTestcases((prev) =>
           prev.map((item, idx) =>
             idx === i
               ? {
                   ...item,
-                  output: "Error: Failed to run test case",
+                  output: `❌ Execution Error: ${error.message}`,
                   passed: false,
                   exitCode: -1,
                 }
               : item
           )
         );
+
+        if (stopOnFail) {
+          console.log(`🛑 Stopping execution due to error`);
+          break;
+        }
       }
     }
 
+    console.log(`📊 Batch execution completed`);
     setRunning(false);
   };
 

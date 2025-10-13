@@ -96,103 +96,146 @@ router.get('/:id', authenticate, async (req, res) => {
   }
 });
 
-// Submit a solution for a problem with test case validation
+// Submit a solution for a problem with enhanced validation and error handling
 router.post('/submit/:problemId', authenticate, async (req, res) => {
   try {
     const { code, language } = req.body;
-    
-    if (!code || !language) {
-      return res.status(400).json({ message: 'Code and language are required' });
+
+    console.log(`🚀 Processing submission for problem ${req.params.problemId}`);
+
+    // Enhanced input validation
+    if (!code || typeof code !== 'string' || code.trim().length === 0) {
+      return res.status(400).json({
+        message: '❌ Code is required and cannot be empty',
+        error: 'INVALID_CODE'
+      });
     }
-    
-    // Validate language - only Java, C++, Python supported
+
+    if (!language || typeof language !== 'string') {
+      return res.status(400).json({
+        message: '❌ Language is required',
+        error: 'INVALID_LANGUAGE'
+      });
+    }
+
+    // Validate language - only Java, C++, Python supported with strict validation
     const supportedLanguages = ['java', 'cpp', 'python'];
-    if (!supportedLanguages.includes(language)) {
-      return res.status(400).json({ message: `Language not supported. Supported languages: ${supportedLanguages.join(', ')}` });
+    const normalizedLang = language.toLowerCase();
+
+    if (!supportedLanguages.includes(normalizedLang)) {
+      return res.status(400).json({
+        message: `❌ Unsupported language: ${language}. Only Java, C++, and Python are supported.`,
+        error: 'UNSUPPORTED_LANGUAGE',
+        supportedLanguages
+      });
     }
-    
-    // Get problem
+
+    // Enhanced code validation based on language
+    if (normalizedLang === 'java' && !code.includes('class')) {
+      return res.status(400).json({
+        message: '❌ Java code must include a class definition',
+        error: 'INVALID_JAVA_CODE'
+      });
+    }
+
+    if (normalizedLang === 'cpp' && !code.includes('main(')) {
+      return res.status(400).json({
+        message: '❌ C++ code must include a main function',
+        error: 'INVALID_CPP_CODE'
+      });
+    }
+
+    if (normalizedLang === 'python' && !code.includes('def ') && !code.includes('print') && !code.includes('input')) {
+      return res.status(400).json({
+        message: '❌ Python code must include a function definition or print/input statements',
+        error: 'INVALID_PYTHON_CODE'
+      });
+    }
+
+    // Get problem with enhanced error handling
     const problem = await Problem.findById(req.params.problemId);
     if (!problem) {
-      return res.status(404).json({ message: 'Problem not found' });
+      return res.status(404).json({
+        message: `❌ Problem not found with ID: ${req.params.problemId}`,
+        error: 'PROBLEM_NOT_FOUND'
+      });
     }
-    
-    // Import executeCode function
-    const { executeCode } = await import('../utils/codeExecutor.js');
-    
-    // Execute code against all test cases
-    const executionResult = await executeCode(code, language, problem.testCases, {
-      timeout: 10000, // 10 seconds timeout for submissions
-      ignoreWhitespace: true,
+
+    // Validate test cases exist
+    if (!Array.isArray(problem.testCases) || problem.testCases.length === 0) {
+      return res.status(400).json({
+        message: '❌ Problem has no test cases configured',
+        error: 'NO_TEST_CASES'
+      });
+    }
+
+    // Validate each test case
+    for (let i = 0; i < problem.testCases.length; i++) {
+      const testCase = problem.testCases[i];
+      if (!testCase.input || !testCase.expectedOutput) {
+        return res.status(400).json({
+          message: `❌ Test case ${i + 1} is missing input or expected output`,
+          error: 'INVALID_TEST_CASE'
+        });
+      }
+    }
+
+    console.log(`✅ Validation passed, executing ${normalizedLang} code against ${problem.testCases.length} test cases`);
+
+    // Execute code with enhanced options
+    const executionResult = await executeCode(code, normalizedLang, problem.testCases, {
+      timeLimit: 10000, // 10 seconds timeout for submissions
+      compareMode: 'strict', // Strict comparison for accurate results
+      ignoreWhitespace: false,
       ignoreCase: false
     });
-    
-    // Calculate score based on passed test cases
-    const visibleTestCases = problem.testCases.filter(tc => !tc.hidden);
-    const hiddenTestCases = problem.testCases.filter(tc => tc.hidden);
-    
-    const visiblePassed = executionResult.results
-      .filter((r, i) => !problem.testCases[i].hidden)
-      .every(r => r.passed);
-      
-    const allPassed = executionResult.results.every(r => r.passed);
-    
-    // Create submission record
-    const submission = new Submission({
-      user: req.user._id,
-      problem: req.params.problemId,
-      code,
-      language,
-      results: executionResult.results,
-      status: allPassed ? 'Accepted' : 'Wrong Answer',
-      passed: allPassed,
-      visiblePassed,
-      executionTime: executionResult.executionTime
-    });
-    
-    await submission.save();
-    
-    // Update user stats if all test cases passed
-    if (allPassed) {
-      const user = await User.findById(req.user._id);
-      
-      // Check if this is the first time solving this problem
-      const previousSolved = await Submission.findOne({
-        user: req.user._id,
-        problem: req.params.problemId,
-        status: 'Accepted'
-      }).sort({ createdAt: -1 });
-      
-      if (!previousSolved) {
-        user.problemsSolved = (user.problemsSolved || 0) + 1;
-        user.totalPoints = (user.totalPoints || 0) + (problem.points || 10); // Default 10 points if not specified
-        await user.save();
+
+    // Enhanced response structure
+    const response = {
+      success: true,
+      executionResult,
+      problemDetails: {
+        id: problem._id,
+        title: problem.title,
+        difficulty: problem.difficulty,
+        testCasesCount: problem.testCases.length
+      },
+      submissionDetails: {
+        language: normalizedLang,
+        codeLength: code.length,
+        submittedAt: new Date(),
+        userId: req.user._id
       }
-    }
-    
-    // Return results with hidden test cases masked
-    const maskedResults = executionResult.results.map((result, index) => {
-      if (problem.testCases[index].hidden) {
-        return {
-          ...result,
-          input: 'Hidden',
-          expectedOutput: 'Hidden',
-          actualOutput: result.passed ? 'Correct' : 'Incorrect'
-        };
-      }
-      return result;
-    });
-    
-    res.json({
-      submission: submission._id,
-      results: maskedResults,
-      passed: allPassed,
-      visiblePassed,
-      executionTime: executionResult.executionTime
-    });
+    };
+
+    console.log(`✅ Submission completed: ${executionResult.testsPassed}/${executionResult.totalTests} tests passed (${executionResult.score}%)`);
+
+    res.json(response);
+
   } catch (error) {
-    console.error('Error submitting solution:', error);
-    res.status(500).json({ message: 'Server error', error: error.message });
+    console.error('💥 Submission error:', error);
+
+    // Enhanced error response
+    const errorResponse = {
+      success: false,
+      error: error.message || 'Unknown error occurred',
+      errorCode: 'SUBMISSION_FAILED',
+      timestamp: new Date(),
+      problemId: req.params.problemId,
+      userId: req.user?._id
+    };
+
+    // Determine appropriate HTTP status code
+    let statusCode = 500;
+    if (error.message?.includes('not found')) {
+      statusCode = 404;
+    } else if (error.message?.includes('required') || error.message?.includes('must')) {
+      statusCode = 400;
+    } else if (error.message?.includes('timeout')) {
+      statusCode = 408;
+    }
+
+    res.status(statusCode).json(errorResponse);
   }
 });
 

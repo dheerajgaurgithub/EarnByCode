@@ -54,39 +54,50 @@ async function executeWithLocalExecutor(code, language, input, options = {}) {
   }
 }
 
-// Enhanced code execution for Java, C++, and Python only
+// Enhanced code execution for Java, C++, and Python only with stronger validation
 export const executeCode = async (code, language, testCases, options = {}) => {
   try {
     const results = [];
     let allPassed = true;
 
-    console.log(`Executing ${language} code with ${testCases.length} test cases`);
+    console.log(`🔧 Executing ${language} code with ${testCases.length} test cases`);
 
-    // Build comparison options - default to strict comparison
+    // Build comparison options - default to strict comparison for stronger validation
     const compareMode = (options.compareMode || 'strict').toString().toLowerCase();
     const optIgnoreWhitespace = typeof options.ignoreWhitespace === 'boolean' ? options.ignoreWhitespace : (compareMode !== 'strict');
     const optIgnoreCase = typeof options.ignoreCase === 'boolean' ? options.ignoreCase : (compareMode !== 'strict');
-    const timeLimit = options.timeLimit || 5000; // Default 5 seconds timeout
+    const timeLimit = options.timeLimit || 8000; // Increased default timeout for stronger execution
 
-    // Only support Java, C++, and Python
+    // Only support Java, C++, and Python with strict validation
     const supportedLanguages = ['java', 'cpp', 'python'];
     const normalizedLang = language.toLowerCase();
 
     if (!supportedLanguages.includes(normalizedLang)) {
-      throw new Error(`Unsupported language: ${language}. Supported languages are: ${supportedLanguages.join(', ')}`);
+      throw new Error(`❌ Unsupported language: ${language}. Only Java, C++, and Python are supported.`);
     }
 
-    // Validate code for specific languages
+    // Enhanced code validation with stricter checks
     if (normalizedLang === 'java' && !code.includes('class')) {
-      throw new Error('Java code must include a class definition');
+      throw new Error('❌ Java code must include a class definition');
     }
 
     if (normalizedLang === 'cpp' && !code.includes('main(')) {
-      throw new Error('C++ code must include a main function');
+      throw new Error('❌ C++ code must include a main function');
     }
 
     if (normalizedLang === 'python' && !code.includes('def ') && !code.includes('print') && !code.includes('input')) {
-      throw new Error('Python code must include a function definition or print/input statements');
+      throw new Error('❌ Python code must include a function definition or print/input statements');
+    }
+
+    // Validate test cases
+    if (!Array.isArray(testCases) || testCases.length === 0) {
+      throw new Error('❌ No test cases provided for execution');
+    }
+
+    for (const testCase of testCases) {
+      if (!testCase.input || !testCase.expectedOutput) {
+        throw new Error('❌ Invalid test case: input and expectedOutput are required');
+      }
     }
 
     const normalizeFn = (s) => {
@@ -104,30 +115,45 @@ export const executeCode = async (code, language, testCases, options = {}) => {
       const testCase = testCases[i];
 
       try {
-        // Execute with timeout option
+        console.log(`🔄 Running test case ${i + 1}/${testCases.length}`);
+
+        // Execute with enhanced timeout option
         const execOptions = { timeout: timeLimit };
         const result = await executeWithBestEffort(code, normalizedLang, testCase.input, execOptions);
 
-        // Normalize output for comparison - strict comparison by default
-        const actualOutput = normalizeFn(result.output);
+        if (!result) {
+          throw new Error('❌ Execution failed - no result returned');
+        }
+
+        // Enhanced output normalization and comparison
+        const actualOutput = normalizeFn(result.output || '');
         const expectedOutput = normalizeFn(testCase.expectedOutput);
         const passed = actualOutput === expectedOutput;
 
-        if (!passed) allPassed = false;
+        if (!passed) {
+          allPassed = false;
+          console.log(`❌ Test case ${i + 1} FAILED - Expected: "${expectedOutput}", Got: "${actualOutput}"`);
+        } else {
+          console.log(`✅ Test case ${i + 1} PASSED`);
+        }
 
         results.push({
           input: testCase.input,
           expectedOutput: testCase.expectedOutput,
-          actualOutput: result.output,
+          actualOutput: result.output || '',
           passed,
-          runtime: result.runtime,
-          memory: result.memory,
-          error: result.error
+          runtime: result.runtime || '0ms',
+          memory: result.memory || '0MB',
+          error: result.error || null,
+          executionDetails: {
+            exitCode: result.exitCode,
+            stderr: result.stderr,
+            stdout: result.stdout
+          }
         });
 
-        console.log(`Test case ${i + 1}: ${passed ? 'PASSED' : 'FAILED'} - Expected: "${expectedOutput}", Got: "${actualOutput}"`);
       } catch (error) {
-        console.error(`Test case ${i + 1} execution error:`, error.message);
+        console.error(`❌ Test case ${i + 1} execution error:`, error.message);
         allPassed = false;
         results.push({
           input: testCase.input,
@@ -136,55 +162,100 @@ export const executeCode = async (code, language, testCases, options = {}) => {
           passed: false,
           runtime: '0ms',
           memory: '0MB',
-          error: error.message
+          error: error.message,
+          executionDetails: {
+            exitCode: -1,
+            stderr: error.message,
+            stdout: ''
+          }
         });
       }
     }
 
     const testsPassed = results.filter(r => r.passed).length;
-    const status = allPassed ? 'Accepted' :
-                  testsPassed === 0 ? 'Wrong Answer' :
-                  results.some(r => r.error && /timeout/i.test(r.error)) ? 'Time Limit Exceeded' :
-                  results.some(r => r.error && /compilation/i.test(r.error)) ? 'Compilation Error' :
-                  'Wrong Answer';
 
-    return {
+    // Enhanced status determination
+    let status = 'Accepted';
+    if (!allPassed) {
+      if (testsPassed === 0) {
+        status = 'Wrong Answer';
+      } else if (results.some(r => r.error && /timeout/i.test(r.error))) {
+        status = 'Time Limit Exceeded';
+      } else if (results.some(r => r.error && /compilation/i.test(r.error))) {
+        status = 'Compilation Error';
+      } else {
+        status = 'Wrong Answer';
+      }
+    }
+
+    const executionResult = {
       status,
       testsPassed,
       totalTests: testCases.length,
       results,
       runtime: results[0]?.runtime || '0ms',
       memory: results[0]?.memory || '0MB',
-      score: Math.floor((testsPassed / testCases.length) * 100)
+      score: Math.floor((testsPassed / testCases.length) * 100),
+      executionSummary: {
+        language: normalizedLang,
+        totalTestCases: testCases.length,
+        passedTestCases: testsPassed,
+        failedTestCases: testCases.length - testsPassed,
+        executionTime: Date.now()
+      }
     };
+
+    console.log(`📊 Execution completed: ${testsPassed}/${testCases.length} tests passed (${executionResult.score}%)`);
+
+    return executionResult;
+
   } catch (error) {
-    console.error('Code execution error:', error);
+    console.error('💥 Code execution error:', error);
     return {
       status: 'Runtime Error',
       testsPassed: 0,
-      totalTests: testCases.length,
+      totalTests: testCases?.length || 0,
       results: [],
       runtime: '0ms',
       memory: '0MB',
       score: 0,
-      error: error.message
+      error: error.message,
+      executionSummary: {
+        language: language?.toLowerCase() || 'unknown',
+        totalTestCases: testCases?.length || 0,
+        passedTestCases: 0,
+        failedTestCases: testCases?.length || 0,
+        executionTime: Date.now()
+      }
     };
   }
 };
 
 export async function executeWithBestEffort(code, language, input, options = {}) {
   const lang = (language || '').toString().toLowerCase();
-  const timeout = options.timeout || 5000; // Default 5 seconds timeout
+  const timeout = options.timeout || 8000; // Increased timeout for stronger execution
+
+  console.log(`🚀 Attempting execution for ${lang} with timeout ${timeout}ms`);
 
   // 1) Try local in-house executor for all supported languages
   try {
+    console.log(`🔧 Trying local executor for ${lang}`);
     return await executeWithLocalExecutor(code, language, input, { timeout });
   } catch (e) {
+    console.log(`⚠️ Local executor failed for ${lang}: ${e.message}`);
     // continue to fallback(s)
   }
 
   // 2) Last resort: OnlineGDB (may be flaky) then simulation
-  return executeWithOnlineGDB(code, language, input, { timeout });
+  console.log(`🔄 Falling back to OnlineGDB for ${lang}`);
+  try {
+    return await executeWithOnlineGDB(code, language, input, { timeout });
+  } catch (e) {
+    console.log(`⚠️ OnlineGDB failed for ${lang}: ${e.message}`);
+    // Final fallback to simulation
+    console.log(`🎭 Using simulation fallback for ${lang}`);
+    return simulateExecution(code, language, input);
+  }
 }
 
 export async function executeWithOnlineGDB(code, language, input, options = {}) {
