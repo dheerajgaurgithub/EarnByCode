@@ -1,4 +1,4 @@
-# AlgoBucks - Think smart. Code harder. Earn more.
+# EarnByCode - Code Your Way To Earning.
 
 A full-stack MERN application that gamifies competitive programming with real money rewards, built with modern web technologies to provide a seamless coding experience.
 
