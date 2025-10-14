@@ -48,10 +48,10 @@ const loadTS = async () => {
 import { googleConfig } from './config/auth.js';
 import './config/passport.js';
 import config from './config/config.js';
-
-// Import routes
+import runRoute from './routes/run.js';
 import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
+import compileRoute from './routes/compile.js';
 import problemRoutes from './routes/problems.js';
 import contestRoutes from './routes/contests.js';
 import submissionRoutes from './routes/submissions.js';
@@ -75,12 +75,10 @@ import Problem from './models/Problem.js';
 import Submission from './models/Submission.js';
 import User from './models/User.js';
 import Contest from './models/Contest.js';
-import { runCodeSandboxed } from './routes/compile.js';
-import { sendEmail } from './utils/email.js';
+import { executeCodeWithPiston } from './services/piston.js';
 import { openaiChat } from './utils/ai/openai.js';
 import cron from 'node-cron';
 import { grantStreakRewardsDaily, grantMonthlyLeaderboardRewards } from './services/rewards.js';
-import runRoute from './routes/run.js';
 
 // Initialize express app
 const app = express();
@@ -1033,6 +1031,11 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
     let peakMemoryKb = 0;
 
     const langKey = (language || '').toString().toLowerCase();
+    // Validate language is supported
+    const supportedLanguages = ['java', 'cpp', 'python', 'c++', 'python3', 'py'];
+    if (!supportedLanguages.includes(langKey)) {
+      return res.status(400).json({ status: 'fail', message: `Unsupported language: ${language}. Only Java, C++, and Python are supported.` });
+    }
     const normalizeOut = (s) => {
       let t = (s ?? '').toString().replace(/\r\n/g, '\n');
       if (ignoreWhitespace) t = t.replace(/\s+/g, ' ').trim(); else t = t.trim();
@@ -1043,7 +1046,7 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
     for (const tc of testCases) {
       const input = tc.input ?? tc.stdin ?? '';
       const expected = normalizeOut(tc.expectedOutput ?? tc.expected ?? '');
-      const resp = await runCodeSandboxed({ code, language: langKey, input });
+      const resp = await executeCodeWithPiston(langKey, code, input);
       const exit = typeof resp.exitCode === 'number' ? resp.exitCode : 0;
       if (exit === 124) anyTLE = true;
       if (exit !== 0 && exit !== 124) anyRuntimeErr = true;
@@ -1093,7 +1096,7 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
 
     // Award codecoin on first AC for this problem
     let earnedCodecoin = false;
-    if ((result?.status || '').toLowerCase() === 'accepted') {
+    if (status.toLowerCase() === 'accepted') {
       const u = await User.findById(req.user._id);
       const alreadySolved = (u?.solvedProblems || []).some(p => String(p) === String(problem._id));
       if (!alreadySolved) {
