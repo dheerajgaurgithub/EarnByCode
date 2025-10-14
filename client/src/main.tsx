@@ -12,7 +12,7 @@ import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useAppDispatch } from '@/store/hooks';
 import { initializeRouteState } from '@/store/routerSlice';
 import { useEffect } from 'react';
-
+import './index.css';
 // Component to handle route restoration
 const RouteRestorer = () => {
   const dispatch = useAppDispatch();
