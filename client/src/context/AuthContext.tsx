@@ -80,9 +80,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoadingState] = useState(true);
 
-  // Initialize Redux auth state on mount
+  // Initialize Redux auth state on mount and refresh user data
   useEffect(() => {
     dispatch(initializeAuth());
+
+    // After Redux initialization, refresh user data if token exists
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Small delay to ensure Redux state is updated first
+      setTimeout(() => {
+        refreshUser(true); // Silent refresh
+      }, 100);
+    } else {
+      dispatch(setLoading(false));
+    }
   }, [dispatch]);
 
   // Sync Redux state with local state for backward compatibility

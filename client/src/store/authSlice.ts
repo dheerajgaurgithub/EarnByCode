@@ -232,6 +232,7 @@ export const authSlice = createSlice({
       if (token) {
         state.token = token;
         state.isAuthenticated = true;
+        // Note: User data will be fetched by AuthContext refreshUser function
       }
     },
 
