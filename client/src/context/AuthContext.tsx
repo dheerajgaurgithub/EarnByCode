@@ -1,6 +1,39 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import config from '@/lib/config';
+import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import {
+  setUser,
+  setLoading,
+  setError,
+  setLoggingIn,
+  setRegistering,
+  setUpdatingProfile,
+  setUploadingAvatar,
+  setChangingPassword,
+  setDeletingAccount,
+  setToken,
+  updateLastActivity,
+  setSessionExpiry,
+  setBlocked,
+  setVerified,
+  loginSuccess,
+  registerSuccess,
+  logout as logoutAction,
+  authError,
+  profileUpdateSuccess,
+  avatarUploadSuccess,
+  passwordChangeSuccess,
+  accountDeletionSuccess,
+  emailVerificationSuccess,
+  passwordResetSuccess,
+  clearErrors,
+  updateUserProfile,
+  updateUserPreferences,
+  handleUserBlocked,
+  handleUserUnblocked,
+  initializeAuth,
+} from '@/store/authSlice';
 
 interface AuthContextType {
   user: User | null;
@@ -28,24 +61,52 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useAppDispatch();
+
+  // Get auth state from Redux
+  const reduxUser = useAppSelector((state) => state.auth.user);
+  const reduxLoading = useAppSelector((state) => state.auth.isLoading);
+  const reduxError = useAppSelector((state) => state.auth.error);
+  const reduxLoggingIn = useAppSelector((state) => state.auth.isLoggingIn);
+  const reduxRegistering = useAppSelector((state) => state.auth.isRegistering);
+  const reduxUpdatingProfile = useAppSelector((state) => state.auth.isUpdatingProfile);
+  const reduxUploadingAvatar = useAppSelector((state) => state.auth.isUploadingAvatar);
+  const reduxChangingPassword = useAppSelector((state) => state.auth.isChangingPassword);
+  const reduxDeletingAccount = useAppSelector((state) => state.auth.isDeletingAccount);
+  const reduxToken = useAppSelector((state) => state.auth.token);
+  const reduxIsBlocked = useAppSelector((state) => state.auth.isBlocked);
+
+  // Local state for compatibility (will sync with Redux)
+  const [user, setUserState] = useState<User | null>(null);
+  const [isLoading, setIsLoadingState] = useState(true);
+
+  // Initialize Redux auth state on mount
+  useEffect(() => {
+    dispatch(initializeAuth());
+  }, [dispatch]);
+
+  // Sync Redux state with local state for backward compatibility
+  useEffect(() => {
+    setUserState(reduxUser);
+  }, [reduxUser]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      refreshUser();
-    } else {
-      setIsLoading(false);
+    setIsLoadingState(reduxLoading);
+  }, [reduxLoading]);
+
+  // Sync Redux loading states with local state
+  useEffect(() => {
+    if (reduxLoggingIn || reduxRegistering) {
+      setIsLoadingState(true);
     }
-  }, []);
+  }, [reduxLoggingIn, reduxRegistering]);
 
   const refreshUser = async (silent: boolean = false) => {
-    if (!silent) setIsLoading(true);
+    if (!silent) dispatch(setLoading(true));
     try {
       const token = localStorage.getItem('token');
       if (!token) {
-        setUser(null);
+        dispatch(setUser(null));
         return;
       }
 
@@ -59,91 +120,126 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (response.status === 401) {
         // Token is invalid or expired
-        localStorage.removeItem('token');
-        setUser(null);
+        dispatch(logoutAction());
         return;
       }
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Failed to fetch user data');
+        dispatch(authError(error.message || 'Failed to fetch user data'));
+        return;
       }
 
       const data = await response.json();
       // If backend reports blocked, sign out locally
       if (data?.user?.blocked) {
-        localStorage.removeItem('token');
-        setUser(null);
+        dispatch(handleUserBlocked({
+          reason: data.user.blockReason,
+          until: data.user.blockedUntil
+        }));
         return;
       }
-      setUser(data.user);
+
+      dispatch(setUser(data.user));
+      dispatch(updateLastActivity());
+      dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())); // 24 hours
     } catch (error) {
       console.error('Failed to refresh user:', error);
-      localStorage.removeItem('token');
-      setUser(null);
+      dispatch(logoutAction());
     } finally {
-      if (!silent) setIsLoading(false);
+      if (!silent) dispatch(setLoading(false));
     }
   };
-
-  // OTP-based email change removed; email updates happen via updateUser()
 
   // Permanently delete account
   const deleteAccount = async (): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('Not authenticated');
-    const res = await fetch(`${config.api.baseUrl}/users/me`, {
-      method: 'DELETE',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-      },
-      credentials: 'include',
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.success === false) {
-      throw new Error(data.message || 'Failed to delete account');
+    dispatch(setDeletingAccount(true));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const res = await fetch(`${config.api.baseUrl}/users/me`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || 'Failed to delete account');
+      }
+
+      // Dispatch Redux action
+      dispatch(accountDeletionSuccess());
+    } catch (error) {
+      dispatch(authError(error instanceof Error ? error.message : 'Failed to delete account'));
+      throw error;
+    } finally {
+      dispatch(setDeletingAccount(false));
     }
-    // Clear local session
-    localStorage.removeItem('token');
-    setUser(null);
   };
 
   const updatePreferences = async (prefs: { preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR'; preferences?: any }) => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('Not authenticated');
-    const res = await fetch(`${config.api.baseUrl}/users/me/preferences`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify(prefs),
-      credentials: 'include'
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update preferences');
-    if (data.user) setUser(prev => prev ? { ...prev, ...data.user } : data.user);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const res = await fetch(`${config.api.baseUrl}/users/me/preferences`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify(prefs),
+        credentials: 'include'
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update preferences');
+
+      if (data.user) {
+        dispatch(updateUserProfile(data.user));
+      }
+    } catch (error) {
+      dispatch(authError(error instanceof Error ? error.message : 'Failed to update preferences'));
+      throw error;
+    }
   };
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('Not authenticated');
-    const res = await fetch(`${config.api.baseUrl}/users/me/password`, {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      },
-      body: JSON.stringify({ currentPassword, newPassword }),
-      credentials: 'include'
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update password');
+    dispatch(setChangingPassword(true));
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
+
+      const res = await fetch(`${config.api.baseUrl}/users/me/password`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ currentPassword, newPassword }),
+        credentials: 'include'
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to update password');
+
+      dispatch(passwordChangeSuccess());
+    } catch (error) {
+      dispatch(authError(error instanceof Error ? error.message : 'Failed to update password'));
+      throw error;
+    } finally {
+      dispatch(setChangingPassword(false));
+    }
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
+    dispatch(setLoggingIn(true));
+    dispatch(clearErrors());
+
     try {
       const response = await fetch(`${config.api.baseUrl}/auth/login`, {
         method: 'POST',
@@ -160,32 +256,40 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (response.status === 403 && (errorBody?.blocked || errorBody?.message)) {
           const reason = errorBody?.reason ? ` Reason: ${errorBody.reason}.` : '';
           const until = errorBody?.blockedUntil ? ` Until: ${new Date(errorBody.blockedUntil).toLocaleString()}.` : '';
+          dispatch(handleUserBlocked({
+            reason: errorBody.reason,
+            until: errorBody.blockedUntil
+          }));
           throw new Error(`Your account is blocked by admin.${reason}${until}`.trim());
         }
         throw new Error(errorBody?.message || 'Login failed');
       }
 
       const data = await response.json();
-      
+
       if (data.token) {
-        localStorage.setItem('token', data.token);
-        setUser(data.user);
+        // Dispatch Redux actions
+        dispatch(loginSuccess({ user: data.user, token: data.token }));
+        dispatch(updateLastActivity());
+        dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Login error:', error);
+      dispatch(authError(error instanceof Error ? error.message : 'Login failed'));
       // Re-throw to allow UI to show specific error message (e.g., blocked)
       throw error instanceof Error ? error : new Error('Login failed');
     } finally {
-      setIsLoading(false);
+      dispatch(setLoggingIn(false));
     }
   };
 
   const register = async (username: string, email: string, password: string): Promise<boolean> => {
-    setIsLoading(true);
-    
+    dispatch(setRegistering(true));
+    dispatch(clearErrors());
+
     try {
       const response = await fetch(`${config.api.baseUrl}/auth/register`, {
         method: 'POST',
@@ -201,29 +305,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       const data = await response.json();
-      
+
       if (data.token) {
-        localStorage.setItem('token', data.token);
-        setUser(data.user);
+        // Dispatch Redux actions
+        dispatch(registerSuccess({ user: data.user, token: data.token }));
+        dispatch(updateLastActivity());
+        dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Registration error:', error);
+      dispatch(authError(error instanceof Error ? error.message : 'Registration failed'));
       return false;
     } finally {
-      setIsLoading(false);
+      dispatch(setRegistering(false));
     }
   };
 
   const updateUser = async (updates: Partial<User>): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) {
-      throw new Error('Not authenticated');
-    }
+    dispatch(setUpdatingProfile(true));
+    dispatch(clearErrors());
 
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
       const response = await fetch(`${config.api.baseUrl}/users/me`, {
         method: 'PATCH',
         headers: {
@@ -235,57 +345,82 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       const data = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(data.message || 'Failed to update profile');
       }
 
       if (data.success && data.user) {
-        setUser(prev => prev ? { ...prev, ...data.user } : null);
+        dispatch(profileUpdateSuccess(data.user));
       } else {
         throw new Error('Invalid response from server');
       }
     } catch (error) {
       console.error('Update user error:', error);
+      dispatch(authError(error instanceof Error ? error.message : 'Failed to update profile'));
       throw error instanceof Error ? error : new Error('Failed to update profile');
+    } finally {
+      dispatch(setUpdatingProfile(false));
     }
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    setUser(null);
+    dispatch(logoutAction());
   };
 
   const uploadAvatar = async (file: File): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('Not authenticated');
+    dispatch(setUploadingAvatar(true));
+    dispatch(clearErrors());
 
-    const form = new FormData();
-    form.append('avatar', file);
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
 
-    const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${token}` },
-      body: form,
-      credentials: 'include'
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to upload avatar');
-    if (data.user) setUser(prev => prev ? { ...prev, ...data.user } : data.user);
+      const form = new FormData();
+      form.append('avatar', file);
+
+      const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: form,
+        credentials: 'include'
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to upload avatar');
+
+      if (data.user) {
+        dispatch(avatarUploadSuccess(data.user));
+      }
+    } catch (error) {
+      dispatch(authError(error instanceof Error ? error.message : 'Failed to upload avatar'));
+      throw error;
+    } finally {
+      dispatch(setUploadingAvatar(false));
+    }
   };
 
   const removeAvatar = async (): Promise<void> => {
-    const token = localStorage.getItem('token');
-    if (!token) throw new Error('Not authenticated');
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) throw new Error('Not authenticated');
 
-    const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
-      method: 'DELETE',
-      headers: { 'Authorization': `Bearer ${token}` },
-      credentials: 'include'
-    });
-    const data = await res.json();
-    if (!res.ok || !data.success) throw new Error(data.message || 'Failed to remove avatar');
-    if (data.user) setUser(prev => prev ? { ...prev, ...data.user } : data.user);
+      const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` },
+        credentials: 'include'
+      });
+      const data = await res.json();
+
+      if (!res.ok || !data.success) throw new Error(data.message || 'Failed to remove avatar');
+
+      if (data.user) {
+        dispatch(updateUserProfile(data.user));
+      }
+    } catch (error) {
+      dispatch(authError(error instanceof Error ? error.message : 'Failed to remove avatar'));
+      throw error;
+    }
   };
 
   return (

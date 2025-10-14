@@ -1,10 +1,12 @@
-import React, { Suspense } from 'react';
+import React, { Suspense, useEffect } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '@/context/AuthContext';
 import { WalletProvider } from './context/WalletContext';
 import { useTheme } from '@/context/ThemeContext';
 import { I18nProvider } from '@/context/I18nContext';
+import { useAppDispatch } from '@/store/hooks';
+import { setCurrentRoute } from '@/store/routerSlice';
 // Import types
 import { Header } from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
@@ -51,6 +53,23 @@ import Notifications from './pages/Notifications';
 const ContestPage = React.lazy(() => import('./pages/ContestPage'));
 import ChatListPage from './pages/ChatListPage';
 import ChatThreadPage from './pages/ChatThreadPage';
+
+// Route tracking component
+const RouteTracker = () => {
+  const dispatch = useAppDispatch();
+  const location = useLocation();
+
+  useEffect(() => {
+    // Update router state when location changes
+    dispatch(setCurrentRoute({
+      path: location.pathname,
+      search: location.search,
+      hash: location.hash,
+    }));
+  }, [dispatch, location]);
+
+  return null;
+};
 
 // Sync theme with user preferences globally (auto->system)
 const ThemeSync = () => {
@@ -195,6 +214,7 @@ function App() {
     <WalletProvider>
       <I18nProvider initialLang={(user?.preferences?.language as any) || 'en'}>
       <ThemeSync />
+      <RouteTracker />
       <div className="min-h-screen flex flex-col transition-colors duration-200">
         {/* Reserve space for toasts (fixed placeholder to avoid any potential reflow) */}
         <div
