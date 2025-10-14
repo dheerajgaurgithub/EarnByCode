@@ -1,8 +1,11 @@
 # Use Node.js 18 LTS Alpine for smaller image size
 FROM node:18-alpine
 
-# Install Docker CLI for code execution
-RUN apk add --no-cache docker-cli docker
+# Install Docker CLI and required tools
+RUN apk add --no-cache docker-cli docker curl bash
+
+# Verify Docker installation
+RUN docker --version
 
 # Set working directory
 WORKDIR /app
@@ -19,6 +22,9 @@ COPY . .
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nodejs -u 1001
+
+# Add user to docker group
+RUN addgroup nodejs docker
 
 # Change ownership of app directory
 RUN chown -R nodejs:nodejs /app
