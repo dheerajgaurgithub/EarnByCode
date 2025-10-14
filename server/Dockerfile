@@ -1,6 +1,9 @@
 # Use Node.js 18 LTS Alpine for smaller image size
 FROM node:18-alpine
 
+# Install Docker CLI for code execution
+RUN apk add --no-cache docker-cli docker
+
 # Set working directory
 WORKDIR /app
 
