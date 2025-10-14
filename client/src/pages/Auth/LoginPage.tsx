@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Input } from '../../components/ui/input';
-import { Button } from '../../components/ui/button';
 import { toast } from '../../components/ui/use-toast';
 import { useAuth } from '../../context/AuthContext';
-import { Mail, Lock, Eye, EyeOff, AlertCircle, Code2 } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import GoogleOAuthButton from '../../components/Auth/GoogleOAuthButton';
 import { useI18n } from '../../context/I18nContext';
 
@@ -33,7 +32,7 @@ export function LoginPage() {
       
       if (success) {
         toast.success(t('login.success'));
-        navigate('/dashboard');
+        navigate('/');
       } else {
         setError(t('login.error.invalid'));
       }

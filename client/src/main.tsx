@@ -1,7 +1,7 @@
 import React, { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { Toaster } from './components/ui/toaster';
 import App from './App';
@@ -9,7 +9,6 @@ import { Provider } from 'react-redux';
 import { store } from './store';
 import { startSocketListeners } from '@/socketListener';
 import { SpeedInsights } from '@vercel/speed-insights/react';
-import './index.css';
 import { useAppDispatch } from '@/store/hooks';
 import { initializeRouteState } from '@/store/routerSlice';
 import { useEffect } from 'react';
@@ -19,6 +18,7 @@ const RouteRestorer = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
 
   useEffect(() => {
     // Initialize router state from localStorage
@@ -28,13 +28,19 @@ const RouteRestorer = () => {
     const savedRoute = store.getState().router.savedRoute;
 
     // If we're on the root path and there's a saved route, navigate to it
+    // But don't restore auth routes if user is already authenticated
     if (location.pathname === '/' && savedRoute && savedRoute !== '/') {
-      // Use setTimeout to avoid navigation during initial render
-      setTimeout(() => {
-        navigate(savedRoute, { replace: true });
-      }, 100);
+      const authRoutes = ['/login', '/register', '/forgot-password'];
+      const shouldRestore = !user || !authRoutes.some(route => savedRoute.startsWith(route));
+
+      if (shouldRestore) {
+        // Use setTimeout to avoid navigation during initial render
+        setTimeout(() => {
+          navigate(savedRoute, { replace: true });
+        }, 100);
+      }
     }
-  }, [dispatch, navigate, location.pathname]);
+  }, [dispatch, navigate, location.pathname, user]);
 
   return null;
 };
