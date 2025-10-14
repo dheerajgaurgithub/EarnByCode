@@ -32,13 +32,8 @@ async function handleExecute(req, res) {
       });
     }
 
-    const hasDocker = await isDockerAvailable();
-    if (!hasDocker) {
-      return res.status(503).json({
-        status: 'unavailable',
-        message: 'Docker is not available on this host. Please deploy the backend on a Docker-capable environment.'
-      });
-    }
+    // Docker mode is hardcoded - no availability check needed
+    // Removed: const hasDocker = await isDockerAvailable();
 
     const result = await runCodeSandboxed({ code, language: chosen, input });
     return res.status(200).json(result);
@@ -161,26 +156,8 @@ async function runWithTimeout(command, stdinStr, timeoutMs = 5000) {
   });
 }
 
-// Check Docker availability with caching
-let _dockerOk = null;
-let _dockerCheckedAt = 0;
-
-export async function isDockerAvailable() {
-  const now = Date.now();
-  if (_dockerOk !== null && (now - _dockerCheckedAt) < 60_000) {
-    return _dockerOk;
-  }
-
-  try {
-    const res = await runWithTimeout(['docker', '--version'], '', 2000);
-    _dockerOk = res.exitCode === 0 && /version/i.test(res.stdout || '');
-  } catch {
-    _dockerOk = false;
-  }
-
-  _dockerCheckedAt = now;
-  return _dockerOk;
-}
+// Docker availability check - REMOVED (hardcoded to Docker mode)
+// export async function isDockerAvailable() {
 
 // Main Docker-based code executor
 export async function runCodeSandboxed({ code, language, input }) {
