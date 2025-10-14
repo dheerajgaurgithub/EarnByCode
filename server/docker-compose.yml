@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: algobucks-mongo
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: algobucks
+      MONGO_INITDB_ROOT_PASSWORD: algobucks123
+      MONGO_INITDB_DATABASE: algobucks
+    volumes:
+      - mongodb_data:/data/db
+      - ./docker/mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - algobucks-network
+
+  # Backend Server
+  backend:
+    build: .
+    container_name: algobucks-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://algobucks:algobucks123@mongodb:27017/algobucks?authSource=admin
+      - JWT_SECRET=your-jwt-secret-key-here
+      - SESSION_SECRET=your-session-secret-key-here
+      - PORT=5000
+      # Add other environment variables as needed
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock  # Access to host Docker daemon
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+    networks:
+      - algobucks-network
+
+  # Redis (for caching/sessions if needed)
+  redis:
+    image: redis:7.2-alpine
+    container_name: algobucks-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - algobucks-network
+    command: redis-server --appendonly yes
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  algobucks-network:
+    driver: bridge

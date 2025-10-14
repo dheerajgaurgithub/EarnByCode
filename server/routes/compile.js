@@ -5,98 +5,17 @@ import os from 'os';
 import { spawn } from 'child_process';
 const router = express.Router();
 
-// Minimal HTML entity unescape for sanitized code
-function unescapeHtml(str = '') {
-  return String(str)
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
-    .replaceAll('&amp;', '&')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#39;', "'");
-}
+// HTML entity unescape for sanitized code - REMOVED (only used for Judge0)
+// function unescapeHtml(str = '') {
 
-// Minimal fetch shim for Node < 18
-async function getFetch() {
-  if (typeof fetch !== 'undefined') return fetch;
-  const mod = await import('node-fetch');
-  return mod.default;
-}
+// Minimal fetch shim for Node < 18 - REMOVED (only used for Judge0)
+// async function getFetch() {
 
-// Judge0 language mapping - only Java, C++, Python supported
-function mapJudge0Language(lang) {
-  const l = String(lang || '').toLowerCase();
-  const ids = {
-    python: Number(process.env.JUDGE0_ID_PY || 71),
-    java: Number(process.env.JUDGE0_ID_JAVA || 62),
-    cpp: Number(process.env.JUDGE0_ID_CPP || 54),
-  };
+// Judge0 language mapping - REMOVED
+// function mapJudge0Language(lang) {
 
-  if (l === 'python' || l === 'py' || l === 'python3') return ids.python;
-  if (l === 'java') return ids.java;
-  if (l === 'cpp' || l === 'c++') return ids.cpp;
-
-  return null;
-}
-
-// Judge0 executor
-export async function runViaJudge0({ code, language, input }) {
-  const f = await getFetch();
-  const host = process.env.JUDGE0_HOST || 'judge0-ce.p.rapidapi.com';
-  const base = process.env.JUDGE0_BASE || `https://${host}`;
-  const key = process.env.JUDGE0_KEY;
-
-  if (!key) {
-    throw new Error('JUDGE0_KEY environment variable is not set');
-  }
-
-  const language_id = mapJudge0Language(language);
-  if (!language_id) {
-    return {
-      stdout: '',
-      stderr: `Unsupported language for Judge0: ${language}`,
-      exitCode: 1,
-      runtimeMs: 0,
-      memoryKb: null
-    };
-  }
-
-  const url = `${base}/submissions?base64_encoded=false&fields=stdout,stderr,compile_output,message,status,time,memory,exit_code&wait=true`;
-  const body = {
-    source_code: unescapeHtml(String(code || '')),
-    language_id,
-    stdin: String(input || '')
-  };
-
-  try {
-    const resp = await f(url, {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-rapidapi-host': host,
-        'x-rapidapi-key': key,
-      },
-      body: JSON.stringify(body)
-    });
-
-    if (!resp.ok) {
-      throw new Error(`Judge0 API error: ${resp.status} ${resp.statusText}`);
-    }
-
-    const data = await resp.json().catch(() => ({}));
-    const status = data?.status?.id || 0;
-    const stdout = typeof data?.stdout === 'string' ? data.stdout : '';
-    const stderr = typeof data?.stderr === 'string' ? data.stderr :
-                   (typeof data?.compile_output === 'string' ? data.compile_output :
-                   (typeof data?.message === 'string' ? data.message : ''));
-    const exitCode = typeof data?.exit_code === 'number' ? data.exit_code : (status === 3 ? 0 : 1);
-    const runtimeMs = data?.time ? Math.round(parseFloat(String(data.time)) * 1000) : 0;
-    const memoryKb = typeof data?.memory === 'number' ? data.memory : null;
-
-    return { stdout, stderr, output: stdout, exitCode, runtimeMs, memoryKb };
-  } catch (error) {
-    throw new Error(`Judge0 execution failed: ${error.message}`);
-  }
-}
+// Judge0 executor - REMOVED
+// export async function runViaJudge0({ code, language, input }) {
 
 // Shared handler
 async function handleExecute(req, res) {
@@ -104,14 +23,13 @@ async function handleExecute(req, res) {
     const { code, language, lang, input } = req.body || {};
     const chosen = (language || lang || '').toString().toLowerCase();
 
-    const mode = String(process.env.EXECUTOR_MODE || 'docker').toLowerCase();
+    const mode = 'docker'; // Docker mode is now the only supported execution mode
     if (mode === 'judge0') {
-      try {
-        const out = await runViaJudge0({ code, language: chosen, input });
-        return res.status(200).json(out);
-      } catch (e) {
-        return res.status(502).json({ output: '', stdout: '', stderr: String(e?.message || e), exitCode: 1, runtimeMs: 0, memoryKb: null });
-      }
+      // Judge0 mode removed - only Docker mode supported now
+      return res.status(503).json({
+        status: 'unavailable',
+        message: 'Judge0 API integration has been removed. Please use Docker mode.'
+      });
     }
 
     const hasDocker = await isDockerAvailable();
@@ -282,7 +200,7 @@ export async function runCodeSandboxed({ code, language, input }) {
   try {
     let filename = path.join(tmp, cfg.filename);
     let detectedJavaClass = null;
-    const source = unescapeHtml(String(code ?? ''));
+    const source = String(code ?? '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
 
     // Handle Java class detection
     if (normalized === 'java') {
