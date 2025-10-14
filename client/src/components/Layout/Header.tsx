@@ -232,7 +232,7 @@ export const Header: React.FC = () => {
                     height={48}
                     loading="eager"
                     decoding="async"
-                    fetchPriority="high"
+                    fetchpriority="high"
                     className="h-full w-full object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-md"
                   />
                   {/* Glow effect */}

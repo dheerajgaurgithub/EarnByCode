@@ -39,6 +39,16 @@ const RouteRestorer = () => {
   return null;
 };
 
+// Component to initialize socket listeners after Redux is available
+const SocketInitializer = () => {
+  useEffect(() => {
+    // Initialize socket listeners after Redux store is available
+    startSocketListeners(store);
+  }, []);
+
+  return null;
+};
+
 // Get the base URL from environment variables or use root
 const basename = import.meta.env.BASE_URL || '/';
 
@@ -78,24 +88,21 @@ class ErrorBoundary extends React.Component<{children: React.ReactNode}, {hasErr
   }
 }
 
-// Initialize the application with providers
-// start socket listeners once
-startSocketListeners(store);
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter basename={basename}>
       <ErrorBoundary>
         <ThemeProvider>
-          <AuthProvider>
-            <Provider store={store}>
+          <Provider store={store}>
+            <AuthProvider>
+              <SocketInitializer />
               <RouteRestorer />
               <App />
-            </Provider>
+            </AuthProvider>
             {/* Vercel Speed Insights */}
             <SpeedInsights />
             <Toaster />
-          </AuthProvider>
+          </Provider>
         </ThemeProvider>
       </ErrorBoundary>
     </BrowserRouter>
