@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Mail, MapPin, Phone, Send, CheckCircle, XCircle } from 'lucide-react';
+import apiService from '@/services/api';
 
 type FormData = {
   name: string;
@@ -37,31 +38,18 @@ const Contact: React.FC = () => {
     setSubmitStatus(null);
 
     try {
-      const response = await fetch('http://localhost:5000/api/contact', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          subject: formData.subject,
-          message: formData.message
-        })
+      await apiService.post('/contact', {
+        name: formData.name,
+        email: formData.email,
+        subject: formData.subject,
+        message: formData.message
       });
-      
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(responseData.message || 'Failed to send message');
-      }
-      
+
       setSubmitStatus({
         success: true,
         message: 'Your message has been sent successfully! We\'ll get back to you soon.'
       });
-      
+
       // Reset form
       setFormData({
         name: '',
@@ -71,10 +59,10 @@ const Contact: React.FC = () => {
       });
     } catch (error) {
       console.error('Error submitting form:', error);
-      const errorMessage = error instanceof Error ? 
-        error.message : 
+      const errorMessage = error instanceof Error ?
+        error.message :
         'Failed to send message. Please try again later or contact us directly at replyearnbycode@gmail.com';
-      
+
       setSubmitStatus({
         success: false,
         message: errorMessage
