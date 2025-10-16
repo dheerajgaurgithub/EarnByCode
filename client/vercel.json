@@ -12,7 +12,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "https://algobucks.onrender.com/api/$1" },
     { "source": "/_next/static/(.*)", "destination": "/_next/static/$1" },
     { "source": "/static/(.*)", "destination": "/static/$1" },
     { "source": "/favicon.ico", "destination": "/favicon.ico" },

@@ -8,18 +8,20 @@ export default defineConfig(({ mode }) => {
   // Load environment variables based on the current mode
   const env = loadEnv(mode, process.cwd(), '');
   const isProduction = mode === 'production';
-  
+
   return {
     base: isProduction ? '/' : '/',
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
       sourcemap: !isProduction,
-      minify: isProduction ? 'esbuild' : false,
+      minify: isProduction ? 'terser' : false,
       rollupOptions: {
         output: {
           manualChunks: {
-            vendor: ['react', 'react-dom', 'react-router-dom'],
+            react: ['react', 'react-dom', 'react-router-dom'],
+            vendor: ['axios', 'react-hook-form', 'zod'],
+            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
           },
         },
       },
@@ -60,21 +62,6 @@ export default defineConfig(({ mode }) => {
         }
       }
     } : undefined,
-    build: {
-      outDir: 'dist',
-      assetsDir: 'assets',
-      sourcemap: !isProduction,
-      minify: isProduction ? 'terser' : false,
-      rollupOptions: {
-        output: {
-          manualChunks: {
-            react: ['react', 'react-dom', 'react-router-dom'],
-            vendor: ['axios', 'react-hook-form', 'zod'],
-            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
-          },
-        },
-      },
-    },
     optimizeDeps: {
       exclude: ['lucide-react'],
     },
