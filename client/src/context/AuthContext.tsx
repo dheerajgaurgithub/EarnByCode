@@ -2,7 +2,6 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import config from '@/lib/config';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import apiService from '@/services/api';
 import {
   setUser,
   setLoading,
@@ -122,19 +121,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      // Use apiService to get current user
-      const data = await apiService.getCurrentUser();
+      const response = await fetch(`${config.api.baseUrl}/auth/me`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include'
+      });
 
+      if (response.status === 401) {
+        // Token is invalid or expired
+        dispatch(logoutAction());
+        return;
+      }
+
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        dispatch(authError(error.message || 'Failed to fetch user data'));
+        return;
+      }
+
+      const data = await response.json();
       // If backend reports blocked, sign out locally
-      if (data?.isBlocked) {
+      if (data?.user?.blocked) {
         dispatch(handleUserBlocked({
-          reason: data.blockReason,
-          until: data.blockedUntil
+          reason: data.user.blockReason,
+          until: data.user.blockedUntil
         }));
         return;
       }
 
-      dispatch(setUser(data));
+      dispatch(setUser(data.user));
       dispatch(updateLastActivity());
       dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())); // 24 hours
     } catch (error) {
@@ -152,14 +169,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Not authenticated');
 
-      // Use apiService for consistency
-      await fetch(`${config.api.baseUrl}/users/me`, {
+      const res = await fetch(`${config.api.baseUrl}/users/me`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
         credentials: 'include',
       });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok || data.success === false) {
+        throw new Error(data.message || 'Failed to delete account');
+      }
 
       // Dispatch Redux action
       dispatch(accountDeletionSuccess());
@@ -231,11 +252,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch(clearErrors());
 
     try {
-      const response = await apiService.login(email, password);
+      const response = await fetch(`${config.api.baseUrl}/auth/login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+        credentials: 'include'
+      });
 
-      if (response.token) {
+      if (!response.ok) {
+        let errorBody: any = {};
+        try { errorBody = await response.json(); } catch {}
+        if (response.status === 403 && (errorBody?.blocked || errorBody?.message)) {
+          const reason = errorBody?.reason ? ` Reason: ${errorBody.reason}.` : '';
+          const until = errorBody?.blockedUntil ? ` Until: ${new Date(errorBody.blockedUntil).toLocaleString()}.` : '';
+          dispatch(handleUserBlocked({
+            reason: errorBody.reason,
+            until: errorBody.blockedUntil
+          }));
+          throw new Error(`Your account is blocked by admin.${reason}${until}`.trim());
+        }
+        throw new Error(errorBody?.message || 'Login failed');
+      }
+
+      const data = await response.json();
+
+      if (data.token) {
         // Dispatch Redux actions
-        dispatch(loginSuccess({ user: response.user, token: response.token }));
+        dispatch(loginSuccess({ user: data.user, token: data.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
         return true;
@@ -257,11 +302,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch(clearErrors());
 
     try {
-      const response = await apiService.register(username, email, password);
+      const response = await fetch(`${config.api.baseUrl}/auth/register`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ username, email, password })
+      });
 
-      if (response.token) {
+      if (!response.ok) {
+        const error = await response.json().catch(() => ({}));
+        throw new Error(error.message || 'Registration failed');
+      }
+
+      const data = await response.json();
+
+      if (data.token) {
         // Dispatch Redux actions
-        dispatch(registerSuccess({ user: response.user, token: response.token }));
+        dispatch(registerSuccess({ user: data.user, token: data.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
         return true;
@@ -287,7 +345,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Not authenticated');
       }
 
-      // Use apiService for consistency - would need to add updateUser method to apiService
       const response = await fetch(`${config.api.baseUrl}/users/me`, {
         method: 'PATCH',
         headers: {
@@ -333,7 +390,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const form = new FormData();
       form.append('avatar', file);
 
-      // Use direct fetch for file uploads since apiService doesn't handle multipart/form-data
       const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -360,7 +416,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Not authenticated');
 
-      // Use direct fetch since apiService doesn't handle this endpoint
       const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },

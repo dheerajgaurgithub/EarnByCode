@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Plus, MessageCircle, ThumbsUp, MessageSquare, Send, X, Loader2, BadgeCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import api from '@/lib/api';
+import api from '@/services/api';
 import { useAuth } from '@/context/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
@@ -93,10 +93,9 @@ const Discuss: React.FC = () => {
     try {
       setIsLoading(true);
       const response = await api.get<{ success: boolean; data: Discussion[] }>('/discussions');
-      const responseData = (response as any)?.data as { success: boolean; data: Discussion[] };
 
-      if (responseData && responseData.success) {
-        const discussionsData = Array.isArray(responseData.data) ? responseData.data : [];
+      if (response?.success) {
+        const discussionsData = Array.isArray(response.data) ? response.data : [];
         const processedDiscussions = discussionsData.map((discussion: Discussion) => ({
           ...discussion,
           author: discussion.author || { _id: 'unknown', username: 'User' },
@@ -109,7 +108,7 @@ const Discuss: React.FC = () => {
             author: r.author || { _id: 'unknown', username: 'User' }
           }))
         }));
-        
+
         setDiscussions(processedDiscussions);
       } else {
         setDiscussions([]);
@@ -152,12 +151,12 @@ const Discuss: React.FC = () => {
     try {
       const response = await api.post<ApiResponse<Discussion>>('/discussions', formData);
       
-      if (response?.data?.success && response.data.data) {
+      if (response?.success && response.data) {
         const newDiscussion: Discussion = {
-          ...response.data.data,
-          likes: response.data.data.likes || [],
-          replies: response.data.data.replies || [],
-          author: response.data.data.author || { 
+          ...response.data,
+          likes: response.data.likes || [],
+          replies: response.data.replies || [],
+          author: response.data.author || { 
             _id: user?._id || '', 
             username: user?.username || 'Anonymous',
             isAdmin: (user as any)?.isAdmin === true
@@ -175,7 +174,7 @@ const Discuss: React.FC = () => {
       }
     } catch (error: any) {
       console.error('Error creating discussion:', error);
-      showErrorToast('Error', error.response?.data?.message || 'Failed to create discussion');
+      showErrorToast('Error', error.message || 'Failed to create discussion');
     } finally {
       setIsSubmitting(false);
     }
@@ -247,7 +246,7 @@ const Discuss: React.FC = () => {
       try {
         // Server provides GET /discussions/:id with populated replies
         const resp = await api.get<{ success: boolean; data: { replies?: Reply[] } }>(`/discussions/${discussionId}`);
-        const payload = (resp as any)?.data as { success: boolean; data?: { replies?: Reply[] } };
+        const payload = resp as { success: boolean; data?: { replies?: Reply[] } };
         const replies = payload?.data?.replies || [];
         setDiscussions(prevDiscussions =>
           prevDiscussions.map(d =>
@@ -336,11 +335,11 @@ const Discuss: React.FC = () => {
 
       // Create the full reply with proper typing
       const fullReply: Reply = {
-        ...response.data,
-        _id: response.data._id || tempReplyId,
+        ...response,
+        _id: response._id || tempReplyId,
         author: authorData,
-        createdAt: response.data.createdAt || new Date().toISOString(),
-        updatedAt: response.data.updatedAt || new Date().toISOString()
+        createdAt: response.createdAt || new Date().toISOString(),
+        updatedAt: response.updatedAt || new Date().toISOString()
       };
 
       // Replace the temporary reply with the actual one from the server

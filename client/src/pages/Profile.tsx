@@ -148,22 +148,6 @@ export const Profile: React.FC = () => {
   // Initialize form with user data when user is loaded
   useEffect(() => {
     if (user) {
-      console.log('Profile: User data loaded:', {
-        username: user.username,
-        fullName: user.fullName,
-        email: user.email,
-        avatarUrl: user.avatarUrl,
-        bio: user.bio,
-        location: user.location,
-        company: user.company,
-        school: user.school,
-        codecoins: user.codecoins,
-        points: user.points,
-        solvedProblems: user.solvedProblems?.length,
-        contestsParticipated: user.contestsParticipated?.length,
-        isBlocked: user.isBlocked,
-        isAdmin: user.isAdmin
-      });
       setEditForm({
         fullName: user.fullName || '',
         bio: user.bio || '',
@@ -175,8 +159,6 @@ export const Profile: React.FC = () => {
         company: user.company || '',
         school: user.school || ''
       });
-    } else {
-      console.log('Profile: User data is null or undefined');
     }
   }, [user]);
 
@@ -361,7 +343,7 @@ export const Profile: React.FC = () => {
       if (!user?._id) return;
       if ((user.codecoins || 0) < tier) { showError('Not enough codecoins'); return; }
       setConvBusy(true);
-      await apiService.post<any>('/payments/convert/codecoins', { codecoins: tier });
+      const res = await apiService.post<any>('/payments/convert/codecoins', { codecoins: tier });
       // Refresh user to reflect updated balance/codecoins
       await refreshUser(true);
       showSuccess(`Converted ${tier} codecoins`);
