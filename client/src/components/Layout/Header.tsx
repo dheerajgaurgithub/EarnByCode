@@ -79,15 +79,42 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 type UserDisplayInfo = {
+  _id: string;
   username: string;
   email?: string;
-  isAdmin?: boolean;
-  codecoins?: number;
+  role?: string;
   walletBalance?: number;
-  points?: number;
+  preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR';
+  preferences?: any;
   avatarUrl?: string;
-  fullName?: string;
+  avatarPublicId?: string;
   name?: string;
+  phone?: string;
+  fullName?: string;
+  bio?: string;
+  location?: string;
+  website?: string;
+  contestsParticipated?: string[];
+  github?: string;
+  linkedin?: string;
+  twitter?: string;
+  company?: string;
+  school?: string;
+  isAdmin?: boolean;
+  isVerified?: boolean;
+  isBlocked?: boolean;
+  blockReason?: string;
+  blockedUntil?: string | Date;
+  createdAt?: string;
+  updatedAt?: string;
+  codecoins?: number;
+  points?: number;
+  rank?: number;
+  solvedProblems?: (string | number)[];
+  attemptedProblems?: (string | number)[];
+  submissions?: any[];
+  ranking?: number;
+  joinDate?: string;
 };
 
 export const Header: React.FC = () => {
