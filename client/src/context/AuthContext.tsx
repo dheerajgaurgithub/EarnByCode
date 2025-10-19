@@ -257,24 +257,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch(clearErrors());
 
     try {
-      const response = await fetch(`${config.api.baseUrl}/auth/register`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ username, email, password })
-      });
+      const response = await apiService.register(username, email, password);
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || 'Registration failed');
-      }
-
-      const data = await response.json();
-
-      if (data.token) {
+      if (response.token) {
         // Dispatch Redux actions
-        dispatch(registerSuccess({ user: data.user, token: data.token }));
+        dispatch(registerSuccess({ user: response.user, token: response.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
         return true;
@@ -300,6 +287,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Not authenticated');
       }
 
+      // Use apiService for consistency - would need to add updateUser method to apiService
       const response = await fetch(`${config.api.baseUrl}/users/me`, {
         method: 'PATCH',
         headers: {
@@ -345,6 +333,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const form = new FormData();
       form.append('avatar', file);
 
+      // Use direct fetch for file uploads since apiService doesn't handle multipart/form-data
       const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` },
@@ -371,6 +360,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Not authenticated');
 
+      // Use direct fetch since apiService doesn't handle this endpoint
       const res = await fetch(`${config.api.baseUrl}/users/me/avatar`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` },
