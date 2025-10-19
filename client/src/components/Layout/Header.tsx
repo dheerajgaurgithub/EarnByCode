@@ -79,42 +79,15 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 type UserDisplayInfo = {
-  _id: string;
   username: string;
   email?: string;
-  role?: string;
-  walletBalance?: number;
-  preferredCurrency?: 'USD' | 'EUR' | 'GBP' | 'INR';
-  preferences?: any;
-  avatarUrl?: string;
-  avatarPublicId?: string;
-  name?: string;
-  phone?: string;
-  fullName?: string;
-  bio?: string;
-  location?: string;
-  website?: string;
-  contestsParticipated?: string[];
-  github?: string;
-  linkedin?: string;
-  twitter?: string;
-  company?: string;
-  school?: string;
   isAdmin?: boolean;
-  isVerified?: boolean;
-  isBlocked?: boolean;
-  blockReason?: string;
-  blockedUntil?: string | Date;
-  createdAt?: string;
-  updatedAt?: string;
   codecoins?: number;
+  walletBalance?: number;
   points?: number;
-  rank?: number;
-  solvedProblems?: (string | number)[];
-  attemptedProblems?: (string | number)[];
-  submissions?: any[];
-  ranking?: number;
-  joinDate?: string;
+  avatarUrl?: string;
+  fullName?: string;
+  name?: string;
 };
 
 export const Header: React.FC = () => {
@@ -259,7 +232,6 @@ export const Header: React.FC = () => {
                     height={48}
                     loading="eager"
                     decoding="async"
-                    fetchpriority="high"
                     className="h-full w-full object-contain transition-all duration-500 group-hover:scale-110 drop-shadow-md"
                   />
                   {/* Glow effect */}

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect } from 'react';
 import { User } from '../types';
 import config from '@/lib/config';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
@@ -67,51 +67,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   // Get auth state from Redux
   const reduxUser = useAppSelector((state) => state.auth.user);
   const reduxLoading = useAppSelector((state) => state.auth.isLoading);
-  const reduxError = useAppSelector((state) => state.auth.error);
-  const reduxLoggingIn = useAppSelector((state) => state.auth.isLoggingIn);
-  const reduxRegistering = useAppSelector((state) => state.auth.isRegistering);
-  const reduxUpdatingProfile = useAppSelector((state) => state.auth.isUpdatingProfile);
-  const reduxUploadingAvatar = useAppSelector((state) => state.auth.isUploadingAvatar);
-  const reduxChangingPassword = useAppSelector((state) => state.auth.isChangingPassword);
-  const reduxDeletingAccount = useAppSelector((state) => state.auth.isDeletingAccount);
-  const reduxToken = useAppSelector((state) => state.auth.token);
-  const reduxIsBlocked = useAppSelector((state) => state.auth.isBlocked);
-
-  // Local state for compatibility (will sync with Redux)
-  const [user, setUserState] = useState<User | null>(null);
-  const [isLoading, setIsLoadingState] = useState(true);
-
-  // Initialize Redux auth state on mount and refresh user data
-  useEffect(() => {
-    dispatch(initializeAuth());
-
-    // After Redux initialization, refresh user data if token exists
-    const token = localStorage.getItem('token');
-    if (token) {
-      // Small delay to ensure Redux state is updated first
-      setTimeout(() => {
-        refreshUser(true); // Silent refresh
-      }, 100);
-    } else {
-      dispatch(setLoading(false));
-    }
-  }, [dispatch]);
-
-  // Sync Redux state with local state for backward compatibility
-  useEffect(() => {
-    setUserState(reduxUser);
-  }, [reduxUser]);
-
-  useEffect(() => {
-    setIsLoadingState(reduxLoading);
-  }, [reduxLoading]);
-
-  // Sync Redux loading states with local state
-  useEffect(() => {
-    if (reduxLoggingIn || reduxRegistering) {
-      setIsLoadingState(true);
-    }
-  }, [reduxLoggingIn, reduxRegistering]);
 
   const refreshUser = async (silent: boolean = false) => {
     if (!silent) dispatch(setLoading(true));
@@ -144,6 +99,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (!silent) dispatch(setLoading(false));
     }
   };
+
+  // Initialize Redux auth state on mount and refresh user data
+  useEffect(() => {
+    dispatch(initializeAuth());
+
+    // After Redux initialization, refresh user data if token exists
+    const token = localStorage.getItem('token');
+    if (token) {
+      // Small delay to ensure Redux state is updated first
+      setTimeout(() => {
+        refreshUser(true); // Silent refresh
+      }, 100);
+    } else {
+      dispatch(setLoading(false));
+    }
+  }, [dispatch]);
 
   // Permanently delete account
   const deleteAccount = async (): Promise<void> => {
@@ -238,6 +209,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch(loginSuccess({ user: response.user, token: response.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
+
+        // Refresh user data to get complete profile including wallet balance, points, etc.
+        await refreshUser(true);
+
         return true;
       }
 
@@ -264,6 +239,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch(registerSuccess({ user: response.user, token: response.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
+
+        // Refresh user data to get complete profile including wallet balance, points, etc.
+        await refreshUser(true);
+
         return true;
       }
 
@@ -381,12 +360,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   return (
     <AuthContext.Provider value={{
-      user,
+      user: reduxUser,
       login,
       register,
       logout,
       updateUser,
-      isLoading,
+      isLoading: reduxLoading,
       refreshUser,
       uploadAvatar,
       removeAvatar,
