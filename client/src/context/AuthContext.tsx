@@ -83,16 +83,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Initialize Redux auth state on mount and refresh user data
   useEffect(() => {
+    console.log('Initializing auth state...');
     dispatch(initializeAuth());
 
     // After Redux initialization, refresh user data if token exists
     const token = localStorage.getItem('token');
     if (token) {
+      console.log('Token found in localStorage, refreshing user data...');
       // Small delay to ensure Redux state is updated first
       setTimeout(() => {
         refreshUser(true); // Silent refresh
       }, 100);
     } else {
+      console.log('No token found, setting loading to false');
       dispatch(setLoading(false));
     }
   }, [dispatch]);
@@ -118,15 +121,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     try {
       const token = localStorage.getItem('token');
       if (!token) {
+        console.log('No token found, clearing user data');
         dispatch(setUser(null));
         return;
       }
 
+      console.log('Refreshing user data with token:', token.substring(0, 20) + '...');
+
       // Use apiService to get current user
       const data = await apiService.getCurrentUser();
+      console.log('Refreshed user data:', data);
 
       // If backend reports blocked, sign out locally
       if (data?.isBlocked) {
+        console.log('User is blocked, signing out');
         dispatch(handleUserBlocked({
           reason: data.blockReason,
           until: data.blockedUntil
@@ -134,6 +142,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      console.log('Setting user data in Redux:', data);
       dispatch(setUser(data));
       dispatch(updateLastActivity());
       dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())); // 24 hours
@@ -234,10 +243,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const response = await apiService.login(email, password);
 
       if (response.token) {
+        console.log('Login successful, received user data:', response.user);
+
         // Dispatch Redux actions
         dispatch(loginSuccess({ user: response.user, token: response.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
+
+        // Refresh user data after a short delay to ensure Redux state is updated
+        setTimeout(() => {
+          console.log('Refreshing user data after login...');
+          refreshUser(true);
+        }, 100);
+
         return true;
       }
 
@@ -264,6 +282,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch(registerSuccess({ user: response.user, token: response.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
+
+        // Refresh user data after a short delay to ensure Redux state is updated
+        setTimeout(() => {
+          refreshUser(true);
+        }, 100);
+
         return true;
       }
 
