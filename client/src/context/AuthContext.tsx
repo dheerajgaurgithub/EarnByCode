@@ -152,18 +152,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const token = localStorage.getItem('token');
       if (!token) throw new Error('Not authenticated');
 
-      const res = await fetch(`${config.api.baseUrl}/users/me`, {
+      // Use apiService for consistency
+      await fetch(`${config.api.baseUrl}/users/me`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,
         },
         credentials: 'include',
       });
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok || data.success === false) {
-        throw new Error(data.message || 'Failed to delete account');
-      }
 
       // Dispatch Redux action
       dispatch(accountDeletionSuccess());
@@ -235,35 +231,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     dispatch(clearErrors());
 
     try {
-      const response = await fetch(`${config.api.baseUrl}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include'
-      });
+      const response = await apiService.login(email, password);
 
-      if (!response.ok) {
-        let errorBody: any = {};
-        try { errorBody = await response.json(); } catch {}
-        if (response.status === 403 && (errorBody?.blocked || errorBody?.message)) {
-          const reason = errorBody?.reason ? ` Reason: ${errorBody.reason}.` : '';
-          const until = errorBody?.blockedUntil ? ` Until: ${new Date(errorBody.blockedUntil).toLocaleString()}.` : '';
-          dispatch(handleUserBlocked({
-            reason: errorBody.reason,
-            until: errorBody.blockedUntil
-          }));
-          throw new Error(`Your account is blocked by admin.${reason}${until}`.trim());
-        }
-        throw new Error(errorBody?.message || 'Login failed');
-      }
-
-      const data = await response.json();
-
-      if (data.token) {
+      if (response.token) {
         // Dispatch Redux actions
-        dispatch(loginSuccess({ user: data.user, token: data.token }));
+        dispatch(loginSuccess({ user: response.user, token: response.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
         return true;
