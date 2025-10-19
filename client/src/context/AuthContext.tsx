@@ -2,6 +2,7 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User } from '../types';
 import config from '@/lib/config';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
+import apiService from '@/services/api';
 import {
   setUser,
   setLoading,
@@ -121,37 +122,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
-      const response = await fetch(`${config.api.baseUrl}/auth/me`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        credentials: 'include'
-      });
+      // Use apiService to get current user
+      const data = await apiService.getCurrentUser();
 
-      if (response.status === 401) {
-        // Token is invalid or expired
-        dispatch(logoutAction());
-        return;
-      }
-
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        dispatch(authError(error.message || 'Failed to fetch user data'));
-        return;
-      }
-
-      const data = await response.json();
       // If backend reports blocked, sign out locally
-      if (data?.user?.blocked) {
+      if (data?.isBlocked) {
         dispatch(handleUserBlocked({
-          reason: data.user.blockReason,
-          until: data.user.blockedUntil
+          reason: data.blockReason,
+          until: data.blockedUntil
         }));
         return;
       }
 
-      dispatch(setUser(data.user));
+      dispatch(setUser(data));
       dispatch(updateLastActivity());
       dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())); // 24 hours
     } catch (error) {
