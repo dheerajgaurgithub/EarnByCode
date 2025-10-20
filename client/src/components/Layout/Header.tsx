@@ -102,6 +102,8 @@ export const Header: React.FC = () => {
   // OTP dev badge removed
   const [unreadCount, setUnreadCount] = useState<number>(0);
   const [chatUnread, setChatUnread] = useState<number>(0);
+  const pollRef = useRef<number | null>(null);
+  const chatPollRef = useRef<number | null>(null);
 
   const userInfo = user as UserDisplayInfo | null;
   const displayName = (userInfo?.fullName as any) || (userInfo as any)?.name || userInfo?.username || '';
@@ -149,7 +151,7 @@ export const Header: React.FC = () => {
     };
   }, [showDropdown]);
 
-  // Notifications polling - reduced frequency to prevent rate limiting
+  // Notifications polling
   useEffect(() => {
     let canceled = false;
     const load = async () => {
@@ -157,48 +159,23 @@ export const Header: React.FC = () => {
       try {
         const r = await svcApi.getUnreadCount();
         if (!canceled) setUnreadCount(r?.count || 0);
-      } catch (error) {
-        console.warn('Failed to fetch notification count:', error);
-        if (!canceled) setUnreadCount(0);
-      }
+      } catch { if (!canceled) setUnreadCount(0); }
     };
-
-    // Load immediately on mount
     load();
-
-    // Poll less frequently and only when user is active
-    let pollInterval: number | null = null;
-    const startPolling = () => {
-      if (pollInterval) clearInterval(pollInterval);
-      pollInterval = window.setInterval(load, 60000); // Reduced to every minute
-    };
-
-    const stopPolling = () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = null;
-      }
-    };
-
-    // Only poll when user is active
-    const onFocus = () => startPolling();
-    const onBlur = () => stopPolling();
-
+    const onFocus = () => load();
+    const onUpdated = () => load();
     window.addEventListener('focus', onFocus);
-    window.addEventListener('blur', onBlur);
-
-    // Start polling initially
-    startPolling();
-
+    window.addEventListener('notifications:updated', onUpdated as any);
+    pollRef.current = window.setInterval(load, 30000);
     return () => {
       canceled = true;
       window.removeEventListener('focus', onFocus);
-      window.removeEventListener('blur', onBlur);
-      stopPolling();
+    window.removeEventListener('notifications:updated', onUpdated as any);
+      if (pollRef.current) window.clearInterval(pollRef.current);
     };
   }, [userInfo?.username]);
 
-  // Chat unread polling - reduced frequency and better error handling
+  // Chat unread polling (count of threads with unread > 0)
   useEffect(() => {
     let canceled = false;
     const load = async () => {
@@ -208,44 +185,16 @@ export const Header: React.FC = () => {
         if (canceled) return;
         const count = Array.isArray(threads) ? threads.reduce((acc, t: any) => acc + ((Number(t.unread) || 0) > 0 ? 1 : 0), 0) : 0;
         setChatUnread(count);
-      } catch (error) {
-        console.warn('Failed to fetch chat threads:', error);
-        if (!canceled) setChatUnread(0);
-      }
+      } catch { if (!canceled) setChatUnread(0); }
     };
-
-    // Load immediately on mount
     load();
-
-    // Poll less frequently
-    let pollInterval: number | null = null;
-    const startPolling = () => {
-      if (pollInterval) clearInterval(pollInterval);
-      pollInterval = window.setInterval(load, 60000); // Reduced to every minute
-    };
-
-    const stopPolling = () => {
-      if (pollInterval) {
-        clearInterval(pollInterval);
-        pollInterval = null;
-      }
-    };
-
-    // Only poll when user is active
-    const onFocus = () => startPolling();
-    const onBlur = () => stopPolling();
-
-    window.addEventListener('focus', onFocus);
-    window.addEventListener('blur', onBlur);
-
-    // Start polling initially
-    startPolling();
-
+    const onUpdated = () => load();
+    window.addEventListener('chat:updated', onUpdated as any);
+    chatPollRef.current = window.setInterval(load, 30000);
     return () => {
       canceled = true;
-      window.removeEventListener('focus', onFocus);
-      window.removeEventListener('blur', onBlur);
-      stopPolling();
+      window.removeEventListener('chat:updated', onUpdated as any);
+      if (chatPollRef.current) window.clearInterval(chatPollRef.current);
     };
   }, [userInfo?.username]);
 

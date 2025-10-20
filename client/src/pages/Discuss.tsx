@@ -92,10 +92,13 @@ const Discuss: React.FC = () => {
   const fetchDiscussions = useCallback(async () => {
     try {
       setIsLoading(true);
+      console.log('Fetching discussions from:', `${import.meta.env.VITE_API_URL || 'https://earnbycode-mfs3.onrender.com'}/api/discussions`);
       const response = await api.get<{ success: boolean; data: Discussion[] }>('/discussions');
+      console.log('Discussions API response:', response);
 
       if (response?.success) {
         const discussionsData = Array.isArray(response.data) ? response.data : [];
+        console.log('Discussions data length:', discussionsData.length);
         const processedDiscussions = discussionsData.map((discussion: Discussion) => ({
           ...discussion,
           author: discussion.author || { _id: 'unknown', username: 'User' },
