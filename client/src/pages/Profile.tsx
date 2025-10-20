@@ -171,8 +171,9 @@ export const Profile: React.FC = () => {
         if (!Array.isArray(data)) { setCurrentRank(null); return; }
         const idx = data.findIndex((u: any) => String(u?._id) === String(user._id));
         setCurrentRank(idx >= 0 ? idx + 1 : null);
-      } catch {
-        setCurrentRank(null);
+      } catch (error) {
+        console.warn('Failed to fetch leaderboard rank:', error);
+        setCurrentRank(null); // Set null on error so page still renders
       }
     };
     fetchRank();
@@ -191,7 +192,9 @@ export const Profile: React.FC = () => {
           d500: !!payload?.milestones?.d500,
           d1000: !!payload?.milestones?.d1000,
         });
-      } catch {
+      } catch (error) {
+        console.warn('Failed to fetch streaks:', error);
+        // Set default values on error so page still renders
         setCurrentStreak(0);
         setMaxStreak(0);
         setStreakMilestones({ d100: false, d500: false, d1000: false });
@@ -211,7 +214,9 @@ export const Profile: React.FC = () => {
         ]);
         setFollowerCount(fols?.count ?? 0);
         setFollowingCount(flw?.count ?? 0);
-      } catch {
+      } catch (error) {
+        console.warn('Failed to fetch follower counts:', error);
+        // Set default values on error so page still renders
         setFollowerCount(0);
         setFollowingCount(0);
       }
@@ -343,7 +348,7 @@ export const Profile: React.FC = () => {
       if (!user?._id) return;
       if ((user.codecoins || 0) < tier) { showError('Not enough codecoins'); return; }
       setConvBusy(true);
-      const res = await apiService.post<any>('/payments/convert/codecoins', { codecoins: tier });
+      await apiService.post<any>('/payments/convert/codecoins', { codecoins: tier });
       // Refresh user to reflect updated balance/codecoins
       await refreshUser(true);
       showSuccess(`Converted ${tier} codecoins`);
@@ -380,8 +385,9 @@ export const Profile: React.FC = () => {
         const data = await apiService.get<{ submissions: SubmissionItem[] }>(`/submissions`);
         const list = (data as any).submissions || (data as any) || [];
         setRecentSubmissions(list.slice(0, 5));
-      } catch (e) {
-        console.warn('Failed to load recent submissions');
+      } catch (error) {
+        console.warn('Failed to load recent submissions:', error);
+        setRecentSubmissions([]); // Set empty array on error so page still renders
       }
     };
     loadSubmissions();

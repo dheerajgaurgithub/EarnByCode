@@ -88,7 +88,7 @@ const Discuss: React.FC = () => {
     }
   };
 
-  // Fetch discussions
+  // Fetch discussions with better error handling
   const fetchDiscussions = useCallback(async () => {
     try {
       setIsLoading(true);
@@ -115,11 +115,13 @@ const Discuss: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching discussions:', error);
-      showErrorToast('Error', 'Failed to load discussions');
+      // Show error toast but don't leave in loading state
+      showErrorToast('Error', 'Failed to load discussions. Please refresh the page.');
+      setDiscussions([]); // Set empty array so UI doesn't stay loading
     } finally {
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user, showErrorToast]);
 
   useEffect(() => {
     fetchDiscussions();
