@@ -48,6 +48,7 @@ const Discuss: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showNewDiscussion, setShowNewDiscussion] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: '',
     content: ''
@@ -92,6 +93,7 @@ const Discuss: React.FC = () => {
   const fetchDiscussions = useCallback(async () => {
     try {
       setIsLoading(true);
+      setError(null);
       const response = await api.get<{ success: boolean; data: Discussion[] }>('/discussions');
 
       if (response?.success) {
@@ -113,15 +115,14 @@ const Discuss: React.FC = () => {
       } else {
         setDiscussions([]);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching discussions:', error);
-      // Show error toast but don't leave in loading state
-      showErrorToast('Error', 'Failed to load discussions. Please refresh the page.');
+      setError('Failed to load discussions. Please check your connection and refresh the page.');
       setDiscussions([]); // Set empty array so UI doesn't stay loading
     } finally {
       setIsLoading(false);
     }
-  }, [user, showErrorToast]);
+  }, [user]);
 
   useEffect(() => {
     fetchDiscussions();
@@ -407,7 +408,14 @@ const Discuss: React.FC = () => {
               )}
             </button>
           </div>
-  
+
+          {/* Error Display */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm">
+              {error}
+            </div>
+          )}
+
           {/* New Discussion Form */}
           {showNewDiscussion && (
             <div className="bg-white dark:bg-gray-900 border border-sky-200 dark:border-green-700 rounded-xl shadow-lg dark:shadow-green-900/20 mb-4 lg:mb-5 overflow-hidden transition-all duration-300">

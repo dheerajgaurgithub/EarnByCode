@@ -48,7 +48,17 @@ interface Contest {
 // 3) Else, default to local dev server.
 const DEFAULT_PROD_API = 'https://earnbycode-mfs3.onrender.com/api';
 const DEFAULT_DEV_API = 'http://localhost:5000/api';
-const API_BASE_URL = (import.meta.env.VITE_API_URL?.toString().trim()) || (import.meta.env.PROD ? DEFAULT_PROD_API : DEFAULT_DEV_API);
+
+// More reliable production detection
+const isProduction = () => {
+  // Check multiple ways to detect production
+  return import.meta.env.PROD ||
+         import.meta.env.MODE === 'production' ||
+         (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1') ||
+         (typeof process !== 'undefined' && process.env?.NODE_ENV === 'production');
+};
+
+const API_BASE_URL = (import.meta.env.VITE_API_URL?.toString().trim()) || (isProduction() ? DEFAULT_PROD_API : DEFAULT_DEV_API);
 
 // Transient error detection (network resets, timeouts, 5xx)
 const isTransientError = (error: unknown, response?: Response) => {
@@ -219,29 +229,22 @@ class ApiService {
   // Get public contests for all users
   async getPublicContests(): Promise<Contest[]> {
     try {
-      console.log(`Fetching contests from: ${API_BASE_URL}/contests`);
       const response = await fetch(`${API_BASE_URL}/contests`);
-      console.log('Contests API response status:', response.status);
-      
+
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Error response from contests API:', errorText);
         throw new Error(`Failed to fetch public contests: ${response.status} ${response.statusText}`);
       }
-      
+
       const data = await response.json();
-      console.log('Raw contests data:', data);
-      
+
       // Extract the contests array from the response
       const contests = Array.isArray(data) ? data : data.contests || [];
-      
+
       if (!Array.isArray(contests)) {
-        console.error('Expected an array of contests but got:', data);
         return [];
       }
-      
+
       const processedContests = this.addStatusToContests(contests);
-      console.log('Processed contests with statuses:', processedContests);
       return processedContests;
     } catch (error) {
       console.error('Error in getPublicContests:', error);
