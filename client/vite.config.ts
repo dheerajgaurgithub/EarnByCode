@@ -19,9 +19,22 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         output: {
           manualChunks: {
-            react: ['react', 'react-dom', 'react-router-dom'],
-            vendor: ['axios', 'react-hook-form', 'zod'],
-            ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu'],
+            // React ecosystem
+            'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+            // UI libraries
+            'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
+            // Form libraries
+            'form-vendor': ['react-hook-form', 'zod'],
+            // HTTP client
+            'http-vendor': ['axios'],
+            // Animation libraries
+            'animation-vendor': ['framer-motion'],
+            // Date utilities
+            'date-vendor': ['date-fns'],
+            // Icons
+            'icon-vendor': ['lucide-react'],
+            // Charts and visualization
+            'chart-vendor': ['recharts'],
           },
         },
       },

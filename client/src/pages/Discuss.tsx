@@ -92,13 +92,10 @@ const Discuss: React.FC = () => {
   const fetchDiscussions = useCallback(async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching discussions from:', `${import.meta.env.VITE_API_URL || 'https://earnbycode-mfs3.onrender.com'}/api/discussions`);
       const response = await api.get<{ success: boolean; data: Discussion[] }>('/discussions');
-      console.log('Discussions API response:', response);
 
       if (response?.success) {
         const discussionsData = Array.isArray(response.data) ? response.data : [];
-        console.log('Discussions data length:', discussionsData.length);
         const processedDiscussions = discussionsData.map((discussion: Discussion) => ({
           ...discussion,
           author: discussion.author || { _id: 'unknown', username: 'User' },
@@ -590,22 +587,10 @@ const Discuss: React.FC = () => {
                                   {discussion.replies?.length > 0 && (
                                     <div className="space-y-2">
                                       {discussion.replies.map(reply => {
-                                        // Debug the reply data
-                                        console.log('Reply data:', {
-                                          replyId: reply._id,
-                                          author: reply.author,
-                                          content: reply.content
-                                        });
-                                        
                                         // Ensure we have valid author data
                                         const author = reply.author || { _id: 'unknown', username: 'User' };
                                         const username = author?.username || 'User';
                                         const userInitial = username.charAt(0).toUpperCase();
-                                        
-                                        console.log('Processed author data:', {
-                                          username,
-                                          userInitial
-                                        });
                                         
                                         return (
                                           <div key={reply._id} className="bg-gradient-to-r from-sky-50 to-white dark:from-gray-800 dark:to-gray-700 p-3 rounded-lg border border-sky-100 dark:border-green-700 transition-all duration-300 hover:shadow-sm">
