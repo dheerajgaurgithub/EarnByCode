@@ -724,6 +724,7 @@ app.get('/', (req, res) => {
   }
 });
 
+import { cacheService, getProblemsCacheKey, getContestsCacheKey, getLeaderboardCacheKey, getUserCacheKey } from './services/cache.js';
 import { performanceMonitoringMiddleware, healthCheckWithMetrics, performanceDashboard } from './services/performanceMonitor.js';
 
 // Cache middleware for GET routes
