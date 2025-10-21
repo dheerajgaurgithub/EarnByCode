@@ -724,11 +724,22 @@ app.get('/', (req, res) => {
   }
 });
 
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
+import { performanceMonitoringMiddleware, healthCheckWithMetrics, performanceDashboard } from './services/performanceMonitor.js';
+
+// Cache middleware for GET routes
+const cacheMiddleware = (ttl = 300) => cacheService.middleware(ttl);
+
+// Routes with caching
+app.get('/api/problems', cacheMiddleware(600)); // Cache problems for 10 minutes
 app.use('/api/problems', problemRoutes);
+
+app.get('/api/contests', cacheMiddleware(300)); // Cache contests for 5 minutes
 app.use('/api/contests', contestRoutes);
+
+app.get('/api/users/leaderboard', cacheMiddleware(120)); // Cache leaderboard for 2 minutes
+app.use('/api/users', userRoutes);
+
+app.get('/api/submissions', cacheMiddleware(60)); // Cache submissions for 1 minute
 app.use('/api/submissions', submissionRoutes);
 // Apply higher-burst limiter for wallet APIs
 app.use('/api/wallet', walletLimiter);
@@ -1117,14 +1128,14 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
 // Legacy /api/execute endpoint - REMOVED (now uses Piston API only)
 // app.post('/api/execute', ...);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    status: 'success',
-    message: 'Server is running',
-    timestamp: new Date().toISOString()
-  });
-});
+// Add performance monitoring middleware
+app.use(performanceMonitoringMiddleware);
+
+// Enhanced health check endpoint
+app.get('/api/health', healthCheckWithMetrics);
+
+// Performance dashboard endpoint
+app.get('/api/performance', performanceDashboard);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

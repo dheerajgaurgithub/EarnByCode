@@ -99,6 +99,27 @@ const problemSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Add performance indexes for better query optimization
+problemSchema.index({ difficulty: 1, category: 1 });
+problemSchema.index({ tags: 1 });
+problemSchema.index({ createdAt: -1 });
+problemSchema.index({ submissions: -1 });
+problemSchema.index({ acceptance: -1 });
+problemSchema.index({ isContestOnly: 1, contest: 1 });
+problemSchema.index({ availableAfter: 1 });
+problemSchema.index({ createdBy: 1 });
+
+// Compound index for common queries
+problemSchema.index({ difficulty: 1, createdAt: -1 });
+problemSchema.index({ category: 1, difficulty: 1, createdAt: -1 });
+
+// Text index for search functionality
+problemSchema.index({
+  title: 'text',
+  description: 'text',
+  tags: 'text'
+});
+
 // Update acceptance rate when submissions change
 problemSchema.methods.updateAcceptance = function() {
   if (this.submissions > 0) {

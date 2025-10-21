@@ -14,15 +14,32 @@ export default defineConfig(({ mode }) => {
     build: {
       outDir: 'dist',
       assetsDir: 'assets',
-      sourcemap: !isProduction,
+      sourcemap: false, // Disable sourcemaps in production for smaller bundles
       minify: isProduction ? 'terser' : false,
+      terserOptions: isProduction ? {
+        compress: {
+          drop_console: true,
+          drop_debugger: true,
+          pure_funcs: ['console.log', 'console.info', 'console.debug']
+        },
+        format: {
+          comments: false
+        }
+      } : undefined,
       rollupOptions: {
         output: {
           manualChunks: {
             // React ecosystem
             'react-vendor': ['react', 'react-dom', 'react-router-dom'],
-            // UI libraries
-            'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-slot'],
+            // UI libraries - group all Radix UI components
+            'ui-vendor': [
+              '@radix-ui/react-dialog',
+              '@radix-ui/react-dropdown-menu',
+              '@radix-ui/react-slot',
+              '@radix-ui/react-avatar',
+              '@radix-ui/react-label',
+              '@radix-ui/react-toast'
+            ],
             // Form libraries
             'form-vendor': ['react-hook-form', 'zod'],
             // HTTP client
@@ -35,9 +52,40 @@ export default defineConfig(({ mode }) => {
             'icon-vendor': ['lucide-react'],
             // Charts and visualization
             'chart-vendor': ['recharts'],
+            // Monaco Editor (large dependency)
+            'editor-vendor': ['@monaco-editor/react', 'monaco-editor'],
+            // Socket.IO client
+            'socket-vendor': ['socket.io-client'],
+            // Other large dependencies
+            'utils-vendor': ['clsx', 'tailwind-merge', 'class-variance-authority']
           },
+          // Optimize chunk file names for better caching
+          chunkFileNames: (chunkInfo) => {
+            const facadeModuleId = chunkInfo.facadeModuleId ?
+              chunkInfo.facadeModuleId.split('/').pop()?.replace('.tsx', '').replace('.ts', '') : 'chunk';
+            return `js/${facadeModuleId}-[hash].js`;
+          },
+          assetFileNames: (assetInfo) => {
+            const info = assetInfo.name!.split('.');
+            const ext = info[info.length - 1];
+            if (/png|jpe?g|svg|gif|tiff|bmp|ico/i.test(ext)) {
+              return `images/[name]-[hash][extname]`;
+            }
+            if (/css/i.test(ext)) {
+              return `css/[name]-[hash][extname]`;
+            }
+            return `assets/[name]-[hash][extname]`;
+          }
         },
       },
+      // Enable CSS code splitting
+      cssCodeSplit: true,
+      // Target modern browsers for better performance
+      target: 'esnext',
+      // Enable tree shaking
+      modulePreload: {
+        polyfill: false
+      }
     },
     plugins: [
       react(),
@@ -77,6 +125,24 @@ export default defineConfig(({ mode }) => {
     } : undefined,
     optimizeDeps: {
       exclude: ['lucide-react'],
+      include: [
+        'react',
+        'react-dom',
+        'react-router-dom',
+        'axios',
+        'framer-motion',
+        'socket.io-client'
+      ]
     },
+    // Enable CSS optimization
+    css: {
+      devSourcemap: !isProduction,
+      postcss: './postcss.config.js'
+    },
+    // Performance optimizations
+    esbuild: {
+      // Drop console and debugger in production
+      drop: isProduction ? ['console', 'debugger'] : []
+    }
   };
 });
