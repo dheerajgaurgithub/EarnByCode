@@ -27,17 +27,21 @@ const RouteRestorer = () => {
     // Get saved route from Redux state
     const savedRoute = store.getState().router.savedRoute;
 
-    // If we're on the root path and there's a saved route, navigate to it
-    // But don't restore auth routes if user is already authenticated
+    // Only restore routes if we're on the root path and there's a saved route
+    // But don't restore if the user just explicitly navigated to home
     if (location.pathname === '/' && savedRoute && savedRoute !== '/') {
       const authRoutes = ['/login', '/register', '/forgot-password'];
       const shouldRestore = !user || !authRoutes.some(route => savedRoute.startsWith(route));
 
       if (shouldRestore) {
-        // Use setTimeout to avoid navigation during initial render
-        setTimeout(() => {
-          navigate(savedRoute, { replace: true });
-        }, 100);
+        // Only restore if it's been more than 2 seconds since app load
+        // This prevents redirecting when user explicitly clicks home
+        const timeSinceLoad = Date.now() - window.performance.timing.navigationStart;
+        if (timeSinceLoad > 2000) {
+          setTimeout(() => {
+            navigate(savedRoute, { replace: true });
+          }, 100);
+        }
       }
     }
   }, [dispatch, navigate, location.pathname, user]);
