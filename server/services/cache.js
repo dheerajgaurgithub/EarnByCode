@@ -28,8 +28,7 @@ const cacheSchema = new mongoose.Schema({
   collection: 'cache'
 });
 
-// Create TTL index for automatic cleanup
-cacheSchema.index({ createdAt: 1 }, { expireAfterSeconds: 0 });
+// TTL index is handled by mongoose automatically with timestamps: true
 
 const Cache = mongoose.model('Cache', cacheSchema);
 
