@@ -8,7 +8,7 @@ import { I18nProvider } from '@/context/I18nContext';
 import { useAppDispatch } from '@/store/hooks';
 import { setCurrentRoute } from '@/store/routerSlice';
 // Import types
-import { Header } from './components/Layout/Header.tsx';
+import { Header } from './components/Layout/Header';
 import Footer from './components/Layout/Footer';
 import ChatbotWidget from './components/ChatbotWidget';
 import Home from './pages/Home';
@@ -209,30 +209,12 @@ function App() {
     };
   };
 
-// Service Worker Registration Component
-const ServiceWorkerRegistration = () => {
-  useEffect(() => {
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      navigator.serviceWorker.register('/sw.js')
-        .then((registration) => {
-          console.log('SW registered: ', registration);
-        })
-        .catch((registrationError) => {
-          console.log('SW registration failed: ', registrationError);
-        });
-    }
-  }, []);
-
-  return null;
-};
-
   const { user } = useAuth();
   return (
     <WalletProvider>
       <I18nProvider initialLang={(user?.preferences?.language as any) || 'en'}>
       <ThemeSync />
       <RouteTracker />
-      <ServiceWorkerRegistration />
       <div className="min-h-screen flex flex-col transition-colors duration-200">
         {/* Reserve space for toasts (fixed placeholder to avoid any potential reflow) */}
         <div
