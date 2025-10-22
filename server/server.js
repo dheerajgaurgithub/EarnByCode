@@ -1138,6 +1138,44 @@ app.get('/api/health', healthCheckWithMetrics);
 // Performance dashboard endpoint
 app.get('/api/performance', performanceDashboard);
 
+// User authentication endpoint (me)
+app.get('/api/auth/me', authenticate, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('-password -__v');
+    if (!user) {
+      return res.status(404).json({ status: 'fail', message: 'User not found' });
+    }
+
+    res.status(200).json({
+      status: 'success',
+      data: {
+        user: {
+          _id: user._id,
+          email: user.email,
+          username: user.username,
+          displayName: user.displayName || user.username,
+          avatarUrl: user.avatarUrl,
+          role: user.role || 'user',
+          isAdmin: user.role === 'admin' || user.isAdmin === true,
+          codecoins: user.codecoins || 0,
+          points: user.points || 0,
+          walletBalance: user.walletBalance || 0,
+          solvedProblems: user.solvedProblems || [],
+          preferences: user.preferences || {},
+          createdAt: user.createdAt,
+          updatedAt: user.updatedAt
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Auth me endpoint error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to get user information'
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
