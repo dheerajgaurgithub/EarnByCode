@@ -704,6 +704,90 @@ const staticOptions = {
 // Serve static files from the public directory
 app.use(express.static(publicPath, staticOptions));
 
+// Serve static files from the client build directory FIRST
+const clientBuildPath = path.join(__dirname, '../../client/dist');
+if (fs.existsSync(clientBuildPath)) {
+  console.log(`📁 Serving static files from: ${clientBuildPath}`);
+
+  app.use(express.static(clientBuildPath, {
+    index: false,
+    etag: true,
+    lastModified: true,
+    maxAge: '1y',
+    setHeaders: (res, path) => {
+      // Ensure proper MIME types for JavaScript files
+      if (path.endsWith('.js')) {
+        res.setHeader('Content-Type', 'application/javascript');
+      } else if (path.endsWith('.css')) {
+        res.setHeader('Content-Type', 'text/css');
+      } else if (path.endsWith('.json')) {
+        res.setHeader('Content-Type', 'application/json');
+      }
+    }
+  }));
+
+  // Handle all client-side routes
+  const clientRoutes = [
+    '/',
+    '/about',
+    '/company',
+    '/careers',
+    '/press',
+    '/contact',
+    '/blog',
+    '/community',
+    '/help',
+    '/privacy',
+    '/terms',
+    '/cookies',
+    '/auth/callback',
+    '/test-connection',
+    '/login',
+    '/register',
+    '/verify-email',
+    '/problems',
+    '/problems/:id',
+    '/contests',
+    '/contests/:contestId',
+    '/wallet',
+    '/profile',
+    '/admin',
+    '/leaderboard',
+    '/discuss',
+    '/submissions',
+    '/settings'
+  ];
+
+  clientRoutes.forEach(route => {
+    app.get(route, (req, res) => {
+      res.sendFile(path.join(clientBuildPath, 'index.html'), (err) => {
+        if (err) {
+          console.error(`Error serving route ${route}:`, err);
+          res.status(500).send('Error loading the application');
+        }
+      });
+    });
+  });
+
+  // Fallback for any other GET request that hasn't been handled
+  app.get('*', (req, res) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ message: 'API endpoint not found' });
+    }
+
+    // For all other routes, serve the index.html (SPA fallback)
+    res.sendFile(path.join(clientBuildPath, 'index.html'), (err) => {
+      if (err) {
+        console.error('Error sending file:', err);
+        res.status(500).send('Error loading the application');
+      }
+    });
+  });
+} else {
+  console.log('⚠️ Client build directory not found. Run "npm run build" in the client directory.');
+}
+
 // Root health/redirect route
 app.get('/', (req, res) => {
   try {
@@ -1132,12 +1216,6 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
 // Add performance monitoring middleware
 app.use(performanceMonitoringMiddleware);
 
-// Enhanced health check endpoint
-app.get('/api/health', healthCheckWithMetrics);
-
-// Performance dashboard endpoint
-app.get('/api/performance', performanceDashboard);
-
 // User authentication endpoint (me)
 app.get('/api/auth/me', authenticate, async (req, res) => {
   try {
@@ -1176,6 +1254,104 @@ app.get('/api/auth/me', authenticate, async (req, res) => {
   }
 });
 
+// Email verification endpoint
+app.post('/api/auth/verify', async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Email and OTP are required'
+      });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({
+        status: 'fail',
+        message: 'User not found'
+      });
+    }
+
+    // Check if email is already verified
+    if (user.emailVerified) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Email is already verified'
+      });
+    }
+
+    // Verify OTP (assuming you have OTP verification logic)
+    // For now, we'll implement a simple check - in production you'd want proper OTP verification
+    const storedOtp = user.otp || user.verificationCode;
+    const otpExpiry = user.otpExpiresAt || user.verificationCodeExpiresAt;
+
+    if (!storedOtp || !otpExpiry) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'No verification code found. Please request a new one.'
+      });
+    }
+
+    if (new Date() > new Date(otpExpiry)) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Verification code has expired. Please request a new one.'
+      });
+    }
+
+    if (storedOtp !== otp) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Invalid verification code'
+      });
+    }
+
+    // Update user as verified
+    user.emailVerified = true;
+    user.otp = undefined;
+    user.otpExpiresAt = undefined;
+    user.verificationCode = undefined;
+    user.verificationCodeExpiresAt = undefined;
+
+    await user.save();
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { id: user._id, email: user.email },
+      process.env.JWT_SECRET || process.env.JWT_KEY || 'secret',
+      { expiresIn: '7d' }
+    );
+
+    res.status(200).json({
+      status: 'success',
+      message: 'Email verified successfully',
+      data: {
+        token,
+        user: {
+          _id: user._id,
+          email: user.email,
+          username: user.username,
+          displayName: user.displayName || user.username,
+          avatarUrl: user.avatarUrl,
+          role: user.role || 'user',
+          isAdmin: user.role === 'admin' || user.isAdmin === true,
+          emailVerified: true
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Email verification error:', error);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to verify email'
+    });
+  }
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
@@ -1185,85 +1361,6 @@ app.use((err, req, res, next) => {
     error: config.NODE_ENV === 'development' ? err.message : undefined
   });
 });
-
-// Serve static files from the client build directory
-const clientBuildPath = path.join(__dirname, '../../client/dist');
-if (fs.existsSync(clientBuildPath)) {
-  // List of all client-side routes from App.tsx
-  const clientRoutes = [
-    '/',
-    '/about',
-    '/company',
-    '/careers',
-    '/press',
-    '/contact',
-    '/blog',
-    '/community',
-    '/help',
-    '/privacy',
-    '/terms',
-    '/cookies',
-    '/auth/callback',
-    '/test-connection',
-    '/login',
-    '/register',
-    '/verify-email',
-    '/problems',
-    '/problems/:id',
-    '/contests',
-    '/contests/:contestId',
-    '/wallet',
-    '/profile',
-    '/admin',
-    '/leaderboard',
-    '/discuss',
-    '/submissions',
-    '/settings'
-  ];
-
-  app.use(express.static(clientBuildPath, {
-    index: false,
-    etag: true,
-    lastModified: true,
-    maxAge: '1y'
-  }));
-  
-  // Handle all client-side routes
-  clientRoutes.forEach(route => {
-    app.get(route, (req, res) => {
-      res.sendFile(path.join(clientBuildPath, 'index.html'), (err) => {
-        if (err) {
-          console.error(`Error serving route ${route}:`, err);
-          res.status(500).send('Error loading the application');
-        }
-      });
-    });
-  });
-  
-  // Fallback for any other GET request that hasn't been handled
-  app.get('*', (req, res) => {
-    // Skip API routes
-    if (req.path.startsWith('/api/')) {
-      return res.status(404).json({ message: 'API endpoint not found' });
-    }
-    
-    // For all other routes, serve the index.html
-    res.sendFile(path.join(clientBuildPath, 'index.html'), (err) => {
-      if (err) {
-        console.error('Error sending file:', err);
-        res.status(500).send('Error loading the application');
-      }
-    });
-  });
-} else {
-  // 404 handler for API routes only if client build doesn't exist
-  app.all('*', (req, res) => {
-    res.status(404).json({
-      status: 'fail',
-      message: `Can't find ${req.originalUrl} on this server!`
-    });
-  });
-}
 
 // MongoDB connection options (compatible defaults)
 const isSrv = typeof config.MONGODB_URI === 'string' && config.MONGODB_URI.startsWith('mongodb+srv://');
