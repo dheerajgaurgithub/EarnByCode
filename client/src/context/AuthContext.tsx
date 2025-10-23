@@ -91,10 +91,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setTimeout(() => {
         refreshUser(true); // Silent refresh
       }, 100);
+
+      // Add timeout to prevent infinite loading if API call hangs
+      setTimeout(() => {
+        if (reduxLoading) {
+          console.warn('AuthContext: Loading timeout reached, forcing logout');
+          dispatch(setLoading(false));
+          // Clear token and logout
+          localStorage.removeItem('token');
+          dispatch({ type: 'auth/logout' });
+        }
+      }, 10000); // 10 second timeout
     } else {
       dispatch(setLoading(false));
     }
-  }, [dispatch]);
+  }, [dispatch, reduxLoading]);
 
   // Sync Redux state with local state for backward compatibility
   useEffect(() => {

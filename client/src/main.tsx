@@ -10,11 +10,19 @@ import { store } from './store';
 import { startSocketListeners } from '@/socketListener';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useAppDispatch } from '@/store/hooks';
-import { initializeRouteState, clearSavedRoute } from '@/store/routerSlice';
+import { logout } from '@/store/authSlice';
 import './index.css';
+import { initializeRouteState, clearSavedRoute } from '@/store/routerSlice';
+
+// Add global window type declaration
+declare global {
+  interface Window {
+    resetAppState: () => void;
+  }
+}
 
 // Component to handle route restoration
-const RouteRestorer = () => {
+const RouteRestorer: React.FC = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
@@ -22,18 +30,30 @@ const RouteRestorer = () => {
 
   useEffect(() => {
     // Initialize router state from localStorage
-    dispatch(initializeRouteState());
+    try {
+      dispatch(initializeRouteState());
+    } catch (error) {
+      console.error('RouteRestorer: Failed to initialize route state:', error);
+      // Clear corrupted state
+      dispatch(clearSavedRoute());
+    }
 
     // Wait for authentication to complete before trying to restore routes
     if (!isLoading) {
       // Get saved route from Redux state
-      const savedRoute = store.getState().router.savedRoute;
+      const state = store.getState();
+      const savedRoute = state.router.savedRoute;
 
       console.log('RouteRestorer: Auth loaded, checking route restoration', {
         isLoading,
         currentPath: location.pathname,
         savedRoute,
-        user: user ? 'authenticated' : 'not authenticated'
+        user: user ? 'authenticated' : 'not authenticated',
+        authState: {
+          token: !!localStorage.getItem('token'),
+          userId: user?.id,
+          isLoading: state.auth.isLoading
+        }
       });
 
       // If we're on the root path and there's a saved route, navigate to it
@@ -49,12 +69,17 @@ const RouteRestorer = () => {
           const validRoutes = [
             '/problems', '/contests', '/leaderboard', '/discuss', '/submissions',
             '/settings', '/profile', '/wallet', '/admin', '/about', '/company',
-            '/careers', '/press', '/contact', '/blog', '/community', '/help'
+            '/careers', '/press', '/contact', '/blog', '/community', '/help',
+            '/notifications', '/chat'
           ];
 
           const isValidRoute = validRoutes.some(route =>
             savedRoute === route || savedRoute.startsWith(route + '/')
-          );
+          ) || savedRoute.startsWith('/problems/') ||
+              savedRoute.startsWith('/contests/') ||
+              savedRoute.startsWith('/submissions/') ||
+              savedRoute.startsWith('/chat/') ||
+              savedRoute.startsWith('/u/');
 
           if (isValidRoute) {
             // Use setTimeout to avoid navigation during initial render
@@ -66,6 +91,13 @@ const RouteRestorer = () => {
                 console.error('RouteRestorer: Failed to navigate to saved route:', error);
                 // Clear the invalid saved route
                 dispatch(clearSavedRoute());
+                // If navigation fails, might be auth issue, try to reset auth state
+                const errorMessage = error instanceof Error ? error.message : String(error);
+                if (errorMessage.includes('auth') || errorMessage.includes('user')) {
+                  console.log('RouteRestorer: Auth-related navigation error, clearing auth state');
+                  localStorage.removeItem('token');
+                  dispatch(logout());
+                }
               }
             }, 100);
           } else {
@@ -87,7 +119,7 @@ const RouteRestorer = () => {
 };
 
 // Component to initialize socket listeners after Redux is available
-const SocketInitializer = () => {
+const SocketInitializer: React.FC = () => {
   useEffect(() => {
     // Initialize socket listeners after Redux store is available
     startSocketListeners(store);
@@ -95,6 +127,18 @@ const SocketInitializer = () => {
 
   return null;
 };
+
+// Add global reset function for debugging
+window.resetAppState = () => {
+  console.log('Resetting app state...');
+  localStorage.clear();
+  sessionStorage.clear();
+  // Force page reload to clear all state
+  window.location.href = '/';
+};
+
+// Add to console for debugging
+console.log('🔧 App loaded. If you experience loading issues, run resetAppState() in console to clear all cached state.');
 
 // Get the base URL from environment variables or use root
 const basename = import.meta.env.BASE_URL || '/';
