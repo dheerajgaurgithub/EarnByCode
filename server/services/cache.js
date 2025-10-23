@@ -154,7 +154,7 @@ export class CacheService {
       const key = `route:${req.originalUrl}`;
 
       try {
-        const cached = await this.get(key);
+        const cached = await cacheService.get(key);
         if (cached) {
           res.setHeader('X-Cache', 'HIT');
           return res.json(cached);
@@ -164,7 +164,7 @@ export class CacheService {
         const originalJson = res.json;
         res.json = function(data) {
           // Cache the response
-          this.set(key, data, ttlSeconds).catch(console.error);
+          cacheService.set(key, data, ttlSeconds).catch(console.error);
           res.setHeader('X-Cache', 'MISS');
           return originalJson.call(this, data);
         };

@@ -1,4 +1,4 @@
-import React, { StrictMode } from 'react';
+import React, { StrictMode, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, useNavigate, useLocation } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
@@ -10,37 +10,78 @@ import { store } from './store';
 import { startSocketListeners } from '@/socketListener';
 import { SpeedInsights } from '@vercel/speed-insights/react';
 import { useAppDispatch } from '@/store/hooks';
-import { initializeRouteState } from '@/store/routerSlice';
-import { useEffect } from 'react';
+import { initializeRouteState, clearSavedRoute } from '@/store/routerSlice';
 import './index.css';
+
 // Component to handle route restoration
 const RouteRestorer = () => {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isLoading } = useAuth();
 
   useEffect(() => {
     // Initialize router state from localStorage
     dispatch(initializeRouteState());
 
-    // Get saved route from Redux state
-    const savedRoute = store.getState().router.savedRoute;
+    // Wait for authentication to complete before trying to restore routes
+    if (!isLoading) {
+      // Get saved route from Redux state
+      const savedRoute = store.getState().router.savedRoute;
 
-    // If we're on the root path and there's a saved route, navigate to it
-    // But don't restore auth routes if user is already authenticated
-    if (location.pathname === '/' && savedRoute && savedRoute !== '/') {
-      const authRoutes = ['/login', '/register', '/forgot-password'];
-      const shouldRestore = !user || !authRoutes.some(route => savedRoute.startsWith(route));
+      console.log('RouteRestorer: Auth loaded, checking route restoration', {
+        isLoading,
+        currentPath: location.pathname,
+        savedRoute,
+        user: user ? 'authenticated' : 'not authenticated'
+      });
 
-      if (shouldRestore) {
-        // Use setTimeout to avoid navigation during initial render
-        setTimeout(() => {
-          navigate(savedRoute, { replace: true });
-        }, 100);
+      // If we're on the root path and there's a saved route, navigate to it
+      // But don't restore auth routes if user is already authenticated
+      if (location.pathname === '/' && savedRoute && savedRoute !== '/') {
+        const authRoutes = ['/login', '/register', '/forgot-password'];
+        const shouldRestore = !user || !authRoutes.some(route => savedRoute.startsWith(route));
+
+        if (shouldRestore) {
+          console.log('RouteRestorer: Restoring route to', savedRoute);
+
+          // Validate that the saved route is a valid path
+          const validRoutes = [
+            '/problems', '/contests', '/leaderboard', '/discuss', '/submissions',
+            '/settings', '/profile', '/wallet', '/admin', '/about', '/company',
+            '/careers', '/press', '/contact', '/blog', '/community', '/help'
+          ];
+
+          const isValidRoute = validRoutes.some(route =>
+            savedRoute === route || savedRoute.startsWith(route + '/')
+          );
+
+          if (isValidRoute) {
+            // Use setTimeout to avoid navigation during initial render
+            setTimeout(() => {
+              try {
+                navigate(savedRoute, { replace: true });
+                console.log('RouteRestorer: Successfully navigated to', savedRoute);
+              } catch (error) {
+                console.error('RouteRestorer: Failed to navigate to saved route:', error);
+                // Clear the invalid saved route
+                dispatch(clearSavedRoute());
+              }
+            }, 100);
+          } else {
+            console.log('RouteRestorer: Invalid saved route, clearing:', savedRoute);
+            dispatch(clearSavedRoute());
+          }
+        } else {
+          console.log('RouteRestorer: Not restoring route - auth route or user authenticated');
+        }
+      } else {
+        console.log('RouteRestorer: No route restoration needed');
       }
+    } else {
+      console.log('RouteRestorer: Waiting for authentication to complete...');
     }
-  }, [dispatch, navigate, location.pathname, user]);
+  }, [dispatch, navigate, location.pathname, user, isLoading]);
 
   return null;
 };
