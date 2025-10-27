@@ -43,13 +43,12 @@ const EMAIL_CONFIG = {
     user: process.env.GMAIL_USER,
     password: process.env.GMAIL_APP_PASSWORD, // App-specific password
   },
-  // Gmail OAuth2 Configuration
-  gmailOAuth: {
-    user: process.env.GMAIL_USER,
-    clientId: process.env.GMAIL_OAUTH_CLIENT_ID,
-    clientSecret: process.env.GMAIL_OAUTH_CLIENT_SECRET,
-    refreshToken: process.env.GMAIL_OAUTH_REFRESH_TOKEN,
-    redirectUri: process.env.GMAIL_OAUTH_REDIRECT_URI || 'https://developers.google.com/oauthplayground',
+  // Gmail HTTP API Configuration (if using Gmail API)
+  gmailApi: {
+    clientId: process.env.GMAIL_CLIENT_ID,
+    clientSecret: process.env.GMAIL_CLIENT_SECRET,
+    refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+    sender: process.env.GMAIL_SENDER,
   },
   
   // General SMTP Configuration
@@ -509,9 +508,9 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [], typ
     if (EMAIL_CONFIG.useGmailApi) {
       try {
         console.log('📧 Attempting to send via Gmail API to:', to);
-        const { clientId, clientSecret, refreshToken, user } = EMAIL_CONFIG.gmailOAuth;
-        if (!clientId || !clientSecret || !refreshToken || !user) {
-          throw new Error('Gmail API selected but OAuth2 credentials are incomplete');
+        const { clientId, clientSecret, refreshToken, sender } = EMAIL_CONFIG.gmailApi;
+        if (!clientId || !clientSecret || !refreshToken || !sender) {
+          throw new Error('Gmail API selected but credentials are incomplete');
         }
         const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret, EMAIL_CONFIG.gmailOAuth.redirectUri);
         oAuth2Client.setCredentials({ refresh_token: refreshToken });
@@ -539,7 +538,7 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [], typ
       } catch (error) {
         console.error('❌ Gmail API send failed:', error.message);
         logEmail('GMAIL_API_ERROR', emailData, { success: false, error: error.message });
-        // Fall through to other providers if any
+        // Fall through to other providers if Gmail API fails
       }
     }
     
@@ -769,6 +768,20 @@ if (EMAIL_CONFIG.enableEmailSending) {
       console.warn('⚠️ Gmail OAuth2 requested but missing env:', missing.join(', '));
     } else {
       console.log('✅ Gmail OAuth2 configuration appears complete.');
+    }
+  }
+
+  // Extra diagnostics for Gmail API
+  if (EMAIL_CONFIG.useGmailApi) {
+    const missing = [];
+    if (!EMAIL_CONFIG.gmailApi.clientId) missing.push('GMAIL_CLIENT_ID');
+    if (!EMAIL_CONFIG.gmailApi.clientSecret) missing.push('GMAIL_CLIENT_SECRET');
+    if (!EMAIL_CONFIG.gmailApi.refreshToken) missing.push('GMAIL_REFRESH_TOKEN');
+    if (!EMAIL_CONFIG.gmailApi.sender) missing.push('GMAIL_SENDER');
+    if (missing.length) {
+      console.warn('⚠️ Gmail API requested but missing env:', missing.join(', '));
+    } else {
+      console.log('✅ Gmail API configuration appears complete.');
     }
   }
   

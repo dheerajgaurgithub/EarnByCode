@@ -30,15 +30,20 @@ const ChatListPage: React.FC = () => {
   };
 
   useEffect(() => {
+    console.log('ChatListPage: Component mounted, user:', user?.id);
     let mounted = true;
     (async () => {
       try {
+        console.log('ChatListPage: Starting to fetch threads...');
         setLoading(true);
         const data = await listThreads();
+        console.log('ChatListPage: Received threads data:', data);
         if (!mounted) return;
         const arr = (Array.isArray(data) ? data : []).map((t: any) => ({ ...t, id: t.threadId }));
+        console.log('ChatListPage: Dispatching threads to store:', arr.length);
         dispatch(chatThreadsActions.setAll(arr));
       } catch (e: any) {
+        console.error('ChatListPage: Error fetching threads:', e);
         if (!mounted) return;
         setError(e?.message || 'Failed to load chats');
       } finally {
