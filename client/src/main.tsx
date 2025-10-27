@@ -82,24 +82,41 @@ const RouteRestorer: React.FC = () => {
               savedRoute.startsWith('/u/');
 
           if (isValidRoute) {
-            // Use setTimeout to avoid navigation during initial render
-            setTimeout(() => {
-              try {
-                navigate(savedRoute, { replace: true });
-                console.log('RouteRestorer: Successfully navigated to', savedRoute);
-              } catch (error) {
-                console.error('RouteRestorer: Failed to navigate to saved route:', error);
-                // Clear the invalid saved route
-                dispatch(clearSavedRoute());
-                // If navigation fails, might be auth issue, try to reset auth state
-                const errorMessage = error instanceof Error ? error.message : String(error);
-                if (errorMessage.includes('auth') || errorMessage.includes('user')) {
-                  console.log('RouteRestorer: Auth-related navigation error, clearing auth state');
-                  localStorage.removeItem('token');
-                  dispatch(logout());
+            // Check if this route would require authentication
+            const protectedRoutes = [
+              '/profile', '/settings', '/wallet', '/admin', '/leaderboard',
+              '/discuss', '/submissions', '/notifications', '/chat'
+            ];
+
+            const requiresAuth = protectedRoutes.some(route =>
+              savedRoute === route || savedRoute.startsWith(route + '/')
+            ) || savedRoute.startsWith('/submissions/') ||
+                savedRoute.startsWith('/chat/');
+
+            // Only navigate if user is authenticated (for protected routes) or if it doesn't require auth
+            if (!requiresAuth || user) {
+              // Use setTimeout to avoid navigation during initial render
+              setTimeout(() => {
+                try {
+                  navigate(savedRoute, { replace: true });
+                  console.log('RouteRestorer: Successfully navigated to', savedRoute);
+                } catch (error) {
+                  console.error('RouteRestorer: Failed to navigate to saved route:', error);
+                  // Clear the invalid saved route
+                  dispatch(clearSavedRoute());
+                  // If navigation fails, might be auth issue, try to reset auth state
+                  const errorMessage = error instanceof Error ? error.message : String(error);
+                  if (errorMessage.includes('auth') || errorMessage.includes('user')) {
+                    console.log('RouteRestorer: Auth-related navigation error, clearing auth state');
+                    localStorage.removeItem('token');
+                    dispatch(logout());
+                  }
                 }
-              }
-            }, 100);
+              }, 100);
+            } else {
+              console.log('RouteRestorer: Route requires auth but user not authenticated, clearing saved route');
+              dispatch(clearSavedRoute());
+            }
           } else {
             console.log('RouteRestorer: Invalid saved route, clearing:', savedRoute);
             dispatch(clearSavedRoute());

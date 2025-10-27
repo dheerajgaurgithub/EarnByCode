@@ -89,6 +89,7 @@ const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
   const { user, isLoading } = useAuth();
   const location = useLocation();
 
+  // Show loading only if we're actually loading (not just checking existing auth state)
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">

@@ -80,6 +80,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUserState] = useState<User | null>(null);
   const [isLoading, setIsLoadingState] = useState(true);
 
+  // Track refresh attempts to prevent infinite loops
+  const [refreshAttempts, setRefreshAttempts] = useState(0);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
   // Initialize Redux auth state on mount and refresh user data
   useEffect(() => {
     dispatch(initializeAuth());
@@ -95,11 +99,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // Add timeout to prevent infinite loading if API call hangs
       setTimeout(() => {
         if (reduxLoading) {
-          console.warn('AuthContext: Loading timeout reached, forcing logout');
+          console.warn('AuthContext: Loading timeout reached, stopping loading state');
           dispatch(setLoading(false));
-          // Clear token and logout
-          localStorage.removeItem('token');
-          dispatch({ type: 'auth/logout' });
         }
       }, 10000); // 10 second timeout
     } else {
@@ -124,6 +125,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [reduxLoggingIn, reduxRegistering]);
 
   const refreshUser = async (silent: boolean = false) => {
+    // Prevent multiple simultaneous refresh calls
+    if (isRefreshing) {
+      console.log('AuthContext: Refresh already in progress, skipping');
+      return;
+    }
+
+    // Prevent too many refresh attempts
+    if (refreshAttempts > 3) {
+      console.warn('AuthContext: Too many refresh attempts, stopping to prevent logout loop');
+      dispatch(setLoading(false));
+      return;
+    }
+
+    setIsRefreshing(true);
+    setRefreshAttempts(prev => prev + 1);
+
     if (!silent) dispatch(setLoading(true));
     try {
       const token = localStorage.getItem('token');
@@ -141,13 +158,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
 
       if (response.status === 401) {
-        // Token is invalid or expired
+        // Token is invalid or expired - only logout if we actually have a token issue
+        console.warn('AuthContext: Token validation failed (401), logging out');
         dispatch(logoutAction());
         return;
       }
 
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
+        console.error('AuthContext: Failed to fetch user data:', {
+          status: response.status,
+          error: error.message || 'Unknown error'
+        });
+
+        // Don't logout on temporary network errors, just log the error
+        if (response.status >= 500) {
+          console.warn('AuthContext: Server error, not logging out user');
+          dispatch(authError(error.message || 'Failed to fetch user data'));
+          return;
+        }
+
+        // For other client errors (400-499), also don't logout immediately
         dispatch(authError(error.message || 'Failed to fetch user data'));
         return;
       }
@@ -155,6 +186,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await response.json();
       // If backend reports blocked, sign out locally
       if (data?.user?.blocked) {
+        console.warn('AuthContext: User is blocked, logging out');
         dispatch(handleUserBlocked({
           reason: data.user.blockReason,
           until: data.user.blockedUntil
@@ -162,14 +194,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return;
       }
 
+      console.log('AuthContext: Successfully refreshed user data');
       dispatch(setUser(data.user));
       dispatch(updateLastActivity());
       dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())); // 24 hours
     } catch (error) {
-      console.error('Failed to refresh user:', error);
-      dispatch(logoutAction());
+      console.error('AuthContext: Network error refreshing user:', error);
+
+      // Only logout on persistent network failures, not temporary ones
+      // For now, don't logout on network errors to prevent unnecessary logouts
+      dispatch(authError('Network error - please check your connection'));
     } finally {
       if (!silent) dispatch(setLoading(false));
+      setIsRefreshing(false);
+      setRefreshAttempts(0); // Reset refresh attempts
     }
   };
 
@@ -294,6 +332,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch(loginSuccess({ user: data.user, token: data.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
+
+        // Reset refresh attempts on successful login
+        setRefreshAttempts(0);
+        setIsRefreshing(false);
+
         return true;
       }
 
@@ -333,6 +376,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         dispatch(registerSuccess({ user: data.user, token: data.token }));
         dispatch(updateLastActivity());
         dispatch(setSessionExpiry(new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()));
+
+        // Reset refresh attempts on successful registration
+        setRefreshAttempts(0);
+        setIsRefreshing(false);
+
         return true;
       }
 
