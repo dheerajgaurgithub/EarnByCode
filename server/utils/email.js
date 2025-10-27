@@ -5,7 +5,6 @@ import nodemailer from 'nodemailer';
 import { google } from 'googleapis';
 import sgMail from '@sendgrid/mail';
 import dotenv from 'dotenv';
-import config from '../config/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,41 +31,41 @@ const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 
 // Email configuration
 const EMAIL_CONFIG = {
-  from: config.EMAIL_FROM,
-  useGmail: config.USE_GMAIL,
+  from: process.env.EMAIL_FROM || 'noreply@earnbycode.app',
+  useGmail: process.env.USE_GMAIL === 'true',
   useGmailOAuth: process.env.USE_GMAIL_OAUTH === 'true',
-  useGmailApi: config.USE_GMAIL_API,
-  useSendGrid: config.USE_SENDGRID || !!process.env.SENDGRID_API_KEY,
-  enableEmailSending: config.ENABLE_EMAIL_SENDING,
-
+  useGmailApi: process.env.USE_GMAIL_API === 'true' || (process.env.EMAIL_PROVIDER || '').toLowerCase() === 'gmailapi',
+  useSendGrid: process.env.USE_SENDGRID === 'true' || !!process.env.SENDGRID_API_KEY,
+  enableEmailSending: process.env.ENABLE_EMAIL_SENDING === 'true' || isProd,
+  
   // Gmail SMTP Configuration
   gmail: {
-    user: config.SMTP_USER,
-    password: config.SMTP_PASS,
+    user: process.env.GMAIL_USER,
+    password: process.env.GMAIL_APP_PASSWORD, // App-specific password
   },
   // Gmail OAuth2 Configuration
   gmailOAuth: {
-    user: config.SMTP_USER,
-    clientId: process.env.GMAIL_CLIENT_ID || process.env.GMAIL_OAUTH_CLIENT_ID,
-    clientSecret: process.env.GMAIL_CLIENT_SECRET || process.env.GMAIL_OAUTH_CLIENT_SECRET,
-    refreshToken: process.env.GMAIL_REFRESH_TOKEN || process.env.GMAIL_OAUTH_REFRESH_TOKEN,
+    user: process.env.GMAIL_USER,
+    clientId: process.env.GMAIL_OAUTH_CLIENT_ID,
+    clientSecret: process.env.GMAIL_OAUTH_CLIENT_SECRET,
+    refreshToken: process.env.GMAIL_OAUTH_REFRESH_TOKEN,
     redirectUri: process.env.GMAIL_OAUTH_REDIRECT_URI || 'https://developers.google.com/oauthplayground',
   },
-
+  
   // General SMTP Configuration
   smtp: {
-    host: config.SMTP_HOST,
-    port: config.SMTP_PORT,
-    secure: config.SMTP_SECURE,
-    user: config.SMTP_USER,
-    password: config.SMTP_PASS,
+    host: process.env.SMTP_HOST,
+    port: parseInt(process.env.SMTP_PORT || '587'),
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER,
+    password: process.env.SMTP_PASS,
   },
-
+  
   // SendGrid Configuration
   sendgrid: {
     apiKey: process.env.SENDGRID_API_KEY,
-    fromEmail: config.EMAIL_FROM,
-    fromName: process.env.SENDGRID_FROM_NAME || 'AlgoBucks',
+    fromEmail: process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_FROM,
+    fromName: process.env.SENDGRID_FROM_NAME || 'EarnByCode',
   }
 };
 
@@ -164,32 +163,38 @@ const createTransporter = () => {
     if (EMAIL_CONFIG.useGmailApi) {
       return null;
     }
+    // Priority 0: Gmail OAuth2
+    if (
+      EMAIL_CONFIG.useGmailOAuth &&
+      EMAIL_CONFIG.gmailOAuth.user &&
+      EMAIL_CONFIG.gmailOAuth.clientId &&
+      EMAIL_CONFIG.gmailOAuth.clientSecret &&
+      EMAIL_CONFIG.gmailOAuth.refreshToken
+    ) {
+      console.log('📧 Using Gmail OAuth2 configuration');
+      const oAuth2Client = new google.auth.OAuth2(
+        EMAIL_CONFIG.gmailOAuth.clientId,
+        EMAIL_CONFIG.gmailOAuth.clientSecret,
+        EMAIL_CONFIG.gmailOAuth.redirectUri
+      );
+      oAuth2Client.setCredentials({ refresh_token: EMAIL_CONFIG.gmailOAuth.refreshToken });
 
-    // Priority 1: General SMTP (most reliable)
-    if (EMAIL_CONFIG.smtp.host && EMAIL_CONFIG.smtp.user && EMAIL_CONFIG.smtp.password) {
-      console.log('📧 Creating SMTP transporter with config:', {
-        host: EMAIL_CONFIG.smtp.host,
-        port: EMAIL_CONFIG.smtp.port,
-        secure: EMAIL_CONFIG.smtp.secure,
-        user: EMAIL_CONFIG.smtp.user
-      });
+      // Nodemailer can generate access tokens automatically if refreshToken is provided
       return nodemailer.createTransport({
-        host: EMAIL_CONFIG.smtp.host,
-        port: EMAIL_CONFIG.smtp.port,
-        secure: EMAIL_CONFIG.smtp.secure,
+        service: 'gmail',
         auth: {
-          user: EMAIL_CONFIG.smtp.user,
-          pass: EMAIL_CONFIG.smtp.password,
+          type: 'OAuth2',
+          user: EMAIL_CONFIG.gmailOAuth.user,
+          clientId: EMAIL_CONFIG.gmailOAuth.clientId,
+          clientSecret: EMAIL_CONFIG.gmailOAuth.clientSecret,
+          refreshToken: EMAIL_CONFIG.gmailOAuth.refreshToken,
         },
-        tls: {
-          rejectUnauthorized: false
-        }
       });
     }
 
-    // Priority 2: Gmail SMTP (using service config)
+    // Priority 1: Gmail SMTP
     if (EMAIL_CONFIG.useGmail && EMAIL_CONFIG.gmail.user && EMAIL_CONFIG.gmail.password) {
-      console.log('📧 Creating Gmail SMTP transporter');
+      console.log('📧 Using Gmail SMTP configuration');
       return nodemailer.createTransport({
         service: 'gmail',
         auth: {
@@ -201,32 +206,21 @@ const createTransporter = () => {
         }
       });
     }
-
-    // Priority 3: Gmail OAuth2 (as fallback)
-    if (
-      EMAIL_CONFIG.useGmailOAuth &&
-      EMAIL_CONFIG.gmailOAuth.user &&
-      EMAIL_CONFIG.gmailOAuth.clientId &&
-      EMAIL_CONFIG.gmailOAuth.clientSecret &&
-      EMAIL_CONFIG.gmailOAuth.refreshToken
-    ) {
-      console.log('📧 Creating Gmail OAuth2 transporter');
-      const oAuth2Client = new google.auth.OAuth2(
-        EMAIL_CONFIG.gmailOAuth.clientId,
-        EMAIL_CONFIG.gmailOAuth.clientSecret,
-        EMAIL_CONFIG.gmailOAuth.redirectUri
-      );
-      oAuth2Client.setCredentials({ refresh_token: EMAIL_CONFIG.gmailOAuth.refreshToken });
-
+    
+    // Priority 2: General SMTP
+    if (EMAIL_CONFIG.smtp.host && EMAIL_CONFIG.smtp.user && EMAIL_CONFIG.smtp.password) {
+      console.log('📧 Using general SMTP configuration');
       return nodemailer.createTransport({
-        service: 'gmail',
+        host: EMAIL_CONFIG.smtp.host,
+        port: EMAIL_CONFIG.smtp.port,
+        secure: EMAIL_CONFIG.smtp.secure,
         auth: {
-          type: 'OAuth2',
-          user: EMAIL_CONFIG.gmailOAuth.user,
-          clientId: EMAIL_CONFIG.gmailOAuth.clientId,
-          clientSecret: EMAIL_CONFIG.gmailOAuth.clientSecret,
-          refreshToken: EMAIL_CONFIG.gmailOAuth.refreshToken,
+          user: EMAIL_CONFIG.smtp.user,
+          pass: EMAIL_CONFIG.smtp.password,
         },
+        tls: {
+          rejectUnauthorized: false
+        }
       });
     }
     
@@ -510,80 +504,8 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [], typ
     }
     
     let result = null;
-
-    // Priority 1: SMTP (most reliable for contact forms)
-    if (EMAIL_CONFIG.smtp.host && EMAIL_CONFIG.smtp.user && EMAIL_CONFIG.smtp.password) {
-      try {
-        console.log('📧 Attempting to send via SMTP to:', to);
-
-        const mailOptions = {
-          from: `"${EMAIL_CONFIG.sendgrid.fromName || 'AlgoBucks'}" <${EMAIL_CONFIG.from}>`,
-          to,
-          subject,
-          text,
-          html,
-          attachments
-        };
-
-        const info = await transporter.sendMail(mailOptions);
-        result = {
-          success: true,
-          provider: EMAIL_CONFIG.useGmail ? 'gmail' : 'smtp',
-          messageId: info.messageId,
-          deliveryTime: Date.now() - startTime
-        };
-
-        console.log('✅ Email sent successfully via SMTP');
-        logEmail('SMTP_SUCCESS', emailData, result);
-        return result;
-
-      } catch (error) {
-        console.error('❌ SMTP send failed:', error.message);
-        logEmail('SMTP_ERROR', emailData, { success: false, error: error.message });
-      }
-    }
-
-    // Priority 2: SendGrid (if configured)
-    if (EMAIL_CONFIG.useSendGrid && sgMail) {
-      try {
-        console.log('📧 Attempting to send via SendGrid to:', to);
-
-        const msg = {
-          to,
-          from: {
-            email: EMAIL_CONFIG.sendgrid.fromEmail,
-            name: EMAIL_CONFIG.sendgrid.fromName
-          },
-          subject,
-          text,
-          html,
-          attachments: attachments?.map(att => ({
-            content: att.content?.toString('base64'),
-            filename: att.filename,
-            type: att.contentType,
-            disposition: 'attachment'
-          })) || undefined
-        };
-
-        await sgMail.send(msg);
-        result = {
-          success: true,
-          provider: 'sendgrid',
-          messageId: 'sendgrid-sent',
-          deliveryTime: Date.now() - startTime
-        };
-
-        console.log('✅ Email sent successfully via SendGrid');
-        logEmail('SENDGRID_SUCCESS', emailData, result);
-        return result;
-
-      } catch (error) {
-        console.error('❌ SendGrid send failed:', error.message);
-        logEmail('SENDGRID_ERROR', emailData, { success: false, error: error.message });
-      }
-    }
-
-    // Priority 3: Gmail API (only if explicitly enabled)
+    
+    // Try Gmail HTTP API if explicitly selected
     if (EMAIL_CONFIG.useGmailApi) {
       try {
         console.log('📧 Attempting to send via Gmail API to:', to);
@@ -617,6 +539,85 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [], typ
       } catch (error) {
         console.error('❌ Gmail API send failed:', error.message);
         logEmail('GMAIL_API_ERROR', emailData, { success: false, error: error.message });
+        // Fall through to other providers if any
+      }
+    }
+    
+    // Try SendGrid first if configured
+    if (EMAIL_CONFIG.useSendGrid && sgMail) {
+      try {
+        console.log('📧 Attempting to send via SendGrid to:', to);
+        
+        const msg = {
+          to,
+          from: {
+            email: EMAIL_CONFIG.sendgrid.fromEmail,
+            name: EMAIL_CONFIG.sendgrid.fromName
+          },
+          subject,
+          text,
+          html,
+          attachments: attachments?.map(att => ({
+            content: att.content?.toString('base64'),
+            filename: att.filename,
+            type: att.contentType,
+            disposition: 'attachment'
+          })) || undefined
+        };
+        
+        await sgMail.send(msg);
+        result = {
+          success: true,
+          provider: 'sendgrid',
+          messageId: 'sendgrid-sent',
+          deliveryTime: Date.now() - startTime
+        };
+        
+        console.log('✅ Email sent successfully via SendGrid');
+        logEmail('SENDGRID_SUCCESS', emailData, result);
+        return result;
+        
+      } catch (error) {
+        console.error('❌ SendGrid send failed:', error.message);
+        logEmail('SENDGRID_ERROR', emailData, { success: false, error: error.message });
+        
+        // Don't fall back if SendGrid is explicitly configured but fails
+        if (EMAIL_CONFIG.useSendGrid && !transporter) {
+          throw error;
+        }
+      }
+    }
+    
+    // Try SMTP as fallback
+    if (transporter) {
+      try {
+        console.log('📧 Attempting to send via SMTP to:', to);
+        
+        const mailOptions = {
+          from: `"${EMAIL_CONFIG.sendgrid.fromName}" <${EMAIL_CONFIG.from}>`,
+          to,
+          subject,
+          text,
+          html,
+          attachments
+        };
+        
+        const info = await transporter.sendMail(mailOptions);
+        result = {
+          success: true,
+          provider: EMAIL_CONFIG.useGmail ? 'gmail' : 'smtp',
+          messageId: info.messageId,
+          deliveryTime: Date.now() - startTime
+        };
+        
+        console.log('✅ Email sent successfully via SMTP');
+        logEmail('SMTP_SUCCESS', emailData, result);
+        return result;
+        
+      } catch (error) {
+        console.error('❌ SMTP send failed:', error.message);
+        logEmail('SMTP_ERROR', emailData, { success: false, error: error.message });
+        throw error;
       }
     }
     

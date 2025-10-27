@@ -45,40 +45,16 @@ const config = {
   
   // Email
   EMAIL_FROM: process.env.EMAIL_FROM || 'replyearnbycode@gmail.com',
-  EMAIL_PROVIDER: process.env.EMAIL_PROVIDER || 'smtp', // Use SMTP by default
-  USE_GMAIL_API: process.env.USE_GMAIL_API === 'true' || false, // Disable Gmail API by default
-  USE_GMAIL: process.env.USE_GMAIL === 'true' || true, // Enable Gmail SMTP
-  ENABLE_EMAIL_SENDING: process.env.ENABLE_EMAIL_SENDING !== 'false', // Enable email sending
 };
 
 // Only validate required environment variables in production
 if (config.NODE_ENV === 'production') {
-  const requiredEnvVars = [
-    'GOOGLE_CLIENT_ID',
-    'GOOGLE_CLIENT_SECRET',
-    'JWT_SECRET',
-    'SESSION_SECRET'
-  ];
-
-  // Add Gmail API credentials only if using Gmail API
-  if (config.EMAIL_PROVIDER === 'gmailapi' || config.USE_GMAIL_API) {
-    requiredEnvVars.push('GMAIL_CLIENT_ID', 'GMAIL_CLIENT_SECRET', 'GMAIL_REFRESH_TOKEN');
-  }
-
+  const requiredEnvVars = ['GOOGLE_CLIENT_ID', 'GOOGLE_CLIENT_SECRET', 'JWT_SECRET', 'SESSION_SECRET'];
   const missingEnvVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
 
   if (missingEnvVars.length > 0) {
     console.error('❌ Missing required environment variables:', missingEnvVars.join(', '));
     console.error('Please check your .env file and ensure all required variables are set.');
-    console.error('\n📧 Gmail API Setup Instructions:');
-    console.error('1. Go to Google Cloud Console: https://console.cloud.google.com/');
-    console.error('2. Enable Gmail API for your project');
-    console.error('3. Create OAuth 2.0 credentials');
-    console.error('4. Set up OAuth consent screen');
-    console.error('5. Add these environment variables:');
-    console.error('   - GMAIL_CLIENT_ID: Your OAuth client ID');
-    console.error('   - GMAIL_CLIENT_SECRET: Your OAuth client secret');
-    console.error('   - GMAIL_REFRESH_TOKEN: Generate via OAuth playground');
     process.exit(1);
   }
 }
@@ -94,9 +70,6 @@ console.log('- SMTP_EMAIL:', config.SMTP_EMAIL);
 console.log('- SMTP_USER:', config.SMTP_USER);
 console.log('- SMTP_PASSWORD:', config.SMTP_PASS ? '*** set ***' : 'NOT SET');
 console.log('- EMAIL_FROM:', config.EMAIL_FROM);
-console.log('- EMAIL_PROVIDER:', config.EMAIL_PROVIDER);
-console.log('- USE_GMAIL_API:', config.USE_GMAIL_API ? '✅ Enabled' : '❌ Disabled');
-console.log('- USE_GMAIL (SMTP):', config.USE_GMAIL ? '✅ Enabled' : '❌ Disabled');
 console.log('===========================\n');
 
 export default config;
