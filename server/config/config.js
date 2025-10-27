@@ -38,8 +38,13 @@ const config = {
   // SMTP
   SMTP_HOST: process.env.SMTP_HOST || 'smtp.gmail.com',
   SMTP_PORT: process.env.SMTP_PORT || 465,
-  SMTP_EMAIL: process.env.SMTP_EMAIL || 'coder9265@gmail.com',
-  SMTP_PASSWORD: process.env.SMTP_PASSWORD || 'wytkgrkixzsmpmga'
+  SMTP_EMAIL: process.env.SMTP_EMAIL || 'replyearnbycode@gmail.com',
+  SMTP_USER: process.env.SMTP_USER || 'replyearnbycode@gmail.com',
+  SMTP_PASS: process.env.SMTP_PASS || process.env.SMTP_PASSWORD || 'pfljbpujfoelrrxj',
+  SMTP_SECURE: process.env.SMTP_SECURE || 'true',
+  
+  // Email
+  EMAIL_FROM: process.env.EMAIL_FROM || 'replyearnbycode@gmail.com',
 };
 
 // Only validate required environment variables in production
@@ -62,7 +67,9 @@ console.log('- NODE_ENV:', config.NODE_ENV);
 console.log('- JWT_SECRET:', config.JWT_SECRET ? '*** set ***' : 'NOT SET');
 console.log('- MONGODB_URI:', config.MONGODB_URI);
 console.log('- SMTP_EMAIL:', config.SMTP_EMAIL);
-console.log('- SMTP_PASSWORD:', config.SMTP_PASSWORD ? '*** set ***' : 'NOT SET');
+console.log('- SMTP_USER:', config.SMTP_USER);
+console.log('- SMTP_PASSWORD:', config.SMTP_PASS ? '*** set ***' : 'NOT SET');
+console.log('- EMAIL_FROM:', config.EMAIL_FROM);
 console.log('===========================\n');
 
 export default config;
