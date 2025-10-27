@@ -36,7 +36,7 @@ const EMAIL_CONFIG = {
   useGmailOAuth: process.env.USE_GMAIL_OAUTH === 'true',
   useGmailApi: process.env.USE_GMAIL_API === 'true' || (process.env.EMAIL_PROVIDER || '').toLowerCase() === 'gmailapi',
   useSendGrid: process.env.USE_SENDGRID === 'true' || !!process.env.SENDGRID_API_KEY,
-  enableEmailSending: process.env.ENABLE_EMAIL_SENDING === 'true' || isProd,
+  enableEmailSending: process.env.ENABLE_EMAIL_SENDING === 'true' || isProd || process.env.NODE_ENV === 'production',
   
   // Gmail SMTP Configuration
   gmail: {

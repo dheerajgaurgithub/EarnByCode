@@ -44,19 +44,37 @@ const isUserBlocked = async (user) => {
 
 export const authenticate = async (req, res, next) => {
   try {
+    const authHeader = req.header('Authorization');
+    console.log('Auth middleware:', {
+      path: req.path,
+      hasAuthHeader: !!authHeader,
+      authHeaderPrefix: authHeader?.substring(0, 20),
+      timestamp: new Date().toISOString()
+    });
+
     const token = req.header('Authorization')?.replace('Bearer ', '');
-    
+
     if (!token) {
+      console.error('Auth middleware: No token provided for path:', req.path);
       return res.status(401).json({ message: 'Access denied. No token provided.' });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId).select('-password');
-    
-    if (!user) {
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+      console.log('Auth middleware: Token decoded successfully:', { userId: decoded.userId });
+    } catch (jwtError) {
+      console.error('Auth middleware: JWT verification failed:', jwtError.message);
       return res.status(401).json({ message: 'Invalid token.' });
     }
-    
+
+    const user = await User.findById(decoded.userId).select('-password');
+
+    if (!user) {
+      console.error('Auth middleware: User not found:', decoded.userId);
+      return res.status(401).json({ message: 'Invalid token.' });
+    }
+
     // Check if user is blocked
     const isBlocked = await isUserBlocked(user);
     if (isBlocked) {
@@ -80,6 +98,7 @@ export const authenticate = async (req, res, next) => {
         }
       }
       
+      console.error('Auth middleware: User blocked:', { userId: user._id, blockReason: user.blockReason });
       return res.status(403).json({ 
         message: blockMessage,
         blockedUntil: user.blockedUntil,
@@ -89,8 +108,11 @@ export const authenticate = async (req, res, next) => {
     }
 
     req.user = user;
+    console.log('Auth middleware: Authentication successful for user:', user._id);
     next();
   } catch (error) {
+    console.error('Auth middleware error:', error);
+    console.error('Error stack:', error.stack);
     res.status(401).json({ message: 'Invalid token.' });
   }
 };

@@ -22,16 +22,39 @@ const authHeaders = () => {
   const token =
     (typeof localStorage !== 'undefined' && (localStorage.getItem('token') || localStorage.getItem('accessToken'))) ||
     undefined;
+
+  console.log('Chat API Debug:', {
+    hasToken: !!token,
+    tokenLength: token?.length,
+    tokenPrefix: token?.substring(0, 20),
+    timestamp: new Date().toISOString()
+  });
+
   return token ? { Authorization: `Bearer ${token}` } : undefined as any;
 };
 
 export async function listThreads(): Promise<ChatThread[]> {
+  console.log('Chat: Fetching threads...');
   const res = await fetch(`${api()}/chat/threads`, {
     credentials: 'include',
     headers: authHeaders(),
   } as RequestInit);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return await res.json();
+
+  console.log('Chat: Response status:', res.status, res.statusText);
+
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('Chat: Failed to fetch threads:', {
+      status: res.status,
+      statusText: res.statusText,
+      errorText: errorText.substring(0, 200)
+    });
+    throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  console.log('Chat: Successfully fetched', data.length || 0, 'threads');
+  return data;
 }
 
 export async function getMessages(threadId: string, cursor?: string, limit = 50): Promise<ChatMessage[]> {

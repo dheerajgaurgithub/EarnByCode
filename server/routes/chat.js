@@ -9,6 +9,37 @@ import User from '../models/User.js';
 
 const router = express.Router();
 
+// Simple health check for chat routes
+router.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Chat routes are working',
+    timestamp: new Date().toISOString(),
+    hasAuth: !!req.user
+  });
+});
+
+// Public debug endpoint (temporary)
+router.get('/debug', async (req, res) => {
+  try {
+    res.json({
+      status: 'ok',
+      message: 'Chat debug endpoint working',
+      timestamp: new Date().toISOString(),
+      hasAuth: !!req.user,
+      authHeader: req.header('Authorization')?.substring(0, 20) + '...',
+      userAgent: req.header('User-Agent')?.substring(0, 50) + '...',
+      mongoConnection: mongoose.connection.readyState
+    });
+  } catch (error) {
+    res.json({
+      status: 'error',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // Helper to find existing thread between two users
 async function findThread(a, b) {
   return ChatThread.findOne({
@@ -187,8 +218,17 @@ router.post('/requests/:id/retry', authenticate, async (req, res) => {
 // GET /api/chat/threads
 router.get('/threads', authenticate, async (req, res) => {
   try {
+    console.log('Chat threads request:', { userId: req.user._id, timestamp: new Date().toISOString() });
+
     const me = req.user?._id;
+    if (!me) {
+      console.error('Chat threads: No user ID in request');
+      return res.status(401).json({ message: 'Authentication required' });
+    }
+
     const threads = await ChatThread.find({ participants: me }).sort({ updatedAt: -1 }).lean();
+    console.log('Chat threads: Found', threads.length, 'threads for user');
+
     const ids = threads.map(t => t._id);
     const lastByThread = await ChatMessage.aggregate([
       { $match: { threadId: { $in: ids } } },
@@ -217,7 +257,9 @@ router.get('/threads', authenticate, async (req, res) => {
         const gtDate = [lastRead, cutoff].filter(Boolean).map(d => new Date(d)).sort((a,b)=>b.getTime()-a.getTime())[0];
         if (gtDate) Object.assign(q, { createdAt: { $gt: gtDate } });
         unread = await ChatMessage.countDocuments(q);
-      } catch {}
+      } catch (error) {
+        console.error('Error counting unread messages for thread', t._id, ':', error.message);
+      }
       let last = lastMap.get(String(t._id));
       // hide last message if it expired by disappearing policy
       try {
@@ -226,12 +268,16 @@ router.get('/threads', authenticate, async (req, res) => {
           const cutoff = new Date(Date.now() - hours * 3600 * 1000);
           if (new Date(last.createdAt).getTime() <= cutoff.getTime()) last = null;
         }
-      } catch {}
+      } catch (error) {
+        console.error('Error checking message expiration for thread', t._id, ':', error.message);
+      }
       let blockedByMe = false;
       try {
         const otherId = other ? String(other) : '';
         blockedByMe = Boolean(t.blocks && (t.blocks instanceof Map ? t.blocks.get(otherId) : (t.blocks?.[otherId])));
-      } catch {}
+      } catch (error) {
+        console.error('Error checking block status for thread', t._id, ':', error.message);
+      }
       return {
         threadId: String(t._id),
         otherUser: ou ? { id: String(ou._id), username: ou.username, fullName: ou.fullName, avatarUrl: ou.avatarUrl } : { id: other },
@@ -243,10 +289,12 @@ router.get('/threads', authenticate, async (req, res) => {
       };
     }));
 
+    console.log('Chat threads: Successfully returning', populated.length, 'populated threads');
     return res.status(200).json(populated);
   } catch (e) {
-    console.error('threads list error', e);
-    return res.status(500).json({ message: 'Failed to load threads' });
+    console.error('Chat threads error:', e);
+    console.error('Error stack:', e.stack);
+    return res.status(500).json({ message: 'Failed to load threads', error: e.message });
   }
 });
 
