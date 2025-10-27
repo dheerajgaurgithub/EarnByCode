@@ -43,12 +43,13 @@ const EMAIL_CONFIG = {
     user: process.env.GMAIL_USER,
     password: process.env.GMAIL_APP_PASSWORD, // App-specific password
   },
-  // Gmail HTTP API Configuration (if using Gmail API)
-  gmailApi: {
-    clientId: process.env.GMAIL_CLIENT_ID,
-    clientSecret: process.env.GMAIL_CLIENT_SECRET,
-    refreshToken: process.env.GMAIL_REFRESH_TOKEN,
-    sender: process.env.GMAIL_SENDER,
+  // Gmail OAuth2 Configuration
+  gmailOAuth: {
+    user: process.env.GMAIL_USER,
+    clientId: process.env.GMAIL_OAUTH_CLIENT_ID,
+    clientSecret: process.env.GMAIL_OAUTH_CLIENT_SECRET,
+    refreshToken: process.env.GMAIL_OAUTH_REFRESH_TOKEN,
+    redirectUri: process.env.GMAIL_OAUTH_REDIRECT_URI || 'https://developers.google.com/oauthplayground',
   },
   
   // General SMTP Configuration
@@ -65,6 +66,14 @@ const EMAIL_CONFIG = {
     apiKey: process.env.SENDGRID_API_KEY,
     fromEmail: process.env.SENDGRID_FROM_EMAIL || process.env.EMAIL_FROM,
     fromName: process.env.SENDGRID_FROM_NAME || 'EarnByCode',
+  },
+  
+  // Gmail HTTP API Configuration (if using Gmail API)
+  gmailApi: {
+    clientId: process.env.GMAIL_CLIENT_ID,
+    clientSecret: process.env.GMAIL_CLIENT_SECRET,
+    refreshToken: process.env.GMAIL_REFRESH_TOKEN,
+    sender: process.env.GMAIL_SENDER,
   }
 };
 
