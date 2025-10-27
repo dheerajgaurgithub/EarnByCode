@@ -29,7 +29,44 @@ if (!fs.existsSync(LOGS_DIR)) {
 
 const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
 
-// Email configuration
+/**
+ * Email Configuration Guide:
+ *
+ * 1. GMAIL API (Recommended):
+ *    - Set EMAIL_PROVIDER=gmailapi
+ *    - Get credentials from Google Cloud Console:
+ *      * Go to https://console.cloud.google.com/
+ *      * Create/select project
+ *      * Enable Gmail API
+ *      * Create OAuth 2.0 credentials
+ *      * Set authorized redirect URI to: https://developers.google.com/oauthplayground
+ *      * Generate refresh token using OAuth playground
+ *    - Required env vars:
+ *      GMAIL_CLIENT_ID=your_client_id
+ *      GMAIL_CLIENT_SECRET=your_client_secret
+ *      GMAIL_REFRESH_TOKEN=your_refresh_token
+ *      GMAIL_SENDER=your_email@gmail.com
+ *      EMAIL_FROM=your_email@gmail.com
+ *
+ * 2. SENDGRID (Easiest):
+ *    - Set EMAIL_PROVIDER=sendgrid
+ *    - Get API key from https://sendgrid.com/
+ *    - Required env vars:
+ *      SENDGRID_API_KEY=your_sendgrid_key
+ *      EMAIL_FROM=your_verified_sender_email
+ *
+ * 3. GMAIL SMTP:
+ *    - Set EMAIL_PROVIDER=gmail
+ *    - Enable 2FA on your Gmail account
+ *    - Generate App Password: https://myaccount.google.com/apppasswords
+ *    - Required env vars:
+ *      GMAIL_USER=your_email@gmail.com
+ *      GMAIL_APP_PASSWORD=your_app_password
+ *      EMAIL_FROM=your_email@gmail.com
+ *
+ * If you get "invalid_grant" error with Gmail API, your refresh token has expired.
+ * Generate a new one using the OAuth playground.
+ */
 const EMAIL_CONFIG = {
   from: process.env.EMAIL_FROM || 'noreply@earnbycode.app',
   useGmail: process.env.USE_GMAIL === 'true',
@@ -521,12 +558,12 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [], typ
         if (!clientId || !clientSecret || !refreshToken || !sender) {
           throw new Error('Gmail API selected but credentials are incomplete');
         }
-        const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret, EMAIL_CONFIG.gmailOAuth.redirectUri);
+        const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret, 'https://developers.google.com/oauthplayground');
         oAuth2Client.setCredentials({ refresh_token: refreshToken });
         const gmail = google.gmail({ version: 'v1', auth: oAuth2Client });
 
         const rawMime = buildGmailMime({
-          from: EMAIL_CONFIG.from,
+          from: sender,
           to,
           subject,
           text,
@@ -546,12 +583,20 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [], typ
         return result;
       } catch (error) {
         console.error('❌ Gmail API send failed:', error.message);
+        console.error('🔧 Gmail API Error Details:', {
+          error: error.code || error.message,
+          clientId: EMAIL_CONFIG.gmailApi.clientId ? '✅' : '❌',
+          clientSecret: EMAIL_CONFIG.gmailApi.clientSecret ? '✅' : '❌',
+          refreshToken: EMAIL_CONFIG.gmailApi.refreshToken ? '✅' : '❌',
+          sender: EMAIL_CONFIG.gmailApi.sender ? '✅' : '❌'
+        });
         logEmail('GMAIL_API_ERROR', emailData, { success: false, error: error.message });
-        // Fall through to other providers if Gmail API fails
+        // Continue to try other providers
+        console.log('🔄 Falling back to other email providers...');
       }
     }
     
-    // Try SendGrid first if configured
+    // Try SendGrid as primary fallback
     if (EMAIL_CONFIG.useSendGrid && sgMail) {
       try {
         console.log('📧 Attempting to send via SendGrid to:', to);
@@ -588,11 +633,6 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [], typ
       } catch (error) {
         console.error('❌ SendGrid send failed:', error.message);
         logEmail('SENDGRID_ERROR', emailData, { success: false, error: error.message });
-        
-        // Don't fall back if SendGrid is explicitly configured but fails
-        if (EMAIL_CONFIG.useSendGrid && !transporter) {
-          throw error;
-        }
       }
     }
     
@@ -629,8 +669,17 @@ export const sendEmail = async ({ to, subject, text, html, attachments = [], typ
       }
     }
     
-    // No providers available
-    throw new Error('No email providers configured');
+    // No providers available or all failed
+    const availableProviders = [];
+    if (EMAIL_CONFIG.useGmailApi) availableProviders.push('Gmail API');
+    if (EMAIL_CONFIG.useSendGrid) availableProviders.push('SendGrid');
+    if (transporter) availableProviders.push('SMTP');
+
+    const errorMsg = availableProviders.length > 0
+      ? `All email providers failed: ${availableProviders.join(', ')}. Check credentials and try again.`
+      : 'No email providers configured. Please set up at least one email provider.';
+
+    throw new Error(errorMsg);
     
   } catch (error) {
     console.error('❌ Email send failed:', error.message);
@@ -766,7 +815,32 @@ if (EMAIL_CONFIG.enableEmailSending) {
   console.log(`   • Gmail (SMTP): ${EMAIL_CONFIG.useGmail ? '✅' : '❌'}`);
   console.log(`   • SMTP: ${!!transporter ? '✅' : '❌'}`);
   console.log(`   • From: ${EMAIL_CONFIG.from}`);
-  // Extra diagnostics to explain why OAuth2 may be inactive
+
+  // Show detailed configuration status
+  if (EMAIL_CONFIG.useGmailApi) {
+    const missing = [];
+    if (!EMAIL_CONFIG.gmailApi.clientId) missing.push('GMAIL_CLIENT_ID');
+    if (!EMAIL_CONFIG.gmailApi.clientSecret) missing.push('GMAIL_CLIENT_SECRET');
+    if (!EMAIL_CONFIG.gmailApi.refreshToken) missing.push('GMAIL_REFRESH_TOKEN');
+    if (!EMAIL_CONFIG.gmailApi.sender) missing.push('GMAIL_SENDER');
+
+    if (missing.length > 0) {
+      console.warn(`⚠️ Gmail API configured but missing credentials: ${missing.join(', ')}`);
+      console.log(`🔧 To fix Gmail API: Set EMAIL_PROVIDER=gmailapi and provide all required credentials`);
+    } else {
+      console.log(`✅ Gmail API configuration complete. If you get 'invalid_grant' errors, refresh your OAuth token.`);
+    }
+  }
+
+  if (EMAIL_CONFIG.useSendGrid) {
+    if (!EMAIL_CONFIG.sendgrid.apiKey) {
+      console.warn(`⚠️ SendGrid configured but missing API key`);
+    } else {
+      console.log(`✅ SendGrid configuration complete`);
+    }
+  }
+
+  // Extra diagnostics for Gmail OAuth2
   if (EMAIL_CONFIG.useGmailOAuth) {
     const missing = [];
     if (!EMAIL_CONFIG.gmailOAuth.user) missing.push('GMAIL_USER');
@@ -777,20 +851,6 @@ if (EMAIL_CONFIG.enableEmailSending) {
       console.warn('⚠️ Gmail OAuth2 requested but missing env:', missing.join(', '));
     } else {
       console.log('✅ Gmail OAuth2 configuration appears complete.');
-    }
-  }
-
-  // Extra diagnostics for Gmail API
-  if (EMAIL_CONFIG.useGmailApi) {
-    const missing = [];
-    if (!EMAIL_CONFIG.gmailApi.clientId) missing.push('GMAIL_CLIENT_ID');
-    if (!EMAIL_CONFIG.gmailApi.clientSecret) missing.push('GMAIL_CLIENT_SECRET');
-    if (!EMAIL_CONFIG.gmailApi.refreshToken) missing.push('GMAIL_REFRESH_TOKEN');
-    if (!EMAIL_CONFIG.gmailApi.sender) missing.push('GMAIL_SENDER');
-    if (missing.length) {
-      console.warn('⚠️ Gmail API requested but missing env:', missing.join(', '));
-    } else {
-      console.log('✅ Gmail API configuration appears complete.');
     }
   }
   
