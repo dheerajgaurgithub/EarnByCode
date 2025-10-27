@@ -753,7 +753,6 @@ app.use('/api/discussions', discussionRoutes);
 app.use('/api/contest-problems', contestProblemRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/oauth', oauthRoutes);
-app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/compile', compileRoute);
 app.use('/api/compile', compileRoute);
