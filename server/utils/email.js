@@ -48,12 +48,21 @@ const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
  *      GMAIL_SENDER=your_email@gmail.com
  *      EMAIL_FROM=your_email@gmail.com
  *
- * 2. SENDGRID (Easiest):
+ * 2. SENDGRID (Easiest - Quick Fix):
  *    - Set EMAIL_PROVIDER=sendgrid
  *    - Get API key from https://sendgrid.com/
  *    - Required env vars:
  *      SENDGRID_API_KEY=your_sendgrid_key
  *      EMAIL_FROM=your_verified_sender_email
+ *
+ * QUICK FIX: If Gmail API fails with "invalid_grant", temporarily switch to SendGrid:
+ * 1. Sign up at https://sendgrid.com/ (free tier available)
+ * 2. Get your API key from SendGrid dashboard
+ * 3. Verify your sender email in SendGrid
+ * 4. Set these environment variables:
+ *    EMAIL_PROVIDER=sendgrid
+ *    SENDGRID_API_KEY=SG.your_sendgrid_key_here
+ *    EMAIL_FROM=your_email@gmail.com
  *
  * 3. GMAIL SMTP:
  *    - Set EMAIL_PROVIDER=gmail
@@ -66,6 +75,14 @@ const isProd = (process.env.NODE_ENV || '').toLowerCase() === 'production';
  *
  * If you get "invalid_grant" error with Gmail API, your refresh token has expired.
  * Generate a new one using the OAuth playground.
+ *
+ * TROUBLESHOOTING invalid_grant:
+ * 1. Go to https://developers.google.com/oauthplayground
+ * 2. Select "Gmail API v1" scope
+ * 3. Click "Authorize APIs" and sign in with your Gmail
+ * 4. Click "Exchange authorization code for tokens"
+ * 5. Copy the NEW refresh token and update GMAIL_REFRESH_TOKEN
+ * 6. The old refresh token cannot be reused - you must generate a new one
  */
 const EMAIL_CONFIG = {
   from: process.env.EMAIL_FROM || 'noreply@earnbycode.app',
