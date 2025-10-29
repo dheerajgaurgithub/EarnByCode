@@ -755,6 +755,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api/compile', compileRoute);
 app.use('/api/run', runRoute);
 
