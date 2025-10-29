@@ -268,49 +268,61 @@ const ProblemDetail: React.FC = () => {
       }
       
       const data = await response.json();
-      setProblem(data.problem || data); // Handle both formats: { problem } or direct problem object
-      setCode((data.problem || data)?.starterCode?.[selectedLanguage] || getDefaultCode(selectedLanguage));
-      // Also fetch non-hidden testcases from dedicated endpoint
-      try {
-        const tcRes = await fetch(`${getApiBase()}/problems/${id}/testcases`);
-        if (tcRes.ok) {
-          const raw = await tcRes.json();
-          const arr: any[] = Array.isArray(raw) ? raw : (Array.isArray(raw?.testcases) ? raw.testcases : []);
-          const vis = arr
-            .filter((t: any) => {
-              const hidden = t?.hidden ?? t?.isHidden ?? (t?.visibility === 'hidden') ?? (t?.private === true);
-              return !hidden;
-            })
-            .map((t: any) => ({
-              input: String(t?.input ?? ''),
-              expectedOutput: String(
-                t?.expectedOutput ?? t?.expected ?? t?.expected_output ?? t?.outputExpected ?? t?.output ?? ''
-              ),
+      const problemData = data.problem || data; // Handle both formats: { problem } or direct problem object
+      setProblem(problemData);
+      setCode(problemData?.starterCode?.[selectedLanguage] || getDefaultCode(selectedLanguage));
+      
+      // First try to get test cases from the main problem data
+      if (Array.isArray(problemData.testCases) && problemData.testCases.length > 0) {
+        const vis = problemData.testCases.map((t: any) => ({
+          input: String(t.input ?? ''),
+          expectedOutput: String(t.expectedOutput ?? '')
+        }));
+        setVisibleTestcases(vis);
+      } else {
+        // Fallback to dedicated test cases endpoint if no test cases in main response
+        try {
+          const tcRes = await fetch(`${getApiBase()}/problems/${id}/testcases`);
+          if (tcRes.ok) {
+            const raw = await tcRes.json();
+            // Handle different response formats
+            const testCases = raw.testCases || raw.testcases || (Array.isArray(raw) ? raw : []);
+            const vis = testCases.map((t: any) => ({
+              input: String(t.input ?? t.testInput ?? ''),
+              expectedOutput: String(t.expectedOutput ?? t.expected ?? t.outputExpected ?? t.output ?? '')
             }));
-          setVisibleTestcases(vis);
-        } else {
+            setVisibleTestcases(vis);
+          } else {
+            console.warn('Failed to fetch test cases, using empty array');
+            setVisibleTestcases([]);
+          }
+        } catch (error) {
+          console.error('Error fetching test cases:', error);
           setVisibleTestcases([]);
         }
-      } catch {
-        setVisibleTestcases([]);
       }
     } catch (error) {
       console.error('Error fetching problem:', error);
+      setVisibleTestcases([]); // Ensure we don't show stale test cases
     } finally {
       setLoading(false);
     }
   }, [id, selectedLanguage]);
 
-  // Fallback: if endpoint provided nothing, but problem has testCases, show them (assuming they are the public ones)
+  // Fallback: if no test cases were found, check problem.testCases again after loading
   useEffect(() => {
-    if (visibleTestcases.length === 0 && Array.isArray(problem?.testCases) && problem!.testCases.length > 0) {
-      const vis = (problem!.testCases as any[]).map(t => ({
-        input: String((t as any)?.input ?? ''),
-        expectedOutput: String((t as any)?.expectedOutput ?? (t as any)?.expected ?? ''),
+    if (!problem) return;
+    
+    const testCases = problem.testCases || [];
+    if (visibleTestcases.length === 0 && testCases.length > 0) {
+      console.log('Using fallback test cases from problem data');
+      const vis = testCases.map(t => ({
+        input: String(t?.input ?? ''),
+        expectedOutput: String(t?.expectedOutput ?? '')
       }));
       setVisibleTestcases(vis);
     }
-  }, [problem?.testCases, visibleTestcases.length]);
+  }, [problem, visibleTestcases.length]);
 
   // Handle code run (single example)
   const handleRunCode = useCallback(async () => {
