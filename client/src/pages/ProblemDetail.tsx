@@ -293,25 +293,18 @@ const ProblemDetail: React.FC = () => {
       
       // Try to fetch test cases from the backend if not found in problem data
       if ((!problemData.testCases || problemData.testCases.length === 0) && problemData._id) {
-        try {
-          const tcRes = await fetch(`${getApiBase()}/problems/${problemData._id}/testcases`);
-          if (tcRes.ok) {
-            const raw = await tcRes.json();
-            // Handle different response formats
-            const testCases = raw.testCases || raw.testcases || (Array.isArray(raw) ? raw : []);
-            if (testCases.length > 0) {
-              const vis = testCases.map((t: any) => ({
-                input: String(t.input ?? t.testInput ?? ''),
-                expectedOutput: String(t.expectedOutput ?? t.expected ?? t.outputExpected ?? t.output ?? '')
-              }));
-              setVisibleTestcases(vis);
-            }
-          } else {
-            console.warn('Test cases endpoint not available, using available test cases');
-          }
-        } catch (error) {
-          console.warn('Error fetching test cases:', error);
-          // Don't set empty array here, as we might have test cases from problemData
+        // Skip test cases endpoint for now since it's returning 404
+        // We'll rely on the fallback to use examples as test cases
+        console.log('Skipping test cases endpoint due to 404');
+        
+        // If we have examples, use them as test cases
+        if (Array.isArray(problemData.examples) && problemData.examples.length > 0) {
+          console.log('Using examples as test cases');
+          const vis = problemData.examples.map((ex: any) => ({
+            input: String(ex?.input ?? ''),
+            expectedOutput: String(ex?.output ?? '')
+          }));
+          setVisibleTestcases(vis);
         }
       }
     } catch (error) {
