@@ -6,7 +6,7 @@ import { Activity, Radio, Mail } from 'lucide-react';
 // Helper to resolve API base URL similar to other pages
 const getApiBase = () => {
   const raw = (import.meta as any)?.env?.VITE_API_URL as string;
-  const base = raw || 'https://algobucks.onrender.com/api';
+  const base = raw || 'https://earnbycode-ebc.vercel.app';
   return base.replace(/\/$/, '');
 };
 
