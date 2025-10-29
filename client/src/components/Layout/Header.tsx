@@ -63,7 +63,7 @@ const NAV_ITEMS: NavItem[] = [
     hoverGradient: 'from-indigo-500 to-blue-600'
   },
   {
-    nameKey: 'nav.chat',
+    nameKey: 'Chat',
     path: '/chat',
     icon: MessageCircle,
     gradient: 'from-sky-500 to-cyan-600',
@@ -166,7 +166,7 @@ export const Header: React.FC = () => {
     const onUpdated = () => load();
     window.addEventListener('focus', onFocus);
     window.addEventListener('notifications:updated', onUpdated as any);
-    pollRef.current = window.setInterval(load, 30000);
+    pollRef.current = window.setInterval(load, 60000); // Increased to 60 seconds
     return () => {
       canceled = true;
       window.removeEventListener('focus', onFocus);
@@ -190,7 +190,7 @@ export const Header: React.FC = () => {
     load();
     const onUpdated = () => load();
     window.addEventListener('chat:updated', onUpdated as any);
-    chatPollRef.current = window.setInterval(load, 30000);
+    chatPollRef.current = window.setInterval(load, 60000); // Increased to 60 seconds
     return () => {
       canceled = true;
       window.removeEventListener('chat:updated', onUpdated as any);
