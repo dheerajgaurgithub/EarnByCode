@@ -43,11 +43,11 @@ const getCompilerBase = () => {
   // Default to the same base as the API if no override is set
   const apiBase = getApiBase();
   if (apiBase.includes('earnbycode-mfs3.onrender.com')) {
-    return 'https://earnbycode-mfs3.onrender.com/api';
+    return 'https://earnbycode-mfs3.onrender.com';
   }
   
   // Fallback to local development
-  return 'http://localhost:5000/api';
+  return 'http://localhost:5000';
 };
 
 type Language = 'javascript' | 'python' | 'java' | 'cpp';
