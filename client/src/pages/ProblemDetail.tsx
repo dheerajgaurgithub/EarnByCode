@@ -28,8 +28,10 @@ const validateJavaSolution = (src: string) => /\bclass\s+Solution\b/.test(src);
 
 // Resolve compiler API base for new Docker sandbox
 const getCompilerBase = () => {
+  // First check for environment variable override
   const env: any = (import.meta as any).env || {};
   const override = env.VITE_COMPILER_API as string | undefined;
+  
   if (override && override.trim()) {
     let base = override.trim();
     base = base.replace(/\/+$/, '');
@@ -37,7 +39,15 @@ const getCompilerBase = () => {
     base = base.replace(/\/compile$/i, '');
     return base;
   }
-  return '';
+  
+  // Default to the same base as the API if no override is set
+  const apiBase = getApiBase();
+  if (apiBase.includes('earnbycode-mfs3.onrender.com')) {
+    return 'https://earnbycode-mfs3.onrender.com/api';
+  }
+  
+  // Fallback to local development
+  return 'http://localhost:5000/api';
 };
 
 type Language = 'javascript' | 'python' | 'java' | 'cpp';
@@ -279,26 +289,29 @@ const ProblemDetail: React.FC = () => {
           expectedOutput: String(t.expectedOutput ?? '')
         }));
         setVisibleTestcases(vis);
-      } else {
-        // Fallback to dedicated test cases endpoint if no test cases in main response
+      }
+      
+      // Try to fetch test cases from the backend if not found in problem data
+      if ((!problemData.testCases || problemData.testCases.length === 0) && problemData._id) {
         try {
-          const tcRes = await fetch(`${getApiBase()}/problems/${id}/testcases`);
+          const tcRes = await fetch(`${getApiBase()}/problems/${problemData._id}/testcases`);
           if (tcRes.ok) {
             const raw = await tcRes.json();
             // Handle different response formats
             const testCases = raw.testCases || raw.testcases || (Array.isArray(raw) ? raw : []);
-            const vis = testCases.map((t: any) => ({
-              input: String(t.input ?? t.testInput ?? ''),
-              expectedOutput: String(t.expectedOutput ?? t.expected ?? t.outputExpected ?? t.output ?? '')
-            }));
-            setVisibleTestcases(vis);
+            if (testCases.length > 0) {
+              const vis = testCases.map((t: any) => ({
+                input: String(t.input ?? t.testInput ?? ''),
+                expectedOutput: String(t.expectedOutput ?? t.expected ?? t.outputExpected ?? t.output ?? '')
+              }));
+              setVisibleTestcases(vis);
+            }
           } else {
-            console.warn('Failed to fetch test cases, using empty array');
-            setVisibleTestcases([]);
+            console.warn('Test cases endpoint not available, using available test cases');
           }
         } catch (error) {
-          console.error('Error fetching test cases:', error);
-          setVisibleTestcases([]);
+          console.warn('Error fetching test cases:', error);
+          // Don't set empty array here, as we might have test cases from problemData
         }
       }
     } catch (error) {
@@ -313,14 +326,25 @@ const ProblemDetail: React.FC = () => {
   useEffect(() => {
     if (!problem) return;
     
-    const testCases = problem.testCases || [];
-    if (visibleTestcases.length === 0 && testCases.length > 0) {
-      console.log('Using fallback test cases from problem data');
-      const vis = testCases.map(t => ({
-        input: String(t?.input ?? ''),
-        expectedOutput: String(t?.expectedOutput ?? '')
-      }));
-      setVisibleTestcases(vis);
+    // Only try to use problem.testCases if we don't have any visible test cases yet
+    if (visibleTestcases.length === 0) {
+      const testCases = problem.testCases || [];
+      if (testCases.length > 0) {
+        console.log('Using fallback test cases from problem data');
+        const vis = testCases.map(t => ({
+          input: String(t?.input ?? ''),
+          expectedOutput: String(t?.expectedOutput ?? '')
+        }));
+        setVisibleTestcases(vis);
+      } else if (Array.isArray(problem.examples) && problem.examples.length > 0) {
+        // If no test cases but we have examples, use those as test cases
+        console.log('Using examples as test cases');
+        const vis = problem.examples.map(ex => ({
+          input: String(ex?.input ?? ''),
+          expectedOutput: String(ex?.output ?? '')
+        }));
+        setVisibleTestcases(vis);
+      }
     }
   }, [problem, visibleTestcases.length]);
 
