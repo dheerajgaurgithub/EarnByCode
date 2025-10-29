@@ -104,6 +104,7 @@ export const Header: React.FC = () => {
   const [chatUnread, setChatUnread] = useState<number>(0);
   const pollRef = useRef<number | null>(null);
   const chatPollRef = useRef<number | null>(null);
+  const lastChatUpdateRef = useRef<number>(0);
 
   const userInfo = user as UserDisplayInfo | null;
   const displayName = (userInfo?.fullName as any) || (userInfo as any)?.name || userInfo?.username || '';
@@ -151,50 +152,213 @@ export const Header: React.FC = () => {
     };
   }, [showDropdown]);
 
-  // Notifications polling
+  // Notifications polling with backoff and error handling
   useEffect(() => {
+    if (!userInfo?.username) return;
+    
     let canceled = false;
+    let retryCount = 0;
+    const maxRetryDelay = 300000; // 5 minutes max
+    let currentInterval = 60000; // Start with 60 seconds
+    
     const load = async () => {
-      if (!userInfo) { setUnreadCount(0); return; }
       try {
         const r = await svcApi.getUnreadCount();
-        if (!canceled) setUnreadCount(r?.count || 0);
-      } catch { if (!canceled) setUnreadCount(0); }
+        if (!canceled) {
+          setUnreadCount(r?.count || 0);
+          // Reset retry count on success
+          retryCount = 0;
+          currentInterval = 60000;
+        }
+      } catch (error) {
+        if (!canceled) {
+          setUnreadCount(0);
+          // Exponential backoff with jitter
+          retryCount++;
+          const backoff = Math.min(1000 * Math.pow(2, retryCount) + Math.random() * 2000, maxRetryDelay);
+          currentInterval = backoff;
+          console.warn(`Notification poll failed (attempt ${retryCount}), retrying in ${Math.round(backoff/1000)}s`, error);
+        }
+      }
     };
-    load();
-    const onFocus = () => load();
+
+    let timeoutId: NodeJS.Timeout;
+    
+    const scheduleNext = () => {
+      if (canceled) return;
+      timeoutId = setTimeout(() => {
+        load().finally(() => {
+          if (!canceled) {
+            scheduleNext();
+          }
+        });
+      }, currentInterval);
+    };
+
+    // Initial load
+    load().finally(() => {
+      if (!canceled) {
+        scheduleNext();
+      }
+    });
+
+    const onFocus = () => {
+      // Refresh immediately on focus
+      if (document.visibilityState === 'visible') {
+        load();
+      }
+    };
+
     const onUpdated = () => load();
+    
     window.addEventListener('focus', onFocus);
+    window.addEventListener('visibilitychange', onFocus);
     window.addEventListener('notifications:updated', onUpdated as any);
-    pollRef.current = window.setInterval(load, 60000); // Increased to 60 seconds
+
     return () => {
       canceled = true;
+      clearTimeout(timeoutId);
       window.removeEventListener('focus', onFocus);
-    window.removeEventListener('notifications:updated', onUpdated as any);
+      window.removeEventListener('visibilitychange', onFocus);
+      window.removeEventListener('notifications:updated', onUpdated as any);
       if (pollRef.current) window.clearInterval(pollRef.current);
     };
   }, [userInfo?.username]);
 
-  // Chat unread polling (count of threads with unread > 0)
+  // Chat unread polling with rate limiting and backoff
   useEffect(() => {
+    if (!userInfo?.username) return;
+    
     let canceled = false;
+    let retryCount = 0;
+    const maxRetryDelay = 600000; // 10 minutes max
+    let currentInterval = 300000; // Start with 5 minutes (increased from 2 minutes)
+    let isRequestInProgress = false;
+    let lastRequestTime = 0;
+    const MIN_REQUEST_INTERVAL = 30000; // 30 seconds minimum between requests
+    
     const load = async () => {
-      if (!userInfo) { setChatUnread(0); return; }
+      if (canceled || isRequestInProgress) return;
+      
+      const now = Date.now();
+      const timeSinceLastRequest = now - lastRequestTime;
+      
+      // Enforce minimum time between requests
+      if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+        return;
+      }
+      
+      isRequestInProgress = true;
+      lastRequestTime = now;
+      
       try {
         const threads = await listThreads();
+        
         if (canceled) return;
-        const count = Array.isArray(threads) ? threads.reduce((acc, t: any) => acc + ((Number(t.unread) || 0) > 0 ? 1 : 0), 0) : 0;
+        
+        const count = Array.isArray(threads) 
+          ? threads.reduce((acc, t: any) => acc + ((Number(t.unread) || 0) > 0 ? 1 : 0), 0) 
+          : 0;
+          
         setChatUnread(count);
-      } catch { if (!canceled) setChatUnread(0); }
+        lastChatUpdateRef.current = now;
+        
+        // On success, reset retry count and use a longer interval
+        retryCount = 0;
+        currentInterval = 300000; // 5 minutes on success (increased from 2 minutes)
+      } catch (error: any) {
+        if (canceled) return;
+        
+        // Don't update UI on rate limit errors, just back off
+        if (error?.response?.status !== 429) {
+          setChatUnread(0);
+        }
+        
+        // More aggressive backoff for rate limits
+        retryCount++;
+        const baseBackoff = error?.response?.status === 429 
+          ? 60000 // Start with 1 minute for rate limits
+          : 1000; // 1 second for other errors
+          
+        const backoff = Math.min(
+          baseBackoff * Math.pow(2, Math.min(retryCount, 5)) + // Cap exponent at 5
+          Math.random() * 5000, // Add up to 5s jitter
+          maxRetryDelay
+        );
+        
+        currentInterval = backoff;
+        
+        console.warn(
+          `Chat poll ${error?.response?.status === 429 ? 'rate limited' : 'failed'} ` +
+          `(attempt ${retryCount}), retrying in ${Math.round(backoff/1000)}s`,
+          error.response?.status === 429 ? '' : error
+        );
+      } finally {
+        isRequestInProgress = false;
+      }
     };
-    load();
-    const onUpdated = () => load();
+
+    let timeoutId: NodeJS.Timeout;
+    
+    const scheduleNext = () => {
+      if (canceled) return;
+      
+      // Add some jitter to spread out requests
+      const jitter = Math.random() * 10000; // Up to 10s jitter
+      const delay = Math.max(MIN_REQUEST_INTERVAL, currentInterval + jitter);
+      
+      timeoutId = setTimeout(() => {
+        load().finally(() => {
+          if (!canceled) {
+            scheduleNext();
+          }
+        });
+      }, delay);
+    };
+
+    // Initial load after a short delay
+    const initialDelay = 2000 + Math.random() * 3000; // 2-5s initial delay
+    const initialTimeout = setTimeout(() => {
+      load().finally(() => {
+        if (!canceled) {
+          scheduleNext();
+        }
+      });
+    }, initialDelay);
+
+    // Only refresh on tab focus if it's been a while
+    const onFocus = () => {
+      if (canceled || document.visibilityState !== 'visible') return;
+      
+      const lastUpdate = Date.now() - (lastChatUpdateRef.current || 0);
+      const minRefreshInterval = 60000; // 1 minute minimum between focus-triggered refreshes
+      
+      if (lastUpdate > minRefreshInterval) {
+        load();
+      }
+    };
+
+    // Debounced chat update handler
+    let updateTimeout: NodeJS.Timeout;
+    const onUpdated = () => {
+      if (updateTimeout) clearTimeout(updateTimeout);
+      updateTimeout = setTimeout(() => {
+        if (!canceled) load();
+      }, 2000); // Debounce multiple rapid updates
+    };
+    
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('visibilitychange', onFocus);
     window.addEventListener('chat:updated', onUpdated as any);
-    chatPollRef.current = window.setInterval(load, 60000); // Increased to 60 seconds
+
     return () => {
       canceled = true;
+      clearTimeout(timeoutId);
+      clearTimeout(initialTimeout);
+      if (updateTimeout) clearTimeout(updateTimeout);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('visibilitychange', onFocus);
       window.removeEventListener('chat:updated', onUpdated as any);
-      if (chatPollRef.current) window.clearInterval(chatPollRef.current);
     };
   }, [userInfo?.username]);
 

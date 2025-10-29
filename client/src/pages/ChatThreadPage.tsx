@@ -46,6 +46,23 @@ const ChatThreadPage: React.FC = () => {
     } catch { return ''; }
   };
 
+  // Mark thread as read when messages are loaded
+  useEffect(() => {
+    if (!threadId) return;
+    
+    const markAsRead = async () => {
+      try {
+        await markThreadRead(threadId);
+        // Trigger a chat update to refresh the unread count in the header
+        window.dispatchEvent(new CustomEvent('chat:updated'));
+      } catch (error) {
+        console.error('Failed to mark thread as read:', error);
+      }
+    };
+
+    markAsRead();
+  }, [threadId]);
+
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -70,7 +87,11 @@ const ChatThreadPage: React.FC = () => {
           dispatch(messagesActions.messagesLoaded(data.map(m => ({ id: m.id, threadId: m.threadId, fromUserId: m.fromUserId, text: m.text, createdAt: m.createdAt }))));
         }
         setTimeout(scrollToBottom, 50);
-        try { window.dispatchEvent(new CustomEvent('chat:updated')); } catch {}
+        // Mark thread as read after loading messages
+        try { 
+          await markThreadRead(threadId);
+          window.dispatchEvent(new CustomEvent('chat:updated')); 
+        } catch (e) { /* Ignore */ }
       } catch (e: any) {
         if (!mounted) return;
         setError(e?.message || 'Failed to load messages');
