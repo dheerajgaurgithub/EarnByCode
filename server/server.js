@@ -636,9 +636,6 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Performance dashboard endpoint
-app.get('/api/performance', performanceDashboard);
-
 // Error handling middleware
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
