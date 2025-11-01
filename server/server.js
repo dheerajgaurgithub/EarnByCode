@@ -1,9 +1,6 @@
 import express from 'express';
 import { Server as IOServer } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import { Script, createContext } from 'node:vm';
-import os from 'os';
-import { spawn, spawnSync, exec } from 'child_process';
 import mongoose from 'mongoose';
 import cors from 'cors';
 import session from 'express-session';
@@ -18,40 +15,12 @@ import xss from 'xss-clean';
 import hpp from 'hpp';
 import fs from 'fs';
 
-// Simple HTML entity unescape for code payloads that may be sanitized by xss middleware
-const unescapeHtml = (str = '') =>
-  String(str)
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
-    .replaceAll('&amp;', '&')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#39;', "'");
-
-// Safe fetch helper for Node < 18 compatibility
-const getFetch = async () => {
-  if (typeof fetch !== 'undefined') return fetch;
-  const mod = await import('node-fetch');
-  return mod.default;
-};
-
-// Lazy-load TypeScript only when needed so production can run without devDependency
-const loadTS = async () => {
-  try {
-    const mod = await import('typescript');
-    return mod.default || mod;
-  } catch {
-    return null;
-  }
-};
-
 // Import configurations
 import { googleConfig } from './config/auth.js';
 import './config/passport.js';
 import config from './config/config.js';
 import authRoutes from './routes/auth.js';
-import runRoute from './routes/run.js';
 import userRoutes from './routes/users.js';
-import compileRoute from './routes/compile.js';
 import problemRoutes from './routes/problems.js';
 import contestRoutes from './routes/contests.js';
 import submissionRoutes from './routes/submissions.js';
@@ -69,7 +38,6 @@ import emailTestRoutes from './routes/email-test.js';
 import notificationRoutes from './routes/notifications.js';
 import chatRoutes from './routes/chat.js';
 import leaderboardRoutes from './routes/leaderboard.js';
-import jdoodleRoutes from './routes/jdoodle.js';
 import { authenticate } from './middleware/auth.js';
 import admin from './middleware/admin.js';
 import Problem from './models/Problem.js';
@@ -78,8 +46,6 @@ import User from './models/User.js';
 import Contest from './models/Contest.js';
 import ChatThread from './models/ChatThread.js';
 import ChatMessage from './models/ChatMessage.js';
-import { executeCodeWithPiston } from './services/piston.js';
-import { openaiChat } from './utils/ai/openai.js';
 import cron from 'node-cron';
 import { grantStreakRewardsDaily, grantMonthlyLeaderboardRewards } from './services/rewards.js';
 
@@ -90,189 +56,6 @@ const __dirname = path.dirname(__filename);
 
 // Load environment variables (prefer server/.env.local, then server/.env)
 dotenv.config({ path: path.join(__dirname, '.env.local') });
-
-// Hard-disable legacy executor endpoint
-app.all('/api/execute', (req, res) => {
-  return res.status(410).json({ message: 'Deprecated: use /compile' });
-});
-
-// Alias: some clients call /api/execute — route to the same handler logic as /api/code/run
-app.post('/api/execute', async (req, res) => {
-  try {
-    const payload = req.body || {};
-    const language = (payload.language || '').toString().toLowerCase();
-    let source = '';
-    if (typeof payload.code === 'string') source = payload.code;
-    else if (typeof payload.sourceCode === 'string') source = payload.sourceCode;
-    else if (Array.isArray(payload.files) && payload.files[0]?.content) source = payload.files[0].content;
-    // Unescape basic HTML entities if present
-    const unescapeHtmlLocal = (str = '') => String(str)
-      .replaceAll('&lt;', '<').replaceAll('&gt;', '>')
-      .replaceAll('&amp;', '&').replaceAll('&quot;', '"').replaceAll('&#39;', "'");
-    source = unescapeHtmlLocal(source);
-
-    if (!source || !['javascript', 'typescript', 'java', 'cpp'].includes(language)) {
-      return res.status(400).json({ message: 'Only JavaScript, TypeScript, Java and C++ are supported', language, received: Object.keys(payload || {}) });
-    }
-
-    // Reuse same branches as /api/code/run
-    // Java
-    if (language === 'java') {
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-java-'));
-      const srcFile = path.join(tmpDir, 'Solution.java');
-      fs.writeFileSync(srcFile, source, 'utf8');
-      const javac = process.env.JAVAC_BIN || 'javac';
-      const java = process.env.JAVA_BIN || 'java';
-      const compile = spawn(javac, ['-d', tmpDir, srcFile]);
-      const compileErr = [];
-      compile.stderr.on('data', d => compileErr.push(d));
-      compile.on('error', (e) => {
-        const errMsg = `Failed to start Java compiler (${javac}). ${e?.code === 'ENOENT' ? 'javac not found in PATH. Install JDK or set JAVAC_BIN.' : String(e?.message || e)}`;
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-        return res.status(200).json({ run: { output: '', stderr: errMsg } });
-      });
-      compile.on('close', (code) => {
-        if (code !== 0) {
-          const err = Buffer.concat(compileErr).toString('utf8');
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          return res.status(200).json({ run: { output: '', stderr: err } });
-        }
-        const start = Date.now();
-        const startMs = Date.now();
-        const child = spawn(java, ['-cp', tmpDir, 'Solution'], { stdio: ['pipe', 'pipe', 'pipe'] });
-        // Sample VmRSS from /proc when available (Linux) to approximate peak memory
-        let maxRssKb = 0;
-        const rssTimer = setInterval(() => {
-          try {
-            if (child.pid && process.platform === 'linux') {
-              const txt = fs.readFileSync(`/proc/${child.pid}/status`, 'utf8');
-              const m = txt.match(/VmRSS:\s*(\d+)\s*kB/i);
-              if (m) {
-                const kb = parseInt(m[1], 10);
-                if (Number.isFinite(kb) && kb > maxRssKb) maxRssKb = kb;
-              }
-            }
-          } catch {}
-        }, 60);
-        const stdoutChunks = [];
-        const stderrChunks = [];
-        const stdinStr = typeof payload.stdin === 'string' ? unescapeHtmlLocal(payload.stdin) : '';
-        if (stdinStr) child.stdin.write(stdinStr);
-        child.stdin.end();
-        let killed = false;
-        const killTimer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 3000);
-        child.stdout.on('data', d => stdoutChunks.push(d));
-        child.stderr.on('data', d => stderrChunks.push(d));
-        child.on('error', (e) => {
-          clearTimeout(killTimer);
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          const errMsg = `Failed to start Java runtime (${java}). ${e?.code === 'ENOENT' ? 'java not found in PATH. Install JRE/JDK or set JAVA_BIN.' : String(e?.message || e)}`;
-          return res.status(200).json({ run: { output: '', stderr: errMsg } });
-        });
-        child.on('close', () => {
-          clearTimeout(killTimer);
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          const out = Buffer.concat(stdoutChunks).toString('utf8');
-          const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
-          const timeMs = Date.now() - start;
-          return res.status(200).json({ run: { output: out, stderr: err, timeMs }, timeMs });
-        });
-      });
-      return;
-    }
-
-    // C++
-    if (language === 'cpp') {
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-cpp-'));
-      const srcFile = path.join(tmpDir, 'main.cpp');
-      fs.writeFileSync(srcFile, source, 'utf8');
-      const exeFile = path.join(tmpDir, process.platform === 'win32' ? 'a.exe' : 'a.out');
-      const gxx = process.env.GXX_BIN || 'g++';
-      const compile = spawn(gxx, ['-std=c++17', '-O2', srcFile, '-o', exeFile]);
-      const compileErr = [];
-      compile.stderr.on('data', d => compileErr.push(d));
-      compile.on('error', (e) => {
-        const errMsg = `Failed to start C++ compiler (${gxx}). ${e?.code === 'ENOENT' ? 'g++ not found in PATH. Install MinGW-w64/LLVM or set GXX_BIN.' : String(e?.message || e)}`;
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-        return res.status(200).json({ run: { output: '', stderr: errMsg } });
-      });
-      compile.on('close', (code) => {
-        if (code !== 0) {
-          const err = Buffer.concat(compileErr).toString('utf8');
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          return res.status(200).json({ run: { output: '', stderr: err } });
-        }
-        const start = Date.now();
-        const child = spawn(exeFile, [], { stdio: ['pipe', 'pipe', 'pipe'] });
-        const stdoutChunks = [];
-        const stderrChunks = [];
-        const stdinStr = typeof payload.stdin === 'string' ? payload.stdin : '';
-        if (stdinStr) child.stdin.write(stdinStr);
-        child.stdin.end();
-        let killed = false;
-        const killTimer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 3000);
-        child.stdout.on('data', d => stdoutChunks.push(d));
-        child.stderr.on('data', d => stderrChunks.push(d));
-        child.on('close', () => {
-          clearTimeout(killTimer);
-          clearInterval(rssTimer);
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          const out = Buffer.concat(stdoutChunks).toString('utf8');
-          const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
-          const timeMs = Date.now() - startMs;
-          const memoryKb = maxRssKb || undefined;
-          return res.status(200).json({ run: { output: out, stderr: err, timeMs, memoryKb }, timeMs, memoryKb });
-        });
-      });
-      return;
-    }
-
-    // TS/JS transpile compatibility
-    let code = source;
-    if (language === 'typescript') {
-      const ts = await loadTS();
-      if (!ts) return res.status(500).json({ message: 'TypeScript compiler not available on server' });
-      const result = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019, strict: false, esModuleInterop: true } });
-      code = result.outputText;
-    } else if (language === 'javascript' && /(^|\s)(import\s|export\s)/.test(source)) {
-      const ts = await loadTS();
-      if (ts) {
-        const result = ts.transpileModule(source, { compilerOptions: { allowJs: true, module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2019, esModuleInterop: true }, fileName: 'user_code.js' });
-        code = result.outputText;
-      }
-    }
-
-    const stdout = [];
-    const stderr = [];
-    const memBefore = process.memoryUsage().rss;
-    const tStart = Date.now();
-    const stdin = typeof payload.stdin === 'string' ? unescapeHtmlLocal(payload.stdin) : '';
-    const inputLines = stdin.split(/\r?\n/);
-    let inputIndex = 0;
-    const sandbox = {
-      console: { log: (...args) => stdout.push(args.map(a => String(a)).join(' ')), error: (...args) => stderr.push(args.map(a => String(a)).join(' ')), warn: (...args) => stdout.push(args.map(a => String(a)).join(' ')) },
-      readLine: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
-      gets: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
-      prompt: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
-      require: (name) => { if (name === 'fs') { return { readFileSync: () => stdin }; } throw new Error('Module not allowed'); },
-      setTimeout, setInterval, clearTimeout, clearInterval,
-    };
-    const context = createContext(sandbox);
-    try {
-      const script = new Script(code, { filename: 'user_code.js' });
-      script.runInContext(context, { timeout: 3000 });
-    } catch (e) {
-      stderr.push(String(e && e.message ? e.message : e));
-    }
-    const output = stdout.join('\n');
-    const err = stderr.join('\n');
-    return res.status(200).json({ success: true, stdout: output, stderr: err, output, run: { output, stderr: err } });
-  } catch (err) {
-    console.error('Error executing code (/api/execute):', err);
-    return res.status(500).json({ message: 'Execution service error' });
-  }
-});
-dotenv.config({ path: path.join(__dirname, '.env'), override: true });
 
 // Trust the first proxy (Render/NGINX) so req.protocol and req.hostname respect X-Forwarded-* headers
 // Do NOT set to true (all) to avoid permissive trust proxy issues
@@ -327,278 +110,6 @@ app.use((req, res, next) => {
 });
 app.use(dynamicCors);
 app.options('*', dynamicCors);
-
-// Ensure /api/execute passes through CORS and reuses /api/code/run logic
-app.use('/api/execute', (req, res, next) => {
-  // Forward to the canonical handler while preserving method/body
-  req.url = '/api/code/run';
-  next();
-});
-
-// Environment check endpoint
-app.get('/api/env/check', (req, res) => {
-  try {
-    const check = (cmd, args) => {
-      try {
-        const r = spawnSync(cmd, args, { encoding: 'utf8' });
-        if (r.error) return { ok: false, error: r.error.message };
-        if (typeof r.status === 'number' && r.status !== 0 && !r.stdout) {
-          return { ok: false, error: r.stderr || `exit ${r.status}` };
-        }
-        return { ok: true, stdout: (r.stdout || r.stderr || '').toString().trim() };
-      } catch (e) {
-        return { ok: false, error: String(e?.message || e) };
-      }
-    };
-
-    const pyBin = process.env.PYTHON_BIN || 'python';
-    const javaBin = process.env.JAVA_BIN || 'java';
-    const javacBin = process.env.JAVAC_BIN || 'javac';
-    const gxxBin = process.env.GXX_BIN || 'g++';
-
-    const result = {
-      python: check(pyBin, ['--version']),
-      javac: check(javacBin, ['-version']),
-      java: check(javaBin, ['-version']),
-      gxx: check(gxxBin, ['--version'])
-    };
-
-    const execMode = (process.env.EXECUTOR_MODE || 'auto').toLowerCase();
-    const pistonUrl = process.env.PISTON_URL || 'https://emkc.org/api/v2/piston/execute';
-
-    res.status(200).json({ ok: true, tools: result, executor: { mode: execMode, pistonUrl } });
-  } catch (err) {
-    console.error('env/check error', err);
-    res.status(500).json({ ok: false, error: String(err?.message || err) });
-  }
-});
-
-// Lightweight server time endpoint for client-side clock sync
-app.get('/api/time', (req, res) => {
-  try {
-    const now = Date.now();
-    return res.status(200).json({ now, iso: new Date(now).toISOString() });
-  } catch (e) {
-    return res.status(200).json({ now: Date.now() });
-  }
-});
-
-// Compatibility endpoint for legacy clients expecting /api/code/run
-app.post('/api/code/run', async (req, res) => {
-  try {
-    const payload = req.body || {};
-    // Accept multiple shapes: { language, code }, { language, sourceCode }, { language, files: [{content}] }
-    const language = (payload.language || '').toString().toLowerCase();
-    let source = '';
-    if (typeof payload.code === 'string') source = payload.code;
-    else if (typeof payload.sourceCode === 'string') source = payload.sourceCode;
-    else if (Array.isArray(payload.files) && payload.files[0]?.content) source = payload.files[0].content;
-    source = unescapeHtml(source);
-
-    // Allow Python, Java and C++ as the supported languages
-    if (!source || !['python', 'java', 'cpp'].includes(language)) {
-      return res.status(400).json({ message: 'Only Python, Java and C++ are supported', language, received: Object.keys(payload || {}) });
-    }
-
-    // Java execution path
-    if (language === 'java') {
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-java-'));
-      const srcFile = path.join(tmpDir, 'Solution.java');
-      fs.writeFileSync(srcFile, source, 'utf8');
-
-      const javac = process.env.JAVAC_BIN || 'javac';
-      const java = process.env.JAVA_BIN || 'java';
-
-      const compile = spawn(javac, ['-d', tmpDir, srcFile]);
-      const compileErr = [];
-      compile.stderr.on('data', d => compileErr.push(d));
-      compile.on('error', (e) => {
-        const errMsg = `Failed to start Java compiler (${javac}). ${e?.code === 'ENOENT' ? 'javac not found in PATH. Install JDK or set JAVAC_BIN.' : String(e?.message || e)}`;
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-        return res.status(200).json({ run: { output: '', stderr: errMsg } });
-      });
-
-      compile.on('close', (code) => {
-        if (code !== 0) {
-          const err = Buffer.concat(compileErr).toString('utf8');
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          return res.status(200).json({ run: { output: '', stderr: err } });
-        }
-
-        const child = spawn(java, ['-cp', tmpDir, 'Solution'], { stdio: ['pipe', 'pipe', 'pipe'] });
-        const stdoutChunks = [];
-        const stderrChunks = [];
-        const stdinStr = typeof payload.stdin === 'string' ? unescapeHtml(payload.stdin) : '';
-        if (stdinStr) child.stdin.write(stdinStr);
-        child.stdin.end();
-
-        let killed = false;
-        const killTimer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 3000);
-
-        child.stdout.on('data', d => stdoutChunks.push(d));
-        child.stderr.on('data', d => stderrChunks.push(d));
-        child.on('error', (e) => {
-          clearTimeout(killTimer);
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          const errMsg = `Failed to start Java runtime (${java}). ${e?.code === 'ENOENT' ? 'java not found in PATH. Install JRE/JDK or set JAVA_BIN.' : String(e?.message || e)}`;
-          return res.status(200).json({ run: { output: '', stderr: errMsg } });
-        });
-        child.on('close', () => {
-          clearTimeout(killTimer);
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          const out = Buffer.concat(stdoutChunks).toString('utf8');
-          const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
-          return res.status(200).json({ run: { output: out, stderr: err } });
-        });
-      });
-      return;
-    }
-
-    // C++ execution path
-    if (language === 'cpp') {
-      const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'algobucks-cpp-'));
-      const srcFile = path.join(tmpDir, 'main.cpp');
-      fs.writeFileSync(srcFile, source, 'utf8');
-      const exeFile = path.join(tmpDir, process.platform === 'win32' ? 'a.exe' : 'a.out');
-
-      const gxx = process.env.GXX_BIN || 'g++';
-      const compile = spawn(gxx, ['-std=c++17', '-O2', srcFile, '-o', exeFile]);
-      const compileErr = [];
-      compile.stderr.on('data', d => compileErr.push(d));
-      compile.on('error', (e) => {
-        const errMsg = `Failed to start C++ compiler (${gxx}). ${e?.code === 'ENOENT' ? 'g++ not found in PATH. Install MinGW-w64/LLVM or set GXX_BIN.' : String(e?.message || e)}`;
-        try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-        return res.status(200).json({ run: { output: '', stderr: errMsg } });
-      });
-      compile.on('close', (code) => {
-        if (code !== 0) {
-          const err = Buffer.concat(compileErr).toString('utf8');
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          return res.status(200).json({ run: { output: '', stderr: err } });
-        }
-
-        const cmd = process.platform === 'win32' ? exeFile : exeFile;
-        const startMs = Date.now();
-        const child = spawn(cmd, [], { stdio: ['pipe', 'pipe', 'pipe'] });
-        // Sample VmRSS for C++ as well
-        let maxRssKb = 0;
-        const rssTimer = setInterval(() => {
-          try {
-            if (child.pid && process.platform === 'linux') {
-              const txt = fs.readFileSync(`/proc/${child.pid}/status`, 'utf8');
-              const m = txt.match(/VmRSS:\s*(\d+)\s*kB/i);
-              if (m) {
-                const kb = parseInt(m[1], 10);
-                if (Number.isFinite(kb) && kb > maxRssKb) maxRssKb = kb;
-              }
-            }
-          } catch {}
-        }, 60);
-        const stdoutChunks = [];
-        const stderrChunks = [];
-        const stdinStr = typeof payload.stdin === 'string' ? payload.stdin : '';
-        if (stdinStr) child.stdin.write(stdinStr);
-        child.stdin.end();
-
-        let killed = false;
-        const killTimer = setTimeout(() => { killed = true; child.kill('SIGKILL'); }, 3000);
-
-        child.stdout.on('data', d => stdoutChunks.push(d));
-        child.stderr.on('data', d => stderrChunks.push(d));
-        child.on('close', () => {
-          clearTimeout(killTimer);
-          try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
-          const out = Buffer.concat(stdoutChunks).toString('utf8');
-          const err = Buffer.concat(stderrChunks).toString('utf8') || (killed ? 'Time limit exceeded' : '');
-          return res.status(200).json({ run: { output: out, stderr: err } });
-        });
-      });
-      return;
-    }
-
-    // Transpile TS to JS if needed, and convert JS ESM import/export to CJS (best-effort)
-    let code = source;
-    if (language === 'typescript') {
-      const ts = await loadTS();
-      if (!ts) {
-        return res.status(500).json({ message: 'TypeScript compiler not available on server' });
-      }
-      const result = ts.transpileModule(source, {
-        compilerOptions: {
-          module: ts.ModuleKind.CommonJS,
-          target: ts.ScriptTarget.ES2019,
-          strict: false,
-          esModuleInterop: true,
-        },
-      });
-      code = result.outputText;
-    } else if (language === 'javascript' && /(^|\s)(import\s|export\s)/.test(source)) {
-      const ts = await loadTS();
-      if (ts) {
-        const result = ts.transpileModule(source, {
-          compilerOptions: {
-            allowJs: true,
-            module: ts.ModuleKind.CommonJS,
-            target: ts.ScriptTarget.ES2019,
-            esModuleInterop: true,
-          },
-          fileName: 'user_code.js'
-        });
-        code = result.outputText;
-      }
-    }
-
-    const stdout = [];
-    const stderr = [];
-    const stdin = typeof payload.stdin === 'string' ? unescapeHtml(payload.stdin) : '';
-    const inputLines = stdin.split(/\r?\n/);
-    let inputIndex = 0;
-    const sandbox = {
-      console: {
-        log: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
-        error: (...args) => stderr.push(args.map(a => String(a)).join(' ')),
-        warn: (...args) => stdout.push(args.map(a => String(a)).join(' ')),
-      },
-      readLine: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
-      gets: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
-      prompt: () => (inputIndex < inputLines.length ? inputLines[inputIndex++] : ''),
-      require: (name) => {
-        if (name === 'fs') {
-          return {
-            readFileSync: () => stdin,
-          };
-        }
-        throw new Error('Module not allowed');
-      },
-      setTimeout,
-      setInterval,
-      clearTimeout,
-      clearInterval,
-    };
-    const context = createContext(sandbox);
-
-    try {
-      const script = new Script(code, { filename: 'user_code.js' });
-      script.runInContext(context, { timeout: 3000 });
-    } catch (e) {
-      stderr.push(String(e && e.message ? e.message : e));
-    }
-
-    // Provide a broad response structure for compatibility
-    const output = stdout.join('\n');
-    const err = stderr.join('\n');
-    return res.status(200).json({
-      success: true,
-      stdout: output,
-      stderr: err,
-      output,
-      run: { output, stderr: err },
-    });
-  } catch (err) {
-    console.error('Error executing code (/api/code/run):', err);
-    return res.status(500).json({ message: 'Execution service error' });
-  }
-});
 
 // Middleware
 app.use(helmet());
@@ -725,41 +236,26 @@ app.get('/', (req, res) => {
   }
 });
 
-import { cacheService, getProblemsCacheKey, getContestsCacheKey, getLeaderboardCacheKey, getUserCacheKey } from './services/cache.js';
-import { performanceMonitoringMiddleware, healthCheckWithMetrics, performanceDashboard } from './services/performanceMonitor.js';
-
-// Cache middleware for GET routes
-const cacheMiddleware = (ttl = 300) => cacheService.middleware(ttl);
-
-// Routes with caching
-app.get('/api/problems', cacheMiddleware(600)); // Cache problems for 10 minutes
-app.use('/api/problems', problemRoutes);
-
-app.get('/api/contests', cacheMiddleware(300)); // Cache contests for 5 minutes
-app.use('/api/contests', contestRoutes);
-
-app.get('/api/users/leaderboard', cacheMiddleware(120)); // Cache leaderboard for 2 minutes
+// Routes
+app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-
-app.get('/api/submissions', cacheMiddleware(60)); // Cache submissions for 1 minute
+app.use('/api/problems', problemRoutes);
+app.use('/api/contests', contestRoutes);
 app.use('/api/submissions', submissionRoutes);
-// Apply higher-burst limiter for wallet APIs
-app.use('/api/wallet', walletLimiter);
-app.use('/api/wallet', walletRoutes);
-app.use('/api/admin', adminRoutes);
+app.use('/api/admin', admin, adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/discussions', discussionRoutes);
 app.use('/api/contest-problems', contestProblemRoutes);
-app.use('/api/auth', authRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/blog', blogRoutes);
 app.use('/api/oauth', oauthRoutes);
+app.use('/api/wallet', walletLimiter, walletRoutes);
+app.use('/api/email-test', emailTestRoutes);
 app.use('/api/notifications', notificationRoutes);
-app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/chat', chatRoutes);
-app.use('/api/compile', compileRoute);
-app.use('/api/run', runRoute);
-app.use('/api/jdoodle', jdoodleRoutes);
+app.use('/api/leaderboard', leaderboardRoutes);
 
 // --- Rewards: admin triggers for testing ---
 app.post('/api/admin/rewards/run-daily', authenticate, admin, async (req, res) => {
