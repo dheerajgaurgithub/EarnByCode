@@ -627,11 +627,14 @@ app.post('/api/code/submit', authenticate, async (req, res) => {
 // Legacy /api/execute endpoint - REMOVED (now uses Piston API only)
 // app.post('/api/execute', ...);
 
-// Add performance monitoring middleware
-app.use(performanceMonitoringMiddleware);
-
-// Enhanced health check endpoint
-app.get('/api/health', healthCheckWithMetrics);
+// Basic health check endpoint
+app.get('/api/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    env: process.env.NODE_ENV || 'development',
+  });
+});
 
 // Performance dashboard endpoint
 app.get('/api/performance', performanceDashboard);
