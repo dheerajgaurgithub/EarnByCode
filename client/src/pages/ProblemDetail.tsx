@@ -26,28 +26,39 @@ const detectCodeLanguage = (src: string): Language | null => {
 
 const validateJavaSolution = (src: string) => /\bclass\s+Solution\b/.test(src);
 
-// Resolve compiler API base for new Docker sandbox
+// Use Judge0 online compiler API (similar to OnlineGDB)
 const getCompilerBase = () => {
   // First check for environment variable override
   const env: any = (import.meta as any).env || {};
-  const override = env.VITE_COMPILER_API as string | undefined;
+  const override = env.VITE_JUDGE0_API as string | undefined;
   
   if (override && override.trim()) {
     let base = override.trim();
     base = base.replace(/\/+$/, '');
-    // If someone sets full path ending with /compile, strip it to avoid /compile/compile
-    base = base.replace(/\/compile$/i, '');
     return base;
   }
   
-  // Default to the same base as the API if no override is set
-  const apiBase = getApiBase();
-  if (apiBase.includes('earnbycode-mfs3.onrender.com')) {
-    return 'https://earnbycode-mfs3.onrender.com';
-  }
-  
-  // Fallback to local development
-  return 'http://localhost:5000';
+  // Default to Judge0 public API (free tier with rate limits)
+  // For production, set up your own Judge0 instance and use VITE_JUDGE0_API env variable
+  return 'https://judge0-ce.p.rapidapi.com';
+};
+
+// Judge0 language ID mapping for supported languages
+// These IDs are standard for Judge0 CE (Community Edition)
+const getJudge0LanguageId = (lang: Language): number => {
+  const languageIds: Record<Language, number> = {
+    'cpp': 54,        // C++ (GCC 9.2.0)
+    'java': 62,       // Java (OpenJDK 13.0.1)
+    'python': 71,     // Python (3.8.1)
+    'javascript': 63  // JavaScript (Node.js 12.14.0)
+  };
+  return languageIds[lang] || 71;
+};
+
+// Get RapidAPI key from environment (required for Judge0 public API)
+const getJudge0ApiKey = () => {
+  const env: any = (import.meta as any).env || {};
+  return env.VITE_RAPIDAPI_KEY as string | undefined || '';
 };
 
 type Language = 'javascript' | 'python' | 'java' | 'cpp';
@@ -392,35 +403,47 @@ const ProblemDetail: React.FC = () => {
       const tc0 = visibleTestcases && visibleTestcases.length > 0 ? visibleTestcases[0] : undefined;
       const runInput = tc0 ? tc0.input : (problem.examples?.[0]?.input ?? '');
       const expectedText = tc0 ? tc0.expectedOutput : (problem.examples?.[0]?.output ?? '');
-      // Build payload: for Java, pass explicit filename Solution.java
-      const isJava = selectedLanguage === 'java';
-      const payload = isJava
-        ? ({
-            language: 'java',
-            version: '*',
-            files: [{ name: 'Solution.java', content: code }],
-            ...(typeof runInput === 'string' ? { stdin: runInput } : {})
-          } as any)
-        : ({
-            code,
-            language: selectedLanguage,
-            input: typeof runInput === 'string' ? runInput : ''
-          } as any);
-      const resp = await fetch(`${getCompilerBase()}/compile`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-      });
-      if (!resp.ok) {
-        const txt = await resp.text().catch(()=>'');
-        if (resp.status === 503 && /Docker is not available/i.test(txt)) {
-          throw new Error('Backend cannot run code: Docker is not available on the server. Please deploy backend on a Docker-capable host.');
-        }
-        throw new Error(`Compile HTTP ${resp.status}: ${txt}`);
+      
+      // Build Judge0 API payload
+      const judge0Payload = {
+        source_code: code,
+        language_id: getJudge0LanguageId(selectedLanguage),
+        stdin: typeof runInput === 'string' ? runInput : '',
+        cpu_time_limit: 2,
+        memory_limit: 128000
+      };
+      
+      // Call Judge0 API with wait=true to get immediate results
+      const apiKey = getJudge0ApiKey();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Add RapidAPI key if using public Judge0 instance
+      if (apiKey && getCompilerBase().includes('rapidapi.com')) {
+        headers['X-RapidAPI-Key'] = apiKey;
+        headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
       }
+      
+      const resp = await fetch(`${getCompilerBase()}/submissions?base64_encoded=false&wait=true`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(judge0Payload)
+      });
+      
+      if (!resp.ok) {
+        const txt = await resp.text().catch(() => '');
+        throw new Error(`Judge0 API Error (${resp.status}): ${txt}`);
+      }
+      
       const data = await resp.json();
-      const out = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? data?.output ?? '').toString();
-      const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
-      const runtimeMs = typeof data?.runtimeMs === 'number' ? data.runtimeMs : undefined;
-      const memoryKb = typeof data?.memoryKb === 'number' ? data.memoryKb : undefined;
+      
+      // Parse Judge0 response
+      const out = (data?.stdout ?? '').toString().trim();
+      const err = (data?.stderr ?? data?.compile_output ?? '').toString().trim();
+      const runtimeMs = data?.time ? Math.round(parseFloat(data.time) * 1000) : undefined;
+      const memoryKb = data?.memory ? Math.round(data.memory) : undefined;
+      
       const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
       const hasExpected = typeof expectedText === 'string' && expectedText.trim().length > 0;
       const passed = hasExpected ? normalize(out) === normalize(expectedText) : !err;
@@ -493,34 +516,42 @@ const ProblemDetail: React.FC = () => {
       let totalMs = 0;
 
       const runOne = async (stdin: string | undefined, expected: string | undefined) => {
-        const isJava = selectedLanguage === 'java';
-        const payload = isJava
-          ? ({
-              language: 'java',
-              version: '*',
-              files: [{ name: 'Solution.java', content: code }],
-              ...(typeof stdin === 'string' ? { stdin } : {})
-            } as any)
-          : ({
-              code,
-              language: selectedLanguage,
-              input: typeof stdin === 'string' ? stdin : ''
-            } as any);
-        const resp = await fetch(`${getCompilerBase()}/compile`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
-        });
-        if (!resp.ok) {
-          const txt = await resp.text().catch(()=> '');
-          if (resp.status === 503 && /Docker is not available/i.test(txt)) {
-            throw new Error('Backend cannot run code: Docker is not available on the server. Please deploy backend on a Docker-capable host.');
-          }
-          throw new Error(`Compile HTTP ${resp.status}: ${txt}`);
+        // Build Judge0 API payload
+        const judge0Payload = {
+          source_code: code,
+          language_id: getJudge0LanguageId(selectedLanguage),
+          stdin: typeof stdin === 'string' ? stdin : '',
+          cpu_time_limit: 2,
+          memory_limit: 128000
+        };
+        
+        const apiKey = getJudge0ApiKey();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        
+        if (apiKey && getCompilerBase().includes('rapidapi.com')) {
+          headers['X-RapidAPI-Key'] = apiKey;
+          headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
         }
+        
+        const resp = await fetch(`${getCompilerBase()}/submissions?base64_encoded=false&wait=true`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(judge0Payload)
+        });
+        
+        if (!resp.ok) {
+          const txt = await resp.text().catch(() => '');
+          throw new Error(`Judge0 API Error (${resp.status}): ${txt}`);
+        }
+        
         const data = await resp.json();
-        const out = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? data?.output ?? '').toString();
-        const err = (data?.run?.stderr ?? data?.stderr ?? '').toString();
-        const runtimeMs = typeof data?.runtimeMs === 'number' ? data.runtimeMs : undefined;
-        const memoryKb = typeof data?.memoryKb === 'number' ? data.memoryKb : undefined;
+        const out = (data?.stdout ?? '').toString().trim();
+        const err = (data?.stderr ?? data?.compile_output ?? '').toString().trim();
+        const runtimeMs = data?.time ? Math.round(parseFloat(data.time) * 1000) : undefined;
+        const memoryKb = data?.memory ? Math.round(data.memory) : undefined;
+        
         const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
         const hasExpected = typeof expected === 'string' && expected.trim().length > 0;
         const passed = hasExpected ? normalize(out) === normalize(expected!) : !err;
@@ -590,42 +621,46 @@ const ProblemDetail: React.FC = () => {
       return arr;
     })();
 
-    // Map file per language
-    const fileForLang = (lang: Language) => {
-      switch (lang) {
-        case 'javascript': return { name: 'index.js', content: code };
-        case 'python': return { name: 'main.py', content: code };
-        case 'java': return { name: 'Solution.java', content: code };
-        case 'cpp': return { name: 'main.cpp', content: code };
-      }
-    };
-    const pistonLang: Record<Language, string> = {
-      javascript: 'javascript',
-      python: 'python',
-      java: 'java',
-      cpp: 'cpp',
-    };
+    // Judge0 handles language mapping via language_id, no need for file mapping
 
-    // First do a compilation check (where supported) with empty stdin
+    // First do a compilation check with Judge0
     try {
       const prePayload = {
-        code,
-        language: selectedLanguage,
-        input: ''
-      } as any;
-      const pre = await fetch(`${getCompilerBase()}/compile`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(prePayload)
+        source_code: code,
+        language_id: getJudge0LanguageId(selectedLanguage),
+        stdin: '',
+        cpu_time_limit: 2,
+        memory_limit: 128000
+      };
+      
+      const apiKey = getJudge0ApiKey();
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (apiKey && getCompilerBase().includes('rapidapi.com')) {
+        headers['X-RapidAPI-Key'] = apiKey;
+        headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
+      }
+      
+      const pre = await fetch(`${getCompilerBase()}/submissions?base64_encoded=false&wait=true`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(prePayload)
       });
+      
       const preData = await pre.json();
-      const compileErr = (preData?.stderr || '').toString();
-      const compileCode = Number(preData?.exitCode ?? 0);
-      if (compileErr && compileCode !== 0) {
+      const compileErr = (preData?.compile_output ?? preData?.stderr ?? '').toString();
+      const statusId = preData?.status?.id;
+      
+      // Status 6 = Compilation Error
+      if (statusId === 6 || (compileErr && statusId !== 3)) {
         const details = compileErr.replace(/\r\n/g,'\n');
         setStrictReport(`**Status:** Compilation Error\n**Details:**\n${details}`);
         return;
       }
     } catch (e: any) {
-      setStrictReport(`**Status:** Compilation Error\n**Details:**\n${e?.message || 'Executor unavailable'}`);
+      setStrictReport(`**Status:** Compilation Error\n**Details:**\n${e?.message || 'Judge0 API unavailable'}`);
       return;
     }
 
@@ -641,19 +676,35 @@ const ProblemDetail: React.FC = () => {
           ? input.replace(/(\d),(?=\d)/g, '$1.')
           : input;
         const payload = {
-          language: pistonLang[selectedLanguage] || selectedLanguage,
-          version: '*',
-          files: [fileForLang(selectedLanguage)],
-          ...(typeof stdinToUse === 'string' ? { stdin: stdinToUse } : {})
-        } as any;
-        // TLE with AbortController
+          source_code: code,
+          language_id: getJudge0LanguageId(selectedLanguage),
+          stdin: typeof stdinToUse === 'string' ? stdinToUse : '',
+          cpu_time_limit: Math.max(1, Math.floor(Number(tleMs) / 1000) || 5),
+          memory_limit: 128000
+        };
+        
+        const apiKey = getJudge0ApiKey();
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json'
+        };
+        
+        if (apiKey && getCompilerBase().includes('rapidapi.com')) {
+          headers['X-RapidAPI-Key'] = apiKey;
+          headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
+        }
+        
+        // TLE with AbortController (client-side timeout)
         const controller = new AbortController();
         const timer = setTimeout(() => controller.abort(), Math.max(1000, Number(tleMs) || 5000));
         let tle = false;
         let resp: Response;
+        
         try {
-          resp = await fetch(`${getCompilerBase()}/compile`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), signal: controller.signal
+          resp = await fetch(`${getCompilerBase()}/submissions?base64_encoded=false&wait=true`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload),
+            signal: controller.signal
           });
         } catch (err: any) {
           if (err?.name === 'AbortError') {
@@ -664,6 +715,7 @@ const ProblemDetail: React.FC = () => {
         } finally {
           clearTimeout(timer);
         }
+        
         if (tle) {
           const timeText = `${Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0)}ms`;
           report += `---\n**Test Case #${idx}:**\n`;
@@ -676,26 +728,20 @@ const ProblemDetail: React.FC = () => {
           idx += 1;
           continue;
         }
+        
         const data = await resp!.json();
-        const stdout = (data?.run?.output ?? data?.run?.stdout ?? data?.stdout ?? '').toString();
-        const stderr = (data?.run?.stderr ?? data?.stderr ?? '').toString();
-        const rawTime = (data?.run?.timeMs ?? data?.run?.time ?? data?.timeMs ?? data?.time);
-        const rawMem = (data?.run?.memoryKb ?? data?.run?.memory_kb ?? data?.run?.memory ?? data?.memoryKb ?? data?.memory);
-        const parseMs = (v: any): number | undefined => {
-          if (v == null) return undefined; const n = typeof v === 'string' ? parseFloat(v) : Number(v); if (Number.isNaN(n)) return undefined; return n < 100 ? Math.round(n * 1000) : Math.round(n);
-        };
-        const parseKb = (v: any): number | undefined => {
-          if (v == null) return undefined; const n = typeof v === 'string' ? parseFloat(v) : Number(v); if (Number.isNaN(n)) return undefined; return n > 4096 ? Math.round(n / 1024) : Math.round(n);
-        };
-        const providedMs = parseMs(rawTime);
-        const measuredMs = Math.round(((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0));
-        const timeMs = providedMs ?? measuredMs;
-        const memKb = parseKb(rawMem);
+        const stdout = (data?.stdout ?? '').toString();
+        const stderr = (data?.stderr ?? data?.compile_output ?? '').toString();
+        const statusId = data?.status?.id;
+        
+        const timeMs = data?.time ? Math.round(parseFloat(data.time) * 1000) : Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
+        const memKb = data?.memory ? Math.round(data.memory) : undefined;
         const memText = typeof memKb === 'number' ? (memKb >= 1024 ? `${(memKb/1024).toFixed(1)} MB` : `${Math.round(memKb)} KB`) : 'N/A';
         const timeText = `${Math.round(timeMs || 0)}ms`;
-        // Detect executor-side TLE heuristics
-        const killed = (data?.run?.signal === 'SIGKILL') || /time limit exceeded/i.test(stderr || '') || Number(data?.run?.code) === 137;
-        const result = killed ? 'Time Limit Exceeded' : (stderr ? 'Runtime Error' : 'Success');
+        
+        // Judge0 status codes: 3=Accepted, 4=Wrong Answer, 5=Time Limit, 6=Compilation Error, etc.
+        const killed = statusId === 5;
+        const result = killed ? 'Time Limit Exceeded' : (stderr || (statusId && statusId !== 3) ? 'Runtime Error' : 'Success');
 
         report += `---\n**Test Case #${idx}:**\n`;
         report += `**Input:**\n${input || '[No input]'}\n\n`;

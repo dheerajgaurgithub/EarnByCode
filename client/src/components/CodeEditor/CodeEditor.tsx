@@ -68,12 +68,25 @@ const CodeEditor: React.FC = () => {
     return "http://localhost:3000";
   })();
 
-  // Optional Judge0 base; if not set, fallback to apiBase
+  // Judge0 API configuration (primary compiler)
   const judge0Base = (() => {
     const env: any = (import.meta as any).env || {};
-    let base = (env.VITE_JUDGE0_API as string) || apiBase;
-    if (base && base.trim()) base = base.trim().replace(/\/+$/, "");
-    return base;
+    const override = env.VITE_JUDGE0_API as string | undefined;
+    
+    if (override && override.trim()) {
+      let base = override.trim();
+      base = base.replace(/\/+$/, '');
+      return base;
+    }
+    
+    // Default to Judge0 public API via RapidAPI
+    return 'https://judge0-ce.p.rapidapi.com';
+  })();
+  
+  // Get RapidAPI key for Judge0
+  const judge0ApiKey = (() => {
+    const env: any = (import.meta as any).env || {};
+    return env.VITE_RAPIDAPI_KEY as string | undefined || '';
   })();
 
   // Main App API (problems) base URL
@@ -150,92 +163,90 @@ const CodeEditor: React.FC = () => {
     return payload;
   };
 
-  // Enhanced execution with better error handling and validation
-  const executeWithFallback = async (src: string, l: Lang, stdin?: string) => {
-    const urls = [`${apiBase}/compile`, `${apiBase}/execute`];
-    const piston = buildPistonPayload(l, src, stdin);
-    const legacy = { code: src, language: langToApiLang(l), input: stdin ?? "", stdin: stdin ?? "" } as any;
+  // Strong compilation using Judge0 online compiler (primary method)
+  const executeWithJudge0 = async (src: string, l: Lang, stdin?: string) => {
+    console.log(`🚀 Starting Judge0 execution for ${l} with ${stdin?.length || 0} chars of input`);
 
-    console.log(`🚀 Starting execution for ${l} with ${stdin?.length || 0} chars of input`);
-
-    for (const url of urls) {
-      for (const body of [piston, legacy]) {
-        try {
-          console.log(`📡 Attempting ${url} with ${body === piston ? 'piston' : 'legacy'} format`);
-          const res = await fetch(url, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body),
-          });
-
-          if (!res.ok) {
-            const txt = await res.text().catch(() => "");
-            console.warn(`❌ ${url} failed (${res.status}): ${txt}`);
-            if (res.status === 422 || /judge0|unsupported/i.test(txt)) {
-              throw new Error(`Language ${l} not supported by this executor`);
-            }
-            continue;
-          }
-
-          const data = await res.json();
-          console.log(`✅ ${url} succeeded with ${body === piston ? 'piston' : 'legacy'} format`);
-
-          // Enhanced result validation
-          if (!data || typeof data !== 'object') {
-            throw new Error('Invalid response format from executor');
-          }
-
-          return {
-            ...data,
-            executionSource: url,
-            executionMethod: body === piston ? 'piston' : 'legacy'
-          };
-        } catch (error: any) {
-          console.warn(`❌ ${url} error:`, error.message);
-          continue;
-        }
-      }
-    }
-
-    // If all attempts fail, try Judge0 as last resort
     try {
-      console.log(`🔄 Attempting Judge0 fallback for ${l}`);
-      const url = `${judge0Base}/submissions?base64_encoded=false&wait=true`;
-      const body = {
+      // Build Judge0 API payload
+      const payload = {
         source_code: src,
         language_id: judge0LanguageId(l),
         stdin: stdin ?? "",
-      } as any;
+        cpu_time_limit: 2,
+        memory_limit: 128000,
+      };
 
-      const res = await fetch(url, {
+      // Prepare headers
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      // Add RapidAPI authentication if using public Judge0
+      if (judge0ApiKey && judge0Base.includes('rapidapi.com')) {
+        headers['X-RapidAPI-Key'] = judge0ApiKey;
+        headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
+      }
+
+      console.log(`📡 Calling Judge0 API at ${judge0Base}`);
+
+      const res = await fetch(`${judge0Base}/submissions?base64_encoded=false&wait=true`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        headers,
+        body: JSON.stringify(payload),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        console.log(`✅ Judge0 execution succeeded for ${l}`);
-
-        return {
-          stdout: data?.stdout ?? "",
-          stderr: data?.stderr ?? "",
-          output: typeof data?.stdout === "string" ? data.stdout : "",
-          exitCode:
-            typeof data?.status?.id === "number" && data.status.id === 3
-              ? 0
-              : (data?.status?.id ?? 1),
-          runtimeMs: data?.time ? Math.round(Number(data.time) * 1000) : undefined,
-          memoryKb: typeof data?.memory === "number" ? data.memory : undefined,
-          executionSource: 'judge0',
-          executionMethod: 'judge0'
-        };
+      if (!res.ok) {
+        const txt = await res.text().catch(() => "");
+        console.error(`❌ Judge0 API failed (${res.status}): ${txt}`);
+        
+        // Provide helpful error messages
+        if (res.status === 401) {
+          throw new Error(`🔑 Judge0 API Authentication Failed. Please set VITE_RAPIDAPI_KEY in your .env file. See JUDGE0_SETUP.md for instructions.`);
+        }
+        if (res.status === 429) {
+          throw new Error(`⏱️ Rate limit exceeded. You've used all your free Judge0 requests for today. Please wait 24 hours or upgrade your plan.`);
+        }
+        if (res.status === 503) {
+          throw new Error(`🔧 Judge0 service temporarily unavailable. Please try again in a few moments.`);
+        }
+        
+        throw new Error(`Judge0 API Error (${res.status}): ${txt}`);
       }
-    } catch (error: any) {
-      console.warn(`❌ Judge0 fallback failed:`, error.message);
-    }
 
-    throw new Error(`💥 All execution methods failed for ${l}. Please check your code and try again.`);
+      const data = await res.json();
+      console.log(`✅ Judge0 execution succeeded for ${l}`);
+
+      // Parse Judge0 response format
+      const statusId = data?.status?.id;
+      const stdout = (data?.stdout ?? "").toString();
+      const stderr = (data?.stderr ?? data?.compile_output ?? "").toString();
+      const time = data?.time ? Math.round(parseFloat(data.time) * 1000) : undefined;
+      const memory = data?.memory ? Math.round(data.memory) : undefined;
+
+      // Status codes: 3=Accepted, 4=Wrong Answer, 5=Time Limit, 6=Compilation Error
+      const exitCode = statusId === 3 ? 0 : (statusId ?? 1);
+
+      // Enhanced result validation
+      if (!data || typeof data !== 'object') {
+        throw new Error('Invalid response format from Judge0');
+      }
+
+      return {
+        stdout,
+        stderr,
+        output: stdout,
+        exitCode,
+        runtimeMs: time,
+        memoryKb: memory,
+        executionSource: 'judge0',
+        executionMethod: 'judge0',
+        status: data?.status,
+      };
+    } catch (error: any) {
+      console.error(`💥 Judge0 execution failed:`, error.message);
+      throw error;
+    }
   };
 
   // Theme classes
@@ -300,7 +311,7 @@ const CodeEditor: React.FC = () => {
             const visible = arr
               .filter((t: any) => {
                 const hidden =
-                  t?.hidden ?? t?.isHidden ?? t?.visibility === "hidden" ?? t?.private === true;
+                  t?.hidden || t?.isHidden || t?.visibility === "hidden" || t?.private === true;
                 return !hidden;
               })
               .map((t: any) => ({
@@ -419,35 +430,39 @@ const CodeEditor: React.FC = () => {
 
       console.log(`📝 Running with input: ${effectiveInput?.substring(0, 50)}${effectiveInput?.length > 50 ? '...' : ''}`);
 
-      const data = await executeWithFallback(code, lang, effectiveInput);
+      const data = await executeWithJudge0(code, lang, effectiveInput);
 
-      const outText =
-        typeof data?.run?.output === "string"
-          ? data.run.output
-          : typeof data?.run?.stdout === "string"
-          ? data.run.stdout
-          : typeof data?.output === "string"
-          ? data.output
-          : typeof data?.stdout === "string"
-          ? data.stdout
-          : JSON.stringify(data);
+      // Check for compilation errors (Judge0 status 6)
+      if (data?.status?.id === 6) {
+        const compileError = data?.stderr || 'Compilation failed';
+        throw new Error(`🔨 Compilation Error:\n${compileError}`);
+      }
+
+      // Check for runtime errors (Judge0 status 5, 7-14)
+      const statusId = data?.status?.id;
+      if (statusId && statusId !== 3 && statusId >= 4) {
+        const statusDesc = data?.status?.description || 'Runtime error';
+        console.warn(`⚠️ Execution status: ${statusDesc}`);
+      }
+
+      const outText = data?.stdout || data?.output || "";
+      const errText = data?.stderr || "";
 
       setOutput(outText);
-      setStdoutText(
-        typeof data?.run?.stdout === "string" ? data.run.stdout : typeof data?.stdout === "string" ? data.stdout : outText
-      );
-      setStderrText(typeof data?.run?.stderr === "string" ? data.run.stderr : typeof data?.stderr === "string" ? data.stderr : "");
+      setStdoutText(outText);
+      setStderrText(errText);
 
       // Enhanced logging with execution details
       const executionDetails = [
         `🔧 Language: ${lang}`,
-        `📡 Execution Source: ${data.executionSource || 'unknown'}`,
-        `⚙️ Execution Method: ${data.executionMethod || 'unknown'}`,
-        `⏱️ Runtime: ${data.runtimeMs || 'unknown'}ms`,
-        `💾 Memory: ${data.memoryKb || 'unknown'}KB`,
-        `📊 Exit Code: ${data.exitCode || 'unknown'}`,
-        outText ? `📤 Output: ${outText.substring(0, 200)}${outText.length > 200 ? '...' : ''}` : '📤 No output'
-      ].join('\n');
+        `📡 Execution Source: Judge0 Online Compiler`,
+        `✅ Status: ${data?.status?.description || 'Success'}`,
+        `⏱️ Runtime: ${data.runtimeMs || '0'}ms`,
+        `💾 Memory: ${data.memoryKb || '0'}KB`,
+        `📊 Exit Code: ${data.exitCode ?? 0}`,
+        outText ? `📤 Output: ${outText.substring(0, 300)}${outText.length > 300 ? '...' : ''}` : '📤 No output',
+        errText ? `⚠️ Stderr: ${errText.substring(0, 200)}` : ''
+      ].filter(Boolean).join('\n');
 
       setCompilerLog(executionDetails);
 
@@ -483,8 +498,25 @@ const CodeEditor: React.FC = () => {
     } catch (e: any) {
       console.error(`💥 Execution failed:`, e.message);
       const msg = e?.message || "❌ Run failed - Please check your code and try again";
+      
+      // Show user-friendly error messages
       setOutput(msg);
-      setCompilerLog(`${msg}\n\n🔍 Debug Info:\n${e.stack || 'No stack trace available'}`);
+      
+      let detailedLog = `${msg}\n\n`;
+      
+      // Add helpful tips based on error type
+      if (msg.includes('Authentication Failed')) {
+        detailedLog += `💡 Quick Fix:\n1. Create a .env file in the client folder\n2. Add: VITE_RAPIDAPI_KEY=your_key_here\n3. Get free key from: https://rapidapi.com/judge0-official/api/judge0-ce\n\n`;
+      } else if (msg.includes('Rate limit')) {
+        detailedLog += `💡 Solutions:\n1. Wait 24 hours for reset (free tier)\n2. Upgrade RapidAPI plan\n3. Self-host Judge0 (unlimited)\n\n`;
+      } else if (msg.includes('Compilation Error')) {
+        detailedLog += `💡 Check for:\n1. Syntax errors\n2. Missing semicolons\n3. Undefined variables\n4. Wrong class/function names\n\n`;
+      }
+      
+      detailedLog += `🔍 Debug Info:\n${e.stack || 'No additional details'}\n`;
+      detailedLog += `\n📚 Need help? Check JUDGE0_SETUP.md for setup instructions.`;
+      
+      setCompilerLog(detailedLog);
       setPassed(false);
       setShowLog(true);
     } finally {
@@ -520,26 +552,23 @@ const CodeEditor: React.FC = () => {
       console.log(`🔄 Running test case ${i + 1}/${testcases.length}`);
 
       try {
-        const data = await executeWithFallback(code, lang, tc.input);
+        const data = await executeWithJudge0(code, lang, tc.input);
 
         if (!data || typeof data !== 'object') {
-          throw new Error('Invalid execution response');
+          throw new Error('Invalid execution response from Judge0');
         }
 
-        const outputText =
-          typeof data?.run?.output === "string"
-            ? data.run.output
-            : typeof data?.run?.stdout === "string"
-            ? data.run.stdout
-            : typeof data?.output === "string"
-            ? data.output
-            : typeof data?.stdout === "string"
-            ? data.stdout
-            : JSON.stringify(data);
-
-        const exit = typeof data?.exitCode === "number" ? data.exitCode : null;
-        const runtime = typeof data?.runtimeMs === "number" ? data.runtimeMs : undefined;
-        const memory = typeof data?.memoryKb === "number" ? data.memoryKb : undefined;
+        // Parse Judge0 response
+        const outputText = data?.stdout || data?.output || "";
+        const stderr = data?.stderr || "";
+        const exit = data?.exitCode ?? null;
+        const runtime = data?.runtimeMs;
+        const memory = data?.memoryKb;
+        
+        // Check for compilation errors
+        if (data?.status?.id === 6) {
+          throw new Error(`Compilation Error: ${stderr || 'Unknown compilation error'}`);
+        }
 
         const normalizedOutput = normalize(outputText);
         const normalizedExpected = normalize(tc.expected);
