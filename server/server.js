@@ -69,6 +69,7 @@ import emailTestRoutes from './routes/email-test.js';
 import notificationRoutes from './routes/notifications.js';
 import chatRoutes from './routes/chat.js';
 import leaderboardRoutes from './routes/leaderboard.js';
+import jdoodleRoutes from './routes/jdoodle.js';
 import { authenticate } from './middleware/auth.js';
 import admin from './middleware/admin.js';
 import Problem from './models/Problem.js';
@@ -758,6 +759,7 @@ app.use('/api/leaderboard', leaderboardRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/compile', compileRoute);
 app.use('/api/run', runRoute);
+app.use('/api/jdoodle', jdoodleRoutes);
 
 // --- Rewards: admin triggers for testing ---
 app.post('/api/admin/rewards/run-daily', authenticate, admin, async (req, res) => {

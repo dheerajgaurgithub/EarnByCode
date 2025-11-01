@@ -98,6 +98,40 @@ const CodeEditor: React.FC = () => {
     return base;
   };
 
+  // Execute via backend JDoodle proxy (preferred when available)
+  const executeWithJDoodle = async (src: string, l: Lang, stdin?: string) => {
+    const language = langToApiLang(l);
+    const url = `${getApiBase()}/jdoodle/run`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code: src, language, stdin })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({} as any));
+      throw new Error(err?.error || `JDoodle request failed (${res.status})`);
+    }
+    const data = await res.json();
+    return {
+      stdout: String(data?.stdout || data?.output || ''),
+      stderr: String(data?.stderr || ''),
+      exitCode: typeof data?.exitCode === 'number' ? data.exitCode : (data?.statusCode === 200 ? 0 : 1),
+      runtimeMs: typeof data?.runtimeMs === 'number' ? data.runtimeMs : (data?.cpuTime ? Math.round(parseFloat(String(data.cpuTime)) * 1000) : undefined),
+      memoryKb: typeof data?.memoryKb === 'number' ? data.memoryKb : (data?.memory ? parseInt(String(data.memory), 10) : undefined),
+      status: data?.status || undefined,
+    };
+  };
+
+  // Prefer JDoodle, fallback to Judge0
+  const executePreferred = async (src: string, l: Lang, stdin?: string) => {
+    try {
+      return await executeWithJDoodle(src, l, stdin);
+    } catch (e) {
+      console.warn('JDoodle failed, falling back to Judge0:', (e as any)?.message || e);
+      return await executeWithJudge0(src, l, stdin);
+    }
+  };
+
   // Optional executor backend mode (e.g., 'judge0')
   const backendMode = (() => {
     const env: any = (import.meta as any).env || {};
@@ -430,7 +464,7 @@ const CodeEditor: React.FC = () => {
 
       console.log(`📝 Running with input: ${effectiveInput?.substring(0, 50)}${effectiveInput?.length > 50 ? '...' : ''}`);
 
-      const data = await executeWithJudge0(code, lang, effectiveInput);
+      const data = await executePreferred(code, lang, effectiveInput);
 
       // Check for compilation errors (Judge0 status 6)
       if (data?.status?.id === 6) {
@@ -445,7 +479,7 @@ const CodeEditor: React.FC = () => {
         console.warn(`⚠️ Execution status: ${statusDesc}`);
       }
 
-      const outText = data?.stdout || data?.output || "";
+      const outText = String(data?.stdout ?? (data as any)?.output ?? "");
       const errText = data?.stderr || "";
 
       setOutput(outText);
@@ -552,14 +586,14 @@ const CodeEditor: React.FC = () => {
       console.log(`🔄 Running test case ${i + 1}/${testcases.length}`);
 
       try {
-        const data = await executeWithJudge0(code, lang, tc.input);
+        const data = await executePreferred(code, lang, tc.input);
 
         if (!data || typeof data !== 'object') {
           throw new Error('Invalid execution response from Judge0');
         }
 
         // Parse Judge0 response
-        const outputText = data?.stdout || data?.output || "";
+        const outputText = String(data?.stdout ?? (data as any)?.output ?? "");
         const stderr = data?.stderr || "";
         const exit = data?.exitCode ?? null;
         const runtime = data?.runtimeMs;
