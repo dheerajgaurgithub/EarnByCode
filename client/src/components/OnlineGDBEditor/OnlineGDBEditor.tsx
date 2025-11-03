@@ -6,8 +6,8 @@ export type Language = 'javascript' | 'python' | 'java' | 'cpp';
 interface OnlineGDBEditorProps {
   code: string;
   language: Language;
-  onRun: () => void;
-  onCodeChange?: (code: string) => void;
+  onRun: (code: string, language: Language) => Promise<void>;
+  onCodeChange?: (code: string, language: Language) => void;
   isRunning: boolean;
   isSubmitting: boolean;
 }
@@ -42,6 +42,17 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     setIsReloading(false);
     setError(null);
     
+    // Set up message listener for code changes
+    const handleMessage = (event: MessageEvent) => {
+      if (!iframeRef.current?.contentWindow || event.source !== iframeRef.current.contentWindow) return;
+      
+      if (event.data?.type === 'codeChange' && onCodeChange) {
+        onCodeChange(event.data.code, currentLanguage);
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    
     // Inject code into the editor after a short delay to ensure it's ready
     const timer = setTimeout(() => {
       if (initialCode && iframeRef.current?.contentWindow) {
@@ -50,11 +61,55 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
           code: initialCode,
           language: languageMap[currentLanguage]
         }, '*');
+        
+        // Set up code execution handler
+        iframeRef.current.contentWindow.postMessage({
+          type: 'setRunHandler',
+          handler: 'runCode'
+        }, '*');
       }
-    }, 1000);
+    }, 2000); // Increased delay to ensure editor is fully loaded
     
-    return () => clearTimeout(timer);
-  }, [initialCode, currentLanguage]);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('message', handleMessage);
+    };
+  }, [initialCode, currentLanguage, onCodeChange]);
+  
+  // Handle run button click
+  const handleRun = useCallback(async () => {
+    const contentWindow = iframeRef.current?.contentWindow;
+    if (!contentWindow) return;
+    
+    try {
+      // Get the current code from the editor
+      const code = await new Promise<string>((resolve) => {
+        const messageHandler = (event: MessageEvent) => {
+          if (event.source === contentWindow && event.data?.type === 'getCodeResponse') {
+            window.removeEventListener('message', messageHandler);
+            resolve(event.data.code);
+          }
+        };
+        
+        window.addEventListener('message', messageHandler);
+        contentWindow.postMessage({ type: 'getCode' }, '*');
+        
+        // Timeout if no response
+        setTimeout(() => {
+          window.removeEventListener('message', messageHandler);
+          resolve('');
+        }, 1000);
+      });
+      
+      // Call the parent's onRun with the current code and language
+      if (code && onRun) {
+        await onRun(code, currentLanguage);
+      }
+    } catch (err) {
+      console.error('Error running code:', err);
+      setError('Failed to run code. Please try again.');
+    }
+  }, [onRun, currentLanguage]);
 
   // Initialize the editor when component mounts
   useEffect(() => {
@@ -87,8 +142,8 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
         // Add origin validation if needed
         // if (event.origin !== 'https://www.onlinegdb.com') return;
         
-        if (event.data && event.data.type === 'codeUpdate' && onCodeChange) {
-          onCodeChange(event.data.code);
+        if (event.data?.type === 'codeUpdate' && onCodeChange) {
+          onCodeChange(event.data.code, currentLanguage);
         }
       };
 
@@ -165,22 +220,6 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
       setError('Could not toggle fullscreen mode. Your browser may not support this feature.');
     }
   }, []);
-
-  // Handle run button click
-  const handleRun = useCallback(() => {
-    // Notify parent component to run the code
-    onRun();
-    
-    // If we have access to the iframe, we could potentially trigger the run command directly
-    // This would require the iframe to be on the same origin or have proper CORS headers
-    try {
-      if (iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({ type: 'runCode' }, '*');
-      }
-    } catch (err) {
-      console.warn('Could not send run command to iframe:', err);
-    }
-  }, [onRun]);
 
   // Get the URL for the current language
   const getIframeUrl = useCallback(() => {
@@ -271,8 +310,20 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
             </div>
           )}
         </div>
-        
+
         <div className="flex items-center space-x-2">
+          <button
+            onClick={handleRun}
+            disabled={isRunning || isSubmitting}
+            className="p-1.5 rounded-md hover:bg-blue-700/30 dark:hover:bg-green-700/50 transition-colors disabled:opacity-50"
+            title="Run code"
+            aria-label="Run code"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
           <button
             onClick={toggleFullscreen}
             className="p-1.5 rounded-md hover:bg-blue-700/30 dark:hover:bg-green-700/50 transition-colors"
@@ -292,7 +343,6 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
         </div>
       </div>
 
-      {/* OnlineGDB iframe */}
       <div className="flex-1 relative bg-gray-50 dark:bg-gray-900" style={{ minHeight: '300px' }}>
         {error ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center">
@@ -328,9 +378,14 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
           <iframe
             ref={iframeRef}
             src={getIframeUrl()}
-            className="w-full h-full border-0"
+            className="w-full h-full border-0 focus:outline-none"
             title="OnlineGDB Code Editor"
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-top-navigation allow-top-navigation-by-user-activation"
+            allow="clipboard-read; clipboard-write; fullscreen"
+            style={{ pointerEvents: 'auto' }}
+            data-gramm_editor="false"
+            data-gramm="false"
+            data-enable-grammarly="false"
             allowFullScreen
             onError={() => setError('Failed to load the code editor. Please check your internet connection.')}
             onLoad={handleIframeLoad}
@@ -340,4 +395,5 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     </div>
   );
 };
+
 export default OnlineGDBEditor;
