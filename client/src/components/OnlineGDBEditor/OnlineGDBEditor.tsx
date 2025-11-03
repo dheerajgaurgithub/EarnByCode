@@ -1,9 +1,19 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Play, CheckCircle, XCircle, Loader2, RotateCw, Maximize2, Minimize2, AlertCircle } from 'lucide-react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
+import { 
+  Play, 
+  RotateCw, 
+  AlertCircle, 
+  Check, 
+  X, 
+  ChevronDown, 
+  ChevronUp,
+  XCircle, 
+  Loader2,
+  CheckCircle 
+} from 'lucide-react';
 import Editor from '@monaco-editor/react';
 import axios, { AxiosError } from 'axios';
 import './OnlineGDBEditor.css';
-
 export type Language = 'javascript' | 'python' | 'java' | 'cpp';
 
 interface OnlineGDBEditorProps {
@@ -12,10 +22,10 @@ interface OnlineGDBEditorProps {
   onRun: (code: string, language: Language) => Promise<void>;
   onCodeChange?: (code: string, language: Language) => void;
   isSubmitting: boolean;
+  isRunning?: boolean;
   testCases?: Array<{ input: string; expected: string }>;
 }
 
-// Map our language codes to OnlineGDB language codes and Monaco editor language IDs
 const languageMap: Record<Language, { onlineGdbId: string; monacoLang: string }> = {
   'javascript': { onlineGdbId: 'nodejs', monacoLang: 'javascript' },
   'python': { onlineGdbId: 'python3', monacoLang: 'python' },
@@ -23,7 +33,6 @@ const languageMap: Record<Language, { onlineGdbId: string; monacoLang: string }>
   'cpp': { onlineGdbId: 'cpp', monacoLang: 'cpp' }
 };
 
-// Default code templates for each language
 const defaultCodeTemplates: Record<Language, string> = {
   'javascript': '// Write your JavaScript code here\nconsole.log("Hello, World!");',
   'python': '# Write your Python code here\nprint("Hello, World!")',
@@ -31,7 +40,6 @@ const defaultCodeTemplates: Record<Language, string> = {
   'cpp': '#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}'
 };
 
-// Language display names
 const languageNames: Record<Language, string> = {
   'javascript': 'JavaScript (Node.js)',
   'python': 'Python 3',
@@ -60,22 +68,16 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     passed: boolean;
     status: 'pending' | 'running' | 'completed';
   }>>([]);
-  const [isFullscreen, setIsFullscreen] = useState(false); 
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [lastCodeUpdate, setLastCodeUpdate] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Handle code changes with debounce
   const handleCodeChange = useCallback((value: string | undefined) => {
     const newCode = value || '';
     setCode(newCode);
-    setLastCodeUpdate(Date.now());
     if (onCodeChange) {
       onCodeChange(newCode, currentLanguage);
     }
   }, [currentLanguage, onCodeChange]);
 
-  // Execute code using OnlineGDB API with retry mechanism
   const executeCode = async (input: string = '', retryCount = 0): Promise<void> => {
     const maxRetries = 2;
     setIsExecuting(true);
@@ -127,7 +129,6 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     }
   };
 
-  // Run all test cases
   const runAllTests = async () => {
     if (testCases.length === 0) {
       setError('No test cases available.');
@@ -187,16 +188,13 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     }
   };
   
-  // Handle run button click
   const handleRun = async () => {
     setOutput('');
     await executeCode();
   };
 
-  // Handle language change
   const handleLanguageChange = (lang: Language) => {
     setCurrentLanguage(lang);
-    // Update code to default template if it's the initial code or empty
     if (!code || code === defaultCodeTemplates[currentLanguage]) {
       setCode(defaultCodeTemplates[lang]);
       if (onCodeChange) {
@@ -205,84 +203,10 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     }
   };
 
-  // Initialize the editor when component mounts
-  useEffect(() => {
-    try {
-      // Only load the script if it hasn't been loaded already
-      if (!document.querySelector('script[src*="onlinegdb.com/static/embed.js"]')) {
-        const script = document.createElement('script');
-        script.src = 'https://www.onlinegdb.com/static/embed.js';
-        script.async = true;
-        script.integrity = 'sha384-...'; 
-        script.crossOrigin = 'anonymous';
-        script.onload = () => {
-          console.log('OnlineGDB script loaded successfully');
-          setError(null);
-        };
-        script.onerror = (e) => {
-          console.error('Failed to load OnlineGDB script:', e);
-          setError('Failed to load OnlineGDB editor. Please check your internet connection and try again.');
-        };
-        document.body.appendChild(script);
-      }
-
-      // Handle fullscreen change events
-      const handleFullscreenChange = () => {
-        setIsFullscreen(!!document.fullscreenElement);
-      };
-
-      // Handle message events from the iframe
-      const handleMessage = (event: MessageEvent) => {
-        // Add origin validation if needed
-        // if (event.origin !== 'https://www.onlinegdb.com') return;
-        
-        if (event.data?.type === 'codeUpdate' && onCodeChange) {
-          onCodeChange(event.data.code, currentLanguage);
-        }
-      };
-
-      window.addEventListener('message', handleMessage);
-      document.addEventListener('fullscreenchange', handleFullscreenChange);
-
-      return () => {
-        window.removeEventListener('message', handleMessage);
-        document.removeEventListener('fullscreenchange', handleFullscreenChange);
-      };
-    } catch (err) {
-      setError('Error initializing the code editor. Please refresh the page.');
-      console.error('Editor initialization error:', err);
-    }
-  }, [onCodeChange, currentLanguage]);
-
-  
-  // Handle language changes
-  useEffect(() => {
-    if (initialLanguage !== currentLanguage) {
-      setCurrentLanguage(initialLanguage);
-      // Force iframe reload when language changes
-      setIsInitialized(false);
-    }
-  }, [initialLanguage, currentLanguage]);
-
-  // Handle code updates from parent
-  useEffect(() => {
-    if (isInitialized && iframeRef.current?.contentWindow && Date.now() - lastCodeUpdate > 1000) {
-      iframeRef.current.contentWindow.postMessage({
-        type: 'setCode',
-        code: initialCode,
-        language: languageMap[currentLanguage],
-      }, '*');
-    }
-  }, [initialCode, isInitialized, currentLanguage, lastCodeUpdate]);
-
-  // Handle reloading the editor
   const handleReload = useCallback(() => {
-    setIsInitialized(false);
     setError(null);
-    setLastCodeUpdate(Date.now());
   }, []);
 
-  // Toggle fullscreen mode
   const toggleFullscreen = useCallback(() => {
     try {
       if (!document.fullscreenElement) {
@@ -290,20 +214,16 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
         if (editorElement?.requestFullscreen) {
           editorElement.requestFullscreen().catch(console.error);
         } else if ((editorElement as any)?.webkitRequestFullscreen) {
-          // Safari support
           (editorElement as any).webkitRequestFullscreen();
         } else if ((editorElement as any)?.msRequestFullscreen) {
-          // IE11 support
           (editorElement as any).msRequestFullscreen();
         }
       } else {
         if (document.exitFullscreen) {
           document.exitFullscreen().catch(console.error);
         } else if ((document as any).webkitExitFullscreen) {
-          // Safari support
           (document as any).webkitExitFullscreen();
         } else if ((document as any).msExitFullscreen) {
-          // IE11 support
           (document as any).msExitFullscreen();
         }
       }
@@ -313,46 +233,34 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     }
   }, []);
 
-  // Get the URL for the current language
   const getIframeUrl = useCallback(() => {
     const lang = languageMap[currentLanguage]?.onlineGdbId || 'cpp';
-    // Use the standard OnlineGDB editor URL
     return `https://www.onlinegdb.com/online_${lang}_compiler`;
   }, [currentLanguage]);
 
   const languageOptions: Language[] = ['javascript', 'python', 'java', 'cpp'];
 
-  // Handle keyboard shortcuts
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      if (!isExecuting && !isSubmitting) {
+        handleRun();
+      }
+    } else if (e.key === 'F11') {
+      e.preventDefault();
+      toggleFullscreen();
+    } else if (e.key === 'Escape' && document.fullscreenElement) {
+      e.preventDefault();
+      toggleFullscreen();
+    }
+  }, [isExecuting, isSubmitting, toggleFullscreen]);
+
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in inputs/textarea
-      const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
-        return;
-      }
-
-      // Ctrl+Enter or Cmd+Enter to run code
-      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-        e.preventDefault();
-        if (!isExecuting && !isSubmitting) {
-          handleRun();
-        }
-      }
-      // F11 to toggle fullscreen
-      else if (e.key === 'F11') {
-        e.preventDefault();
-        toggleFullscreen();
-      }
-      // Escape to exit fullscreen
-      else if (e.key === 'Escape' && document.fullscreenElement) {
-        e.preventDefault();
-        toggleFullscreen();
-      }
-    };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isExecuting, isSubmitting, toggleFullscreen]);
+  }, [handleKeyDown]);
+
+  const [showTestCases, setShowTestCases] = useState(true);
 
   return (
     <div className="flex flex-col h-full w-full bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">

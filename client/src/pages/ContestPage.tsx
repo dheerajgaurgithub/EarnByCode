@@ -615,9 +615,14 @@ const ContestPage = () => {
     }
   }, [problems, currentProblem, userCode, language, getProblemId, isRunning, isRunningAll, isSubmitting]);
 
-  const handleRunCode = useCallback(() => {
-    if (!currentProblem) return;
-    handleRunTests(String(getProblemId(currentProblem)));
+  const handleRunCode = useCallback(async (code: string, language: Language) => {
+    if (!currentProblem) return Promise.resolve();
+    setIsRunning(true);
+    try {
+      await handleRunTests(String(getProblemId(currentProblem)));
+    } finally {
+      setIsRunning(false);
+    }
   }, [currentProblem, handleRunTests, getProblemId]);
 
   // Handle code changes in the editor
