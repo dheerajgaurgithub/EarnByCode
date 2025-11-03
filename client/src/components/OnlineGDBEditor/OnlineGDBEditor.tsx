@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { AlertCircle, Info, Maximize2, Minimize2, Play, ExternalLink, RefreshCw } from 'lucide-react';
+import { AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
 
 export type Language = 'javascript' | 'python' | 'java' | 'cpp';
 
@@ -31,12 +31,30 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showHelp, setShowHelp] = useState(true);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isHelpExpanded, setIsHelpExpanded] = useState(true);
   const [isReloading, setIsReloading] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState<Language>(initialLanguage);
   const [lastCodeUpdate, setLastCodeUpdate] = useState(Date.now());
+
+  // Handle iframe load events
+  const handleIframeLoad = useCallback(() => {
+    setIsInitialized(true);
+    setIsReloading(false);
+    setError(null);
+    
+    // Inject code into the editor after a short delay to ensure it's ready
+    const timer = setTimeout(() => {
+      if (initialCode && iframeRef.current?.contentWindow) {
+        iframeRef.current.contentWindow.postMessage({
+          type: 'setCode',
+          code: initialCode,
+          language: languageMap[currentLanguage]
+        }, '*');
+      }
+    }, 1000);
+    
+    return () => clearTimeout(timer);
+  }, [initialCode, currentLanguage]);
 
   // Initialize the editor when component mounts
   useEffect(() => {
@@ -44,10 +62,17 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
       // Only load the script if it hasn't been loaded already
       if (!document.querySelector('script[src*="onlinegdb.com/static/embed.js"]')) {
         const script = document.createElement('script');
-        script.src = '//www.onlinegdb.com/static/embed.js';
+        script.src = 'https://www.onlinegdb.com/static/embed.js';
         script.async = true;
-        script.onerror = () => {
-          setError('Failed to load OnlineGDB editor. Please check your internet connection.');
+        script.integrity = 'sha384-...'; // Add integrity hash if available
+        script.crossOrigin = 'anonymous';
+        script.onload = () => {
+          console.log('OnlineGDB script loaded successfully');
+          setError(null);
+        };
+        script.onerror = (e) => {
+          console.error('Failed to load OnlineGDB script:', e);
+          setError('Failed to load OnlineGDB editor. Please check your internet connection and try again.');
         };
         document.body.appendChild(script);
       }
@@ -80,25 +105,6 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     }
   }, [onCodeChange]);
 
-  // Handle iframe load events
-  const handleIframeLoad = useCallback(() => {
-    setIsInitialized(true);
-    setIsReloading(false);
-    setError(null);
-    
-    // Inject code into the editor after a short delay to ensure it's ready
-    const timer = setTimeout(() => {
-      if (initialCode && iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({
-          type: 'setCode',
-          code: initialCode,
-          language: languageMap[currentLanguage]
-        }, '*');
-      }
-    }, 1000);
-    
-    return () => clearTimeout(timer);
-  }, [initialCode, currentLanguage]);
   
   // Handle language changes
   useEffect(() => {
@@ -179,6 +185,7 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
   // Get the URL for the current language
   const getIframeUrl = useCallback(() => {
     const lang = languageMap[currentLanguage] || 'cpp';
+    // Force HTTPS and use the embed endpoint
     const url = new URL(`https://www.onlinegdb.com/online_${lang}_compiler`);
     
     // Add initial code as URL parameter if provided
@@ -189,6 +196,11 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     // Add theme parameter (light/dark)
     const isDark = document.documentElement.classList.contains('dark');
     url.searchParams.set('theme', isDark ? 'dark' : 'light');
+    
+    // Disable menu and enable embedding
+    url.searchParams.set('hideNewFileOption', 'true');
+    url.searchParams.set('hideStdinTab', 'true');
+    url.searchParams.set('hideResult', 'true');
     
     // Add unique timestamp to prevent caching issues
     url.searchParams.set('_', Date.now().toString());
@@ -263,229 +275,69 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
         <div className="flex items-center space-x-2">
           <button
             onClick={toggleFullscreen}
-            className="p-1.5 rounded-md hover:bg-blue-700/30 dark:hover:bg-green-700/30 transition-colors text-blue-100 hover:text-white"
-            title={isFullscreen ? 'Exit fullscreen (Esc)' : 'Enter fullscreen (F11)'}
+            className="p-1.5 rounded-md hover:bg-blue-700/30 dark:hover:bg-green-700/50 transition-colors"
+            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
             aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
           >
             {isFullscreen ? (
-              <Minimize2 className="h-4 w-4" />
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
             ) : (
-              <Maximize2 className="h-4 w-4" />
-            )}
-          </button>
-          
-          <button
-            onClick={handleRun}
-            disabled={isRunning || isSubmitting}
-            className={`inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-md font-medium text-sm transition-all ${
-              isRunning || isSubmitting
-                ? 'bg-blue-500/50 text-blue-100 cursor-not-allowed'
-                : 'bg-white text-blue-700 hover:bg-blue-50 shadow-md hover:shadow-lg active:shadow-md transform hover:scale-105 active:scale-100'
-            }`}
-          >
-            {isRunning || isSubmitting ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <span>{isSubmitting ? 'Submitting...' : 'Running...'}</span>
-              </>
-            ) : (
-              <>
-                <Play className="h-4 w-4 fill-current" />
-                <span>Run Code</span>
-                <span className="text-xs opacity-70 ml-1 hidden sm:inline">(Ctrl+Enter)</span>
-              </>
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0-4h-4m4 0l-5 5" />
+              </svg>
             )}
           </button>
         </div>
       </div>
-
-      {/* Help message */}
-      {showHelp && (
-        <div className="bg-blue-50 dark:bg-blue-900/30 border-b border-blue-200 dark:border-blue-800 p-3 text-sm text-blue-800 dark:text-blue-200">
-          <div className="flex items-start">
-            <Info className="h-4 w-4 mt-0.5 mr-2 flex-shrink-0 text-blue-600 dark:text-blue-300" />
-            <div className="flex-1">
-              <div className="flex justify-between items-start">
-                <p className="font-medium">Using the OnlineGDB Editor</p>
-                <button 
-                  onClick={() => setShowHelp(false)}
-                  className="text-blue-600 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-100"
-                  aria-label="Hide help"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-              <p className="mt-1 text-sm">
-                You can write and run your code directly in the embedded OnlineGDB editor. 
-                The editor supports {getLanguageName()} and provides a full development environment.
-              </p>
-              
-              {isHelpExpanded && (
-                <div className="mt-3 space-y-2">
-                  <div className="flex items-center text-xs">
-                    <kbd className="bg-white dark:bg-gray-700 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 mr-2 font-mono">
-                      Ctrl+Enter
-                    </kbd>
-                    <span>Run code</span>
-                  </div>
-                  <div className="flex items-center text-xs">
-                    <kbd className="bg-white dark:bg-gray-700 px-2 py-1 rounded border border-gray-300 dark:border-gray-600 mr-2 font-mono">
-                      F11
-                    </kbd>
-                    <span>Toggle fullscreen</span>
-                  </div>
-                </div>
-              )}
-              
-              <div className="mt-2 flex justify-between items-center">
-                <button
-                  onClick={() => setIsHelpExpanded(!isHelpExpanded)}
-                  className="text-xs text-blue-600 dark:text-blue-300 hover:underline"
-                >
-                  {isHelpExpanded ? 'Show less' : 'Show more'}
-                </button>
-                <a
-                  href="https://www.onlinegdb.com/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center text-xs text-blue-600 dark:text-blue-300 hover:underline"
-                >
-                  <span>Learn more about OnlineGDB</span>
-                  <ExternalLink className="h-3 w-3 ml-1" />
-                </a>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* OnlineGDB iframe */}
       <div className="flex-1 relative bg-gray-50 dark:bg-gray-900" style={{ minHeight: '300px' }}>
         {error ? (
           <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-            <div className="bg-red-100 dark:bg-red-900/20 p-4 rounded-full mb-4">
-              <AlertCircle className="h-10 w-10 text-red-500 dark:text-red-400" />
-            </div>
-            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">Editor Failed to Load</h3>
-            <p className="text-gray-600 dark:text-gray-300 mb-6 max-w-md">
-              {error} Please check your internet connection or try refreshing the page.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="mb-4">
+              <AlertCircle className="h-10 w-10 text-red-500 dark:text-red-400 mx-auto mb-2" />
+              <p className="text-red-600 dark:text-red-400 font-medium mb-2">{error}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+                {isInitialized ? 'Connected to OnlineGDB' : 'Connecting to OnlineGDB...'}
+              </p>
               <button
-                onClick={() => window.location.reload()}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium text-sm transition-colors flex-1 sm:flex-none"
+                onClick={handleReload}
+                disabled={isReloading}
+                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm flex items-center mx-auto"
               >
-                Refresh Page
+                <RefreshCw className={`h-4 w-4 mr-2 ${isReloading ? 'animate-spin' : ''}`} />
+                Reload Editor
               </button>
+            </div>
+            <div className="text-xs text-gray-500 dark:text-gray-400">
+              <p>Having trouble? Try opening </p>
               <a
                 href="https://www.onlinegdb.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md font-medium text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-center justify-center space-x-1.5 flex-1 sm:flex-none"
+                className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center"
               >
-                <span>Open OnlineGDB</span>
-                <ExternalLink className="h-3.5 w-3.5" />
+                OnlineGDB in a new tab
+                <ExternalLink className="h-3 w-3 ml-1" />
               </a>
             </div>
           </div>
         ) : (
-          <>
-            <div className="w-full h-full relative">
-              <iframe
-                ref={iframeRef}
-                src={getIframeUrl()}
-                className={`w-full h-full border-0 transition-opacity duration-300 ${isInitialized ? 'opacity-100' : 'opacity-0'}`}
-                title={`OnlineGDB ${getLanguageName()} Editor`}
-                onLoad={handleIframeLoad}
-                onError={(e) => {
-                  console.error('Iframe load error:', e);
-                  setError('Failed to load the editor. Please check your internet connection and try again.');
-                }}
-                sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals"
-                allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                loading="eager"
-                aria-label="Code editor"
-              />
-              {!isInitialized && (
-                <div className="absolute inset-0 bg-white dark:bg-gray-900 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-300">
-                      {isReloading ? 'Reloading editor...' : 'Loading editor...'}
-                    </p>
-                    <button
-                      onClick={handleReload}
-                      disabled={isReloading}
-                      className="mt-4 text-sm text-blue-600 dark:text-blue-400 hover:underline flex items-center mx-auto"
-                    >
-                      <RefreshCw className={`h-4 w-4 mr-1 ${isReloading ? 'animate-spin' : ''}`} />
-                      {isReloading ? 'Loading...' : 'Reload if stuck'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </>
+          <iframe
+            ref={iframeRef}
+            src={getIframeUrl()}
+            className="w-full h-full border-0"
+            title="OnlineGDB Code Editor"
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            allowFullScreen
+            onError={() => setError('Failed to load the code editor. Please check your internet connection.')}
+            onLoad={handleIframeLoad}
+          />
         )}
-      </div>
-
-      {/* Status bar */}
-      <div className="bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 py-1.5 text-xs text-gray-500 dark:text-gray-400">
-        <div className="flex flex-col sm:flex-row justify-between items-center">
-          <div className="flex items-center space-x-4 mb-1 sm:mb-0">
-            <span className="inline-flex items-center">
-              <span className="relative flex h-2 w-2 mr-1.5">
-                {isInitialized ? (
-                  <>
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                  </>
-                ) : (
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
-                )}
-              </span>
-              <span>{isInitialized ? 'Connected to OnlineGDB' : 'Connecting...'}</span>
-            </span>
-            <span className="hidden md:inline-flex items-center">
-              <svg className="h-3.5 w-3.5 mr-1 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span>Code runs securely in your browser</span>
-            </span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handleReload}
-              disabled={isReloading}
-              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 transition-colors flex items-center text-xs"
-              title="Reload editor"
-              aria-label="Reload editor"
-            >
-              <RefreshCw className={`h-3 w-3 mr-1 ${isReloading ? 'animate-spin' : ''}`} />
-              <span>Reload</span>
-            </button>
-            
-            <a
-              href="https://www.onlinegdb.com/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 dark:text-blue-400 hover:underline flex items-center text-xs"
-              aria-label="Open OnlineGDB in a new tab"
-            >
-              <span>Powered by OnlineGDB</span>
-              <ExternalLink className="h-3 w-3 ml-0.5" />
-            </a>
-          </div>
-        </div>
       </div>
     </div>
   );
 };
-
 export default OnlineGDBEditor;
