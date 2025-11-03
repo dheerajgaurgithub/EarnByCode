@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { AlertCircle, Info, Maximize2, Minimize2, Play, ExternalLink, RefreshCw } from 'lucide-react';
 
-type Language = 'javascript' | 'python' | 'java' | 'cpp';
+export type Language = 'javascript' | 'python' | 'java' | 'cpp';
 
 interface OnlineGDBEditorProps {
   code: string;

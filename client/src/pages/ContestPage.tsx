@@ -12,7 +12,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Play, Clock, Loader2, CheckCircle, XCircle, RotateCcw, Check } from 'lucide-react';
-import CodeEditor from '../components/common/CodeEditor';
+import OnlineGDBEditor, { type Language } from '@/components/OnlineGDBEditor/OnlineGDBEditor';
 
 type ContestPhase = 'guidelines' | 'problem' | 'problems' | 'feedback' | 'completed';
 
@@ -97,7 +97,7 @@ const ContestPage = () => {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [timeMode, setTimeMode] = useState<'untilStart' | 'untilEnd'>('untilStart');
-  const [language, setLanguage] = useState<string>('javascript');
+  const [language, setLanguage] = useState<Language>('javascript');
   const [userCode, setUserCode] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<string>('');
   const [currentProblemIndex, setCurrentProblemIndex] = useState<number>(0);
@@ -530,32 +530,6 @@ const ContestPage = () => {
     }
   }, [hasAgreedToGuidelines, problems, contest, navigate, id, getProblemId]);
 
-  const handleProblemSelect = useCallback((index: number) => {
-    const total = problems?.length ?? 0;
-    if (index >= 0 && index < total) {
-      setCurrentProblemIndex(index);
-      const p = problems[index];
-      setCurrentProblem(p);
-      try {
-        const pid = String(getProblemId(p));
-        const key = `${pid}::${language}`;
-        const saved = userCode[key];
-        const starter = (p as any)?.starterCode?.[language] || '';
-        setCurrentProblemCode(saved ?? starter ?? '');
-      } catch {}
-    }
-  }, [problems]);
-
-  const handleCodeChange = useCallback((value: string) => {
-    const currentProblemData = problems?.[currentProblemIndex];
-    if (currentProblemData) {
-      const pid = String(getProblemId(currentProblemData));
-      const key = `${pid}::${language}`;
-      setUserCode((prev) => ({ ...prev, [key]: value }));
-    }
-    setCurrentProblemCode(value);
-  }, [problems, currentProblemIndex, getProblemId, language]);
-
   // Enrich current problem with full details (description, starterCode) if missing
   useEffect(() => {
     const enrich = async () => {
@@ -640,6 +614,28 @@ const ContestPage = () => {
       setIsRunning(false);
     }
   }, [problems, currentProblem, userCode, language, getProblemId, isRunning, isRunningAll, isSubmitting]);
+
+  const handleRunCode = useCallback(() => {
+    if (!currentProblem) return;
+    handleRunTests(String(getProblemId(currentProblem)));
+  }, [currentProblem, handleRunTests, getProblemId]);
+
+  // Handle code changes in the editor
+  const handleCodeChange = useCallback((newCode: string) => {
+    if (!currentProblem) return;
+    
+    const problemId = String(getProblemId(currentProblem));
+    const key = `${problemId}::${language}`;
+    
+    // Update the current problem code
+    setCurrentProblemCode(newCode);
+    
+    // Update the user code state for this problem and language
+    setUserCode(prev => ({
+      ...prev,
+      [key]: newCode
+    }));
+  }, [currentProblem, language, getProblemId]);
 
   const handleRunAllTests = useCallback(async () => {
     if (!currentProblem) return;
@@ -1094,7 +1090,10 @@ const ContestPage = () => {
                           <div className="w-full sm:w-auto">
                             <select
                               value={language}
-                              onChange={(e) => setLanguage(e.target.value)}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                                const value = e.target.value as Language;
+                                setLanguage(value);
+                              }}
                               className="w-full sm:w-auto px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                             >
                               <option value="javascript">JavaScript</option>
@@ -1105,20 +1104,14 @@ const ContestPage = () => {
                           </div>
                         </div>
                         
-                        <div className="border rounded-lg overflow-hidden shadow-md bg-white">
-                          <CodeEditor
-                            value={currentProblemCode}
-                            onChange={handleCodeChange}
+                        <div className="border rounded-lg overflow-hidden shadow-md bg-white" style={{ height: '500px' }}>
+                          <OnlineGDBEditor
+                            code={currentProblemCode}
+                            onCodeChange={handleCodeChange}
                             language={language}
-                            height="600px"
-                            theme="vs-dark"
-                            options={{
-                              minimap: { enabled: false },
-                              fontSize: 14,
-                              wordWrap: 'on',
-                              readOnly: isSubmitting,
-                              scrollBeyondLastLine: false
-                            }}
+                            onRun={handleRunCode}
+                            isRunning={isRunning}
+                            isSubmitting={isSubmitting}
                           />
                         </div>
                         
