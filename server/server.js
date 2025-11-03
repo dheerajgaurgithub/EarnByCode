@@ -24,6 +24,7 @@ import userRoutes from './routes/users.js';
 import problemRoutes from './routes/problems.js';
 import contestRoutes from './routes/contests.js';
 import submissionRoutes from './routes/submissions.js';
+import submissionV2Routes from './routes/v2/submissions.js';
 import adminRoutes from './routes/admin.js';
 import contactRoutes from './routes/contact.js';
 import jobRoutes from './routes/jobs.js';
@@ -40,6 +41,8 @@ import chatRoutes from './routes/chat.js';
 import leaderboardRoutes from './routes/leaderboard.js';
 import { authenticate } from './middleware/auth.js';
 import admin from './middleware/admin.js';
+import { setIO as setWSIO } from './services/ws.js';
+import { snapshot as metricsSnapshot } from './services/metrics.js';
 import Problem from './models/Problem.js';
 import Submission from './models/Submission.js';
 import User from './models/User.js';
@@ -236,13 +239,14 @@ app.get('/', (req, res) => {
   }
 });
 
-// Routes
+// API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/problems', problemRoutes);
 app.use('/api/contests', contestRoutes);
-app.use('/api/submissions', submissionRoutes);
-app.use('/api/admin', admin, adminRoutes);
+app.use('/api/submissions', submissionRoutes); // Legacy submissions route
+app.use('/api/v2/submissions', submissionV2Routes); // New submissions route with OnlineGDB integration
+app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/payments', paymentRoutes);
@@ -252,7 +256,6 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/blog', blogRoutes);
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/wallet', walletLimiter, walletRoutes);
-app.use('/api/email-test', emailTestRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/leaderboard', leaderboardRoutes);
@@ -482,150 +485,19 @@ if ((process.env.PRESS_DEMO_STREAM || 'on').toLowerCase() !== 'off') {
   }, 30000);
 }
 
-// Legacy /compile endpoint - REMOVED (now uses compile.js route)
-// app.post('/compile', ...);
-
-// Legacy compatibility: handle older clients posting to /api/code/submit
-// Mirrors the behavior of POST /api/problems/:id/submit
-app.post('/api/code/submit', authenticate, async (req, res) => {
-  try {
-    const { problemId, code, language, contestId } = req.body || {};
-    if (!problemId || typeof code !== 'string' || typeof language !== 'string') {
-      return res.status(400).json({ status: 'fail', message: 'problemId, code and language are required' });
-    }
-
-    const problem = await Problem.findById(problemId);
-    if (!problem) {
-      return res.status(404).json({ status: 'fail', message: 'Problem not found' });
-    }
-
-    // Optional contest validation (lightweight)
-    if (contestId) {
-      const contest = await Contest.findById(contestId);
-      if (!contest) {
-        return res.status(404).json({ status: 'fail', message: 'Contest not found' });
-      }
-      if (!contest.problems?.some?.(p => p.toString() === String(problemId))) {
-        return res.status(400).json({ status: 'fail', message: 'Problem not part of contest' });
-      }
-      const now = new Date();
-      if (now < new Date(contest.startTime) || now > new Date(contest.endTime)) {
-        return res.status(403).json({ status: 'fail', message: 'Contest is not active' });
-      }
-      const isParticipant = (contest.participants || []).some(p => String(p.user || p) === String(req.user._id));
-      if (!isParticipant) {
-        return res.status(403).json({ status: 'fail', message: 'Not a contest participant' });
-      }
-    }
-
-    // Determine comparison options: default relaxed; allow strict per problem/contest or env
-    const compareMode = (
-      (problem && (problem.comparisonMode || problem.compareMode || problem?.settings?.comparison)) ||
-      (typeof contest !== 'undefined' && contest && (contest.comparisonMode || contest.compareMode || contest?.settings?.comparison)) ||
-      process.env.COMPARISON_MODE ||
-      'relaxed'
-    ).toString().toLowerCase();
-
-    const ignoreWhitespace = compareMode === 'strict' ? false : true;
-    const ignoreCase = compareMode === 'strict' ? false : true;
-
-    // Execute and evaluate against full problem testcases using sandboxed runner
-    const testCases = Array.isArray(problem.testCases) ? problem.testCases : [];
-    let testsPassed = 0;
-    const totalTests = testCases.length;
-    let anyCompileErr = false;
-    let anyRuntimeErr = false;
-    let anyTLE = false;
-    let aggRuntimeMs = 0;
-    let peakMemoryKb = 0;
-
-    const langKey = (language || '').toString().toLowerCase();
-    // Validate language is supported
-    const supportedLanguages = ['java', 'cpp', 'python', 'c++', 'python3', 'py'];
-    if (!supportedLanguages.includes(langKey)) {
-      return res.status(400).json({ status: 'fail', message: `Unsupported language: ${language}. Only Java, C++, and Python are supported.` });
-    }
-    const normalizeOut = (s) => {
-      let t = (s ?? '').toString().replace(/\r\n/g, '\n');
-      if (ignoreWhitespace) t = t.replace(/\s+/g, ' ').trim(); else t = t.trim();
-      if (ignoreCase) t = t.toLowerCase();
-      return t;
-    };
-
-    for (const tc of testCases) {
-      const input = tc.input ?? tc.stdin ?? '';
-      const expected = normalizeOut(tc.expectedOutput ?? tc.expected ?? '');
-      const resp = await executeCodeWithPiston(langKey, code, input);
-      const exit = typeof resp.exitCode === 'number' ? resp.exitCode : 0;
-      if (exit === 124) anyTLE = true;
-      if (exit !== 0 && exit !== 124) anyRuntimeErr = true;
-      if (resp.stderr && /compil|javac|g\+\+|error:/i.test(resp.stderr)) anyCompileErr = true;
-      const actual = normalizeOut(resp.stdout ?? resp.output ?? '');
-      if (expected ? (actual === expected) : (exit === 0)) testsPassed += 1;
-      if (typeof resp.runtimeMs === 'number') aggRuntimeMs += Math.max(0, resp.runtimeMs);
-      if (typeof resp.memoryKb === 'number') peakMemoryKb = Math.max(peakMemoryKb, resp.memoryKb);
-    }
-
-    let status = 'Wrong Answer';
-    if (anyCompileErr) status = 'Compilation Error';
-    else if (anyTLE) status = 'Time Limit Exceeded';
-    else if (anyRuntimeErr && testsPassed === 0) status = 'Runtime Error';
-    else if (testsPassed === totalTests) status = 'Accepted';
-    else if (testsPassed > 0) status = 'Partial Correct';
-
-    const runtimeMs = aggRuntimeMs || undefined;
-    const memoryKb = peakMemoryKb || undefined;
-
-    const submission = new Submission({
-      user: req.user._id,
-      problem: problem._id,
-      code,
-      language,
-      status,
-      runtime: runtimeMs ? `${runtimeMs}ms` : undefined,
-      memory: memoryKb ? `${Math.round(memoryKb/1024)}MB` : undefined,
-      runtimeMs,
-      memoryKb,
-      testsPassed: testsPassed,
-      totalTests: totalTests,
-      score: totalTests > 0 ? Math.floor((testsPassed / totalTests) * 100) : 0,
-      contest: contestId || undefined,
-    });
-    await submission.save();
-
-    // Update problem statistics
-    problem.submissions = (problem.submissions || 0) + 1;
-    if (status.toLowerCase() === 'accepted') {
-      problem.acceptedSubmissions = (problem.acceptedSubmissions || 0) + 1;
-      if (typeof problem.updateAcceptance === 'function') {
-        try { problem.updateAcceptance(); } catch {}
-      }
-    }
-    await problem.save();
-
-    // Award codecoin on first AC for this problem
-    let earnedCodecoin = false;
-    if (status.toLowerCase() === 'accepted') {
-      const u = await User.findById(req.user._id);
-      const alreadySolved = (u?.solvedProblems || []).some(p => String(p) === String(problem._id));
-      if (!alreadySolved) {
-        await User.findByIdAndUpdate(req.user._id, {
-          $addToSet: { solvedProblems: problem._id },
-          $inc: { codecoins: 1, points: 10 },
-        });
-        earnedCodecoin = true;
-      }
-    }
-
-    return res.json({ submission, result: { status, testsPassed, totalTests, runtimeMs, memoryKb, score: totalTests > 0 ? Math.floor((testsPassed/totalTests)*100) : 0, earnedCodecoin } });
-  } catch (err) {
-    console.error('Legacy /api/code/submit error:', err);
-    return res.status(500).json({ status: 'error', message: 'Failed to submit code' });
-  }
+// Legacy endpoints redirected to v2 API
+app.post('/api/code/submit', authenticate, (req, res) => {
+  // Forward to the new v2 submission endpoint
+  return res.redirect(307, '/api/v2/submissions/submit');
 });
 
-// Legacy /api/execute endpoint - REMOVED (now uses Piston API only)
-// app.post('/api/execute', ...);
+// Legacy execute endpoint redirects to v2
+app.post('/api/execute', (req, res) => {
+  return res.status(410).json({
+    success: false,
+    message: 'This endpoint is no longer available. Please use /api/v2/submissions API instead.'
+  });
+});
 
 // Basic health check endpoint
 app.get('/api/health', (req, res) => {
@@ -792,8 +664,19 @@ const startServer = async () => {
       transports: ['websocket', 'polling'],
     });
 
-    // Expose io to routes
+    // Expose io to routes and ws service
     app.set('io', io);
+    try { setWSIO(io); } catch {}
+
+    // Periodic metrics logging (minimal monitoring)
+    try {
+      setInterval(() => {
+        const snap = metricsSnapshot();
+        if (Object.keys(snap).length) {
+          console.log('📊 Metrics snapshot:', JSON.stringify(snap));
+        }
+      }, 60 * 1000).unref();
+    } catch {}
 
     const ONLINE_THRESHOLD_MS = 2 * 60 * 1000;
     const online = new Map(); // userId -> { sockets: Set<string>, lastSeen: Date, online: boolean }

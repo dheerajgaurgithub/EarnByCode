@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { Editor } from '@monaco-editor/react';
+import OnlineGDBEditor from '@/components/OnlineGDBEditor/OnlineGDBEditor';
 import { useParams, Navigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { CheckCircle, Trophy, Award, Play, AlertCircle, Clock3, Settings, Bot, Flame } from 'lucide-react';
 import api from '@/lib/api';
 import { useI18n } from '@/context/I18nContext';
+import { subscribeSession, hasProgress } from '@/services/compilerWS';
 
 // Build normalized API base (favor env, then production backend)
 const getApiBase = () => {
@@ -26,39 +27,72 @@ const detectCodeLanguage = (src: string): Language | null => {
 
 const validateJavaSolution = (src: string) => /\bclass\s+Solution\b/.test(src);
 
-// Use Judge0 online compiler API (similar to OnlineGDB)
-const getCompilerBase = () => {
-  // First check for environment variable override
-  const env: any = (import.meta as any).env || {};
-  const override = env.VITE_JUDGE0_API as string | undefined;
-  
-  if (override && override.trim()) {
-    let base = override.trim();
-    base = base.replace(/\/+$/, '');
-    return base;
+// Helpers for results parsing and polling backend v2 submissions API
+const parseRuntimeMs = (val: unknown): number | undefined => {
+  if (typeof val === 'number' && Number.isFinite(val)) return Math.round(val);
+  const s = String(val || '').trim();
+  const ms = s.match(/([0-9]+(?:\.[0-9]+)?)\s*ms/i);
+  if (ms) return Math.round(parseFloat(ms[1]));
+  const sec = s.match(/([0-9]+(?:\.[0-9]+)?)\s*s(ec)?/i);
+  if (sec) return Math.round(parseFloat(sec[1]) * 1000);
+  return undefined;
+};
+
+const parseMemoryKb = (val: unknown): number | undefined => {
+  if (typeof val === 'number' && Number.isFinite(val)) return Math.round(val);
+  const s = String(val || '').trim();
+  const kb = s.match(/([0-9]+(?:\.[0-9]+)?)\s*k(B)?/i);
+  if (kb) return Math.round(parseFloat(kb[1]));
+  const mb = s.match(/([0-9]+(?:\.[0-9]+)?)\s*m(B)?/i);
+  if (mb) return Math.round(parseFloat(mb[1]) * 1024);
+  return undefined;
+};
+
+// Looser comparator: normalize newlines, collapse internal whitespace per line, trim, and lowercase
+const normalizeForCompare = (s: string) => {
+  const t = String(s || '').replace(/\r\n/g, '\n');
+  const lines = t.split('\n').map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+  return lines.join('\n').toLowerCase();
+};
+const normalizeStrict = (s: string) => String(s || '').replace(/\r\n/g, '\n').trim();
+const makeComparator = (mode: 'relaxed' | 'strict') =>
+  (a: string, b: string) => mode === 'relaxed' ? (normalizeForCompare(a) === normalizeForCompare(b)) : (normalizeStrict(a) === normalizeStrict(b));
+
+const makeDiff = (expected: string, actual: string) => {
+  const e = String(expected || '').replace(/\r\n/g, '\n').split('\n');
+  const a = String(actual || '').replace(/\r\n/g, '\n').split('\n');
+  const rows: Array<{ type: 'same'|'add'|'del'; text: string }> = [];
+  const max = Math.max(e.length, a.length);
+  for (let i = 0; i < max; i++) {
+    const el = e[i] ?? '';
+    const al = a[i] ?? '';
+    if (el === al) rows.push({ type: 'same', text: al });
+    else {
+      if (el) rows.push({ type: 'del', text: el });
+      if (al) rows.push({ type: 'add', text: al });
+    }
   }
-  
-  // Default to Judge0 public API (free tier with rate limits)
-  // For production, set up your own Judge0 instance and use VITE_JUDGE0_API env variable
-  return 'https://judge0-ce.p.rapidapi.com';
+  return rows;
 };
 
-// Judge0 language ID mapping for supported languages
-// These IDs are standard for Judge0 CE (Community Edition)
-const getJudge0LanguageId = (lang: Language): number => {
-  const languageIds: Record<Language, number> = {
-    'cpp': 54,        // C++ (GCC 9.2.0)
-    'java': 62,       // Java (OpenJDK 13.0.1)
-    'python': 71,     // Python (3.8.1)
-    'javascript': 63  // JavaScript (Node.js 12.14.0)
-  };
-  return languageIds[lang] || 71;
-};
-
-// Get RapidAPI key from environment (required for Judge0 public API)
-const getJudge0ApiKey = () => {
-  const env: any = (import.meta as any).env || {};
-  return env.VITE_RAPIDAPI_KEY as string | undefined || '';
+const pollV2Result = async (sessionId: string, opts?: { timeoutMs?: number; intervalMs?: number }) => {
+  const timeoutMs = opts?.timeoutMs ?? 20000;
+  const intervalMs = opts?.intervalMs ?? 800;
+  const t0 = Date.now();
+  for (;;) {
+    const resp = await api.get(`/v2/submissions/result/${sessionId}`);
+    const payload: any = (resp as any)?.data || resp;
+    const data: any = payload?.data || payload;
+    const result: any = data?.result || data; 
+    const status = String(result?.status || '').toLowerCase();
+    if (!status || status === 'completed' || status === 'failed' || status === 'error') {
+      return result;
+    }
+    if (Date.now() - t0 > timeoutMs) {
+      return { status: 'timeout', output: '', error: 'Timed out waiting for result' } as any;
+    }
+    await new Promise(r => setTimeout(r, intervalMs));
+  }
 };
 
 type Language = 'javascript' | 'python' | 'java' | 'cpp';
@@ -208,14 +242,17 @@ const ProblemDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const { user, refreshUser } = useAuth();
   const { t } = useI18n();
-  const editorTheme = useMemo(() => {
-    const t = (user as any)?.preferences?.editor?.theme;
-    return t === 'vs-dark' ? 'vs-dark' : 'light';
-  }, [user]);
   const editorFontSize = useMemo(() => {
     const n = Number((user as any)?.preferences?.editor?.fontSize);
     return Number.isFinite(n) && n >= 10 && n <= 24 ? n : 14;
   }, [user]);
+
+  useEffect(() => {
+    try {
+      const m = localStorage.getItem('pd:compareMode');
+      if (m === 'strict' || m === 'relaxed') setCompareMode(m);
+    } catch {}
+  }, []);
   const editorTabSize = useMemo(() => {
     const n = Number((user as any)?.preferences?.editor?.tabSize);
     return Number.isFinite(n) && n >= 2 && n <= 8 ? n : 2;
@@ -235,6 +272,7 @@ const ProblemDetail: React.FC = () => {
     totalTests: 0,
     isSubmission: false
   });
+  const [compareMode, setCompareMode] = useState<'relaxed'|'strict'>('relaxed');
   // Java helper: warn if class name is not Solution (server expects Solution.java)
   const javaNeedsSolutionClass = useMemo(() => {
     if (selectedLanguage !== 'java') return false;
@@ -332,7 +370,7 @@ const ProblemDetail: React.FC = () => {
     
     // Only try to use problem.testCases if we don't have any visible test cases yet
     if (visibleTestcases.length === 0) {
-      const testCases = problem.testCases || [];
+      const testCases = (problem.testCases || []).filter((t: any) => !t?.hidden);
       if (testCases.length > 0) {
         console.log('Using fallback test cases from problem data');
         const vis = testCases.map(t => ({
@@ -352,7 +390,7 @@ const ProblemDetail: React.FC = () => {
     }
   }, [problem, visibleTestcases.length]);
 
-  // Handle code run (single example)
+  // Handle code run (single example) via backend v2 submissions API
   const handleRunCode = useCallback(async () => {
     if (!problem || !code.trim()) {
       setTestResults({
@@ -399,54 +437,31 @@ const ProblemDetail: React.FC = () => {
         });
         return;
       }
-      // Prefer first visible (non-hidden) testcase; fallback to first example
       const tc0 = visibleTestcases && visibleTestcases.length > 0 ? visibleTestcases[0] : undefined;
       const runInput = tc0 ? tc0.input : (problem.examples?.[0]?.input ?? '');
       const expectedText = tc0 ? tc0.expectedOutput : (problem.examples?.[0]?.output ?? '');
-      
-      // Build Judge0 API payload
-      const judge0Payload = {
-        source_code: code,
-        language_id: getJudge0LanguageId(selectedLanguage),
-        stdin: typeof runInput === 'string' ? runInput : '',
-        cpu_time_limit: 2,
-        memory_limit: 128000
-      };
-      
-      // Call Judge0 API with wait=true to get immediate results
-      const apiKey = getJudge0ApiKey();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      
-      // Add RapidAPI key if using public Judge0 instance
-      if (apiKey && getCompilerBase().includes('rapidapi.com')) {
-        headers['X-RapidAPI-Key'] = apiKey;
-        headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
-      }
-      
-      const resp = await fetch(`${getCompilerBase()}/submissions?base64_encoded=false&wait=true`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(judge0Payload)
+
+      const submitResp = await api.post(`/v2/submissions/run`, {
+        problemId: problem._id,
+        code,
+        language: selectedLanguage,
+        input: typeof runInput === 'string' ? runInput : ''
       });
+
+      const submitPayload: any = (submitResp as any)?.data || submitResp;
+      const submitData: any = submitPayload?.data || submitPayload;
+      const sessionId: string = submitData?.sessionId || submitData?.data?.sessionId || submitData?.result?.sessionId;
+      if (!sessionId) throw new Error('Session not created');
+
+      const result: any = await pollV2Result(sessionId, { timeoutMs: 20000, intervalMs: 700 });
+      const out = String(result?.output ?? '').trim();
+      const err = String(result?.error ?? '').trim();
+      const runtimeMs = parseRuntimeMs(result?.runtime);
+      const memoryKb = parseMemoryKb(result?.memory);
       
-      if (!resp.ok) {
-        const txt = await resp.text().catch(() => '');
-        throw new Error(`Judge0 API Error (${resp.status}): ${txt}`);
-      }
-      
-      const data = await resp.json();
-      
-      // Parse Judge0 response
-      const out = (data?.stdout ?? '').toString().trim();
-      const err = (data?.stderr ?? data?.compile_output ?? '').toString().trim();
-      const runtimeMs = data?.time ? Math.round(parseFloat(data.time) * 1000) : undefined;
-      const memoryKb = data?.memory ? Math.round(data.memory) : undefined;
-      
-      const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
       const hasExpected = typeof expectedText === 'string' && expectedText.trim().length > 0;
-      const passed = hasExpected ? normalize(out) === normalize(expectedText) : !err;
+      const cmp = makeComparator(compareMode);
+      const passed = hasExpected ? cmp(out, String(expectedText)) : !err;
 
       setTestResults({
         status: err ? 'error' : passed ? 'accepted' : 'error',
@@ -475,15 +490,16 @@ const ProblemDetail: React.FC = () => {
     } finally {
       setIsRunning(false);
     }
-  }, [code, problem, selectedLanguage]);
+  }, [code, problem, selectedLanguage, visibleTestcases, compareMode]);
 
-  // Run all testcases for supported languages
+  // Run all testcases via backend v2 submissions API
   const handleRunAll = useCallback(async () => {
     if (!problem || !code.trim()) return;
-    if (!Array.isArray(problem.testCases) || problem.testCases.length === 0) {
+    const publicTests = Array.isArray(problem.testCases) ? (problem.testCases as any[]).filter(tc => !tc?.hidden) : [];
+    if (publicTests.length === 0) {
       setTestResults({
         status: 'error',
-        error: 'No testcases found for this problem',
+        error: 'No public testcases found for this problem',
         testCases: [],
         results: [],
         testsPassed: 0,
@@ -516,62 +532,40 @@ const ProblemDetail: React.FC = () => {
       let totalMs = 0;
 
       const runOne = async (stdin: string | undefined, expected: string | undefined) => {
-        // Build Judge0 API payload
-        const judge0Payload = {
-          source_code: code,
-          language_id: getJudge0LanguageId(selectedLanguage),
-          stdin: typeof stdin === 'string' ? stdin : '',
-          cpu_time_limit: 2,
-          memory_limit: 128000
-        };
-        
-        const apiKey = getJudge0ApiKey();
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json'
-        };
-        
-        if (apiKey && getCompilerBase().includes('rapidapi.com')) {
-          headers['X-RapidAPI-Key'] = apiKey;
-          headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
-        }
-        
-        const resp = await fetch(`${getCompilerBase()}/submissions?base64_encoded=false&wait=true`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify(judge0Payload)
+        const submitResp = await api.post(`/v2/submissions/run`, {
+          problemId: problem._id,
+          code,
+          language: selectedLanguage,
+          input: typeof stdin === 'string' ? stdin : ''
         });
-        
-        if (!resp.ok) {
-          const txt = await resp.text().catch(() => '');
-          throw new Error(`Judge0 API Error (${resp.status}): ${txt}`);
-        }
-        
-        const data = await resp.json();
-        const out = (data?.stdout ?? '').toString().trim();
-        const err = (data?.stderr ?? data?.compile_output ?? '').toString().trim();
-        const runtimeMs = data?.time ? Math.round(parseFloat(data.time) * 1000) : undefined;
-        const memoryKb = data?.memory ? Math.round(data.memory) : undefined;
-        
-        const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
+        const submitPayload: any = (submitResp as any)?.data || submitResp;
+        const submitData: any = submitPayload?.data || submitPayload;
+        const sessionId: string = submitData?.sessionId || submitData?.data?.sessionId || submitData?.result?.sessionId;
+        if (!sessionId) throw new Error('Session not created');
+        const result: any = await pollV2Result(sessionId, { timeoutMs: 25000, intervalMs: 700 });
+        const out = String(result?.output ?? '').trim();
+        const err = String(result?.error ?? '').trim();
+        const runtimeMs = parseRuntimeMs(result?.runtime);
         const hasExpected = typeof expected === 'string' && expected.trim().length > 0;
-        const passed = hasExpected ? normalize(out) === normalize(expected!) : !err;
+        const cmp = makeComparator(compareMode);
+        const passed = hasExpected ? cmp(out, String(expected)) : !err;
         if (passed) passedCount++;
         results.push({ input: stdin, expectedOutput: expected, actualOutput: out, passed, error: err || undefined, runtime: runtimeMs });
         if (runtimeMs) totalMs += runtimeMs;
       };
 
-      for (const tc of problem.testCases) {
+      for (const tc of publicTests) {
         const stdin = typeof tc.input === 'string' ? tc.input : undefined;
         const expected = typeof tc.expectedOutput === 'string' ? tc.expectedOutput : undefined;
         await runOne(stdin, expected);
       }
 
       setTestResults({
-        status: passedCount === problem.testCases.length ? 'accepted' : 'error',
-        testCases: problem.testCases as any,
+        status: passedCount === publicTests.length ? 'accepted' : 'error',
+        testCases: publicTests as any,
         results,
         testsPassed: passedCount,
-        totalTests: problem.testCases.length,
+        totalTests: publicTests.length,
         isSubmission: false,
         runtimeMs: totalMs > 0 ? totalMs : undefined,
         runtimeText: totalMs > 0 ? `${Math.round(totalMs)}ms` : undefined
@@ -591,7 +585,7 @@ const ProblemDetail: React.FC = () => {
     }
   }, [problem, code, selectedLanguage]);
 
-  // Strict execution engine per requested format
+  // Strict execution engine using backend v2 submissions API
   const executeStrict = useCallback(async () => {
     if (!code.trim()) {
       setStrictReport(
@@ -600,161 +594,67 @@ const ProblemDetail: React.FC = () => {
       return;
     }
 
-    // Build test inputs
     const inputs: string[] = (() => {
       const txt = customTests.trim();
       if (txt.length > 0) {
-        // Split tests by double newlines; fallback to single block
         const parts = txt.split(/\n\n+/).map(s => s.replace(/\s+$/,'')).filter(Boolean);
         return parts.length > 0 ? parts : [txt];
       }
-      // Fallback to problem testCases if present (string inputs only)
       const fromProblem = (problem?.testCases || [])
         .map(tc => (typeof tc.input === 'string' ? tc.input : ''))
         .filter(Boolean);
       return fromProblem.length > 0 ? fromProblem : [''];
     })();
-    // Expected outputs aligned to inputs (only when not providing custom tests)
+
     const expectedList: (string | undefined)[] = (() => {
       if (customTests.trim().length > 0) return inputs.map(() => undefined);
       const arr = (problem?.testCases || []).map(tc => (typeof tc.expectedOutput === 'string' ? tc.expectedOutput : undefined));
       return arr;
     })();
 
-    // Judge0 handles language mapping via language_id, no need for file mapping
-
-    // First do a compilation check with Judge0
-    try {
-      const prePayload = {
-        source_code: code,
-        language_id: getJudge0LanguageId(selectedLanguage),
-        stdin: '',
-        cpu_time_limit: 2,
-        memory_limit: 128000
-      };
-      
-      const apiKey = getJudge0ApiKey();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      
-      if (apiKey && getCompilerBase().includes('rapidapi.com')) {
-        headers['X-RapidAPI-Key'] = apiKey;
-        headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
-      }
-      
-      const pre = await fetch(`${getCompilerBase()}/submissions?base64_encoded=false&wait=true`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(prePayload)
-      });
-      
-      const preData = await pre.json();
-      const compileErr = (preData?.compile_output ?? preData?.stderr ?? '').toString();
-      const statusId = preData?.status?.id;
-      
-      // Status 6 = Compilation Error
-      if (statusId === 6 || (compileErr && statusId !== 3)) {
-        const details = compileErr.replace(/\r\n/g,'\n');
-        setStrictReport(`**Status:** Compilation Error\n**Details:**\n${details}`);
-        return;
-      }
-    } catch (e: any) {
-      setStrictReport(`**Status:** Compilation Error\n**Details:**\n${e?.message || 'Judge0 API unavailable'}`);
-      return;
-    }
-
-    // Execute each test case
     let report = '[START OF EXECUTION]\n\nCompilation Phase:\n';
     report += 'On Success: proceeding to execution...\n\n';
 
     let idx = 1;
     for (const input of inputs) {
       try {
-        const t0 = (typeof performance !== 'undefined' ? performance.now() : Date.now());
         const stdinToUse = (selectedLanguage === 'java' && normalizeJavaDecimals && typeof input === 'string')
           ? input.replace(/(\d),(?=\d)/g, '$1.')
           : input;
-        const payload = {
-          source_code: code,
-          language_id: getJudge0LanguageId(selectedLanguage),
-          stdin: typeof stdinToUse === 'string' ? stdinToUse : '',
-          cpu_time_limit: Math.max(1, Math.floor(Number(tleMs) / 1000) || 5),
-          memory_limit: 128000
-        };
-        
-        const apiKey = getJudge0ApiKey();
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json'
-        };
-        
-        if (apiKey && getCompilerBase().includes('rapidapi.com')) {
-          headers['X-RapidAPI-Key'] = apiKey;
-          headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
-        }
-        
-        // TLE with AbortController (client-side timeout)
-        const controller = new AbortController();
-        const timer = setTimeout(() => controller.abort(), Math.max(1000, Number(tleMs) || 5000));
-        let tle = false;
-        let resp: Response;
-        
-        try {
-          resp = await fetch(`${getCompilerBase()}/submissions?base64_encoded=false&wait=true`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(payload),
-            signal: controller.signal
-          });
-        } catch (err: any) {
-          if (err?.name === 'AbortError') {
-            tle = true;
-          } else {
-            throw err;
-          }
-        } finally {
-          clearTimeout(timer);
-        }
-        
-        if (tle) {
-          const timeText = `${Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0)}ms`;
-          report += `---\n**Test Case #${idx}:**\n`;
-          report += `**Input:**\n${input || '[No input]'}\n\n`;
-          report += `**Your Output (stdout):**\n[No output]\n\n`;
-          report += `**Error Output (stderr):**\n[No errors]\n\n`;
-          report += `**Result:** Time Limit Exceeded\n`;
-          report += `**Execution Time:** ${timeText}\n`;
-          report += `**Memory Usage:** N/A\n\n`;
-          idx += 1;
-          continue;
-        }
-        
-        const data = await resp!.json();
-        const stdout = (data?.stdout ?? '').toString();
-        const stderr = (data?.stderr ?? data?.compile_output ?? '').toString();
-        const statusId = data?.status?.id;
-        
-        const timeMs = data?.time ? Math.round(parseFloat(data.time) * 1000) : Math.round((typeof performance !== 'undefined' ? performance.now() : Date.now()) - t0);
-        const memKb = data?.memory ? Math.round(data.memory) : undefined;
-        const memText = typeof memKb === 'number' ? (memKb >= 1024 ? `${(memKb/1024).toFixed(1)} MB` : `${Math.round(memKb)} KB`) : 'N/A';
-        const timeText = `${Math.round(timeMs || 0)}ms`;
-        
-        // Judge0 status codes: 3=Accepted, 4=Wrong Answer, 5=Time Limit, 6=Compilation Error, etc.
-        const killed = statusId === 5;
-        const result = killed ? 'Time Limit Exceeded' : (stderr || (statusId && statusId !== 3) ? 'Runtime Error' : 'Success');
+
+        const submitResp = await api.post(`/v2/submissions/run`, {
+          problemId: problem?._id,
+          code,
+          language: selectedLanguage,
+          input: typeof stdinToUse === 'string' ? stdinToUse : ''
+        });
+        const submitPayload: any = (submitResp as any)?.data || submitResp;
+        const submitData: any = submitPayload?.data || submitPayload;
+        const sessionId: string = submitData?.sessionId || submitData?.data?.sessionId || submitData?.result?.sessionId;
+        if (!sessionId) throw new Error('Session not created');
+
+        const result: any = await pollV2Result(sessionId, { timeoutMs: Math.max(5000, Number(tleMs) || 5000), intervalMs: 700 });
+        const stdout = String(result?.output ?? '');
+        const stderr = String(result?.error ?? '');
+        const timeText = result?.runtime ? String(result.runtime) : undefined;
+        const memText = result?.memory ? String(result.memory) : 'N/A';
+
+        const normalizedStdout = stdout.replace(/\r\n/g, '\n');
+        const normalizedStderr = stderr.replace(/\r\n/g, '\n');
+        const resultText = normalizedStderr ? 'Runtime Error' : 'Success';
 
         report += `---\n**Test Case #${idx}:**\n`;
         report += `**Input:**\n${input || '[No input]'}\n\n`;
-        report += `**Your Output (stdout):**\n${stdout ? stdout : '[No output]'}\n\n`;
-        report += `**Error Output (stderr):**\n${stderr ? stderr : '[No errors]'}\n\n`;
-        report += `**Result:** ${result}\n`;
-        report += `**Execution Time:** ${timeText}\n`;
-        report += `**Memory Usage:** ${memKb != null ? memText : 'N/A'}\n`;
+        report += `**Your Output (stdout):**\n${normalizedStdout ? normalizedStdout : '[No output]'}\n\n`;
+        report += `**Error Output (stderr):**\n${normalizedStderr ? normalizedStderr : '[No errors]'}\n\n`;
+        report += `**Result:** ${resultText}\n`;
+        report += `**Execution Time:** ${timeText || 'N/A'}\n`;
+        report += `**Memory Usage:** ${memText}\n`;
         if (compareExpected) {
           const expected = expectedList[idx - 1];
           if (typeof expected === 'string') {
             const normalize = (s: string) => s.replace(/\r\n/g, '\n').trim();
-            const passed = normalize(stdout) === normalize(expected);
+            const passed = normalize(normalizedStdout) === normalize(expected);
             report += `**Expected Output:**\n${expected}\n`;
             report += `**Comparison:** ${passed ? 'Passed' : 'Failed'}\n`;
           } else {
@@ -768,7 +668,7 @@ const ProblemDetail: React.FC = () => {
         report += `**Your Output (stdout):**\n[No output]\n\n`;
         report += `**Error Output (stderr):**\n${e?.message || 'Unknown error'}\n\n`;
         report += `**Result:** Runtime Error\n`;
-        report += `**Execution Time:** 0ms\n`;
+        report += `**Execution Time:** N/A\n`;
         report += `**Memory Usage:** N/A\n\n`;
       } finally {
         idx += 1;
@@ -776,9 +676,9 @@ const ProblemDetail: React.FC = () => {
     }
 
     setStrictReport(report.trimEnd());
-  }, [code, customTests, problem?.testCases, selectedLanguage, compareExpected, tleMs]);
+  }, [api, code, customTests, problem?._id, problem?.testCases, selectedLanguage, compareExpected, tleMs, normalizeJavaDecimals]);
 
-  // Handle code submission
+  // Handle code submission via backend v2 submissions API
   const handleSubmitCode = useCallback(async () => {
     if (!problem || !code.trim()) {
       setTestResults({
@@ -821,49 +721,63 @@ const ProblemDetail: React.FC = () => {
     }));
 
     try {
-      // Server expects POST /api/problems/:id/submit with { code, language, contestId? }
-      const resp = await api.post<{ submission: any; result: any }>(`/problems/${problem._id}/submit`, {
+      const resp = await api.post(`/v2/submissions/submit/batch`, {
+        problemId: problem._id,
         code,
         language: selectedLanguage,
+        compareMode,
       });
+      const payload: any = (resp as any)?.data || resp;
+      const data: any = payload?.data || payload;
+      const sessionId: string = data?.sessionId || data?.result?.sessionId || data?.data?.sessionId;
+      if (!sessionId) throw new Error('Session not created');
 
-      const payload = (resp as any).data || resp; // our api wrapper returns { data }
-      const result = payload.result || {};
-
-      // Normalize status to our TestStatus union with wider coverage
-      const rawStatus = (result.status || '').toString().toLowerCase();
-      const errorish = ['wrong answer', 'runtime error', 'time limit exceeded', 'compilation error', 'failed'];
-      const status: TestStatus =
-        rawStatus === 'accepted' ? 'accepted' :
-        rawStatus === 'running' ? 'running' :
-        rawStatus === 'success' ? 'success' :
-        rawStatus === 'error' || errorish.includes(rawStatus) ? 'error' :
-        'submitted';
-
-      const updatedResults: TestResults = {
-        status,
-        testCases: [], // server does not return testCases here
-        results: [], // condensed summary; details not returned from submit endpoint
-        testsPassed: Number(result.testsPassed || 0),
-        totalTests: Number(result.totalTests || problem.testCases?.length || 0),
-        isSubmission: true,
-        message: result.message,
-        error: result.error,
-        runtimeMs: typeof result.runtime === 'number' ? result.runtime : undefined,
-        memoryKb: typeof result.memory === 'number' ? result.memory : undefined,
-        earnedCodecoin: !!result.earnedCodecoin,
-      };
-
-      setTestResults(updatedResults);
-
-      // Refresh user data if codecoins were earned
-      if (status === 'accepted' && refreshUser) {
-        try {
-          await refreshUser();
-        } catch (refreshError) {
-          console.error('Error refreshing user data:', refreshError);
-        }
-      }
+      await new Promise<void>((resolve) => {
+        const unsubscribe = subscribeSession(sessionId, async (evt) => {
+          if (evt.status === 'running' && hasProgress(evt)) {
+            setTestResults(prev => ({
+              ...prev,
+              status: 'running',
+              isSubmission: true,
+              message: `Running ${evt.progress.current}/${evt.progress.total}...`
+            }));
+          } else if (evt.status === 'completed') {
+            const passed = typeof evt.testsPassed === 'number' ? evt.testsPassed : 0;
+            const total = typeof evt.totalTests === 'number' ? evt.totalTests : (problem.testCases?.length || 0);
+            setTestResults({
+              status: passed === total && total > 0 ? 'accepted' : 'error',
+              testCases: [],
+              results: Array.isArray((evt as any).testResults) ? (evt as any).testResults.map((r: any) => ({
+                input: r.input,
+                expectedOutput: r.expectedOutput,
+                actualOutput: r.actualOutput,
+                passed: !!r.passed,
+                error: r.error,
+                runtime: r.runtimeMs,
+              })) : [],
+              testsPassed: passed,
+              totalTests: total,
+              isSubmission: true,
+              runtimeMs: parseRuntimeMs(evt.runtime),
+            });
+            try { if (passed === total && refreshUser) await refreshUser(); } catch {}
+            unsubscribe();
+            resolve();
+          } else if (evt.status === 'error') {
+            setTestResults({
+              status: 'error',
+              error: evt.error || 'Submission failed',
+              testCases: [],
+              results: [],
+              testsPassed: 0,
+              totalTests: problem.testCases?.length || 0,
+              isSubmission: true,
+            });
+            unsubscribe();
+            resolve();
+          }
+        });
+      });
     } catch (error: unknown) {
       console.error('Error submitting code:', error);
       const errorMessage = 
@@ -916,7 +830,8 @@ const ProblemDetail: React.FC = () => {
   // Persist preferences on change
   useEffect(() => {
     try { localStorage.setItem('pd:prefs', JSON.stringify(prefs)); } catch {}
-  }, [prefs]);
+    try { localStorage.setItem('pd:compareMode', compareMode); } catch {}
+  }, [prefs, compareMode]);
 
   // Fetch user's daily problem
   useEffect(() => {
@@ -1276,6 +1191,10 @@ const ProblemDetail: React.FC = () => {
                   </div>
                   
                   <div className="flex items-center space-x-2 w-full lg:w-auto justify-end">
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-green-300 mr-2 select-none">
+                      <input type="checkbox" checked={compareMode === 'relaxed'} onChange={(e) => setCompareMode(e.target.checked ? 'relaxed' : 'strict')} />
+                      Relaxed match
+                    </label>
                     <button
                       onClick={handleResetCode}
                       className="p-1.5 text-sky-600 dark:text-green-400 hover:text-sky-800 dark:hover:text-green-300 hover:bg-sky-100 dark:hover:bg-green-900/50 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
@@ -1316,38 +1235,16 @@ const ProblemDetail: React.FC = () => {
                 </div>
               </div>
               
-              {/* Code Editor (Monaco) */}
-              <div className="relative">
-                <Editor
-                  height="55vh"
-                  theme={editorTheme}
-                  language={selectedLanguage === 'cpp' ? 'cpp' : selectedLanguage}
-                  value={code}
-                  onChange={(value) => setCode(value || '')}
-                  options={{
-                    fontSize: editorFontSize,
-                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
-                    wordWrap: 'on',
-                    minimap: { enabled: false },
-                    automaticLayout: true,
-                    smoothScrolling: true,
-                    scrollbar: { verticalScrollbarSize: 10, horizontalScrollbarSize: 10 },
-                    tabSize: editorTabSize,
-                    insertSpaces: true,
-                    bracketPairColorization: { enabled: true },
-                    renderWhitespace: 'selection',
-                    renderControlCharacters: false,
-                  }}
+              {/* OnlineGDB Editor */}
+              <div className="h-[55vh] relative">
+                <OnlineGDBEditor
+                  code={code}
+                  language={selectedLanguage as 'javascript' | 'python' | 'java' | 'cpp'}
+                  onRun={handleRunAll}
+                  onCodeChange={setCode}
+                  isRunning={isRunning}
+                  isSubmitting={isSubmitting}
                 />
-              </div>
-              
-              {/* Status Bar */}
-              <div className="bg-gradient-to-r from-sky-100 to-slate-200 dark:from-green-950/60 dark:to-gray-900/80 px-4 py-2 text-xs text-slate-700 dark:text-green-300 border-t border-sky-200 dark:border-green-800 flex flex-col lg:flex-row lg:items-center justify-between space-y-1 lg:space-y-0">
-                <div className="flex items-center space-x-4">
-                  <span className="font-bold text-sky-700 dark:text-green-200">{selectedLanguage.toUpperCase()}</span>
-                  <span className="font-medium">{code.length} characters</span>
-                </div>
-                <span className="font-bold text-sky-700 dark:text-green-200">{getCurrentTime()}</span>
               </div>
             </div>
 
@@ -1472,6 +1369,19 @@ const ProblemDetail: React.FC = () => {
                                         </code>
                                       </div>
                                     </div>
+
+                                    {!result.passed && typeof result.expectedOutput === 'string' && typeof result.actualOutput === 'string' && (
+                                      <div className="mt-2">
+                                        <span className="text-sky-700 dark:text-green-300 font-bold text-xs">Diff:</span>
+                                        <pre className="bg-white dark:bg-gray-900/60 p-2 rounded-lg mt-1 border border-sky-200 dark:border-green-800 overflow-auto whitespace-pre-wrap break-words text-xs font-mono">
+                                          {makeDiff(String(result.expectedOutput), String(result.actualOutput)).map((row, i) => (
+                                            <div key={i} className={row.type === 'same' ? '' : row.type === 'add' ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'}>
+                                              {row.type === 'add' ? '+ ' : row.type === 'del' ? '- ' : '  '}{row.text}
+                                            </div>
+                                          ))}
+                                        </pre>
+                                      </div>
+                                    )}
                                     
                                     {!result.passed && result.error && (
                                       <div className="mt-2 text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 p-2 rounded-lg border border-red-200 dark:border-red-700">
