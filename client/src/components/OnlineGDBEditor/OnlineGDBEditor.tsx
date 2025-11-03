@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { AlertCircle, ExternalLink, RefreshCw, Code2 } from 'lucide-react';
+import { AlertCircle, Play, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import Editor from '@monaco-editor/react';
+import axios from 'axios';
 
 export type Language = 'javascript' | 'python' | 'java' | 'cpp';
 
@@ -10,14 +12,23 @@ interface OnlineGDBEditorProps {
   onCodeChange?: (code: string, language: Language) => void;
   isRunning: boolean;
   isSubmitting: boolean;
+  testCases?: Array<{ input: string; expected: string }>;
 }
 
-// Map our language codes to OnlineGDB language codes
-const languageMap: Record<Language, string> = {
-  'javascript': 'nodejs',
-  'python': 'python3',
-  'java': 'java',
-  'cpp': 'cpp'
+// Map our language codes to OnlineGDB language codes and Monaco editor language IDs
+const languageMap: Record<Language, { onlineGdbId: string; monacoLang: string }> = {
+  'javascript': { onlineGdbId: 'nodejs', monacoLang: 'javascript' },
+  'python': { onlineGdbId: 'python3', monacoLang: 'python' },
+  'java': { onlineGdbId: 'java', monacoLang: 'java' },
+  'cpp': { onlineGdbId: 'cpp', monacoLang: 'cpp' }
+};
+
+// Default code templates for each language
+const defaultCodeTemplates: Record<Language, string> = {
+  'javascript': '// Write your JavaScript code here\nconsole.log("Hello, World!");',
+  'python': '# Write your Python code here\nprint("Hello, World!")',
+  'java': 'public class Main {\n    public static void main(String[] args) {\n        System.out.println(\"Hello, World!\");\n    }\n}',
+  'cpp': '#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}'
 };
 
 const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
@@ -26,90 +37,149 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
   onRun,
   onCodeChange,
   isRunning,
-  isSubmitting
+  isSubmitting,
+  testCases = []
 }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [code, setCode] = useState(initialCode || defaultCodeTemplates[initialLanguage]);
+  const [output, setOutput] = useState('');
+  const [isExecuting, setIsExecuting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isReloading, setIsReloading] = useState(false);
   const [currentLanguage, setCurrentLanguage] = useState<Language>(initialLanguage);
-  const [lastCodeUpdate, setLastCodeUpdate] = useState(Date.now());
+  const [activeTab, setActiveTab] = useState<'code' | 'output' | 'test'>('code');
+  const [testResults, setTestResults] = useState<Array<{
+    input: string;
+    expected: string;
+    actual: string;
+    passed: boolean;
+    status: 'pending' | 'running' | 'completed';
+  }>>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
+  const [lastCodeUpdate, setLastCodeUpdate] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Handle iframe load events
-  const handleIframeLoad = useCallback(() => {
-    setIsInitialized(true);
-    setIsReloading(false);
+  // Handle code changes
+  const handleCodeChange = (value: string | undefined) => {
+    const newCode = value || '';
+    setCode(newCode);
+    if (onCodeChange) {
+      onCodeChange(newCode, currentLanguage);
+    }
+  };
+
+  // Execute code using OnlineGDB API
+  const executeCode = async (input: string = '') => {
+    setIsExecuting(true);
     setError(null);
-    
-    // Set up message listener for code changes
-    const handleMessage = (event: MessageEvent) => {
-      if (!iframeRef.current?.contentWindow || event.source !== iframeRef.current.contentWindow) return;
-      
-      if (event.data?.type === 'codeChange' && onCodeChange) {
-        onCodeChange(event.data.code, currentLanguage);
-      }
-    };
-    
-    window.addEventListener('message', handleMessage);
-    
-    // Inject code into the editor after a short delay to ensure it's ready
-    const timer = setTimeout(() => {
-      if (initialCode && iframeRef.current?.contentWindow) {
-        iframeRef.current.contentWindow.postMessage({
-          type: 'setCode',
-          code: initialCode,
-          language: languageMap[currentLanguage]
-        }, '*');
-        
-        // Set up code execution handler
-        iframeRef.current.contentWindow.postMessage({
-          type: 'setRunHandler',
-          handler: 'runCode'
-        }, '*');
-      }
-    }, 2000); // Increased delay to ensure editor is fully loaded
-    
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('message', handleMessage);
-    };
-  }, [initialCode, currentLanguage, onCodeChange]);
-  
-  // Handle run button click
-  const handleRun = useCallback(async () => {
-    const contentWindow = iframeRef.current?.contentWindow;
-    if (!contentWindow) return;
-    
+    setOutput('Executing code...\n');
+    setActiveTab('output');
+
     try {
-      // Get the current code from the editor
-      const code = await new Promise<string>((resolve) => {
-        const messageHandler = (event: MessageEvent) => {
-          if (event.source === contentWindow && event.data?.type === 'getCodeResponse') {
-            window.removeEventListener('message', messageHandler);
-            resolve(event.data.code);
-          }
-        };
-        
-        window.addEventListener('message', messageHandler);
-        contentWindow.postMessage({ type: 'getCode' }, '*');
-        
-        // Timeout if no response
-        setTimeout(() => {
-          window.removeEventListener('message', messageHandler);
-          resolve('');
-        }, 1000);
+      const response = await axios.post('https://www.onlinegdb.com/compile_web_standalone', {
+        program: code,
+        language: languageMap[currentLanguage].onlineGdbId,
+        input: input,
+        command: ''
       });
-      
-      // Call the parent's onRun with the current code and language
-      if (code && onRun) {
-        await onRun(code, currentLanguage);
+
+      if (response.data) {
+        if (response.data.stdout) {
+          setOutput(prev => prev + response.data.stdout);
+        }
+        if (response.data.stderr) {
+          setOutput(prev => prev + '\nError: ' + response.data.stderr);
+        }
+        if (response.data.compile_output) {
+          setOutput(prev => prev + '\nCompilation Output: ' + response.data.compile_output);
+        }
       }
     } catch (err) {
-      console.error('Error running code:', err);
-      setError('Failed to run code. Please try again.');
+      console.error('Error executing code:', err);
+      setError('Failed to execute code. Please try again.');
+      setOutput('Error: ' + (err as Error).message);
+    } finally {
+      setIsExecuting(false);
     }
-  }, [onRun, currentLanguage]);
+  };
+
+  // Run all test cases
+  const runAllTests = async () => {
+    if (testCases.length === 0) {
+      setError('No test cases available.');
+      return;
+    }
+
+    setActiveTab('test');
+    setTestResults(testCases.map(test => ({
+      ...test,
+      actual: '',
+      passed: false,
+      status: 'pending' as const
+    })));
+
+    for (let i = 0; i < testCases.length; i++) {
+      const test = testCases[i];
+      setTestResults(prev => {
+        const updated = [...prev];
+        updated[i] = { ...updated[i], status: 'running' };
+        return updated;
+      });
+
+      try {
+        const response = await axios.post('https://www.onlinegdb.com/compile_web_standalone', {
+          program: code,
+          language: languageMap[currentLanguage].onlineGdbId,
+          input: test.input,
+          command: ''
+        });
+
+        const actualOutput = response.data.stdout?.trim() || '';
+        const passed = actualOutput === test.expected;
+
+        setTestResults(prev => {
+          const updated = [...prev];
+          updated[i] = {
+            ...updated[i],
+            actual: actualOutput,
+            passed,
+            status: 'completed' as const
+          };
+          return updated;
+        });
+      } catch (err) {
+        console.error(`Test case ${i + 1} failed:`, err);
+        setTestResults(prev => {
+          const updated = [...prev];
+          updated[i] = {
+            ...updated[i],
+            actual: 'Error: ' + (err as Error).message,
+            passed: false,
+            status: 'completed' as const
+          };
+          return updated;
+        });
+      }
+    }
+  };
+  
+  // Handle run button click
+  const handleRun = async () => {
+    setOutput('');
+    await executeCode();
+  };
+
+  // Handle language change
+  const handleLanguageChange = (lang: Language) => {
+    setCurrentLanguage(lang);
+    // Update code to default template if it's the initial code or empty
+    if (!code || code === defaultCodeTemplates[currentLanguage]) {
+      setCode(defaultCodeTemplates[lang]);
+      if (onCodeChange) {
+        onCodeChange(defaultCodeTemplates[lang], lang);
+      }
+    }
+  };
 
   // Initialize the editor when component mounts
   useEffect(() => {
@@ -170,18 +240,18 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
       setIsReloading(true);
     }
   }, [initialLanguage, currentLanguage]);
-  
+
   // Handle code updates from parent
   useEffect(() => {
     if (isInitialized && iframeRef.current?.contentWindow && Date.now() - lastCodeUpdate > 1000) {
       iframeRef.current.contentWindow.postMessage({
         type: 'setCode',
         code: initialCode,
-        language: languageMap[currentLanguage]
+        language: languageMap[currentLanguage],
       }, '*');
     }
   }, [initialCode, isInitialized, currentLanguage, lastCodeUpdate]);
-  
+
   // Handle reloading the editor
   const handleReload = useCallback(() => {
     setIsInitialized(false);
@@ -234,10 +304,13 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
       'javascript': 'JavaScript (Node.js)',
       'python': 'Python 3',
       'java': 'Java',
-      'cpp': 'C++'
+      'cpp': 'C++',
     };
     return names[currentLanguage] || currentLanguage;
   }, [currentLanguage]);
+
+  const currentLanguageName = getLanguageName();
+  const languageOptions: Language[] = ['javascript', 'python', 'java', 'cpp'];
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -247,11 +320,11 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
       if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
         return;
       }
-      
+
       // Ctrl+Enter or Cmd+Enter to run code
       if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
         e.preventDefault();
-        if (!isRunning && !isSubmitting) {
+        if (!isExecuting && !isSubmitting) {
           handleRun();
         }
       }
@@ -269,122 +342,235 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isRunning, isSubmitting, handleRun, toggleFullscreen]);
+  }, [isExecuting, isSubmitting, handleRun, toggleFullscreen]);
 
   return (
-    <div 
-      className={`relative flex flex-col h-full bg-white dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 shadow-sm transition-all duration-200 ${
-        isFullscreen ? 'fixed inset-0 z-50 m-0 rounded-none' : ''
-      }`}
-    >
-      {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-gradient-to-r from-blue-600 to-blue-700 dark:from-green-800 dark:to-green-900 text-white">
-        <div className="flex items-center space-x-3">
-          <div className="flex items-center bg-blue-700/30 dark:bg-green-700/50 px-3 py-1 rounded-md border border-blue-500/30 dark:border-green-500/30">
-            <span className="text-sm font-mono font-medium">{getLanguageName()}</span>
-          </div>
-          
-          {error && (
-            <div className="flex items-center bg-red-500/90 text-white px-3 py-1 rounded-md text-xs">
-              <AlertCircle className="h-3.5 w-3.5 mr-1.5 flex-shrink-0" />
-              <span>{error}</span>
-            </div>
-          )}
+    <div className="flex flex-col h-full w-full bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">
+      {/* Language and action buttons */}
+      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+        <div className="flex items-center space-x-2">
+          <select
+            value={currentLanguage}
+            onChange={(e) => handleLanguageChange(e.target.value as Language)}
+            className="text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            disabled={isExecuting || isSubmitting}
+          >
+            {languageOptions.map((lang) => (
+              <option key={lang} value={lang}>
+                {getLanguageName()}
+              </option>
+            ))}
+          </select>
         </div>
-
         <div className="flex items-center space-x-2">
           <button
             onClick={handleRun}
-            disabled={isRunning || isSubmitting}
-            className="p-1.5 rounded-md hover:bg-blue-700/30 dark:hover:bg-green-700/50 transition-colors disabled:opacity-50"
-            title="Run code"
-            aria-label="Run code"
+            disabled={isExecuting || isSubmitting}
+            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </button>
-          <button
-            onClick={toggleFullscreen}
-            className="p-1.5 rounded-md hover:bg-blue-700/30 dark:hover:bg-green-700/50 transition-colors"
-            title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
-          >
-            {isFullscreen ? (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+            {isExecuting ? (
+              <>
+                <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                Running...
+              </>
             ) : (
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0-4h-4m4 0l-5 5" />
-              </svg>
+              <>
+                <Play className="-ml-0.5 mr-1.5 h-4 w-4" />
+                Run
+              </>
+            )}
+          </button>
+          {testCases.length > 0 && (
+            <button
+              onClick={runAllTests}
+              disabled={isExecuting || isSubmitting}
+              className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isExecuting ? (
+                <>
+                  <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                  Running Tests...
+                </>
+              ) : (
+                'Run All Tests'
+              )}
+            </button>
+          )}
+          <button
+            onClick={() => onRun(code, currentLanguage)}
+            disabled={isExecuting || isSubmitting}
+            className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="animate-spin -ml-1 mr-2 h-4 w-4" />
+                Submitting...
+              </>
+            ) : (
+              'Submit'
             )}
           </button>
         </div>
       </div>
 
-      <div className="flex-1 relative bg-gray-50 dark:bg-gray-900" style={{ minHeight: '300px' }}>
-        {error ? (
-          <div className="h-full flex flex-col items-center justify-center p-6 text-center">
-            <div className="mb-4">
-              <AlertCircle className="h-10 w-10 text-red-500 dark:text-red-400 mx-auto mb-2" />
-              <p className="text-red-600 dark:text-red-400 font-medium mb-2">{error}</p>
-              <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-                {isInitialized ? 'Connected to OnlineGDB' : 'Connecting to OnlineGDB...'}
-              </p>
-              <button
-                onClick={handleReload}
-                disabled={isReloading}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm flex items-center mx-auto"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${isReloading ? 'animate-spin' : ''}`} />
-                Reload Editor
-              </button>
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              <p>Having trouble? Try opening </p>
-              <a
-                href="https://www.onlinegdb.com/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center"
-              >
-                OnlineGDB in a new tab
-                <ExternalLink className="h-3 w-3 ml-1" />
-              </a>
-            </div>
+      {/* Tabs */}
+      <div className="border-b border-gray-200 dark:border-gray-700">
+        <nav className="flex -mb-px">
+          <button
+            onClick={() => setActiveTab('code')}
+            className={`py-2 px-4 text-sm font-medium border-b-2 ${
+              activeTab === 'code'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Code
+          </button>
+          <button
+            onClick={() => setActiveTab('output')}
+            className={`py-2 px-4 text-sm font-medium border-b-2 ${
+              activeTab === 'output'
+                ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+            }`}
+          >
+            Output
+          </button>
+          {testCases.length > 0 && (
+            <button
+              onClick={() => setActiveTab('test')}
+              className={`py-2 px-4 text-sm font-medium border-b-2 ${
+                activeTab === 'test'
+                  ? 'border-blue-500 text-blue-600 dark:text-blue-400'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+              }`}
+            >
+              Test Results
+              {testResults.some((r) => r.status === 'completed') && (
+                <span className="ml-1.5 inline-flex items-center justify-center h-4 w-4 rounded-full text-xs font-medium text-white bg-green-500">
+                  {testResults.filter((r) => r.passed).length}/{testResults.length}
+                </span>
+              )}
+            </button>
+          )}
+        </nav>
+      </div>
+
+      {/* Main content */}
+      <div className="flex-1 overflow-auto bg-white dark:bg-gray-900">
+        {error && (
+          <div className="p-3 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 text-sm flex items-center">
+            <AlertCircle className="h-4 w-4 mr-2 flex-shrink-0" />
+            <span>{error}</span>
+            <button
+              onClick={() => setError(null)}
+              className="ml-auto text-red-500 hover:text-red-700 dark:hover:text-red-400"
+              aria-label="Dismiss error"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
           </div>
-        ) : (
-          <div className="relative w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
-            <div className="text-center max-w-md">
-              <Code2 className="h-12 w-12 mx-auto text-blue-500 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Code Editor</h3>
-              <p className="text-gray-600 dark:text-gray-300 mb-6">
-                The code editor will open in a new tab for the best experience.
-              </p>
-              <a
-                href={getIframeUrl()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                onClick={(e) => {
-                  e.preventDefault();
-                  window.open(getIframeUrl(), '_blank', 'noopener,noreferrer');
-                }}
+        )}
+
+        {activeTab === 'code' && (
+          <div className="h-full">
+            <Editor
+              height="100%"
+              defaultLanguage={languageMap[currentLanguage].monacoLang}
+              language={languageMap[currentLanguage].monacoLang}
+              theme={document.documentElement.classList.contains('dark') ? 'vs-dark' : 'light'}
+              value={code}
+              onChange={handleCodeChange}
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                wordWrap: 'on',
+                automaticLayout: true,
+                tabSize: 2,
+                scrollBeyondLastLine: false,
+                padding: { top: 10 },
+              }}
+            />
+          </div>
+        )}
+
+        {activeTab === 'output' && (
+          <div className="p-4 font-mono text-sm bg-gray-50 dark:bg-gray-800 h-full overflow-auto">
+            {output ? (
+              <pre className="whitespace-pre-wrap break-words">{output}</pre>
+            ) : (
+              <div className="text-gray-500 dark:text-gray-400">
+                Run the code to see the output here.
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'test' && testCases.length > 0 && (
+          <div className="p-4 space-y-4 overflow-auto">
+            {testResults.map((result, index) => (
+              <div
+                key={index}
+                className={`p-4 rounded-lg border ${
+                  result.status === 'completed'
+                    ? result.passed
+                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                      : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
+                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
+                }`}
               >
-                Open Code Editor
-                <ExternalLink className="ml-2 h-4 w-4" />
-              </a>
-            </div>
-            <div className="mt-6 text-sm text-gray-500 dark:text-gray-400">
-              <p>Having issues? Try these steps:</p>
-              <ol className="list-decimal list-inside mt-2 space-y-1">
-                <li>Make sure pop-ups are allowed for this site</li>
-                <li>Check your internet connection</li>
-                <li>Try refreshing the page</li>
-              </ol>
-            </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium">Test Case {index + 1}</span>
+                  {result.status === 'pending' && (
+                    <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
+                      Pending
+                    </span>
+                  )}
+                  {result.status === 'running' && (
+                    <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded inline-flex items-center">
+                      <Loader2 className="animate-spin mr-1 h-3 w-3" />
+                      Running
+                    </span>
+                  )}
+                  {result.status === 'completed' && (
+                    <span
+                      className={`text-xs px-2 py-0.5 rounded ${
+                        result.passed
+                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
+                          : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
+                      }`}
+                    >
+                      {result.passed ? 'Passed' : 'Failed'}
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Input</div>
+                    <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm">
+                      {result.input || 'No input'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Expected Output</div>
+                    <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm">
+                      {result.expected || 'No expected output'}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                      {result.status === 'completed' ? 'Actual Output' : 'Status'}
+                    </div>
+                    <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm min-h-[2.5rem]">
+                      {result.status === 'pending' && 'Not run yet'}
+                      {result.status === 'running' && 'Running...'}
+                      {result.status === 'completed' && (result.actual || 'No output')}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

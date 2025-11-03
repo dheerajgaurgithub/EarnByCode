@@ -41,7 +41,7 @@
     "@types/react-toastify": "^4.0.2",
     "@uiw/react-codemirror": "^4.25.2",
     "@vercel/speed-insights": "^1.2.0",
-    "axios": "^1.12.2",
+    "axios": "^1.13.1",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
