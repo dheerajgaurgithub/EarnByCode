@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { AlertCircle, Play, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Play, CheckCircle, XCircle, Loader2, RotateCw, Maximize2, Minimize2, AlertCircle } from 'lucide-react';
 import Editor from '@monaco-editor/react';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
+import './OnlineGDBEditor.css';
 
 export type Language = 'javascript' | 'python' | 'java' | 'cpp';
 
@@ -10,7 +11,6 @@ interface OnlineGDBEditorProps {
   language: Language;
   onRun: (code: string, language: Language) => Promise<void>;
   onCodeChange?: (code: string, language: Language) => void;
-  isRunning: boolean;
   isSubmitting: boolean;
   testCases?: Array<{ input: string; expected: string }>;
 }
@@ -31,12 +31,19 @@ const defaultCodeTemplates: Record<Language, string> = {
   'cpp': '#include <iostream>\n\nint main() {\n    std::cout << "Hello, World!" << std::endl;\n    return 0;\n}'
 };
 
+// Language display names
+const languageNames: Record<Language, string> = {
+  'javascript': 'JavaScript (Node.js)',
+  'python': 'Python 3',
+  'java': 'Java',
+  'cpp': 'C++'
+};
+
 const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
   code: initialCode,
   language: initialLanguage,
   onRun,
   onCodeChange,
-  isRunning,
   isSubmitting,
   testCases = []
 }) => {
@@ -53,26 +60,27 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
     passed: boolean;
     status: 'pending' | 'running' | 'completed';
   }>>([]);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false); 
   const [isInitialized, setIsInitialized] = useState(false);
-  const [isReloading, setIsReloading] = useState(false);
   const [lastCodeUpdate, setLastCodeUpdate] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
-  // Handle code changes
-  const handleCodeChange = (value: string | undefined) => {
+  // Handle code changes with debounce
+  const handleCodeChange = useCallback((value: string | undefined) => {
     const newCode = value || '';
     setCode(newCode);
+    setLastCodeUpdate(Date.now());
     if (onCodeChange) {
       onCodeChange(newCode, currentLanguage);
     }
-  };
+  }, [currentLanguage, onCodeChange]);
 
-  // Execute code using OnlineGDB API
-  const executeCode = async (input: string = '') => {
+  // Execute code using OnlineGDB API with retry mechanism
+  const executeCode = async (input: string = '', retryCount = 0): Promise<void> => {
+    const maxRetries = 2;
     setIsExecuting(true);
     setError(null);
-    setOutput('Executing code...\n');
+    setOutput(prev => prev ? `${prev}\n---\nExecuting code...` : 'Executing code...');
     setActiveTab('output');
 
     try {
@@ -81,23 +89,39 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
         language: languageMap[currentLanguage].onlineGdbId,
         input: input,
         command: ''
+      }, {
+        timeout: 15000, 
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        }
       });
 
       if (response.data) {
-        if (response.data.stdout) {
-          setOutput(prev => prev + response.data.stdout);
-        }
-        if (response.data.stderr) {
-          setOutput(prev => prev + '\nError: ' + response.data.stderr);
-        }
-        if (response.data.compile_output) {
-          setOutput(prev => prev + '\nCompilation Output: ' + response.data.compile_output);
-        }
+        let outputText = '';
+        if (response.data.stdout) outputText += response.data.stdout;
+        if (response.data.stderr) outputText += `\nError: ${response.data.stderr}`;
+        if (response.data.compile_output) outputText += `\nCompilation Output: ${response.data.compile_output}`;
+        
+        setOutput(prev => prev ? `${prev}\n${outputText}` : outputText);
       }
     } catch (err) {
-      console.error('Error executing code:', err);
-      setError('Failed to execute code. Please try again.');
-      setOutput('Error: ' + (err as Error).message);
+      const error = err as AxiosError;
+      console.error('Error executing code:', error);
+      
+      if (retryCount < maxRetries) {
+        setOutput(prev => `${prev}\nRetrying... (${retryCount + 1}/${maxRetries})`);
+        return executeCode(input, retryCount + 1);
+      }
+      
+      const errorMessage = error.response
+        ? `Server responded with ${error.response.status}: ${error.response.statusText}`
+        : error.request
+        ? 'No response from server. Please check your connection.'
+        : error.message || 'Failed to execute code. Please try again.';
+        
+      setError('Execution failed');
+      setOutput(prev => `${prev}\nError: ${errorMessage}`);
     } finally {
       setIsExecuting(false);
     }
@@ -189,7 +213,7 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
         const script = document.createElement('script');
         script.src = 'https://www.onlinegdb.com/static/embed.js';
         script.async = true;
-        script.integrity = 'sha384-...'; // Add integrity hash if available
+        script.integrity = 'sha384-...'; 
         script.crossOrigin = 'anonymous';
         script.onload = () => {
           console.log('OnlineGDB script loaded successfully');
@@ -228,7 +252,7 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
       setError('Error initializing the code editor. Please refresh the page.');
       console.error('Editor initialization error:', err);
     }
-  }, [onCodeChange]);
+  }, [onCodeChange, currentLanguage]);
 
   
   // Handle language changes
@@ -237,7 +261,6 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
       setCurrentLanguage(initialLanguage);
       // Force iframe reload when language changes
       setIsInitialized(false);
-      setIsReloading(true);
     }
   }, [initialLanguage, currentLanguage]);
 
@@ -255,7 +278,6 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
   // Handle reloading the editor
   const handleReload = useCallback(() => {
     setIsInitialized(false);
-    setIsReloading(true);
     setError(null);
     setLastCodeUpdate(Date.now());
   }, []);
@@ -293,23 +315,11 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
 
   // Get the URL for the current language
   const getIframeUrl = useCallback(() => {
-    const lang = languageMap[currentLanguage] || 'cpp';
+    const lang = languageMap[currentLanguage]?.onlineGdbId || 'cpp';
     // Use the standard OnlineGDB editor URL
     return `https://www.onlinegdb.com/online_${lang}_compiler`;
   }, [currentLanguage]);
 
-  // Get language display name
-  const getLanguageName = useCallback(() => {
-    const names: Record<Language, string> = {
-      'javascript': 'JavaScript (Node.js)',
-      'python': 'Python 3',
-      'java': 'Java',
-      'cpp': 'C++',
-    };
-    return names[currentLanguage] || currentLanguage;
-  }, [currentLanguage]);
-
-  const currentLanguageName = getLanguageName();
   const languageOptions: Language[] = ['javascript', 'python', 'java', 'cpp'];
 
   // Handle keyboard shortcuts
@@ -342,7 +352,7 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isExecuting, isSubmitting, handleRun, toggleFullscreen]);
+  }, [isExecuting, isSubmitting, toggleFullscreen]);
 
   return (
     <div className="flex flex-col h-full w-full bg-white dark:bg-gray-900 rounded-lg overflow-hidden shadow-sm border border-gray-200 dark:border-gray-700">
@@ -357,7 +367,7 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
           >
             {languageOptions.map((lang) => (
               <option key={lang} value={lang}>
-                {getLanguageName()}
+                {languageNames[lang]}
               </option>
             ))}
           </select>
@@ -472,110 +482,233 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
           </div>
         )}
 
+        {/* Code Tab */}
         {activeTab === 'code' && (
           <div className="h-full">
             <Editor
               height="100%"
-              defaultLanguage={languageMap[currentLanguage].monacoLang}
               language={languageMap[currentLanguage].monacoLang}
-              theme={document.documentElement.classList.contains('dark') ? 'vs-dark' : 'light'}
               value={code}
               onChange={handleCodeChange}
+              theme="vs-dark"
               options={{
                 minimap: { enabled: false },
                 fontSize: 14,
-                wordWrap: 'on',
-                automaticLayout: true,
-                tabSize: 2,
+                lineNumbers: 'on',
                 scrollBeyondLastLine: false,
-                padding: { top: 10 },
+                automaticLayout: true,
               }}
             />
           </div>
         )}
 
+        {/* Output Tab */}
         {activeTab === 'output' && (
-          <div className="p-4 font-mono text-sm bg-gray-50 dark:bg-gray-800 h-full overflow-auto">
-            {output ? (
-              <pre className="whitespace-pre-wrap break-words">{output}</pre>
-            ) : (
-              <div className="text-gray-500 dark:text-gray-400">
-                Run the code to see the output here.
+          <div className="h-full p-4">
+            {isExecuting && (
+              <div className="flex items-center gap-2 mb-4 text-blue-500">
+                <Loader2 className="animate-spin h-5 w-5" />
+                <span>Running your code...</span>
+              </div>
+            )}
+            <pre className="font-mono text-sm whitespace-pre-wrap break-words text-gray-800 dark:text-gray-200">
+              {output || (error ? `Error: ${error}` : 'Run code to see output')}
+            </pre>
+            {error && (
+              <div className="mt-4">
+                <button
+                  onClick={() => executeCode()}
+                  disabled={isExecuting}
+                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                >
+                  <RotateCw className="h-4 w-4" />
+                  Try Again
+                </button>
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'test' && testCases.length > 0 && (
-          <div className="p-4 space-y-4 overflow-auto">
-            {testResults.map((result, index) => (
-              <div
-                key={index}
-                className={`p-4 rounded-lg border ${
-                  result.status === 'completed'
-                    ? result.passed
-                      ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
-                      : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800'
-                    : 'bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-medium">Test Case {index + 1}</span>
-                  {result.status === 'pending' && (
-                    <span className="text-xs px-2 py-0.5 bg-gray-100 dark:bg-gray-700 rounded">
-                      Pending
-                    </span>
-                  )}
-                  {result.status === 'running' && (
-                    <span className="text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 rounded inline-flex items-center">
-                      <Loader2 className="animate-spin mr-1 h-3 w-3" />
-                      Running
-                    </span>
-                  )}
-                  {result.status === 'completed' && (
-                    <span
-                      className={`text-xs px-2 py-0.5 rounded ${
-                        result.passed
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300'
-                          : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300'
-                      }`}
-                    >
-                      {result.passed ? 'Passed' : 'Failed'}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                  <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Input</div>
-                    <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm">
-                      {result.input || 'No input'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Expected Output</div>
-                    <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm">
-                      {result.expected || 'No expected output'}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">
-                      {result.status === 'completed' ? 'Actual Output' : 'Status'}
-                    </div>
-                    <div className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm min-h-[2.5rem]">
-                      {result.status === 'pending' && 'Not run yet'}
-                      {result.status === 'running' && 'Running...'}
-                      {result.status === 'completed' && (result.actual || 'No output')}
-                    </div>
-                  </div>
-                </div>
+        {/* Test Results Tab */}
+        {activeTab === 'test' && (
+          <div className="h-full p-4 overflow-auto">
+            {testResults.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500 dark:text-gray-400">
+                <p className="text-lg font-medium mb-2">No test results yet</p>
+                <p className="text-sm">Click "Run All Tests" to execute test cases</p>
               </div>
-            ))}
+            ) : (
+              <div className="space-y-4">
+                {testResults.map((result, index) => (
+                  <div
+                    key={index}
+                    className={`border rounded-lg p-4 ${
+                      result.status === 'completed'
+                        ? result.passed
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                          : 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                        : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-medium text-gray-900 dark:text-gray-100">
+                        Test Case {index + 1}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        {result.status === 'completed' && (
+                          result.passed ? (
+                            <span className="flex items-center gap-1 text-green-600 dark:text-green-400">
+                              <CheckCircle className="h-4 w-4" />
+                              Passed
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1 text-red-600 dark:text-red-400">
+                              <XCircle className="h-4 w-4" />
+                              Failed
+                            </span>
+                          )
+                        )}
+                        {result.status === 'running' && (
+                          <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                            <Loader2 className="animate-spin h-4 w-4" />
+                            Running
+                          </span>
+                        )}
+                        {result.status === 'pending' && (
+                          <span className="text-gray-500 dark:text-gray-400">Pending</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {result.input && (
+                      <div className="mb-3">
+                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Input
+                        </div>
+                        <pre className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm">
+                          {result.input}
+                        </pre>
+                      </div>
+                    )}
+
+                    <div className="mb-3">
+                      <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                        Expected Output
+                      </div>
+                      <pre className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm">
+                        {result.expected || 'No expected output'}
+                      </pre>
+                    </div>
+
+                    {result.status === 'completed' && (
+                      <div>
+                        <div className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">
+                          Actual Output
+                        </div>
+                        <pre className="p-2 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 font-mono text-sm">
+                          {result.actual || 'No output'}
+                        </pre>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
     </div>
   );
 };
+
+// Add CSS for the editor component
+const styles = `
+  .online-gdb-editor {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #1e1e1e;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+
+  .online-gdb-editor.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    border-radius: 0;
+  }
+
+  .editor-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 16px;
+    background: #252526;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+  }
+
+  .language-scroll-container {
+    flex: 1;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+  }
+
+  .language-scroll-container::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .language-scroll-container::-webkit-scrollbar-thumb {
+    background: #555;
+    border-radius: 2px;
+  }
+
+  .language-tabs {
+    display: flex;
+    gap: 4px;
+    padding: 4px 0;
+  }
+
+  .language-tab {
+    padding: 6px 12px;
+    background: #2d2d2d;
+    border: 1px solid #3c3c3c;
+    border-radius: 4px;
+    color: #ccc;
+    font-size: 13px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+
+  .language-tab:hover {
+    background: #37373d;
+    color: #fff;
+  }
+
+  .language-tab.active {
+    background: #0e639c;
+    color: #fff;
+    border-color: #1177bb;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
+// Add styles to the document
+if (typeof document !== 'undefined') {
+  const styleElement = document.createElement('style');
+  styleElement.textContent = styles;
+  document.head.appendChild(styleElement);
+}
 
 export default OnlineGDBEditor;
