@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { AlertCircle, ExternalLink, RefreshCw } from 'lucide-react';
+import { AlertCircle, ExternalLink, RefreshCw, Code2 } from 'lucide-react';
 
 export type Language = 'javascript' | 'python' | 'java' | 'cpp';
 
@@ -224,29 +224,9 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
   // Get the URL for the current language
   const getIframeUrl = useCallback(() => {
     const lang = languageMap[currentLanguage] || 'cpp';
-    // Force HTTPS and use the embed endpoint
-    const url = new URL(`https://www.onlinegdb.com/online_${lang}_compiler`);
-    
-    // Add initial code as URL parameter if provided
-    if (initialCode && !isInitialized) {
-      url.searchParams.set('code', encodeURIComponent(initialCode));
-    }
-    
-    // Enable all necessary features
-    url.searchParams.set('stdinput', '1');
-    url.searchParams.set('language', lang);
-    url.searchParams.set('menu', '1');
-    url.searchParams.set('run', '0');
-    
-    // Theme settings
-    const isDark = document.documentElement.classList.contains('dark');
-    url.searchParams.set('theme', isDark ? 'dark' : 'light');
-    
-    // Add unique timestamp to prevent caching issues
-    url.searchParams.set('_', Date.now().toString());
-    
-    return url.toString();
-  }, [currentLanguage, initialCode, isInitialized]);
+    // Use the standard OnlineGDB editor URL
+    return `https://www.onlinegdb.com/online_${lang}_compiler`;
+  }, [currentLanguage]);
 
   // Get language display name
   const getLanguageName = useCallback(() => {
@@ -376,37 +356,35 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
             </div>
           </div>
         ) : (
-          <div className="relative w-full h-full">
-            <iframe
-              ref={iframeRef}
-              src={getIframeUrl()}
-              className="w-full h-full border-0 focus:outline-none"
-              title="OnlineGDB Code Editor"
-              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-top-navigation allow-pointer-lock"
-              allow="clipboard-read; clipboard-write; fullscreen;"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                backgroundColor: 'white',
-                border: '1px solid #e2e8f0',
-                borderRadius: '0.375rem',
-              }}
-              data-gramm_editor="false"
-              data-gramm="false"
-              data-enable-grammarly="false"
-              allowFullScreen
-              onError={() => setError('Failed to load the code editor. Please check your internet connection.')}
-              onLoad={handleIframeLoad}
-              loading="eager"
-            />
-            {!isInitialized && (
-              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-              </div>
-            )}
+          <div className="relative w-full h-full flex flex-col items-center justify-center bg-gray-50 dark:bg-gray-800 rounded-lg p-6">
+            <div className="text-center max-w-md">
+              <Code2 className="h-12 w-12 mx-auto text-blue-500 mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Code Editor</h3>
+              <p className="text-gray-600 dark:text-gray-300 mb-6">
+                The code editor will open in a new tab for the best experience.
+              </p>
+              <a
+                href={getIframeUrl()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                onClick={(e) => {
+                  e.preventDefault();
+                  window.open(getIframeUrl(), '_blank', 'noopener,noreferrer');
+                }}
+              >
+                Open Code Editor
+                <ExternalLink className="ml-2 h-4 w-4" />
+              </a>
+            </div>
+            <div className="mt-6 text-sm text-gray-500 dark:text-gray-400">
+              <p>Having issues? Try these steps:</p>
+              <ol className="list-decimal list-inside mt-2 space-y-1">
+                <li>Make sure pop-ups are allowed for this site</li>
+                <li>Check your internet connection</li>
+                <li>Try refreshing the page</li>
+              </ol>
+            </div>
           </div>
         )}
       </div>
