@@ -232,14 +232,15 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
       url.searchParams.set('code', encodeURIComponent(initialCode));
     }
     
-    // Add theme parameter (light/dark)
+    // Enable all necessary features
+    url.searchParams.set('stdinput', '1');
+    url.searchParams.set('language', lang);
+    url.searchParams.set('menu', '1');
+    url.searchParams.set('run', '0');
+    
+    // Theme settings
     const isDark = document.documentElement.classList.contains('dark');
     url.searchParams.set('theme', isDark ? 'dark' : 'light');
-    
-    // Disable menu and enable embedding
-    url.searchParams.set('hideNewFileOption', 'true');
-    url.searchParams.set('hideStdinTab', 'true');
-    url.searchParams.set('hideResult', 'true');
     
     // Add unique timestamp to prevent caching issues
     url.searchParams.set('_', Date.now().toString());
@@ -375,21 +376,38 @@ const OnlineGDBEditor: React.FC<OnlineGDBEditorProps> = ({
             </div>
           </div>
         ) : (
-          <iframe
-            ref={iframeRef}
-            src={getIframeUrl()}
-            className="w-full h-full border-0 focus:outline-none"
-            title="OnlineGDB Code Editor"
-            sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-modals allow-top-navigation allow-top-navigation-by-user-activation"
-            allow="clipboard-read; clipboard-write; fullscreen"
-            style={{ pointerEvents: 'auto' }}
-            data-gramm_editor="false"
-            data-gramm="false"
-            data-enable-grammarly="false"
-            allowFullScreen
-            onError={() => setError('Failed to load the code editor. Please check your internet connection.')}
-            onLoad={handleIframeLoad}
-          />
+          <div className="relative w-full h-full">
+            <iframe
+              ref={iframeRef}
+              src={getIframeUrl()}
+              className="w-full h-full border-0 focus:outline-none"
+              title="OnlineGDB Code Editor"
+              sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals allow-top-navigation allow-pointer-lock"
+              allow="clipboard-read; clipboard-write; fullscreen;"
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                backgroundColor: 'white',
+                border: '1px solid #e2e8f0',
+                borderRadius: '0.375rem',
+              }}
+              data-gramm_editor="false"
+              data-gramm="false"
+              data-enable-grammarly="false"
+              allowFullScreen
+              onError={() => setError('Failed to load the code editor. Please check your internet connection.')}
+              onLoad={handleIframeLoad}
+              loading="eager"
+            />
+            {!isInitialized && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>
